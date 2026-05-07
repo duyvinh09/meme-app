@@ -24,9 +24,18 @@ class EditGroupScreen extends StatefulWidget {
 }
 
 class _EditGroupScreenState extends State<EditGroupScreen> {
+  static const int kMaxGroupNameLength = 50;
+
   late final TextEditingController nameController;
   late final TextEditingController goalController;
   late Color selectedColor;
+
+  String originalName = '';
+  String originalGoalText = '';
+  String originalColorHex = '';
+  Set<String> originalMemberIds = {};
+
+  bool didFormatInitialGoal = false;
 
   final List<Color> groupColors = const [
     AppColors.primaryBlue,
@@ -53,8 +62,10 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   void initState() {
     super.initState();
 
+    originalName = (widget.groupData['name'] ?? '').toString().trim();
+
     nameController = TextEditingController(
-      text: (widget.groupData['name'] ?? '').toString(),
+      text: originalName,
     );
 
     final goalAmount = _toDouble(widget.groupData['goalAmount']);
@@ -63,8 +74,8 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
       text: goalAmount <= 0 ? '' : goalAmount.round().toString(),
     );
 
-    final colorHex = (widget.groupData['color'] ?? '#79AFFF').toString();
-    selectedColor = _parseHexColor(colorHex);
+    originalColorHex = (widget.groupData['color'] ?? '#79AFFF').toString();
+    selectedColor = _parseHexColor(originalColorHex);
 
     final memberIds = (widget.groupData['memberIds'] as List?)
         ?.map((e) => e.toString())
@@ -72,6 +83,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
         <String>{};
 
     selectedMemberIds = memberIds;
+    originalMemberIds = {...memberIds};
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadCurrentMembers();
@@ -278,6 +290,15 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
       return;
     }
 
+    if (name.length > kMaxGroupNameLength) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tên nhóm tối đa 50 ký tự'),
+        ),
+      );
+      return;
+    }
+
     if (inputAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -451,6 +472,11 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                     hintText: 'Nhập tên nhóm',
                     icon: Icons.groups_2_outlined,
                     cursorColor: selectedColor,
+                    maxLength: kMaxGroupNameLength,
+                    inputFormatters: [
+                      LengthLimitingTextInputFormatter(kMaxGroupNameLength),
+                    ],
+                    onChanged: (_) => setState(() {}),
                   ),
 
                   const SizedBox(height: 14),
@@ -877,6 +903,7 @@ class _EditInputField extends StatelessWidget {
   final TextInputType? keyboardType;
   final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
+  final int? maxLength;
   final Color cursorColor;
 
   const _EditInputField({
@@ -889,6 +916,7 @@ class _EditInputField extends StatelessWidget {
     this.keyboardType,
     this.onChanged,
     this.inputFormatters,
+    this.maxLength,
   });
 
   @override
@@ -915,6 +943,9 @@ class _EditInputField extends StatelessWidget {
           labelText: label,
           hintText: hintText,
           suffixText: suffixText,
+          counterText: maxLength == null
+              ? null
+              : '${controller.text.length}/$maxLength',
           prefixIcon: Icon(
             icon,
             color: AppColors.textSecondary(context),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -340,6 +341,8 @@ class CreateGroupScreen extends StatefulWidget {
 }
 
 class _CreateGroupScreenState extends State<CreateGroupScreen> {
+  static const int kMaxGroupNameLength = 50;
+
   final TextEditingController groupNameController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
   final TextEditingController goalAmountController = TextEditingController();
@@ -389,6 +392,15 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Vui lòng nhập tên nhóm'),
+        ),
+      );
+      return;
+    }
+
+    if (name.length > kMaxGroupNameLength) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tên nhóm tối đa 50 ký tự'),
         ),
       );
       return;
@@ -546,12 +558,18 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           controller: groupNameController,
                           textAlign: TextAlign.center,
                           cursorColor: selectedColor,
+                          maxLength: kMaxGroupNameLength,
+                          inputFormatters: [
+                            LengthLimitingTextInputFormatter(kMaxGroupNameLength),
+                          ],
+                          onChanged: (_) => setState(() {}),
                           style: AppTextStyles.body(context).copyWith(
                             fontSize: 26,
                             fontWeight: FontWeight.w800,
                           ),
                           decoration: TextInputDecoration(
                             hintText: 'Tên nhóm',
+                            counterText: '${groupNameController.text.length}/$kMaxGroupNameLength',
                             hintStyle:
                             AppTextStyles.bodySecondary(context).copyWith(
                               color: AppColors.textSecondary(context)
@@ -1151,10 +1169,12 @@ class _TopSmallButton extends StatelessWidget {
 class TextInputDecoration {
   final String hintText;
   final TextStyle? hintStyle;
+  final String? counterText;
 
   const TextInputDecoration({
     required this.hintText,
     this.hintStyle,
+    this.counterText,
   });
 
   InputDecoration toInputDecoration() {
@@ -1162,6 +1182,7 @@ class TextInputDecoration {
       isDense: true,
       hintText: hintText,
       hintStyle: hintStyle,
+      counterText: counterText,
       border: InputBorder.none,
       enabledBorder: InputBorder.none,
       focusedBorder: InputBorder.none,

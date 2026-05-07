@@ -66,6 +66,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
   bool get isVideo => widget.mediaType == 'video' && widget.videoFile != null;
   bool get isImage => widget.mediaType == 'image' && widget.imageFile != null;
 
+  bool get hasMedia => isImage || isVideo;
+
   final expenseCategories = const [
     'Ăn uống',
     'Mua sắm',
@@ -389,6 +391,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Future<void> _shareMoment() async {
+    if (!hasMedia) {
+      return;
+    }
+
     try {
       final currency = context.read<ProfileController>().currency;
 
@@ -1132,14 +1138,22 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                       );
                                     },
                                   ),
+
                                   _buildSubmitButton(
                                     isSaving: isSaving,
                                   ),
-                                  _bottomAction(
-                                    icon: Icons.ios_share_rounded,
-                                    label: 'Share',
-                                    onTap: _shareMoment,
-                                  ),
+
+                                  if (hasMedia)
+                                    _bottomAction(
+                                      icon: Icons.ios_share_rounded,
+                                      label: 'Share',
+                                      onTap: _shareMoment,
+                                    )
+                                  else
+                                    const SizedBox(
+                                      width: 58,
+                                      height: 78,
+                                    ),
                                 ],
                               ),
                             ],

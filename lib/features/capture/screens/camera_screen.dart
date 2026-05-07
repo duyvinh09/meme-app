@@ -25,6 +25,8 @@ class _CameraScreenState extends State<CameraScreen> {
   List<CameraDescription> _cameras = [];
   int _cameraIndex = 0;
 
+  ResolutionPreset _currentResolutionPreset = ResolutionPreset.veryHigh;
+
   bool _isCameraReady = false;
   bool _isFlashOn = false;
   bool _isCapturing = false;
@@ -63,7 +65,7 @@ class _CameraScreenState extends State<CameraScreen> {
     await _setupCamera();
 
     if (!mounted) return;
-    context.read<CaptureController>().prepareLocation();
+    await context.read<CaptureController>().prepareLocation();
   }
 
   void _closeCaptureFlow() {
@@ -115,7 +117,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
     final controller = CameraController(
       camera,
-      ResolutionPreset.medium,
+      _currentResolutionPreset,
       enableAudio: false,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
@@ -152,6 +154,18 @@ class _CameraScreenState extends State<CameraScreen> {
         });
       }
     }
+  }
+
+  Future<void> _switchResolutionPreset(
+      ResolutionPreset preset,
+      ) async {
+    if (_currentResolutionPreset == preset) return;
+    if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
+    if (_cameras.isEmpty) return;
+
+    _currentResolutionPreset = preset;
+
+    await _initController(_cameras[_cameraIndex]);
   }
 
   Future<void> _toggleFlash() async {
@@ -257,6 +271,7 @@ class _CameraScreenState extends State<CameraScreen> {
       _baseZoom = 1.0;
     });
 
+    _currentResolutionPreset = ResolutionPreset.veryHigh;
     await _initController(_cameras[_cameraIndex]);
   }
 
@@ -281,7 +296,7 @@ class _CameraScreenState extends State<CameraScreen> {
     );
 
     await file.writeAsBytes(
-      img.encodeJpg(cropped, quality: 94),
+      img.encodeJpg(cropped, quality: 98),
       flush: true,
     );
 
@@ -296,7 +311,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
       final file = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 90,
+        imageQuality: 98,
       );
 
       if (file == null || !mounted) return;
@@ -329,6 +344,12 @@ class _CameraScreenState extends State<CameraScreen> {
         _isStoppingVideo) {
       return;
     }
+
+    if (_currentResolutionPreset != ResolutionPreset.veryHigh) {
+      await _switchResolutionPreset(ResolutionPreset.veryHigh);
+    }
+
+    if (_controller == null || !_controller!.value.isInitialized) return;
 
     try {
       setState(() {
@@ -368,6 +389,16 @@ class _CameraScreenState extends State<CameraScreen> {
         _controller!.value.isRecordingVideo ||
         _isCapturing ||
         _isStoppingVideo) {
+      return;
+    }
+
+    if (_currentResolutionPreset != ResolutionPreset.medium) {
+      await _switchResolutionPreset(ResolutionPreset.medium);
+    }
+
+    if (_controller == null ||
+        !_controller!.value.isInitialized ||
+        _controller!.value.isRecordingVideo) {
       return;
     }
 
@@ -455,7 +486,13 @@ class _CameraScreenState extends State<CameraScreen> {
             durationMs: durationMs,
           ),
         ),
-      );
+      ).then((_) async {
+        if (!mounted) return;
+
+        if (_currentResolutionPreset != ResolutionPreset.veryHigh) {
+          await _switchResolutionPreset(ResolutionPreset.veryHigh);
+        }
+      });
     } catch (e) {
       debugPrint('Stop video error: $e');
 
