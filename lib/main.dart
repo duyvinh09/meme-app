@@ -1,0 +1,120 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
+
+import 'firebase_options.dart';
+import 'core/routes/app_routes.dart';
+import 'core/routes/route_names.dart';
+import 'core/theme/app_theme.dart';
+import 'core/services/local_settings_service.dart';
+import 'features/auth/controllers/auth_controller.dart';
+import 'features/home/controllers/home_controller.dart';
+import 'features/capture/controllers/capture_controller.dart';
+import 'features/stats/controllers/stats_controller.dart';
+import 'features/budget/controllers/budget_controller.dart';
+import 'features/profile/controllers/profile_controller.dart';
+import 'data/repositories/auth_repository.dart';
+import 'data/repositories/user_repository.dart';
+import 'data/repositories/transaction_repository.dart';
+import 'data/repositories/budget_repository.dart';
+import 'features/feed/controllers/feed_controller.dart';
+import 'core/services/exchange_rate_service.dart';
+import 'core/theme/app_scroll_behavior.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  final localSettings = LocalSettingsService();
+  await localSettings.init();
+  await ExchangeRateService.init();
+
+  runApp(MyApp(localSettings: localSettings));
+}
+
+class MyApp extends StatelessWidget {
+  final LocalSettingsService localSettings;
+  const MyApp({super.key, required this.localSettings});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        Provider.value(value: localSettings),
+        Provider(create: (_) => AuthRepository()),
+        Provider(create: (_) => UserRepository()),
+        Provider(create: (_) => TransactionRepository()),
+        Provider(create: (_) => BudgetRepository()),
+        ChangeNotifierProvider(
+          create: (context) => AuthController(
+            authRepository: context.read<AuthRepository>(),
+            userRepository: context.read<UserRepository>(),
+          )..init(),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ProfileController(
+            localSettingsService: context.read<LocalSettingsService>(),
+            userRepository: context.read<UserRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => HomeController(
+            transactionRepository: context.read<TransactionRepository>(),
+            userRepository: context.read<UserRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => CaptureController(
+            transactionRepository: context.read<TransactionRepository>(),
+            userRepository: context.read<UserRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => StatsController(
+            transactionRepository: context.read<TransactionRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => BudgetController(
+            budgetRepository: context.read<BudgetRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => FeedController(
+            transactionRepository: context.read<TransactionRepository>(),
+            userRepository: context.read<UserRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => BudgetController(
+            budgetRepository: BudgetRepository(),
+          ),
+        ),
+      ],
+      child: Consumer<ProfileController>(
+        builder: (context, profile, _) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Meme',
+            scrollBehavior: const AppScrollBehavior(),
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: profile.themeMode,
+            locale: Locale(profile.languageCode),
+            supportedLocales: const [Locale('vi'), Locale('en')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            onGenerateRoute: AppRoutes.onGenerateRoute,
+            initialRoute: RouteNames.splash,
+          );
+        },
+      ),
+    );
+  }
+}

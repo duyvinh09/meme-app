@@ -1,0 +1,817 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sizes.dart';
+import '../../../core/constants/app_text_styles.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/money_input_formatter.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_text_field.dart';
+import '../../auth/controllers/auth_controller.dart';
+import '../../profile/controllers/profile_controller.dart';
+import '../controllers/budget_controller.dart';
+
+class CreateBudgetScreen extends StatefulWidget {
+  const CreateBudgetScreen({super.key});
+
+  @override
+  State<CreateBudgetScreen> createState() => _CreateBudgetScreenState();
+}
+
+class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
+  final nameController = TextEditingController();
+  final amountController = TextEditingController();
+
+  String period = 'monthly';
+  String budgetType = 'total';
+  Color selectedColor = AppColors.primaryBlue;
+  IconData selectedIcon = Icons.account_balance_wallet_rounded;
+
+  final List<_PeriodOption> periodOptions = const [
+    _PeriodOption('daily', 'Hằng ngày', Icons.wb_sunny_outlined),
+    _PeriodOption('weekly', 'Hằng tuần', Icons.calendar_view_week_outlined),
+    _PeriodOption('biweekly', '2 tuần/lần', Icons.date_range_outlined),
+    _PeriodOption('monthly', 'Hằng tháng', Icons.calendar_month_outlined),
+    _PeriodOption('yearly', 'Hằng năm', Icons.event_note_outlined),
+    _PeriodOption('custom', 'Tuỳ chỉnh', Icons.edit_calendar_outlined),
+  ];
+
+  final List<Color> colorOptions = const [
+    AppColors.primaryBlue,
+    AppColors.income,
+    AppColors.expense,
+    AppColors.warning,
+    AppColors.primaryPurple,
+    Color(0xFF5E5CE6),
+    AppColors.primaryPink,
+    Color(0xFF1CC5C0),
+    Color(0xFFF6D32D),
+    Color(0xFFA1A1AA),
+  ];
+
+  final List<IconData> iconOptions = const [
+    Icons.account_balance_wallet_rounded,
+    Icons.shopping_cart_rounded,
+    Icons.shopping_bag_rounded,
+    Icons.home_rounded,
+    Icons.directions_car_rounded,
+    Icons.restaurant_rounded,
+    Icons.theater_comedy_rounded,
+    Icons.favorite_rounded,
+    Icons.school_rounded,
+    Icons.work_rounded,
+    Icons.flight_rounded,
+    Icons.card_giftcard_rounded,
+    Icons.sports_esports_rounded,
+    Icons.checkroom_rounded,
+    Icons.medication_rounded,
+  ];
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    amountController.dispose();
+    super.dispose();
+  }
+
+  String get displayName {
+    final text = nameController.text.trim();
+    return text.isEmpty ? 'Tên ngân sách' : text;
+  }
+
+  double _parseMoneyInput({
+    required String raw,
+    required String currency,
+  }) {
+    final cleaned = currency == 'USD'
+        ? raw.replaceAll(',', '').replaceAll(RegExp(r'[^0-9.]'), '')
+        : raw.replaceAll(RegExp(r'[^0-9]'), '');
+
+    return double.tryParse(cleaned) ?? 0;
+  }
+
+  String displayAmount(BuildContext context) {
+    final currency = context.watch<ProfileController>().currency;
+    final raw = amountController.text.trim();
+
+    if (raw.isEmpty) {
+      return AppCurrencyFormatter.formatFromVnd(
+        amountVnd: 0,
+        currency: currency,
+      );
+    }
+
+    final inputAmount = _parseMoneyInput(
+      raw: raw,
+      currency: currency,
+    );
+
+    final amountVnd = AppCurrencyFormatter.toVnd(
+      inputAmount: inputAmount,
+      currency: currency,
+    );
+
+    return AppCurrencyFormatter.formatFromVnd(
+      amountVnd: amountVnd,
+      currency: currency,
+    );
+  }
+
+  String get displayPeriodText {
+    switch (period) {
+      case 'daily':
+        return 'Hằng ngày';
+      case 'weekly':
+        return 'Hằng tuần';
+      case 'biweekly':
+        return '2 tuần/lần';
+      case 'monthly':
+        return 'Hằng tháng';
+      case 'yearly':
+        return 'Hằng năm';
+      case 'custom':
+        return 'Tuỳ chỉnh';
+      default:
+        return 'Hằng tháng';
+    }
+  }
+
+  String get displayTypeText {
+    return budgetType == 'total' ? 'Tổng' : 'Danh mục';
+  }
+
+  Future<void> _createBudget() async {
+    final uid = context.read<AuthController>().user?.uid;
+    if (uid == null) return;
+
+    final rawName = nameController.text.trim();
+    final rawAmount = amountController.text.trim();
+
+    if (rawName.isEmpty) {
+      _showSnack('Vui lòng nhập tên ngân sách');
+      return;
+    }
+
+    if (rawAmount.isEmpty) {
+      _showSnack('Vui lòng nhập số tiền ngân sách');
+      return;
+    }
+
+    final budget = context.read<BudgetController>();
+    final currency = context.read<ProfileController>().currency;
+
+    final inputAmount = _parseMoneyInput(
+      raw: rawAmount,
+      currency: currency,
+    );
+
+    if (inputAmount <= 0) {
+      _showSnack('Số tiền ngân sách phải lớn hơn 0');
+      return;
+    }
+
+    final amount = AppCurrencyFormatter.toVnd(
+      inputAmount: inputAmount,
+      currency: currency,
+    );
+
+    try {
+      await budget.createBudget(
+        uid: uid,
+        name: rawName,
+        iconCodePoint: selectedIcon.codePoint,
+        colorHex:
+        '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+        limitAmount: amount,
+        period: period,
+        budgetType: budgetType,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      _showSnack('Không thể tạo ngân sách: $e');
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canSubmit = amountController.text.trim().isNotEmpty &&
+        nameController.text.trim().isNotEmpty;
+
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            14,
+            16,
+            AppSizes.bottomNavSafePadding,
+          ),
+          children: [
+            _TopBar(
+              onCancel: () => Navigator.pop(context),
+            ),
+
+            const SizedBox(height: 18),
+
+            _PreviewBudgetCard(
+              color: selectedColor,
+              icon: selectedIcon,
+              title: displayName,
+              amount: displayAmount(context),
+              periodText: displayPeriodText,
+              typeText: displayTypeText,
+            ),
+
+            const SizedBox(height: 22),
+
+            const _SectionTitle(title: 'Tên ngân sách'),
+            const SizedBox(height: 8),
+            CustomTextField(
+              controller: nameController,
+              hintText: 'VD: Chi tiêu hằng ngày',
+              textInputAction: TextInputAction.next,
+              prefixIcon: Icons.drive_file_rename_outline_rounded,
+              onChanged: (_) => setState(() {}),
+            ),
+
+            const SizedBox(height: 18),
+
+            const _SectionTitle(title: 'Số tiền ngân sách'),
+            const SizedBox(height: 8),
+            _AmountField(
+              controller: amountController,
+              selectedColor: selectedColor,
+              onChanged: (_) => setState(() {}),
+            ),
+
+            const SizedBox(height: 20),
+
+            const _SectionTitle(title: 'Chu kỳ'),
+            const SizedBox(height: 10),
+            _PeriodGrid(
+              periodOptions: periodOptions,
+              selectedPeriod: period,
+              selectedColor: selectedColor,
+              onSelected: (value) {
+                setState(() {
+                  period = value;
+                });
+              },
+            ),
+
+            const SizedBox(height: 20),
+
+            const _SectionTitle(title: 'Loại ngân sách'),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _BudgetTypeCard(
+                    title: 'Tổng',
+                    subtitle: 'Tất cả chi tiêu',
+                    icon: Icons.language_rounded,
+                    selected: budgetType == 'total',
+                    selectedColor: selectedColor,
+                    onTap: () {
+                      setState(() {
+                        budgetType = 'total';
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _BudgetTypeCard(
+                    title: 'Danh mục',
+                    subtitle: 'Đồng bộ từ danh mục',
+                    icon: Icons.folder_rounded,
+                    selected: budgetType == 'category',
+                    selectedColor: selectedColor,
+                    onTap: () {
+                      setState(() {
+                        budgetType = 'category';
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 20),
+
+            const _SectionTitle(title: 'Màu'),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: colorOptions.map((color) {
+                final selected = selectedColor.value == color.value;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedColor = color;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: color,
+                      border: Border.all(
+                        color: selected ? Colors.white : AppColors.border(context),
+                        width: selected ? 3 : 1,
+                      ),
+                      boxShadow: selected
+                          ? [
+                        BoxShadow(
+                          color: color.withOpacity(0.20),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                          : null,
+                    ),
+                    child: selected
+                        ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    )
+                        : null,
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 22),
+
+            const _SectionTitle(title: 'Biểu tượng'),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: iconOptions.map((icon) {
+                final selected = selectedIcon == icon;
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      selectedIcon = icon;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: selected ? selectedColor : AppColors.surface(context),
+                      border: Border.all(
+                        color: selected
+                            ? selectedColor
+                            : AppColors.innerBorder(context),
+                      ),
+                    ),
+                    child: Icon(
+                      icon,
+                      color: selected ? Colors.white : AppColors.textSecondary(context),
+                      size: 22,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 24),
+
+            CustomButton(
+              text: 'Tạo ngân sách',
+              onPressed: canSubmit ? _createBudget : null,
+              backgroundColor: selectedColor,
+              height: 54,
+              borderRadius: 18,
+            ),
+          ],
+        )
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  final VoidCallback onCancel;
+
+  const _TopBar({
+    required this.onCancel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: onCancel,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 10,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.surface(context),
+              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+              border: Border.all(
+                color: AppColors.innerBorder(context),
+              ),
+            ),
+            child: Text(
+              'Huỷ',
+              style: AppTextStyles.bodySecondary(context).copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        const Spacer(),
+        Text(
+          'Thêm ngân sách',
+          style: AppTextStyles.pageTitle(context).copyWith(
+            fontSize: 21,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const Spacer(),
+        const SizedBox(width: 64),
+      ],
+    );
+  }
+}
+
+class _PreviewBudgetCard extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String amount;
+  final String periodText;
+  final String typeText;
+
+  const _PreviewBudgetCard({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.amount,
+    required this.periodText,
+    required this.typeText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: AppColors.border(context),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(AppColors.isDark(context) ? 0.10 : 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 62,
+            height: 62,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withOpacity(0.16),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.sectionTitle(context).copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: AppColors.textSecondary(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        '$periodText  •  $typeText',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.bodySecondary(context).copyWith(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              amount,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: color,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AmountField extends StatelessWidget {
+  final TextEditingController controller;
+  final Color selectedColor;
+  final ValueChanged<String>? onChanged;
+
+  const _AmountField({
+    required this.controller,
+    required this.selectedColor,
+    this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final currency = context.watch<ProfileController>().currency;
+
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      keyboardType: TextInputType.numberWithOptions(
+        decimal: currency == 'USD',
+      ),
+      textAlign: TextAlign.center,
+      cursorColor: selectedColor,
+      inputFormatters: [
+        MoneyInputFormatter(
+          allowDecimal: currency == 'USD',
+          maxDigits: currency == 'USD' ? 7 : 12,
+        ),
+      ],
+      style: TextStyle(
+        color: AppColors.textPrimary(context),
+        fontSize: 38,
+        fontWeight: FontWeight.w900,
+      ),
+      decoration: InputDecoration(
+        hintText: AppCurrencyFormatter.formatInputHint(currency),
+        hintStyle: TextStyle(
+          color: AppColors.textSecondary(context).withOpacity(0.50),
+          fontSize: 38,
+          fontWeight: FontWeight.w900,
+        ),
+        suffixText: AppCurrencyFormatter.symbol(currency),
+        suffixStyle: TextStyle(
+          color: AppColors.textPrimary(context),
+          fontSize: 24,
+          fontWeight: FontWeight.w800,
+        ),
+        filled: true,
+        fillColor: AppColors.card(context),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: AppColors.border(context),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: AppColors.border(context),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(18),
+          borderSide: BorderSide(
+            color: selectedColor,
+            width: 1.3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PeriodGrid extends StatelessWidget {
+  final List<_PeriodOption> periodOptions;
+  final String selectedPeriod;
+  final Color selectedColor;
+  final ValueChanged<String> onSelected;
+
+  const _PeriodGrid({
+    required this.periodOptions,
+    required this.selectedPeriod,
+    required this.selectedColor,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      itemCount: periodOptions.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+          childAspectRatio: 3.25,
+      ),
+      itemBuilder: (context, index) {
+        final item = periodOptions[index];
+        final selected = selectedPeriod == item.value;
+
+        return GestureDetector(
+          onTap: () => onSelected(item.value),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            decoration: BoxDecoration(
+              color: selected ? selectedColor : AppColors.card(context),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: selected ? selectedColor : AppColors.border(context),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  item.icon,
+                  color: selected ? Colors.white : AppColors.textSecondary(context),
+                  size: 16,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.textPrimary(context),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _BudgetTypeCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool selected;
+  final Color selectedColor;
+  final VoidCallback onTap;
+
+  const _BudgetTypeCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.selected,
+    required this.selectedColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 96,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: selected ? selectedColor : AppColors.card(context),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected ? selectedColor : AppColors.border(context),
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: selected ? Colors.white : AppColors.textSecondary(context),
+            ),
+            const SizedBox(height: 7),
+            Text(
+              title,
+              style: TextStyle(
+                color: selected ? Colors.white : AppColors.textPrimary(context),
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white.withOpacity(0.88)
+                    : AppColors.textSecondary(context),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                height: 1.2,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  final String title;
+
+  const _SectionTitle({
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      title,
+      style: AppTextStyles.sectionTitle(context).copyWith(
+        fontSize: 16,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+class _PeriodOption {
+  final String value;
+  final String label;
+  final IconData icon;
+
+  const _PeriodOption(this.value, this.label, this.icon);
+}

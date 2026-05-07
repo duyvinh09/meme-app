@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "132713707345",
+    "project_id": "finnsocial-48ed5",
+    "storage_bucket": "finnsocial-48ed5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:132713707345:android:5d8d46439b4d499b1fc570",
+        "android_client_info": {
+          "package_name": "com.duyvinh09.memeapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCKy91HjihXducwJkppV43IF9tLfqD-oHU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

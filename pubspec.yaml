@@ -1,0 +1,62 @@
+name: moment_money
+description: A Firebase-first expense tracker with Cloudinary image upload.
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  firebase_core: ^4.7.0
+  firebase_auth: ^6.4.0
+  cloud_firestore: ^6.3.0
+
+  image_picker: ^1.1.2
+  camera: ^0.12.0+1
+  gallery_saver_plus: ^3.2.8
+  intl: ^0.20.2
+  provider: ^6.1.2
+  shared_preferences: ^2.5.3
+  fl_chart: ^1.0.0
+  uuid: ^4.5.1
+  http: ^1.2.2
+  image: ^4.2.0
+  share_plus: ^12.0.2
+  path_provider: ^2.1.5
+
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+
+  crypto: ^3.0.3
+  path: ^1.9.0
+  url_launcher: ^6.3.1
+  cached_network_image: ^3.4.1
+
+  video_thumbnail: ^0.5.3
+  video_player: ^2.9.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: any
+
+flutter:
+  uses-material-design: true
+
+#Icon app
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/memeapp_icon2.png"
+  adaptive_icon_background: "#79AFFF"
+  adaptive_icon_foreground: "assets/icons/memeapp_icon2.png"
