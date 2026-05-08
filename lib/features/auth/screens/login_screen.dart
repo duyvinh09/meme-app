@@ -31,6 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _login(AuthController auth) async {
+    final lang = context.read<LanguageProvider>();
     if (auth.isLoading) return;
 
     final email = emailController.text.trim();
@@ -48,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     final passwordError = AppValidators.requiredText(
       password,
-      message: 'Vui lòng nhập mật khẩu',
+      message: lang.t('auth.repassword'),
     );
     if (passwordError != null) {
       setState(() => localError = passwordError);
@@ -68,6 +69,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+
     final auth = context.watch<AuthController>();
     final errorText = localError ?? auth.error;
 
@@ -96,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
 
                 Text(
-                  'Lưu khoảnh khắc chi tiêu theo cách vui hơn, thật hơn.',
+                  lang.t('auth.create_account_desc'),
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySecondary(context),
                 ),
@@ -107,7 +110,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Chào mừng trở lại 👋',
+                        lang.t('auth.welcome_back'),
                         style: AppTextStyles.pageTitle(context).copyWith(
                           fontSize: 24,
                         ),
@@ -115,14 +118,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Đăng nhập để tiếp tục lưu ảnh, ghi chú và chi tiêu của bạn.',
+                        lang.t('auth.login_desc'),
                         style: AppTextStyles.bodySecondary(context),
                       ),
                       const SizedBox(height: 20),
 
                       CustomTextField(
                         controller: emailController,
-                        hintText: 'Email',
+                        hintText: lang.t('auth.email'),
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.email_outlined,
@@ -131,7 +134,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       CustomTextField(
                         controller: passwordController,
-                        hintText: 'Mật khẩu',
+                        hintText: lang.t('auth.password'),
                         obscureText: true,
                         textInputAction: TextInputAction.done,
                         prefixIcon: Icons.lock_outline_rounded,
@@ -155,7 +158,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           ),
                           child: const Text(
-                            'Quên mật khẩu?',
+                            lang.t('auth.forgot_password'),
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                             ),
@@ -171,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 6),
 
                       CustomButton(
-                        text: 'Đăng nhập',
+                        text: lang.t('auth.login'),
                         isLoading: auth.isLoading,
                         onPressed: () => _login(auth),
                       ),
@@ -189,9 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             text: TextSpan(
                               style: AppTextStyles.bodySecondary(context),
                               children: const [
-                                TextSpan(text: 'Chưa có tài khoản? '),
+                                TextSpan(text: lang.t('auth.no_account')),
                                 TextSpan(
-                                  text: 'Đăng ký',
+                                  text: lang.t('auth.register'),
                                   style: TextStyle(
                                     color: AppColors.primaryBlue,
                                     fontWeight: FontWeight.w800,

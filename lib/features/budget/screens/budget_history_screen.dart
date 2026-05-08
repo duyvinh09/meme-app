@@ -181,6 +181,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     final currency = context.watch<ProfileController>().currency;
     final color = _parseHexColor(widget.colorHex);
     final icon = _budgetIcon(widget.iconCodePoint);
@@ -226,7 +227,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
           ),
           children: [
             _HistoryHeader(
-              title: 'Lịch sử ngân sách',
+              title: lang.t('budget.history'),
               onBack: () => Navigator.pop(context),
             ),
 

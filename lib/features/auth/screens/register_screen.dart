@@ -35,6 +35,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register(AuthController auth) async {
+    final lang = context.read<LanguageProvider>();
     if (auth.isLoading) return;
 
     final name = nameController.text.trim();
@@ -48,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     final nameError = AppValidators.requiredText(
       name,
-      message: 'Vui lòng nhập tên hiển thị',
+      message: lang.t('auth.enter_display_name'),
     );
     if (nameError != null) {
       setState(() => localError = nameError);
@@ -91,6 +92,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
+
     final auth = context.watch<AuthController>();
     final errorText = localError ?? auth.error;
 
@@ -113,14 +116,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 18),
 
                 Text(
-                  'Tạo tài khoản mới ✨',
+                  lang.t('auth.create_account'),
                   textAlign: TextAlign.center,
                   style: AppTextStyles.pageTitle(context),
                 ),
                 const SizedBox(height: 8),
 
                 Text(
-                  'Bắt đầu lưu khoảnh khắc chi tiêu theo cách vui hơn, thật hơn.',
+                  lang.t('auth.create_account_desc'),
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySecondary(context),
                 ),
@@ -131,7 +134,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Tham gia Meme',
+                        lang.t('auth.join_meme'),
                         style: AppTextStyles.pageTitle(context).copyWith(
                           fontSize: 24,
                         ),
@@ -139,14 +142,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Tạo hồ sơ để quản lý chi tiêu, lưu ảnh và kết nối với bạn bè.',
+                        lang.t('auth.create_profile'),
                         style: AppTextStyles.bodySecondary(context),
                       ),
                       const SizedBox(height: 20),
 
                       CustomTextField(
                         controller: nameController,
-                        hintText: 'Tên hiển thị',
+                        hintText: lang.t('auth.display_name'),
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.badge_outlined,
                       ),
@@ -154,7 +157,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       CustomTextField(
                         controller: usernameController,
-                        hintText: 'Username',
+                        hintText: lang.t('auth.username'),
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.alternate_email_rounded,
                       ),
@@ -163,7 +166,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Dùng 3-20 ký tự: chữ thường, số, dấu . hoặc _',
+                          lang.t('auth.username_hint'),
                           style: AppTextStyles.caption(context),
                         ),
                       ),
@@ -171,7 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       CustomTextField(
                         controller: emailController,
-                        hintText: 'Email',
+                        hintText: lang.t('auth.email'),
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.email_outlined,
@@ -180,7 +183,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       CustomTextField(
                         controller: passwordController,
-                        hintText: 'Mật khẩu',
+                        hintText: lang.t('auth.password'),
                         obscureText: true,
                         textInputAction: TextInputAction.done,
                         prefixIcon: Icons.lock_outline_rounded,
@@ -190,7 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Mật khẩu tối thiểu 6 ký tự',
+                          lang.t('auth.password_min'),
                           style: AppTextStyles.caption(context),
                         ),
                       ),
@@ -202,7 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
 
                       CustomButton(
-                        text: 'Đăng ký',
+                        text: lang.t('auth.register'),
                         isLoading: auth.isLoading,
                         onPressed: () => _register(auth),
                       ),
@@ -219,9 +222,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             text: TextSpan(
                               style: AppTextStyles.bodySecondary(context),
                               children: const [
-                                TextSpan(text: 'Đã có tài khoản? '),
+                                TextSpan(text: lang.t('auth.has_account')),
                                 TextSpan(
-                                  text: 'Đăng nhập',
+                                  text: lang.t('auth.login'),
                                   style: TextStyle(
                                     color: AppColors.primaryBlue,
                                     fontWeight: FontWeight.w800,

@@ -29,12 +29,11 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
   IconData selectedIcon = Icons.account_balance_wallet_rounded;
 
   final List<_PeriodOption> periodOptions = const [
-    _PeriodOption('daily', 'Hằng ngày', Icons.wb_sunny_outlined),
-    _PeriodOption('weekly', 'Hằng tuần', Icons.calendar_view_week_outlined),
-    _PeriodOption('biweekly', '2 tuần/lần', Icons.date_range_outlined),
-    _PeriodOption('monthly', 'Hằng tháng', Icons.calendar_month_outlined),
-    _PeriodOption('yearly', 'Hằng năm', Icons.event_note_outlined),
-    _PeriodOption('custom', 'Tuỳ chỉnh', Icons.edit_calendar_outlined),
+    _PeriodOption('daily', 'budget.daily', Icons.wb_sunny_outlined),
+    _PeriodOption('weekly', 'budget.weekly', Icons.calendar_view_week_outlined),
+    _PeriodOption('biweekly', 'budget.biweekly', Icons.date_range_outlined),
+    _PeriodOption('monthly', 'budget.monthly', Icons.calendar_month_outlined),
+    _PeriodOption('yearly', 'budget.yearly', Icons.calendar_today_outlined),
   ];
 
   final List<Color> colorOptions = const [
@@ -207,6 +206,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     final canSubmit = amountController.text.trim().isNotEmpty &&
         nameController.text.trim().isNotEmpty;
 

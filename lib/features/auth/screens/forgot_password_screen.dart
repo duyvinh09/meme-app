@@ -29,6 +29,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _submit(AuthController auth) async {
+    final lang = context.read<LanguageProvider>();
+
     if (isSending) return;
 
     final email = emailController.text.trim();
@@ -54,14 +56,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã gửi email khôi phục mật khẩu'),
+          content: Text(lang.t('auth.reset_email_sent')),
         ),
       );
 
       Navigator.pop(context);
     } else {
       setState(() {
-        localError = auth.error ?? 'Không thể gửi email khôi phục';
+        localError = lang.t('auth.no_send_email');
       });
     }
 
@@ -74,6 +76,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageProvider>();
     final auth = context.read<AuthController>();
 
     return Scaffold(
@@ -95,14 +98,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                 const SizedBox(height: 18),
 
                 Text(
-                  'Quên mật khẩu',
+                  lang.t('auth.forgot_password'),
                   textAlign: TextAlign.center,
                   style: AppTextStyles.pageTitle(context),
                 ),
                 const SizedBox(height: 8),
 
                 Text(
-                  'Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.',
+                  lang.t('auth.enter_email'),
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySecondary(context),
                 ),
@@ -113,7 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Khôi phục mật khẩu',
+                        lang.t('auth.recover_password'),
                         style: AppTextStyles.pageTitle(context).copyWith(
                           fontSize: 24,
                         ),
@@ -121,14 +124,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Hệ thống sẽ gửi cho bạn một email để đặt lại mật khẩu.',
+                        lang.t('auth.recover_desc'),
                         style: AppTextStyles.bodySecondary(context),
                       ),
                       const SizedBox(height: 20),
 
                       CustomTextField(
                         controller: emailController,
-                        hintText: 'Nhập email',
+                        hintText: lang.t('auth.email_hint'),
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.done,
                         prefixIcon: Icons.email_outlined,
@@ -142,7 +145,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ],
 
                       CustomButton(
-                        text: 'Gửi email khôi phục',
+                        text: lang.t('auth.send_email'),
                         isLoading: isSending,
                         onPressed: () => _submit(auth),
                       ),
@@ -156,7 +159,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                             Navigator.pop(context);
                           },
                           child: Text(
-                            'Quay lại đăng nhập',
+                            lang.t('auth.back_to_login'),
                             style: TextStyle(
                               color: AppColors.textSecondary(context),
                               fontWeight: FontWeight.w600,
