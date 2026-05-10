@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../home/screens/moment_viewer_screen.dart';
@@ -78,8 +80,41 @@ class CategoryDetailScreen extends StatelessWidget {
     return DateFormat('HH:mm - dd/MM/yyyy').format(date);
   }
 
+  String _localizedCategoryLabel(BuildContext context, String value) {
+    final l10n = context.l10n;
+    switch (value.trim()) {
+      case 'Ăn uống':
+      case 'Food':
+        return l10n.food;
+      case 'Mua sắm':
+      case 'Shopping':
+        return l10n.shopping;
+      case 'Đi lại':
+      case 'Transport':
+        return l10n.transport;
+      case 'Giải trí':
+      case 'Entertainment':
+        return l10n.entertainment;
+      case 'Học tập':
+      case 'Education':
+        return l10n.education;
+      case 'Lương':
+      case 'Salary':
+        return l10n.salary;
+      case 'Quà tặng':
+      case 'Gift':
+        return l10n.gift;
+      case 'Khác':
+      case 'Other':
+        return l10n.other;
+      default:
+        return BudgetNameLocalizer.display(context, value);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -160,7 +195,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        category,
+                        _localizedCategoryLabel(context, category),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: primaryText,
@@ -171,7 +206,7 @@ class CategoryDetailScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        '${transactions.length} giao dịch • $periodTitle',
+                        '${l10n.transactionCount(transactions.length)} • $periodTitle',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: secondaryText,
@@ -235,7 +270,7 @@ class CategoryDetailScreen extends StatelessWidget {
                     icon: Icons.format_list_bulleted_rounded,
                     iconColor: const Color(0xFF79AFFF),
                     value: '${transactions.length}',
-                    label: 'Tổng',
+                    label: l10n.total,
                     cardColor: cardColor,
                     borderColor: borderColor,
                     primaryText: primaryText,
@@ -248,7 +283,7 @@ class CategoryDetailScreen extends StatelessWidget {
                     icon: Icons.bar_chart_rounded,
                     iconColor: const Color(0xFF7DDC86),
                     value: _formatMoney(average),
-                    label: 'Trung bình',
+                    label: l10n.average,
                     cardColor: cardColor,
                     borderColor: borderColor,
                     primaryText: primaryText,
@@ -261,7 +296,7 @@ class CategoryDetailScreen extends StatelessWidget {
                     icon: Icons.camera_alt_rounded,
                     iconColor: const Color(0xFFFF7A7A),
                     value: '$imageCount',
-                    label: 'Ảnh',
+                    label: l10n.allPhotos,
                     cardColor: cardColor,
                     borderColor: borderColor,
                     primaryText: primaryText,
@@ -274,7 +309,7 @@ class CategoryDetailScreen extends StatelessWidget {
             const SizedBox(height: 18),
 
             _SectionCard(
-              title: 'Ảnh',
+              title: l10n.allPhotos,
               icon: Icons.photo_library_outlined,
               actionText: transactions.length > 2 ? 'See all' : null,
               cardColor: cardColor,
@@ -287,7 +322,7 @@ class CategoryDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(vertical: 26),
                 child: Center(
                   child: Text(
-                    'Chưa có ảnh trong danh mục này',
+                    l10n.noPhotosInFeed,
                     style: TextStyle(
                       color: secondaryText,
                       fontSize: 14,
@@ -322,6 +357,10 @@ class CategoryDetailScreen extends StatelessWidget {
                         child: _ImagePreviewCard(
                           transaction: tx,
                           amountText: _formatCompactMoney(tx),
+                          categoryText: _localizedCategoryLabel(
+                            context,
+                            tx.category,
+                          ),
                           cardColor: tileColor,
                           primaryText: primaryText,
                           secondaryText: secondaryText,
@@ -336,7 +375,7 @@ class CategoryDetailScreen extends StatelessWidget {
             const SizedBox(height: 18),
 
             _SectionCard(
-              title: 'Tất cả giao dịch',
+              title: l10n.recentTransactions,
               icon: Icons.list_alt_rounded,
               cardColor: cardColor,
               borderColor: borderColor,
@@ -353,6 +392,7 @@ class CategoryDetailScreen extends StatelessWidget {
                     icon: icon,
                     accent: accent,
                     amountText: _formatCompactMoney(tx),
+                    categoryText: _localizedCategoryLabel(context, tx.category),
                     timeText: _formatDateTime(tx.createdAt),
                     cardColor: tileColor,
                     borderColor: borderColor,
@@ -528,6 +568,7 @@ class _SectionCard extends StatelessWidget {
 class _ImagePreviewCard extends StatelessWidget {
   final TransactionModel transaction;
   final String amountText;
+  final String categoryText;
   final Color cardColor;
   final Color primaryText;
   final Color secondaryText;
@@ -535,6 +576,7 @@ class _ImagePreviewCard extends StatelessWidget {
   const _ImagePreviewCard({
     required this.transaction,
     required this.amountText,
+    required this.categoryText,
     required this.cardColor,
     required this.primaryText,
     required this.secondaryText,
@@ -543,7 +585,7 @@ class _ImagePreviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final caption = transaction.caption.trim().isEmpty
-        ? transaction.category
+        ? categoryText
         : transaction.caption.trim();
 
     return Column(
@@ -591,6 +633,7 @@ class _TransactionRow extends StatelessWidget {
   final IconData icon;
   final Color accent;
   final String amountText;
+  final String categoryText;
   final String timeText;
   final Color cardColor;
   final Color borderColor;
@@ -603,6 +646,7 @@ class _TransactionRow extends StatelessWidget {
     required this.icon,
     required this.accent,
     required this.amountText,
+    required this.categoryText,
     required this.timeText,
     required this.cardColor,
     required this.borderColor,
@@ -614,7 +658,7 @@ class _TransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = transaction.caption.trim().isEmpty
-        ? transaction.category
+        ? categoryText
         : transaction.caption.trim();
 
     return Container(

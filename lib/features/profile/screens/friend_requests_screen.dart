@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/widgets/async_filled_button.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 
@@ -22,9 +25,9 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
     final uid = context.read<AuthController>().user?.uid;
 
     if (uid == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: Text('Không có người dùng'),
+          child: Text(context.l10n.user),
         ),
       );
     }
@@ -83,23 +86,14 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                                   ),
                                   Center(
                                     child: Text(
-                                      'Yêu cầu kết bạn',
+                                      context.l10n.friendRequests,
                                       style: AppTextStyles.pageTitle(context)
                                           .copyWith(
                                         fontSize: 24,
                                       ),
                                     ),
                                   ),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: _RoundIconButton(
-                                      icon: Icons.refresh_rounded,
-                                      iconColor: AppColors.primaryBlue,
-                                      onTap: () {
-                                        setState(() {});
-                                      },
-                                    ),
-                                  ),
+                                  const SizedBox.square(dimension: 54),
                                 ],
                               ),
                             ),
@@ -119,7 +113,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                                   Expanded(
                                     child: _RequestTabButton(
                                       icon: Icons.mail_rounded,
-                                      label: 'Đã nhận',
+                                      label: context.l10n.friendRequestsReceivedTab,
                                       count: receivedRequests.length,
                                       selected: selectedTab == 0,
                                       onTap: () {
@@ -133,7 +127,7 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                                   Expanded(
                                     child: _RequestTabButton(
                                       icon: Icons.send_rounded,
-                                      label: 'Đã gửi',
+                                      label: context.l10n.friendRequestsSentTab,
                                       count: sentRequests.length,
                                       selected: selectedTab == 1,
                                       onTap: () {
@@ -186,7 +180,11 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
                             );
                           }
 
-                          return _SentRequestTile(item: item);
+                          return _SentRequestTile(
+                            item: item,
+                            myUid: uid,
+                            repo: repo,
+                          );
                         },
                       ),
                     ),
@@ -201,10 +199,10 @@ class _FriendRequestsScreenState extends State<FriendRequestsScreen> {
   }
 }
 
-class _ReceivedRequestCard extends StatelessWidget {
+class _ReceivedRequestCard extends StatefulWidget {
   final Map<String, dynamic> item;
-  final VoidCallback onReject;
-  final VoidCallback onAccept;
+  final Future<void> Function() onReject;
+  final Future<void> Function() onAccept;
 
   const _ReceivedRequestCard({
     required this.item,
@@ -213,7 +211,16 @@ class _ReceivedRequestCard extends StatelessWidget {
   });
 
   @override
+  State<_ReceivedRequestCard> createState() => _ReceivedRequestCardState();
+}
+
+class _ReceivedRequestCardState extends State<_ReceivedRequestCard> {
+  bool _rejectRunning = false;
+  bool _acceptRunning = false;
+
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final avatarUrl = (item['fromAvatarUrl'] ?? '').toString();
     final name = (item['fromName'] ?? '').toString().trim();
     final username = (item['fromUsername'] ?? '').toString().trim();
@@ -250,7 +257,7 @@ class _ReceivedRequestCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name.isEmpty ? 'Người dùng' : name,
+                        name.isEmpty ? context.l10n.user : name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.sectionTitle(context).copyWith(
@@ -279,8 +286,11 @@ class _ReceivedRequestCard extends StatelessWidget {
                 Expanded(
                   child: SizedBox(
                     height: 48,
-                    child: OutlinedButton(
-                      onPressed: onReject,
+                    child: AsyncOutlinedButton(
+                      locked: _acceptRunning,
+                      onPressedAsync: widget.onReject,
+                      onBusyChanged: (v) =>
+                          setState(() => _rejectRunning = v),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary(context),
                         backgroundColor: AppColors.surface(context),
@@ -291,9 +301,9 @@ class _ReceivedRequestCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Từ chối',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.decline,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -305,8 +315,11 @@ class _ReceivedRequestCard extends StatelessWidget {
                 Expanded(
                   child: SizedBox(
                     height: 48,
-                    child: FilledButton(
-                      onPressed: onAccept,
+                    child: AsyncFilledButton(
+                      locked: _rejectRunning,
+                      onPressedAsync: widget.onAccept,
+                      onBusyChanged: (v) =>
+                          setState(() => _acceptRunning = v),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primaryBlue,
                         foregroundColor: Colors.white,
@@ -314,9 +327,9 @@ class _ReceivedRequestCard extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
-                      child: const Text(
-                        'Chấp nhận',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.accept,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
@@ -333,20 +346,95 @@ class _ReceivedRequestCard extends StatelessWidget {
   }
 }
 
-class _SentRequestTile extends StatelessWidget {
+class _SentRequestTile extends StatefulWidget {
   final Map<String, dynamic> item;
+  final String myUid;
+  final UserRepository repo;
 
   const _SentRequestTile({
     required this.item,
+    required this.myUid,
+    required this.repo,
   });
 
   @override
+  State<_SentRequestTile> createState() => _SentRequestTileState();
+}
+
+class _SentRequestTileState extends State<_SentRequestTile> {
+  @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final avatarUrl = (item['toAvatarUrl'] ?? '').toString();
     final name = (item['toName'] ?? '').toString().trim();
     final username = (item['toUsername'] ?? '').toString().trim();
+    final toUid = (item['toUid'] ?? '').toString();
+    final status = (item['status'] ?? 'pending').toString();
+    final isPending = status == 'pending';
 
     const pendingColor = Color(0xFFFFA23D);
+
+    Widget pendingChip() {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 10,
+        ),
+        decoration: BoxDecoration(
+          color: pendingColor.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.circle,
+              size: 10,
+              color: pendingColor,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              context.l10n.requestPendingStatus,
+              style: const TextStyle(
+                color: pendingColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    Widget actionStrip() {
+      if (!isPending || toUid.isEmpty) {
+        return pendingChip();
+      }
+      return Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 6,
+        children: [
+          pendingChip(),
+          AsyncTextButton(
+            onPressedAsync: () => _cancelRequest(context, toUid),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              minimumSize: const Size(0, 42),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              context.l10n.delete,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -356,76 +444,86 @@ class _SentRequestTile extends StatelessWidget {
           color: AppColors.border(context),
         ),
       ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 12,
         ),
-        leading: CircleAvatar(
-          radius: 28,
-          backgroundColor: AppColors.surface(context),
-          backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-          child: avatarUrl.isEmpty
-              ? Text(
-            name.isNotEmpty ? name[0].toUpperCase() : 'U',
-            style: TextStyle(
-              color: AppColors.textPrimary(context),
-              fontWeight: FontWeight.w700,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: AppColors.surface(context),
+              backgroundImage:
+                  avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+              child: avatarUrl.isEmpty
+                  ? Text(
+                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                      style: TextStyle(
+                        color: AppColors.textPrimary(context),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    )
+                  : null,
             ),
-          )
-              : null,
-        ),
-        title: Text(
-          name.isEmpty ? 'Người dùng' : name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.sectionTitle(context).copyWith(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(
-            'Yêu cầu gửi đến @$username',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.caption(context).copyWith(
-              fontSize: 14,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    name.isEmpty ? context.l10n.user : name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.sectionTitle(context).copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.l10n.sentRequestToUsername(username),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.caption(context).copyWith(
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 14,
-            vertical: 10,
-          ),
-          decoration: BoxDecoration(
-            color: pendingColor.withOpacity(0.14),
-            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.circle,
-                size: 10,
-                color: pendingColor,
-              ),
-              SizedBox(width: 8),
-              Text(
-                'Đang chờ',
-                style: TextStyle(
-                  color: pendingColor,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
+            const SizedBox(width: 10),
+            actionStrip(),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _cancelRequest(BuildContext context, String toUid) async {
+    try {
+      await widget.repo.cancelSentFriendRequest(
+        myUid: widget.myUid,
+        toUid: toUid,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.friendRequestCancelled),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text('Có lỗi'),
+        ),
+      );
+    }
   }
 }
 
@@ -452,7 +550,7 @@ class _RequestTabButton extends StatelessWidget {
 
     final badgeBg = selected
         ? AppColors.primaryBlue
-        : AppColors.textSecondary(context).withOpacity(0.35);
+        : AppColors.textSecondary(context).withValues(alpha: 0.35);
 
     return InkWell(
       onTap: onTap,
@@ -513,12 +611,10 @@ class _RequestTabButton extends StatelessWidget {
 class _RoundIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  final Color? iconColor;
 
   const _RoundIconButton({
     required this.icon,
     required this.onTap,
-    this.iconColor,
   });
 
   @override
@@ -538,7 +634,7 @@ class _RoundIconButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          color: iconColor ?? AppColors.textPrimary(context),
+          color: AppColors.textPrimary(context),
           size: 28,
         ),
       ),
@@ -555,10 +651,12 @@ class _EmptyRequestState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = isReceivedTab ? 'Không có yêu cầu' : 'Chưa gửi lời mời nào';
+    final title = isReceivedTab
+        ? context.l10n.noFriendRequests
+        : context.l10n.noSentFriendRequests;
     final desc = isReceivedTab
-        ? 'Khi người dùng Meme khác gửi yêu cầu kết bạn cho bạn, chúng sẽ xuất hiện ở đây'
-        : 'Những lời mời kết bạn bạn đã gửi sẽ hiển thị ở đây';
+        ? context.l10n.noFriendRequestsReceivedSubtitle
+        : context.l10n.noFriendRequestsSentSubtitle;
 
     return Center(
       child: Padding(

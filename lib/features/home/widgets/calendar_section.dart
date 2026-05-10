@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -7,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
@@ -73,19 +73,29 @@ class _CalendarSectionState extends State<CalendarSection> {
     return dayTransactions.take(2).toList();
   }
 
-  String _capitalizeMonth(String text) {
-    if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1);
+  String _capitalizedWeekdayAbbrev(String label) {
+    if (label.isEmpty) return label;
+    final t = label.trim();
+    final lower = t.toLowerCase();
+    return lower[0].toUpperCase() + lower.substring(1);
+  }
+
+  List<String> _weekdayLabels(BuildContext context) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final monday = DateTime(2024, 1, 1); // Monday
+    return List.generate(7, (index) {
+      final label = DateFormat.E(locale).format(monday.add(Duration(days: index)));
+      return _capitalizedWeekdayAbbrev(label);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final home = context.watch<HomeController>();
     final days = _daysInMonth(currentMonth);
+    final weekdayLabels = _weekdayLabels(context);
 
-    final monthTitle = _capitalizeMonth(
-      DateFormat('MMMM yyyy', 'vi_VN').format(currentMonth),
-    );
+    final monthTitle = context.l10n.monthYear(currentMonth.month, currentMonth.year);
 
     return Container(
       decoration: BoxDecoration(
@@ -157,21 +167,21 @@ class _CalendarSectionState extends State<CalendarSection> {
                   color: AppColors.innerBorder(context),
                 ),
               ),
-              child: const Row(
+              child: Row(
                 children: [
-                  Expanded(child: Center(child: _WeekdayText('T2'))),
-                  Expanded(child: Center(child: _WeekdayText('T3'))),
-                  Expanded(child: Center(child: _WeekdayText('T4'))),
-                  Expanded(child: Center(child: _WeekdayText('T5'))),
-                  Expanded(child: Center(child: _WeekdayText('T6'))),
+                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[0]))),
+                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[1]))),
+                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[2]))),
+                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[3]))),
+                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[4]))),
                   Expanded(
                     child: Center(
-                      child: _WeekdayText('T7', weekend: true),
+                      child: _WeekdayText(weekdayLabels[5], weekend: true),
                     ),
                   ),
                   Expanded(
                     child: Center(
-                      child: _WeekdayText('CN', weekend: true),
+                      child: _WeekdayText(weekdayLabels[6], weekend: true),
                     ),
                   ),
                 ],

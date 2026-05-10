@@ -8,6 +8,7 @@ import '../../../core/routes/route_names.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../controllers/auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final passwordController = TextEditingController();
 
   String? localError;
+  bool _primaryAuthBusy = false;
 
   @override
   void dispose() {
@@ -46,9 +48,10 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
+    final l10n = context.l10n;
     final passwordError = AppValidators.requiredText(
       password,
-      message: 'Vui lòng nhập mật khẩu',
+      message: l10n.pleaseEnterPasswordLogin,
     );
     if (passwordError != null) {
       setState(() => localError = passwordError);
@@ -68,8 +71,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final auth = context.watch<AuthController>();
     final errorText = localError ?? auth.error;
+    final authBusy = auth.isLoading || _primaryAuthBusy;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -96,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
 
                 Text(
-                  'Lưu khoảnh khắc chi tiêu theo cách vui hơn, thật hơn.',
+                  l10n.appSlogan,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySecondary(context),
                 ),
@@ -107,7 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Chào mừng trở lại 👋',
+                        l10n.welcomeBack,
                         style: AppTextStyles.pageTitle(context).copyWith(
                           fontSize: 24,
                         ),
@@ -115,14 +120,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Đăng nhập để tiếp tục lưu ảnh, ghi chú và chi tiêu của bạn.',
+                        l10n.loginSubtitle,
                         style: AppTextStyles.bodySecondary(context),
                       ),
                       const SizedBox(height: 20),
 
                       CustomTextField(
                         controller: emailController,
-                        hintText: 'Email',
+                        hintText: l10n.email,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.email_outlined,
@@ -131,7 +136,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       CustomTextField(
                         controller: passwordController,
-                        hintText: 'Mật khẩu',
+                        hintText: l10n.password,
                         obscureText: true,
                         textInputAction: TextInputAction.done,
                         prefixIcon: Icons.lock_outline_rounded,
@@ -141,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: auth.isLoading
+                          onPressed: authBusy
                               ? null
                               : () => Navigator.pushNamed(
                             context,
@@ -154,9 +159,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               vertical: 6,
                             ),
                           ),
-                          child: const Text(
-                            'Quên mật khẩu?',
-                            style: TextStyle(
+                          child: Text(
+                            l10n.forgotPassword,
+                            style: const TextStyle(
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -171,15 +176,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 6),
 
                       CustomButton(
-                        text: 'Đăng nhập',
+                        text: l10n.login,
                         isLoading: auth.isLoading,
-                        onPressed: () => _login(auth),
+                        onPressedAsync: () => _login(auth),
+                        onBusyChanged: (busy) =>
+                            setState(() => _primaryAuthBusy = busy),
                       ),
                       const SizedBox(height: 14),
 
                       Center(
                         child: TextButton(
-                          onPressed: auth.isLoading
+                          onPressed: authBusy
                               ? null
                               : () => Navigator.pushNamed(
                             context,
@@ -188,11 +195,11 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: RichText(
                             text: TextSpan(
                               style: AppTextStyles.bodySecondary(context),
-                              children: const [
-                                TextSpan(text: 'Chưa có tài khoản? '),
+                              children: [
+                                TextSpan(text: l10n.dontHaveAccount),
                                 TextSpan(
-                                  text: 'Đăng ký',
-                                  style: TextStyle(
+                                  text: l10n.register,
+                                  style: const TextStyle(
                                     color: AppColors.primaryBlue,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -230,8 +237,8 @@ class _AuthLogo extends StatelessWidget {
         shape: BoxShape.circle,
         color: AppColors.primaryBlue,
         border: Border.all(
-          color: Colors.white.withOpacity(
-            AppColors.isDark(context) ? 0.14 : 0.92,
+          color: Colors.white.withValues(
+            alpha: AppColors.isDark(context) ? 0.14 : 0.92,
           ),
           width: 3,
         ),
@@ -265,8 +272,8 @@ class _AuthCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              AppColors.isDark(context) ? 0.16 : 0.05,
+            color: Colors.black.withValues(
+              alpha: AppColors.isDark(context) ? 0.16 : 0.05,
             ),
             blurRadius: 18,
             offset: const Offset(0, 6),
@@ -298,10 +305,10 @@ class _AuthErrorBox extends StatelessWidget {
         vertical: 12,
       ),
       decoration: BoxDecoration(
-        color: AppColors.expense.withOpacity(0.12),
+        color: AppColors.expense.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.expense.withOpacity(0.22),
+          color: AppColors.expense.withValues(alpha: 0.22),
         ),
       ),
       child: Row(

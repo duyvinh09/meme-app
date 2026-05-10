@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../../data/models/transaction_model.dart';
@@ -33,15 +35,54 @@ class RecentTransactionCard extends StatelessWidget {
     );
   }
 
+  String _localizedCategoryLabel(BuildContext context, String category) {
+    final l10n = context.l10n;
+    switch (category.trim()) {
+      case 'Ăn uống':
+      case 'Food':
+        return l10n.food;
+      case 'Lương':
+      case 'Salary':
+        return l10n.salary;
+      case 'Mua sắm':
+      case 'Shopping':
+        return l10n.shopping;
+      case 'Đi lại':
+      case 'Transport':
+        return l10n.transport;
+      case 'Giải trí':
+      case 'Entertainment':
+        return l10n.entertainment;
+      case 'Học tập':
+      case 'Education':
+        return l10n.education;
+      case 'Quà tặng':
+      case 'Gift':
+        return l10n.gift;
+      case 'Khác':
+      case 'Other':
+        return l10n.other;
+      default:
+        return BudgetNameLocalizer.display(context, category);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final amountColor = transaction.type == 'expense'
         ? AppColors.expense
         : AppColors.income;
 
-    final title = transaction.caption.trim().isEmpty
-        ? transaction.category
-        : transaction.caption.trim();
+    final categoryLabel = _localizedCategoryLabel(context, transaction.category);
+    final caption = transaction.caption.trim();
+    final normalizedCaption = caption.toLowerCase();
+    final normalizedCategory = transaction.category.trim().toLowerCase();
+    final normalizedLocalizedCategory = categoryLabel.toLowerCase();
+    final title = caption.isEmpty ||
+            normalizedCaption == normalizedCategory ||
+            normalizedCaption == normalizedLocalizedCategory
+        ? categoryLabel
+        : caption;
 
     final sign = transaction.type == 'expense' ? '-' : '+';
 
@@ -142,7 +183,7 @@ class RecentTransactionCard extends StatelessWidget {
                                 ),
                               ),
                               child: Text(
-                                transaction.category,
+                                categoryLabel,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 softWrap: false,

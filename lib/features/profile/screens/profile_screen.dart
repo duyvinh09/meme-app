@@ -1,12 +1,15 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import '../../../core/extensions/localization_extension.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/widgets/async_filled_button.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -89,8 +92,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (firebaseUser == null || uid == null || email.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy tài khoản hiện tại'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.accountNotFound),
         ),
       );
       return;
@@ -120,9 +124,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (!context.mounted) return;
 
       messenger.showSnackBar(
-        const SnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
           content: Text(
-            'Không thể xoá tài khoản. Vui lòng kiểm tra mật khẩu hoặc đăng nhập lại.',
+            context.l10n.deleteAccountError,
           ),
         ),
       );
@@ -141,7 +146,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final displayName = (user?.name.trim().isNotEmpty ?? false)
         ? user!.name.trim()
-        : 'Người dùng';
+        : context.l10n.user;
 
     final username = (user?.username.trim().isNotEmpty ?? false)
         ? user!.username.trim()
@@ -153,7 +158,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: AppColors.background(context),
       appBar: AppBar(
         title: Text(
-          'Cá nhân',
+          context.l10n.profile,
           style: AppTextStyles.sectionTitle(context).copyWith(
             fontWeight: FontWeight.w800,
           ),
@@ -291,7 +296,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     _InfoPill(
                       icon: Icons.calendar_month_rounded,
-                      text: 'Tham gia: $createdAtText',
+                      text: context.l10n.joined(createdAtText),
                     ),
                   ],
                 ),
@@ -314,7 +319,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   return _ProfileMenuTile(
                     icon: Icons.group_rounded,
-                    title: '$friendCount Bạn bè',
+                    title: context.l10n.friends(friendCount),
                     onTap: () {
                       Navigator.pushNamed(context, RouteNames.friends);
                     },
@@ -323,7 +328,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               _ProfileMenuTile(
                 icon: Icons.groups_2_outlined,
-                title: 'Nhóm',
+                title: context.l10n.groups,
                 onTap: () {
                   Navigator.pushNamed(context, RouteNames.groups);
                 },
@@ -336,8 +341,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _SectionCard(
             children: [
               _ProfileMenuTile(
+                icon: Icons.category_outlined,
+                title: context.l10n.manageCategories,
+                onTap: () {
+                  Navigator.pushNamed(context, RouteNames.manageCategories);
+                },
+              ),
+              _ProfileMenuTile(
                 icon: Icons.settings_outlined,
-                title: 'Cài đặt',
+                title: context.l10n.settings,
                 onTap: () {
                   Navigator.pushNamed(context, RouteNames.settings);
                 },
@@ -351,7 +363,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _ProfileMenuTile(
                 icon: Icons.mail_outline,
-                title: 'Đổi email đăng nhập',
+                title: context.l10n.changeEmail,
                 onTap: () {
                   Navigator.push(
                     context,
@@ -370,7 +382,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _ProfileMenuTile(
                 icon: Icons.feedback_outlined,
-                title: 'Góp ý',
+                title: context.l10n.feedback,
                 onTap: () {
                   Navigator.pushNamed(context, RouteNames.feedback);
                 },
@@ -384,7 +396,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _ProfileMenuTile(
                 icon: Icons.delete_forever_rounded,
-                title: 'Xoá tài khoản',
+                title: context.l10n.deleteAccount,
                 iconColor: AppColors.expense,
                 iconBackgroundColor: AppColors.expense.withOpacity(0.12),
                 titleColor: AppColors.expense,
@@ -394,7 +406,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               _ProfileMenuTile(
                 icon: Icons.logout_rounded,
-                title: 'Đăng xuất',
+                title: context.l10n.logout,
                 onTap: () async {
                   await auth.logout();
 
@@ -633,7 +645,7 @@ class _DeleteAccountDialog extends StatefulWidget {
 class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   final passwordController = TextEditingController();
 
-  bool isDeleting = false;
+  bool _submitBusy = false;
   bool obscurePassword = true;
 
   @override
@@ -651,28 +663,24 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     });
   }
 
-  void _confirm() {
+  Future<void> _confirmAsync() async {
     final password = passwordController.text.trim();
 
     if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập mật khẩu hiện tại'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.pleaseEnterPassword),
         ),
       );
       return;
     }
 
-    setState(() {
-      isDeleting = true;
-    });
-
     FocusManager.instance.primaryFocus?.unfocus();
 
-    Future.delayed(const Duration(milliseconds: 80), () {
-      if (!mounted) return;
-      Navigator.pop(context, password);
-    });
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+    if (!mounted) return;
+    Navigator.pop(context, password);
   }
 
   @override
@@ -712,7 +720,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Xoá tài khoản?',
+                    context.l10n.deleteAccountQuestion,
                     style: AppTextStyles.sectionTitle(context).copyWith(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
@@ -722,7 +730,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                   const SizedBox(height: 12),
 
                   Text(
-                    'Hành động này sẽ xoá tài khoản của bạn khỏi Meme. Bạn sẽ không thể đăng nhập lại bằng tài khoản này.',
+                    context.l10n.deleteAccountWarning,
                     style: AppTextStyles.bodySecondary(context).copyWith(
                       height: 1.4,
                       fontSize: 14,
@@ -751,7 +759,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Nếu bạn chỉ muốn rời app tạm thời, hãy chọn Đăng xuất thay vì xoá tài khoản.',
+                            context.l10n.deleteAccountNote,
                             style: AppTextStyles.caption(context).copyWith(
                               color: AppColors.expense,
                               fontWeight: FontWeight.w700,
@@ -768,13 +776,13 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                   TextField(
                     controller: passwordController,
                     obscureText: obscurePassword,
-                    enabled: !isDeleting,
+                    enabled: !_submitBusy,
                     textInputAction: TextInputAction.done,
                     decoration: InputDecoration(
-                      hintText: 'Nhập mật khẩu hiện tại',
+                      hintText: context.l10n.enterCurrentPassword,
                       prefixIcon: const Icon(Icons.lock_outline_rounded),
                       suffixIcon: IconButton(
-                        onPressed: isDeleting
+                        onPressed: _submitBusy
                             ? null
                             : () {
                           setState(() {
@@ -788,7 +796,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                         ),
                       ),
                     ),
-                    onSubmitted: (_) => _confirm(),
+                    onSubmitted: (_) => _confirmAsync(),
                   ),
 
                   const SizedBox(height: 18),
@@ -797,14 +805,17 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                     children: [
                       Expanded(
                         child: TextButton(
-                          onPressed: isDeleting ? null : _cancel,
-                          child: const Text('Huỷ'),
+                          onPressed: _submitBusy ? null : _cancel,
+                          child: Text(context.l10n.cancel),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         flex: 2,
-                        child: FilledButton(
+                        child: AsyncFilledButton(
+                          onPressedAsync: _confirmAsync,
+                          onBusyChanged: (v) =>
+                              setState(() => _submitBusy = v),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.expense,
                             foregroundColor: Colors.white,
@@ -813,19 +824,9 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed: isDeleting ? null : _confirm,
-                          child: isDeleting
-                              ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.2,
-                              color: Colors.white,
-                            ),
-                          )
-                              : const Text(
-                            'Xoá tài khoản',
-                            style: TextStyle(
+                          child: Text(
+                            context.l10n.deleteAccount,
+                            style: const TextStyle(
                               fontWeight: FontWeight.w900,
                             ),
                           ),

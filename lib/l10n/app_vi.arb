@@ -1,0 +1,923 @@
+{
+  "settings": "Cài đặt",
+  "language": "Ngôn ngữ",
+  "vietnamese": "Tiếng Việt",
+  "english": "Tiếng Anh",
+  "appearance": "Giao diện",
+  "light": "Sáng",
+  "dark": "Tối",
+  "system": "Theo hệ thống",
+  "currency": "Tiền tệ",
+  "vnd": "VNĐ",
+  "usd": "USD",
+  "exchangeRateUpdated": "Đã cập nhật tỷ giá: {rate}",
+  "@exchangeRateUpdated": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "updating": "Đang cập nhật",
+  "update": "Cập nhật",
+  "profile": "Cá nhân",
+  "user": "Người dùng",
+  "joined": "Tham gia: {date}",
+  "@joined": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "friends": "{count} Bạn bè",
+  "@friends": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groups": "Nhóm",
+  "changeEmail": "Đổi email đăng nhập",
+  "feedback": "Góp ý",
+  "deleteAccount": "Xoá tài khoản",
+  "logout": "Đăng xuất",
+  "deleteAccountQuestion": "Xoá tài khoản?",
+  "deleteAccountWarning": "Hành động này sẽ xoá tài khoản của bạn khỏi Meme. Bạn sẽ không thể đăng nhập lại bằng tài khoản này.",
+  "deleteAccountNote": "Nếu bạn chỉ muốn rời app tạm thời, hãy chọn Đăng xuất thay vì xoá tài khoản.",
+  "enterCurrentPassword": "Nhập mật khẩu hiện tại",
+  "cancel": "Huỷ",
+  "pleaseEnterPassword": "Vui lòng nhập mật khẩu hiện tại",
+  "accountNotFound": "Không tìm thấy tài khoản hiện tại",
+  "deleteAccountError": "Không thể xoá tài khoản. Vui lòng kiểm tra mật khẩu hoặc đăng nhập lại.",
+  "goodMorning": "Chào buổi sáng",
+  "goodAfternoon": "Chào buổi chiều",
+  "goodEvening": "Chào buổi tối",
+  "noTransactionsToday": "Hôm nay bạn chưa thêm giao dịch nào.",
+  "receivedToday": "Đã nhận {amount} hôm nay",
+  "@receivedToday": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "spentToday": "Đã chi {amount} hôm nay",
+  "@spentToday": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "you": "Bạn",
+  "recentTransactions": "Giao dịch gần đây",
+  "transactionCount": "{count} giao dịch",
+  "@transactionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noTransactions": "Chưa có giao dịch nào",
+  "addFirstTransaction": "Hãy thêm giao dịch đầu tiên để bắt đầu theo dõi chi tiêu",
+  "login": "Đăng nhập",
+  "register": "Đăng ký",
+  "email": "Email",
+  "password": "Mật khẩu",
+  "forgotPassword": "Quên mật khẩu?",
+  "dontHaveAccount": "Chưa có tài khoản? ",
+  "alreadyHaveAccount": "Đã có tài khoản? ",
+  "welcomeBack": "Chào mừng trở lại 👋",
+  "loginSubtitle": "Đăng nhập để tiếp tục lưu ảnh, ghi chú và chi tiêu của bạn.",
+  "appSlogan": "Lưu khoảnh khắc chi tiêu theo cách vui hơn, thật hơn.",
+  "pleaseEnterPasswordLogin": "Vui lòng nhập mật khẩu",
+  "pleaseEnterName": "Vui lòng nhập tên hiển thị",
+  "createNewAccount": "Tạo tài khoản mới ✨",
+  "registerSlogan": "Bắt đầu lưu khoảnh khắc chi tiêu theo cách vui hơn, thật hơn.",
+  "joinMeme": "Tham gia Meme",
+  "registerSubtitle": "Tạo hồ sơ để quản lý chi tiêu, lưu ảnh và kết nối với bạn bè.",
+  "displayName": "Tên hiển thị",
+  "username": "Username",
+  "usernameHint": "Dùng 3-20 ký tự: chữ thường, số, dấu . hoặc _",
+  "passwordHint": "Mật khẩu tối thiểu 6 ký tự",
+  "currentBalance": "Số dư hiện tại",
+  "totalIncome": "Tổng thu",
+  "totalExpense": "Tổng chi",
+  "streak": "Chuỗi duy trì",
+  "daysStreak": "{count} ngày liên tiếp",
+  "@daysStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakLevel1": "Cực đỉnh",
+  "streakLevel2": "Ổn áp",
+  "streakLevel3": "Đều đặn",
+  "streakLevel4": "Đang lên mood",
+  "streakLevel5": "Bắt đầu thôi",
+  "personalBudget": "Ngân sách cá nhân",
+  "budgetTitle": "Ngân sách cá nhân",
+  "budgetSubtitle": "Tạo chủ đề và đặt mục tiêu tiền",
+  "budgetNote": "Các danh mục mặc định như Ăn uống, Mua sắm, Đi lại sẽ không có giới hạn. Ngân sách ở đây là chủ đề cá nhân do bạn tự tạo.",
+  "budgetOverview": "Tổng quan ngân sách",
+  "monthYear": "Tháng {month} {year}",
+  "@monthYear": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "overLimit": "Đã vượt mục tiêu",
+  "remainingAmount": "Còn lại {amount}",
+  "@remainingAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetGoal": "Mục tiêu",
+  "usedAmount": "Đã dùng",
+  "deleteBudgetQuestion": "Xoá ngân sách?",
+  "deleteBudgetWarning": "Bạn có chắc muốn xoá chủ đề \"{name}\" không? Các giao dịch đã tạo trước đó vẫn giữ nguyên, chỉ xoá mục tiêu ngân sách này.",
+  "@deleteBudgetWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Xoá",
+  "budgetDeleted": "Đã xoá \"{name}\"",
+  "@budgetDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noBudgetThemes": "Chưa có chủ đề ngân sách",
+  "noBudgetThemesSubtitle": "Tạo một chủ đề như Picnic, Mua iPad hoặc Đi du lịch để đặt mục tiêu tiền riêng.",
+  "personalThemes": "Chủ đề cá nhân",
+  "trackSpentVsGoal": "Theo dõi số tiền đã dùng so với mục tiêu",
+  "monthly": "Hằng tháng",
+  "daily": "Hằng ngày",
+  "weekly": "Hằng tuần",
+  "biweekly": "2 tuần/lần",
+  "yearly": "Hằng năm",
+  "custom": "Tuỳ chỉnh",
+  "total": "Tổng",
+  "category": "Danh mục",
+  "allSpending": "Tất cả chi tiêu",
+  "syncFromCategory": "Đồng bộ từ danh mục",
+  "budgetNameLabel": "Tên ngân sách",
+  "budgetNameHint": "VD: Chi tiêu hằng ngày",
+  "budgetAmountLabel": "Số tiền ngân sách",
+  "period": "Chu kỳ",
+  "budgetType": "Loại ngân sách",
+  "color": "Màu",
+  "icon": "Biểu tượng",
+  "createBudget": "Tạo ngân sách",
+  "addBudget": "Thêm ngân sách",
+  "editBudget": "Chỉnh sửa ngân sách",
+  "cancelLabel": "Huỷ",
+  "pleaseEnterBudgetName": "Vui lòng nhập tên ngân sách",
+  "pleaseEnterBudgetAmount": "Vui lòng nhập số tiền ngân sách",
+  "budgetAmountPositive": "Số tiền ngân sách phải lớn hơn 0",
+  "cannotCreateBudget": "Không thể tạo ngân sách: {error}",
+  "@cannotCreateBudget": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetUpdated": "Đã cập nhật ngân sách",
+  "budgetUnchanged": "Không có thay đổi để cập nhật",
+  "cannotUpdateBudget": "Không thể cập nhật ngân sách: {error}",
+  "@cannotUpdateBudget": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotDeleteBudget": "Không thể xoá ngân sách: {error}",
+  "@cannotDeleteBudget": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetAnalysis": "Phân tích ngân sách",
+  "deleteBudget": "Xoá ngân sách",
+  "loadBudgetError": "Lỗi tải ngân sách:\n{error}",
+  "@loadBudgetError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetHistory": "Lịch sử ngân sách",
+  "average": "Trung bình",
+  "overBudget": "Vượt ngân sách",
+  "bestPeriod": "Kỳ tốt nhất",
+  "worstPeriod": "Kỳ tệ nhất",
+  "periodCount": "Số kỳ",
+  "compareOverPeriods": "So sánh qua từng kỳ",
+  "budgetLimitLegend": "Giới hạn ngân sách",
+  "withinBudgetLegend": "Trong ngân sách",
+  "overBudgetLegend": "Vượt ngân sách!",
+  "periodDetail": "Chi tiết từng kỳ",
+  "currentPeriod": "Hiện tại",
+  "remainingLabel": "Còn lại: {amount}",
+  "@remainingLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetLimitLabel": "Ngân sách: {amount}",
+  "@budgetLimitLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "overBudgetWarning": "Vượt ngân sách!",
+  "budgetNamePreview": "Tên ngân sách",
+  "forgotPasswordTitle": "Quên mật khẩu",
+  "forgotPasswordInstruction": "Nhập email đã đăng ký để nhận liên kết đặt lại mật khẩu.",
+  "recoveryPassword": "Khôi phục mật khẩu",
+  "recoveryPasswordSubtitle": "Hệ thống sẽ gửi cho bạn một email để đặt lại mật khẩu.",
+  "enterEmail": "Nhập email",
+  "recoveryEmailSent": "Đã gửi email khôi phục mật khẩu",
+  "couldNotSendRecoveryEmail": "Không thể gửi email khôi phục",
+  "sendRecoveryEmail": "Gửi email khôi phục",
+  "backToLogin": "Quay lại đăng nhập",
+  "editProfile": "Sửa hồ sơ",
+  "name": "Tên",
+  "saveChanges": "Lưu thay đổi",
+  "profileUpdated": "Cập nhật hồ sơ thành công",
+  "profileUpdateFailed": "Cập nhật hồ sơ thất bại",
+  "changeEmailTitle": "Đổi email đăng nhập",
+  "changeEmailSubtitle": "Cập nhật email dùng để đăng nhập tài khoản của bạn",
+  "currentEmail": "Email hiện tại",
+  "unknown": "Không rõ",
+  "newEmailInfo": "Thông tin email mới",
+  "newEmail": "Email mới",
+  "enterNewEmail": "Nhập email mới của bạn",
+  "enterPasswordToConfirm": "Nhập mật khẩu để xác nhận",
+  "changeEmailNotice": "Để bảo vệ tài khoản, bạn cần nhập lại mật khẩu hiện tại trước khi đổi email đăng nhập.",
+  "updateEmail": "Cập nhật email",
+  "invalidEmail": "Email mới không hợp lệ",
+  "emailSameAsCurrent": "Email mới đang trùng với email hiện tại",
+  "emailChangedSuccessfully": "Đã đổi email đăng nhập thành công",
+  "feedbackTitle": "Góp ý",
+  "sendFeedback": "Gửi phản hồi",
+  "feedbackSubtitle": "Chia sẻ ý kiến, đề xuất hoặc báo lỗi để Meme ngày càng hoàn thiện hơn.",
+  "yourEmail": "Email của bạn",
+  "emailPrefilledNote": "Email này được điền sẵn từ tài khoản của bạn.",
+  "yourFeedback": "Phản hồi của bạn *",
+  "feedbackHint": "Chia sẻ ý kiến, báo lỗi hoặc đề xuất tính năng mới...",
+  "sending": "Đang gửi...",
+  "invalidEmailGeneric": "Email không hợp lệ",
+  "pleaseEnterFeedback": "Vui lòng nhập nội dung góp ý",
+  "feedbackTooLong": "Nội dung góp ý không được quá {count} ký tự",
+  "@feedbackTooLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "feedbackEmailSubject": "Góp ý từ ứng dụng Meme",
+  "feedbackEmailBody": "Xin chào Admin,\n\nBạn vừa nhận được một góp ý mới từ ứng dụng Meme.\n\nThông tin người gửi:\n- Tên: {name}\n- Username: {username}\n- Email: {email}\n\nNội dung góp ý:\n{message}\n\n---\nEmail này được tạo tự động từ màn Góp ý của app Meme.",
+  "@feedbackEmailBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "username": {
+        "type": "String"
+      },
+      "email": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "feedbackSentEmail": "Đã mở email để gửi góp ý cho admin",
+  "feedbackSaved": "Đã lưu góp ý. Thiết bị chưa mở được ứng dụng email.",
+  "feedbackError": "Không thể gửi góp ý: {error}",
+  "@feedbackError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsTitle": "Bạn bè",
+  "friendsSearchHint": "Tìm kiếm bạn bè...",
+  "noFriends": "Chưa có bạn bè",
+  "noFriendsSubtitle": "Thêm bạn bè để chia sẻ chi tiêu và tham gia nhóm.",
+  "addFriend": "Thêm bạn bè",
+  "deleteFriendQuestion": "Xoá bạn bè?",
+  "deleteFriendWarning": "Bạn có chắc muốn xoá {name} khỏi danh sách bạn bè?",
+  "@deleteFriendWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteFriendGroupsNote": "Người này vẫn sẽ ở trong các nhóm chung. Nếu muốn xoá khỏi nhóm, bạn cần vào nhóm để chỉnh sửa thành viên hoặc rời nhóm.",
+  "friendDeleted": "Đã xoá {name} khỏi danh sách bạn bè",
+  "@friendDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addFriendTitle": "Thêm bạn bè",
+  "addFriendSearchHint": "Nhập username hoặc email...",
+  "noUsersFound": "Không tìm thấy người dùng",
+  "sendFriendRequest": "Thêm",
+  "requestSent": "Đã gửi yêu cầu kết bạn tới {name}",
+  "@requestSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alreadyFriends": "Bạn và {name} đã là bạn bè",
+  "@alreadyFriends": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "requestPending": "Yêu cầu kết bạn đã được gửi trước đó",
+  "friendRequests": "Lời mời kết bạn",
+  "friendRequestsReceivedTab": "Đã nhận",
+  "friendRequestsSentTab": "Đã gửi",
+  "noFriendRequests": "Không có yêu cầu nào",
+  "noSentFriendRequests": "Chưa gửi lời mời nào",
+  "noFriendRequestsReceivedSubtitle": "Khi người dùng Meme khác gửi yêu cầu kết bạn cho bạn, chúng sẽ xuất hiện ở đây",
+  "noFriendRequestsSentSubtitle": "Những lời mời kết bạn bạn đã gửi sẽ hiển thị ở đây",
+  "sentRequestToUsername": "Yêu cầu gửi đến @{username}",
+  "@sentRequestToUsername": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "requestPendingStatus": "Chờ duyệt",
+  "friendBadgeInvitationSent": "Đã gửi lời mời",
+  "friendBadgeAlreadyFriendsLabel": "Bạn bè",
+  "friendRequestCancelled": "Đã huỷ lời mời",
+  "accept": "Chấp nhận",
+  "decline": "Từ chối",
+  "requestAccepted": "Đã chấp nhận lời mời kết bạn từ {name}",
+  "@requestAccepted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "requestDeclined": "Đã từ chối lời mời kết bạn từ {name}",
+  "@requestDeclined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsTitle": "Nhóm",
+  "noGroups": "Chưa có nhóm",
+  "noGroupsSubtitle": "Tạo nhóm để quản lý chi tiêu chung với bạn bè.",
+  "createGroup": "Tạo nhóm",
+  "createVerb": "Tạo",
+  "membersCount": "{count} thành viên",
+  "@membersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteGroupQuestion": "Xoá nhóm?",
+  "deleteGroupWarning": "Bạn có chắc muốn xoá nhóm \"{name}\"?",
+  "@deleteGroupWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contribution": "Đóng góp",
+  "goal": "Mục tiêu",
+  "noGroupTransactions": "Chưa có giao dịch nhóm",
+  "addGroupTransaction": "Thêm giao dịch nhóm",
+  "editGroup": "Sửa nhóm",
+  "leaveGroup": "Rời",
+  "leaveGroupQuestion": "Rời nhóm?",
+  "leaveGroupWarning": "Bạn có chắc muốn rời khỏi nhóm \"{name}\"?",
+  "@leaveGroupWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupName": "Tên nhóm",
+  "groupNameHint": "Nhập tên nhóm",
+  "description": "Mô tả",
+  "descriptionHint": "Nhập mô tả nhóm (tuỳ chọn)",
+  "contributionGoal": "Mục tiêu đóng góp",
+  "contributionGoalHint": "Đặt số tiền mục tiêu (tuỳ chọn)",
+  "members": "Thành viên",
+  "addMembers": "Thêm thành viên",
+  "selectedCount": "{count} đã chọn",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupSaved": "Đã lưu thông tin nhóm",
+  "groupCreated": "Đã tạo nhóm thành công",
+  "currentUserNotFound": "Không tìm thấy người dùng hiện tại",
+  "groupNoMembersToContribute": "Nhóm chưa có thành viên để đóng góp",
+  "youAreNotMember": "Bạn không còn thuộc nhóm này",
+  "addContribution": "Thêm tiền đóng góp",
+  "selectMember": "Chọn thành viên",
+  "youAreContributingFor": "Bạn đang đóng góp cho",
+  "amount": "Số tiền",
+  "enterValidAmount": "Nhập số tiền hợp lệ",
+  "canOnlyAddForSelf": "Bạn chỉ có thể thêm tiền cho chính mình",
+  "contributionAdded": "Đã thêm tiền đóng góp",
+  "cannotAddContribution": "Không thể thêm đóng góp: {error}",
+  "@cannotAddContribution": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "saving": "Đang lưu...",
+  "confirm": "Xác nhận",
+  "groupNotFound": "Không tìm thấy nhóm",
+  "group": "Nhóm",
+  "groupDetails": "Chi tiết nhóm",
+  "groupOwner": "Chủ nhóm",
+  "groupColor": "Màu nhóm",
+  "ofAmount": "trên {amount}",
+  "@ofAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "reachedPercentage": "Đã đạt {percentage}%",
+  "@reachedPercentage": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
+  "contributingMembers": "Thành viên đóng góp",
+  "noMembersYet": "Chưa có thành viên nào",
+  "paidAmount": "Đã đóng {amount}",
+  "@paidAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupOptions": "Tuỳ chọn nhóm",
+  "editGroupSubtitle": "Đổi tên, màu, mục tiêu hoặc thành viên",
+  "deleteGroup": "Xoá",
+  "deleteGroupSubtitle": "Xoá nhóm này cho tất cả thành viên",
+  "leaveGroupSubtitle": "Rời khỏi nhóm này",
+  "deleteGroupConfirmation": "Bạn có chắc muốn xoá nhóm này không? Hành động này sẽ xoá nhóm khỏi tất cả thành viên.",
+  "leaveGroupConfirmation": "Bạn có chắc muốn rời khỏi nhóm này không?",
+  "groupDeleted": "Đã xoá nhóm",
+  "youLeftGroup": "Bạn đã rời nhóm",
+  "cannotDeleteGroup": "Không thể xoá nhóm: {error}",
+  "@cannotDeleteGroup": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotLeaveGroup": "Không thể rời nhóm: {error}",
+  "@cannotLeaveGroup": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "ownerMustBeInGroup": "Chủ nhóm luôn phải ở trong nhóm",
+  "onlyOwnerCanEditGroup": "Chỉ chủ nhóm mới có thể chỉnh sửa nhóm",
+  "groupInfoNotFound": "Không tìm thấy thông tin nhóm",
+  "pleaseEnterGroupName": "Vui lòng nhập tên nhóm",
+  "groupNameTooLong": "Tên nhóm tối đa 50 ký tự",
+  "pleaseEnterGoalAmount": "Vui lòng nhập số tiền mục tiêu",
+  "groupUpdated": "Đã cập nhật nhóm",
+  "groupUpdateFailedWithError": "Cập nhật nhóm thất bại: {error}",
+  "@groupUpdateFailedWithError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noPermissionToEditGroup": "Bạn không có quyền chỉnh sửa nhóm này",
+  "onlyOwnerCanEditNote": "Chỉ chủ nhóm mới có thể đổi thông tin, mời thành viên hoặc xoá thành viên khỏi nhóm.",
+  "goalAmount": "Số tiền mục tiêu",
+  "goalAmountHintExample": "Số tiền mục tiêu, ví dụ {example}",
+  "@goalAmountHintExample": {
+    "placeholders": {
+      "example": {
+        "type": "String"
+      }
+    }
+  },
+  "groupMembers": "Thành viên nhóm",
+  "groupMembersNote": "Chọn bạn bè để mời vào nhóm. Thành viên cũ vẫn được giữ lại dù không còn là bạn bè.",
+  "noMembersOrFriends": "Chưa có thành viên hoặc bạn bè để hiển thị",
+  "currentMember": "Thành viên hiện tại",
+  "notFriendsAnymore": "Không còn là bạn bè",
+  "groupMemberManagementNote": "Khi thêm thành viên mới, nhóm sẽ xuất hiện trong tài khoản của họ. Khi bỏ chọn thành viên, nhóm sẽ bị xoá khỏi danh sách nhóm của người đó.",
+  "gettingLocation": "Đang lấy vị trí...",
+  "currentLocationSaved": "Đã lưu vị trí hiện tại",
+  "noLocation": "Không có vị trí",
+  "skipPhoto": "Bỏ qua ảnh",
+  "food": "Ăn uống",
+  "shopping": "Mua sắm",
+  "transport": "Di chuyển",
+  "education": "Giáo dục",
+  "other": "Khác",
+  "salary": "Lương",
+  "gift": "Quà tặng",
+  "entertainment": "Giải trí",
+  "private": "Riêng tư",
+  "everyone": "Mọi người",
+  "maxAmountDigits": "Tối đa 10 chữ số",
+  "addDetails": "Thêm chi tiết",
+  "overBudgetLimitTitle": "Vượt mục tiêu ngân sách",
+  "overBudgetLimitWarning": "Giao dịch này sẽ khiến chủ đề \"{name}\" vượt mục tiêu {limit} khoảng {over}. Bạn vẫn muốn lưu chứ?",
+  "@overBudgetLimitWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      },
+      "over": {
+        "type": "String"
+      }
+    }
+  },
+  "saveAnyway": "Vẫn lưu",
+  "shareType": "Loại: {type}",
+  "@shareType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCategory": "Danh mục: {category}",
+  "@shareCategory": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "shareAmount": "Số tiền: {amount}",
+  "@shareAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "shareDetails": "Chi tiết: {details}",
+  "@shareDetails": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "sharePrivacy": "Quyền riêng tư: {privacy}",
+  "@sharePrivacy": {
+    "placeholders": {
+      "privacy": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotShareNow": "Không thể chia sẻ lúc này",
+  "amountLimitExceeded": "Số tiền vượt quá giới hạn 10 chữ số",
+  "savedWithOverLimit": "Đã lưu, nhưng chủ đề \"{category}\" đã vượt mục tiêu.",
+  "@savedWithOverLimit": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "transactionSavedSuccessfully": "Lưu giao dịch thành công",
+  "transactionSaveFailed": "Lưu giao dịch thất bại",
+  "limitLabel": "Mục tiêu",
+  "retake": "Chụp lại",
+  "share": "Chia sẻ",
+  "statsTitle": "Thống kê",
+  "income": "Thu nhập",
+  "expense": "Chi tiêu",
+  "month": "Tháng",
+  "year": "Năm",
+  "backToThisMonth": "Về tháng này",
+  "backToThisYear": "Về năm này",
+  "selectMonthStats": "Chọn tháng thống kê",
+  "current": "Hiện tại",
+  "monthLabel": "Tháng {month}",
+  "@monthLabel": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "shortMonth": "thg {month}",
+  "@shortMonth": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "selectYearStats": "Chọn năm thống kê",
+  "olderYears": "Năm cũ hơn",
+  "newerYears": "Năm mới hơn",
+  "totalExpenseLabel": "Tổng chi tiêu",
+  "totalIncomeLabel": "Tổng thu nhập",
+  "compareToPreviousMonth": "so với tháng trước",
+  "compareToPreviousYear": "so với năm trước",
+  "expenseByCategoryMonth": "Chi tiêu theo danh mục tháng này",
+  "incomeByCategoryMonth": "Thu nhập theo danh mục tháng này",
+  "expenseByCategoryYear": "Chi tiêu theo danh mục năm này",
+  "incomeByCategoryYear": "Thu nhập theo danh mục năm này",
+  "noExpenseDataMonth": "Không có dữ liệu chi tiêu tháng này",
+  "noIncomeDataMonth": "Không có dữ liệu thu nhập tháng này",
+  "noExpenseDataYear": "Không có dữ liệu chi tiêu năm này",
+  "noIncomeDataYear": "Không có dữ liệu thu nhập năm này",
+  "expenseNoChange": "Chi tiêu của bạn không thay đổi so với kỳ trước.",
+  "incomeNoChange": "Thu nhập của bạn không thay đổi so với kỳ trước.",
+  "expenseMore": "Bạn đã chi nhiều hơn {percent}% so với kỳ trước.",
+  "@expenseMore": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "incomeMore": "Bạn đã nhận nhiều hơn {percent}% so với kỳ trước.",
+  "@incomeMore": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "expenseLess": "Bạn đã chi ít hơn {percent}% so với kỳ trước.",
+  "@expenseLess": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "incomeLess": "Bạn đã nhận ít hơn {percent}% so với kỳ trước.",
+  "@incomeLess": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "previousPeriodAmount": "Kỳ trước: {amount}",
+  "@previousPeriodAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "categories": "Danh mục",
+  "map": "Bản đồ",
+  "transactionMap": "Bản đồ giao dịch",
+  "mapControl": "Điều khiển bản đồ",
+  "controlling": "Đang điều khiển",
+  "tapToControlMap": "Chạm để điều khiển bản đồ",
+  "tapControllingToDisable": "Chạm \"Đang điều khiển\" để tắt tương tác bản đồ.",
+  "recentTransactionsOverview": "Tổng quan các giao dịch gần đây.",
+  "mapEmptyTitle": "Chưa có dữ liệu bản đồ",
+  "mapEmptySubtitle": "Các giao dịch mới sau khi bạn cấp quyền vị trí sẽ được hiển thị trên bản đồ.",
+  "mapSummary": "{transactions} giao dịch tại {locations} vị trí",
+  "@mapSummary": {
+    "placeholders": {
+      "transactions": {
+        "type": "int"
+      },
+      "locations": {
+        "type": "int"
+      }
+    }
+  },
+  "mapTransactionsHere": "{count} giao dịch ở đây",
+  "@mapTransactionsHere": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expenseDetails": "Chi tiết chi tiêu",
+  "incomeDetails": "Chi tiết thu nhập",
+  "percentOfTotalExpense": "{percent}% tổng chi tiêu",
+  "@percentOfTotalExpense": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "percentOfTotalIncome": "{percent}% tổng thu nhập",
+  "@percentOfTotalIncome": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "noUser": "Không có người dùng",
+  "loadFeedError": "Lỗi tải feed:\n{error}",
+  "@loadFeedError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyFeedFriends": "Feed bạn bè đang trống",
+  "emptyFeedFriendsSubtitle": "Khi bạn hoặc bạn bè chia sẻ giao dịch ở chế độ \"Bạn bè\", bài đăng sẽ xuất hiện ở đây.",
+  "noPostsYet": "Chưa có bài đăng nào",
+  "youHaveNoPosts": "Bạn chưa có bài đăng nào",
+  "userHasNoPosts": "{name} chưa có bài đăng nào",
+  "@userHasNoPosts": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "justNow": "Vừa xong",
+  "minutesAgo": "{count}ph",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count}g",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count}ngày",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dateAt": "ngày {date}",
+  "@dateAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noPhotosInFeed": "Chưa có ảnh nào trong feed",
+  "allPhotos": "Tất cả ảnh",
+  "calendarTransactionsTitle": "Lịch giao dịch",
+  "selectMonth": "Chọn tháng",
+  "todayLabel": "Hôm nay",
+  "dayDetailEmpty": "Không có giao dịch trong ngày này",
+  "momentViewerEmpty": "Không có giao dịch để hiển thị",
+  "momentViewerSaveVideo": "Lưu video vào máy",
+  "momentViewerSaveImage": "Lưu ảnh vào máy",
+  "momentViewerDeleteTransaction": "Xoá giao dịch",
+  "momentViewerVideoNoLink": "Video này chưa có link để lưu vào máy",
+  "momentViewerImageNoLink": "Ảnh dạng icon/category không thể lưu trực tiếp vào máy",
+  "momentViewerSaveVideoSuccess": "Đã lưu video vào máy",
+  "momentViewerSaveImageSuccess": "Đã lưu ảnh vào máy",
+  "momentViewerSaveVideoFailed": "Lưu video thất bại",
+  "momentViewerSaveImageFailed": "Lưu ảnh thất bại",
+  "momentViewerCannotSaveVideo": "Không thể lưu video vào máy",
+  "momentViewerCannotSaveImage": "Không thể lưu ảnh vào máy",
+  "momentViewerDeleteConfirmTitle": "Xoá giao dịch",
+  "momentViewerDeleteConfirmMessage": "Bạn có chắc muốn xoá giao dịch này không?",
+  "momentViewerDeleted": "Đã xoá giao dịch",
+  "momentViewerDeleteFailed": "Xoá giao dịch thất bại",
+  "momentViewerUploadTime": "lúc {time} ngày {date}",
+  "@momentViewerUploadTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tabHome": "Trang chủ",
+  "tabStats": "Thống kê",
+  "tabFriends": "Bạn bè",
+  "tabBudget": "Ngân sách",
+  "tabLoading": "Đang tải",
+  "someone": "Người này",
+  "manageCategories": "Danh mục",
+  "categoriesExpenseTab": "Chi tiêu",
+  "categoriesIncomeTab": "Thu nhập",
+  "addCustomCategory": "Thêm danh mục",
+  "categoryNameHint": "Tên danh mục (tiếng Việt)",
+  "categoryTypeLabel": "Loại",
+  "categoryIconLabel": "Biểu tượng",
+  "categoryColorLabel": "Màu",
+  "saveCategory": "Lưu danh mục",
+  "categorySaved": "Đã lưu danh mục",
+  "categoryNameRequired": "Vui lòng nhập tên danh mục",
+  "categoryDuplicate": "Bạn đã có danh mục trùng tên",
+  "categoryReserved": "Tên này dành cho danh mục mặc định của ứng dụng",
+  "categoryNameTooLong": "Tên quá dài (tối đa 50 ký tự)",
+  "categorySaveFailed": "Không thể lưu danh mục",
+  "deleteCategoryTitle": "Xoá danh mục",
+  "deleteCategoryMessage": "Xoá \"{name}\"? Các giao dịch đã lưu vẫn giữ nguyên.",
+  "@deleteCategoryMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteCategoryConfirmAction": "Xoá",
+  "categoryDeleted": "Đã xoá danh mục",
+  "categoryDeleteFailed": "Không thể xoá danh mục",
+  "categoriesExpenseEmpty": "Chưa có danh mục chi tiêu tùy chỉnh. Chạm + để thêm.",
+  "categoriesIncomeEmpty": "Chưa có danh mục thu nhập tùy chỉnh. Chạm + để thêm.",
+  "builtinCategoriesHeading": "Danh mục mặc định (không chỉnh sửa)",
+  "yourCategoriesHeading": "Danh mục của bạn",
+  "editCustomCategory": "Sửa danh mục",
+  "categoryUpdated": "Đã cập nhật danh mục",
+  "categoryUpdateFailed": "Không thể cập nhật danh mục",
+  "categoryNotFound": "Danh mục không còn tồn tại"
+}

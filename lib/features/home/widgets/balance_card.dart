@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../profile/controllers/profile_controller.dart';
 
@@ -65,7 +66,7 @@ class BalanceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Số dư hiện tại',
+              context.l10n.currentBalance,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -87,7 +88,7 @@ class BalanceCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: _InfoTile(
-                    label: 'Tổng thu',
+                    label: context.l10n.totalIncome,
                     value: incomeText,
                     valueColor: AppColors.income,
                     icon: Icons.south_west_rounded,
@@ -96,7 +97,7 @@ class BalanceCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _InfoTile(
-                    label: 'Tổng chi',
+                    label: context.l10n.totalExpense,
                     value: expenseText,
                     valueColor: AppColors.expense,
                     icon: Icons.north_east_rounded,

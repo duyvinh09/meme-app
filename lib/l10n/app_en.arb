@@ -1,0 +1,923 @@
+{
+  "settings": "Settings",
+  "language": "Language",
+  "vietnamese": "Vietnamese",
+  "english": "English",
+  "appearance": "Appearance",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "currency": "Currency",
+  "vnd": "VND",
+  "usd": "USD",
+  "exchangeRateUpdated": "Exchange rate updated: {rate}",
+  "@exchangeRateUpdated": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "updating": "Updating",
+  "update": "Update",
+  "profile": "Profile",
+  "user": "User",
+  "joined": "Joined: {date}",
+  "@joined": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "friends": "{count} Friends",
+  "@friends": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groups": "Groups",
+  "changeEmail": "Change login email",
+  "feedback": "Feedback",
+  "deleteAccount": "Delete account",
+  "logout": "Logout",
+  "deleteAccountQuestion": "Delete account?",
+  "deleteAccountWarning": "This action will delete your account from Meme. You will not be able to log in again with this account.",
+  "deleteAccountNote": "If you only want to leave the app temporarily, choose Logout instead of deleting your account.",
+  "enterCurrentPassword": "Enter current password",
+  "cancel": "Cancel",
+  "pleaseEnterPassword": "Please enter your current password",
+  "accountNotFound": "Current account not found",
+  "deleteAccountError": "Could not delete account. Please check your password or log in again.",
+  "goodMorning": "Good morning",
+  "goodAfternoon": "Good afternoon",
+  "goodEvening": "Good evening",
+  "noTransactionsToday": "You haven't added any transactions today.",
+  "receivedToday": "Received {amount} today",
+  "@receivedToday": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "spentToday": "Spent {amount} today",
+  "@spentToday": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "you": "You",
+  "recentTransactions": "Recent Transactions",
+  "transactionCount": "{count} transactions",
+  "@transactionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noTransactions": "No transactions yet",
+  "addFirstTransaction": "Add your first transaction to start tracking",
+  "login": "Login",
+  "register": "Register",
+  "email": "Email",
+  "password": "Password",
+  "forgotPassword": "Forgot password?",
+  "dontHaveAccount": "Don't have an account? ",
+  "alreadyHaveAccount": "Already have an account? ",
+  "welcomeBack": "Welcome back 👋",
+  "loginSubtitle": "Log in to continue saving photos, notes and your spending.",
+  "appSlogan": "Save spending moments in a funner, more real way.",
+  "pleaseEnterPasswordLogin": "Please enter password",
+  "pleaseEnterName": "Please enter display name",
+  "createNewAccount": "Create new account ✨",
+  "registerSlogan": "Start saving spending moments in a funner, more real way.",
+  "joinMeme": "Join Meme",
+  "registerSubtitle": "Create a profile to manage spending, save photos and connect with friends.",
+  "displayName": "Display name",
+  "username": "Username",
+  "usernameHint": "Use 3-20 characters: lowercase, numbers, . or _",
+  "passwordHint": "Password minimum 6 characters",
+  "currentBalance": "Current Balance",
+  "totalIncome": "Total Income",
+  "totalExpense": "Total Expense",
+  "streak": "Daily Streak",
+  "daysStreak": "{count} days streak",
+  "@daysStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "streakLevel1": "Excellent",
+  "streakLevel2": "Great",
+  "streakLevel3": "Steady",
+  "streakLevel4": "Getting there",
+  "streakLevel5": "Let's start",
+  "personalBudget": "Personal Budget",
+  "budgetTitle": "Personal Budget",
+  "budgetSubtitle": "Create themes and set money goals",
+  "budgetNote": "Default categories like Food, Shopping, Transport will have no limits. Budgets here are personal themes created by you.",
+  "budgetOverview": "Budget Overview",
+  "monthYear": "Month {month} {year}",
+  "@monthYear": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      },
+      "year": {
+        "type": "int"
+      }
+    }
+  },
+  "overLimit": "Over target",
+  "remainingAmount": "Remaining {amount}",
+  "@remainingAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetGoal": "Goal",
+  "usedAmount": "Used",
+  "deleteBudgetQuestion": "Delete budget?",
+  "deleteBudgetWarning": "Are you sure you want to delete the theme \"{name}\"? Previously created transactions will remain, only this budget goal will be deleted.",
+  "@deleteBudgetWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "delete": "Delete",
+  "budgetDeleted": "Deleted \"{name}\"",
+  "@budgetDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noBudgetThemes": "No budget themes",
+  "noBudgetThemesSubtitle": "Create a theme like Picnic, Buy iPad or Travel to set a separate money goal.",
+  "personalThemes": "Personal Themes",
+  "trackSpentVsGoal": "Track spent amount versus goal",
+  "monthly": "Monthly",
+  "daily": "Daily",
+  "weekly": "Weekly",
+  "biweekly": "Bi-weekly",
+  "yearly": "Yearly",
+  "custom": "Custom",
+  "total": "Total",
+  "category": "Category",
+  "allSpending": "All spending",
+  "syncFromCategory": "Sync from category",
+  "budgetNameLabel": "Budget Name",
+  "budgetNameHint": "e.g., Daily spending",
+  "budgetAmountLabel": "Budget Amount",
+  "period": "Period",
+  "budgetType": "Budget Type",
+  "color": "Color",
+  "icon": "Icon",
+  "createBudget": "Create Budget",
+  "addBudget": "Add Budget",
+  "editBudget": "Edit Budget",
+  "cancelLabel": "Cancel",
+  "pleaseEnterBudgetName": "Please enter budget name",
+  "pleaseEnterBudgetAmount": "Please enter budget amount",
+  "budgetAmountPositive": "Budget amount must be greater than 0",
+  "cannotCreateBudget": "Could not create budget: {error}",
+  "@cannotCreateBudget": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetUpdated": "Budget updated",
+  "budgetUnchanged": "No changes to update",
+  "cannotUpdateBudget": "Could not update budget: {error}",
+  "@cannotUpdateBudget": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotDeleteBudget": "Could not delete budget: {error}",
+  "@cannotDeleteBudget": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetAnalysis": "Budget analysis",
+  "deleteBudget": "Delete budget",
+  "loadBudgetError": "Load budget error:\n{error}",
+  "@loadBudgetError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetHistory": "Budget History",
+  "average": "Average",
+  "overBudget": "Over budget",
+  "bestPeriod": "Best period",
+  "worstPeriod": "Worst period",
+  "periodCount": "Period count",
+  "compareOverPeriods": "Compare over periods",
+  "budgetLimitLegend": "Budget limit",
+  "withinBudgetLegend": "Within budget",
+  "overBudgetLegend": "Over budget!",
+  "periodDetail": "Period detail",
+  "currentPeriod": "Current",
+  "remainingLabel": "Remaining: {amount}",
+  "@remainingLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "budgetLimitLabel": "Budget: {amount}",
+  "@budgetLimitLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "overBudgetWarning": "Over budget!",
+  "budgetNamePreview": "Budget Name",
+  "forgotPasswordTitle": "Forgot Password",
+  "forgotPasswordInstruction": "Enter your registered email to receive a password reset link.",
+  "recoveryPassword": "Recover Password",
+  "recoveryPasswordSubtitle": "The system will send you an email to reset your password.",
+  "enterEmail": "Enter email",
+  "recoveryEmailSent": "Password recovery email sent",
+  "couldNotSendRecoveryEmail": "Could not send recovery email",
+  "sendRecoveryEmail": "Send recovery email",
+  "backToLogin": "Back to login",
+  "editProfile": "Edit Profile",
+  "name": "Name",
+  "saveChanges": "Save Changes",
+  "profileUpdated": "Profile updated successfully",
+  "profileUpdateFailed": "Failed to update profile",
+  "changeEmailTitle": "Change login email",
+  "changeEmailSubtitle": "Update the email used to log into your account",
+  "currentEmail": "Current Email",
+  "unknown": "Unknown",
+  "newEmailInfo": "New email information",
+  "newEmail": "New Email",
+  "enterNewEmail": "Enter your new email",
+  "enterPasswordToConfirm": "Enter password to confirm",
+  "changeEmailNotice": "To protect your account, you need to re-enter your current password before changing your login email.",
+  "updateEmail": "Update Email",
+  "invalidEmail": "Invalid new email",
+  "emailSameAsCurrent": "New email is the same as current email",
+  "emailChangedSuccessfully": "Login email changed successfully",
+  "feedbackTitle": "Feedback",
+  "sendFeedback": "Send Feedback",
+  "feedbackSubtitle": "Share your thoughts, suggestions or bug reports to make Meme better.",
+  "yourEmail": "Your email",
+  "emailPrefilledNote": "This email is pre-filled from your account.",
+  "yourFeedback": "Your feedback *",
+  "feedbackHint": "Share ideas, report bugs or suggest new features...",
+  "sending": "Sending...",
+  "invalidEmailGeneric": "Invalid email",
+  "pleaseEnterFeedback": "Please enter your feedback",
+  "feedbackTooLong": "Feedback cannot exceed {count} characters",
+  "@feedbackTooLong": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "feedbackEmailSubject": "Feedback from Meme app",
+  "feedbackEmailBody": "Hello Admin,\n\nYou have just received a new feedback from the Meme app.\n\nSender information:\n- Name: {name}\n- Username: {username}\n- Email: {email}\n\nFeedback content:\n{message}\n\n---\nThis email was automatically generated from the Feedback screen of the Meme app.",
+  "@feedbackEmailBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "username": {
+        "type": "String"
+      },
+      "email": {
+        "type": "String"
+      },
+      "message": {
+        "type": "String"
+      }
+    }
+  },
+  "feedbackSentEmail": "Opened email app to send feedback to admin",
+  "feedbackSaved": "Feedback saved. Email app could not be opened on this device.",
+  "feedbackError": "Could not send feedback: {error}",
+  "@feedbackError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "friendsTitle": "Friends",
+  "friendsSearchHint": "Search friends...",
+  "noFriends": "No friends yet",
+  "noFriendsSubtitle": "Add friends to share spending and join groups.",
+  "addFriend": "Add Friend",
+  "deleteFriendQuestion": "Delete Friend?",
+  "deleteFriendWarning": "Are you sure you want to remove {name} from your friends list?",
+  "@deleteFriendWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteFriendGroupsNote": "This person will still appear in groups you share. To remove them from a group, open that group and edit members or leave the group.",
+  "friendDeleted": "Removed {name} from friends",
+  "@friendDeleted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "addFriendTitle": "Add Friend",
+  "addFriendSearchHint": "Enter username or email...",
+  "noUsersFound": "No users found",
+  "sendFriendRequest": "Add",
+  "requestSent": "Friend request sent to {name}",
+  "@requestSent": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "alreadyFriends": "You are already friends with {name}",
+  "@alreadyFriends": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "requestPending": "Friend request already sent",
+  "friendRequests": "Friend Requests",
+  "friendRequestsReceivedTab": "Received",
+  "friendRequestsSentTab": "Sent",
+  "noFriendRequests": "No pending requests",
+  "noSentFriendRequests": "No sent requests",
+  "noFriendRequestsReceivedSubtitle": "When other Meme users send you friend requests, they will appear here.",
+  "noFriendRequestsSentSubtitle": "Friend requests you sent will appear here.",
+  "sentRequestToUsername": "Request sent to @{username}",
+  "@sentRequestToUsername": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "requestPendingStatus": "Pending",
+  "friendBadgeInvitationSent": "Invitation sent",
+  "friendBadgeAlreadyFriendsLabel": "Friends",
+  "friendRequestCancelled": "Friend request withdrawn",
+  "accept": "Accept",
+  "decline": "Decline",
+  "requestAccepted": "Accepted friend request from {name}",
+  "@requestAccepted": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "requestDeclined": "Declined friend request from {name}",
+  "@requestDeclined": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupsTitle": "Groups",
+  "noGroups": "No groups yet",
+  "noGroupsSubtitle": "Create a group to manage shared spending with friends.",
+  "createGroup": "Create Group",
+  "createVerb": "Create",
+  "membersCount": "{count} members",
+  "@membersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deleteGroupQuestion": "Delete Group?",
+  "deleteGroupWarning": "Are you sure you want to delete group \"{name}\"?",
+  "@deleteGroupWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "contribution": "Contribution",
+  "goal": "Goal",
+  "noGroupTransactions": "No group transactions yet",
+  "addGroupTransaction": "Add Group Transaction",
+  "editGroup": "Edit Group",
+  "leaveGroup": "Leave",
+  "leaveGroupQuestion": "Leave Group?",
+  "leaveGroupWarning": "Are you sure you want to leave \"{name}\"?",
+  "@leaveGroupWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupName": "Group Name",
+  "groupNameHint": "Enter group name",
+  "description": "Description",
+  "descriptionHint": "Enter group description (optional)",
+  "contributionGoal": "Contribution Goal",
+  "contributionGoalHint": "Set a goal amount (optional)",
+  "members": "Members",
+  "addMembers": "Add Members",
+  "selectedCount": "{count} selected",
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupSaved": "Group saved successfully",
+  "groupCreated": "Group created successfully",
+  "currentUserNotFound": "Current user not found",
+  "groupNoMembersToContribute": "Group has no members to contribute",
+  "youAreNotMember": "You are no longer a member of this group",
+  "addContribution": "Add Contribution",
+  "selectMember": "Select Member",
+  "youAreContributingFor": "You are contributing for",
+  "amount": "Amount",
+  "enterValidAmount": "Please enter a valid amount",
+  "canOnlyAddForSelf": "You can only add contribution for yourself",
+  "contributionAdded": "Contribution added",
+  "cannotAddContribution": "Could not add contribution: {error}",
+  "@cannotAddContribution": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "saving": "Saving...",
+  "confirm": "Confirm",
+  "groupNotFound": "Group not found",
+  "group": "Group",
+  "groupDetails": "Group Details",
+  "groupOwner": "Group Owner",
+  "groupColor": "Group Color",
+  "ofAmount": "of {amount}",
+  "@ofAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "reachedPercentage": "Reached {percentage}%",
+  "@reachedPercentage": {
+    "placeholders": {
+      "percentage": {
+        "type": "int"
+      }
+    }
+  },
+  "contributingMembers": "Contributing Members",
+  "noMembersYet": "No members yet",
+  "paidAmount": "Paid {amount}",
+  "@paidAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupOptions": "Group Options",
+  "editGroupSubtitle": "Change name, color, goal or members",
+  "deleteGroup": "Delete",
+  "deleteGroupSubtitle": "Delete this group for all members",
+  "leaveGroupSubtitle": "Leave this group",
+  "deleteGroupConfirmation": "Are you sure you want to delete this group? This action will remove the group for all members.",
+  "leaveGroupConfirmation": "Are you sure you want to leave this group?",
+  "groupDeleted": "Group deleted",
+  "youLeftGroup": "You have left the group",
+  "cannotDeleteGroup": "Could not delete group: {error}",
+  "@cannotDeleteGroup": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotLeaveGroup": "Could not leave group: {error}",
+  "@cannotLeaveGroup": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "ownerMustBeInGroup": "Group owner must always be in the group",
+  "onlyOwnerCanEditGroup": "Only the group owner can edit the group",
+  "groupInfoNotFound": "Group information not found",
+  "pleaseEnterGroupName": "Please enter group name",
+  "groupNameTooLong": "Group name must be at most 50 characters",
+  "pleaseEnterGoalAmount": "Please enter a goal amount",
+  "groupUpdated": "Group updated",
+  "groupUpdateFailedWithError": "Failed to update group: {error}",
+  "@groupUpdateFailedWithError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "noPermissionToEditGroup": "You don't have permission to edit this group",
+  "onlyOwnerCanEditNote": "Only the group owner can change information, invite members, or remove members from the group.",
+  "goalAmount": "Goal Amount",
+  "goalAmountHintExample": "Goal amount, e.g. {example}",
+  "@goalAmountHintExample": {
+    "placeholders": {
+      "example": {
+        "type": "String"
+      }
+    }
+  },
+  "groupMembers": "Group Members",
+  "groupMembersNote": "Select friends to invite to the group. Existing members are kept even if they are no longer friends.",
+  "noMembersOrFriends": "No members or friends to display",
+  "currentMember": "Current member",
+  "notFriendsAnymore": "Not friends anymore",
+  "groupMemberManagementNote": "When adding new members, the group will appear in their account. When unselecting a member, the group will be removed from their group list.",
+  "gettingLocation": "Getting location...",
+  "currentLocationSaved": "Current location saved",
+  "noLocation": "No location",
+  "skipPhoto": "Skip photo",
+  "food": "Food",
+  "shopping": "Shopping",
+  "transport": "Transport",
+  "education": "Education",
+  "other": "Other",
+  "salary": "Salary",
+  "gift": "Gift",
+  "entertainment": "Entertainment",
+  "private": "Private",
+  "everyone": "Everyone",
+  "maxAmountDigits": "Max 10 digits",
+  "addDetails": "Add details",
+  "overBudgetLimitTitle": "Over budget target",
+  "overBudgetLimitWarning": "This transaction will cause the theme \"{name}\" to exceed the target of {limit} by about {over}. Do you still want to save?",
+  "@overBudgetLimitWarning": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "limit": {
+        "type": "String"
+      },
+      "over": {
+        "type": "String"
+      }
+    }
+  },
+  "saveAnyway": "Save anyway",
+  "shareType": "Type: {type}",
+  "@shareType": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "shareCategory": "Category: {category}",
+  "@shareCategory": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "shareAmount": "Amount: {amount}",
+  "@shareAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "shareDetails": "Details: {details}",
+  "@shareDetails": {
+    "placeholders": {
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "sharePrivacy": "Privacy: {privacy}",
+  "@sharePrivacy": {
+    "placeholders": {
+      "privacy": {
+        "type": "String"
+      }
+    }
+  },
+  "cannotShareNow": "Cannot share at this time",
+  "amountLimitExceeded": "Amount exceeds the 10-digit limit",
+  "savedWithOverLimit": "Saved, but theme \"{category}\" has exceeded target.",
+  "@savedWithOverLimit": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "transactionSavedSuccessfully": "Transaction saved successfully",
+  "transactionSaveFailed": "Failed to save transaction",
+  "limitLabel": "Limit",
+  "retake": "Retake",
+  "share": "Share",
+  "statsTitle": "Statistics",
+  "income": "Income",
+  "expense": "Expense",
+  "month": "Month",
+  "year": "Year",
+  "backToThisMonth": "Back to this month",
+  "backToThisYear": "Back to this year",
+  "selectMonthStats": "Select stats month",
+  "current": "Current",
+  "monthLabel": "Month {month}",
+  "@monthLabel": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "shortMonth": "mo {month}",
+  "@shortMonth": {
+    "placeholders": {
+      "month": {
+        "type": "int"
+      }
+    }
+  },
+  "selectYearStats": "Select stats year",
+  "olderYears": "Older years",
+  "newerYears": "Newer years",
+  "totalExpenseLabel": "Total Expense",
+  "totalIncomeLabel": "Total Income",
+  "compareToPreviousMonth": "vs previous month",
+  "compareToPreviousYear": "vs previous year",
+  "expenseByCategoryMonth": "Expense by category this month",
+  "incomeByCategoryMonth": "Income by category this month",
+  "expenseByCategoryYear": "Expense by category this year",
+  "incomeByCategoryYear": "Income by category this year",
+  "noExpenseDataMonth": "No expense data for this month",
+  "noIncomeDataMonth": "No income data for this month",
+  "noExpenseDataYear": "No expense data for this year",
+  "noIncomeDataYear": "No income data for this year",
+  "expenseNoChange": "Your spending hasn't changed from the previous period.",
+  "incomeNoChange": "Your income hasn't changed from the previous period.",
+  "expenseMore": "You spent {percent}% more than the previous period.",
+  "@expenseMore": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "incomeMore": "You received {percent}% more than the previous period.",
+  "@incomeMore": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "expenseLess": "You spent {percent}% less than the previous period.",
+  "@expenseLess": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "incomeLess": "You received {percent}% less than the previous period.",
+  "@incomeLess": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "previousPeriodAmount": "Previous period: {amount}",
+  "@previousPeriodAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "categories": "Categories",
+  "map": "Map",
+  "transactionMap": "Transaction Map",
+  "mapControl": "Map Control",
+  "controlling": "Controlling",
+  "tapToControlMap": "Tap to control map",
+  "tapControllingToDisable": "Tap \"Controlling\" to disable map interaction.",
+  "recentTransactionsOverview": "Recent transactions overview.",
+  "mapEmptyTitle": "No map data yet",
+  "mapEmptySubtitle": "New transactions will appear on the map after location access is granted.",
+  "mapSummary": "{transactions} transactions at {locations} locations",
+  "@mapSummary": {
+    "placeholders": {
+      "transactions": {
+        "type": "int"
+      },
+      "locations": {
+        "type": "int"
+      }
+    }
+  },
+  "mapTransactionsHere": "{count} transactions here",
+  "@mapTransactionsHere": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "expenseDetails": "Expense Details",
+  "incomeDetails": "Income Details",
+  "percentOfTotalExpense": "{percent}% of total expense",
+  "@percentOfTotalExpense": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "percentOfTotalIncome": "{percent}% of total income",
+  "@percentOfTotalIncome": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "noUser": "No user",
+  "loadFeedError": "Load feed error:\n{error}",
+  "@loadFeedError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyFeedFriends": "Friend feed is empty",
+  "emptyFeedFriendsSubtitle": "When you or your friends share transactions in \"Friends\" mode, posts will appear here.",
+  "noPostsYet": "No posts yet",
+  "youHaveNoPosts": "You have no posts yet",
+  "userHasNoPosts": "{name} has no posts yet",
+  "@userHasNoPosts": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "justNow": "Just now",
+  "minutesAgo": "{count}m",
+  "@minutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hoursAgo": "{count}h",
+  "@hoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "daysAgo": "{count}d",
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dateAt": "on {date}",
+  "@dateAt": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "noPhotosInFeed": "No photos in feed yet",
+  "allPhotos": "All photos",
+  "calendarTransactionsTitle": "Transaction Calendar",
+  "selectMonth": "Select month",
+  "todayLabel": "Today",
+  "dayDetailEmpty": "No transactions on this day",
+  "momentViewerEmpty": "No transactions to display",
+  "momentViewerSaveVideo": "Save video to device",
+  "momentViewerSaveImage": "Save image to device",
+  "momentViewerDeleteTransaction": "Delete transaction",
+  "momentViewerVideoNoLink": "This video has no link to save",
+  "momentViewerImageNoLink": "Icon/category images cannot be saved directly",
+  "momentViewerSaveVideoSuccess": "Saved video to device",
+  "momentViewerSaveImageSuccess": "Saved image to device",
+  "momentViewerSaveVideoFailed": "Failed to save video",
+  "momentViewerSaveImageFailed": "Failed to save image",
+  "momentViewerCannotSaveVideo": "Cannot save video to device",
+  "momentViewerCannotSaveImage": "Cannot save image to device",
+  "momentViewerDeleteConfirmTitle": "Delete transaction",
+  "momentViewerDeleteConfirmMessage": "Are you sure you want to delete this transaction?",
+  "momentViewerDeleted": "Transaction deleted",
+  "momentViewerDeleteFailed": "Failed to delete transaction",
+  "momentViewerUploadTime": "at {time} on {date}",
+  "@momentViewerUploadTime": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "tabHome": "Home",
+  "tabStats": "Stats",
+  "tabFriends": "Friends",
+  "tabBudget": "Budget",
+  "tabLoading": "Loading",
+  "someone": "This person",
+  "manageCategories": "Categories",
+  "categoriesExpenseTab": "Expense",
+  "categoriesIncomeTab": "Income",
+  "addCustomCategory": "New category",
+  "categoryNameHint": "Name (English)",
+  "categoryTypeLabel": "Type",
+  "categoryIconLabel": "Icon",
+  "categoryColorLabel": "Color",
+  "saveCategory": "Save category",
+  "categorySaved": "Category saved",
+  "categoryNameRequired": "Please enter a category name",
+  "categoryDuplicate": "You already have a category with this name",
+  "categoryReserved": "This name is reserved for a built-in category",
+  "categoryNameTooLong": "Name is too long (max 50 characters)",
+  "categorySaveFailed": "Could not save category",
+  "deleteCategoryTitle": "Delete category",
+  "deleteCategoryMessage": "Remove \"{name}\"? Existing transactions are not deleted.",
+  "@deleteCategoryMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "deleteCategoryConfirmAction": "Delete",
+  "categoryDeleted": "Category deleted",
+  "categoryDeleteFailed": "Could not delete category",
+  "categoriesExpenseEmpty": "No custom expense categories yet. Tap + to add one.",
+  "categoriesIncomeEmpty": "No custom income categories yet. Tap + to add one.",
+  "builtinCategoriesHeading": "App defaults (read-only)",
+  "yourCategoriesHeading": "Your categories",
+  "editCustomCategory": "Edit category",
+  "categoryUpdated": "Category updated",
+  "categoryUpdateFailed": "Could not update category",
+  "categoryNotFound": "Category no longer exists"
+}

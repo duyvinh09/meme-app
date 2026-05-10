@@ -6,23 +6,60 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/widgets/custom_button.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/profile_controller.dart';
 
-class EditProfileScreen extends StatefulWidget {
+class EditProfileScreen extends StatelessWidget {
   const EditProfileScreen({super.key});
 
   @override
-  State<EditProfileScreen> createState() => _EditProfileScreenState();
+  Widget build(BuildContext context) {
+    return const _EditProfileScreenBody();
+  }
 }
 
-class _EditProfileScreenState extends State<EditProfileScreen> {
+class _EditProfileScreenBody extends StatefulWidget {
+  const _EditProfileScreenBody();
+
+  @override
+  State<_EditProfileScreenBody> createState() => _EditProfileScreenBodyState();
+}
+
+class _EditProfileScreenBodyState extends State<_EditProfileScreenBody> {
   final nameController = TextEditingController();
 
   File? selectedAvatar;
   bool didFillName = false;
+
+  /// Trailing/leading spaces ignored when comparing drafts to baseline.
+  String _baselineNameTrimmed = '';
+
+  bool _hasProfileDraftChanges() {
+    final draft = nameController.text.trim();
+    return draft != _baselineNameTrimmed || selectedAvatar != null;
+  }
+
+  bool _canSaveDraft(ProfileController profile) {
+    if (profile.isSaving) return false;
+    final draft = nameController.text.trim();
+    if (draft.isEmpty) return false;
+    return _hasProfileDraftChanges();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    nameController.addListener(_onNameChanged);
+  }
+
+  void _onNameChanged() {
+    setState(() {});
+  }
 
   @override
   void didChangeDependencies() {
@@ -31,12 +68,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (didFillName) return;
 
     final profile = context.read<ProfileController>();
-    nameController.text = profile.user?.name ?? '';
+    final raw = profile.user?.name ?? '';
+    _baselineNameTrimmed = raw.trim();
+    nameController.text = raw;
     didFillName = true;
   }
 
   @override
   void dispose() {
+    nameController.removeListener(_onNameChanged);
     nameController.dispose();
     super.dispose();
   }
@@ -59,6 +99,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Future<void> _saveProfile() async {
     final profile = context.read<ProfileController>();
     final auth = context.read<AuthController>();
+    final l10n = context.l10n;
     final uid = auth.user?.uid;
 
     if (uid == null || profile.isSaving) return;
@@ -67,8 +108,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tên hiển thị'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.pleaseEnterName),
         ),
       );
       return;
@@ -84,8 +126,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: AppDurations.snackBar,
         content: Text(
-          ok ? 'Cập nhật hồ sơ thành công' : 'Cập nhật hồ sơ thất bại',
+          ok ? l10n.profileUpdated : l10n.profileUpdateFailed,
         ),
       ),
     );
@@ -98,6 +141,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileController>();
+    final l10n = context.l10n;
 
     final currentAvatar = profile.user?.avatarUrl ?? '';
 
@@ -130,7 +174,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 34),
 
             Text(
-              'Tên',
+              l10n.name,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -141,48 +185,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
             _NameInput(
               controller: nameController,
+              hintText: l10n.displayName,
             ),
 
             const SizedBox(height: 26),
 
-            SizedBox(
+            CustomButton(
               height: 64,
-              child: ElevatedButton(
-                onPressed: profile.isSaving ? null : _saveProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  disabledBackgroundColor: AppColors.primaryBlue.withOpacity(
-                    0.45,
-                  ),
-                  foregroundColor: Colors.white,
-                  disabledForegroundColor: Colors.white.withOpacity(0.82),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(22),
-                  ),
-                  elevation: 0,
-                ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: profile.isSaving
-                      ? const SizedBox(
-                    key: ValueKey('saving'),
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.4,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text(
-                    key: ValueKey('save_text'),
-                    'Lưu thay đổi',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
+              borderRadius: 22,
+              text: l10n.saveChanges,
+              isLoading: profile.isSaving,
+              onPressedAsync:
+                  _canSaveDraft(profile) ? _saveProfile : null,
             ),
           ],
         ),
@@ -202,6 +216,8 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Row(
       children: [
         InkWell(
@@ -223,7 +239,7 @@ class _TopBar extends StatelessWidget {
                 ),
               ),
               child: Text(
-                'Huỷ',
+                l10n.cancel,
                 style: AppTextStyles.bodySecondary(context).copyWith(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -234,7 +250,7 @@ class _TopBar extends StatelessWidget {
         ),
         const Spacer(),
         Text(
-          'Sửa',
+          l10n.editProfile,
           style: AppTextStyles.pageTitle(context).copyWith(
             fontSize: 24,
           ),
@@ -286,7 +302,7 @@ class _AvatarPicker extends StatelessWidget {
               currentAvatar,
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) {
-                return _AvatarFallbackIcon();
+                return const _AvatarFallbackIcon();
               },
             )
                 : const _AvatarFallbackIcon(),
@@ -306,8 +322,8 @@ class _AvatarPicker extends StatelessWidget {
                 color: AppColors.primaryBlue,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white.withOpacity(
-                    AppColors.isDark(context) ? 0.16 : 0.90,
+                  color: Colors.white.withValues(
+                    alpha: AppColors.isDark(context) ? 0.16 : 0.90,
                   ),
                   width: 2.5,
                 ),
@@ -340,9 +356,11 @@ class _AvatarFallbackIcon extends StatelessWidget {
 
 class _NameInput extends StatelessWidget {
   final TextEditingController controller;
+  final String hintText;
 
   const _NameInput({
     required this.controller,
+    required this.hintText,
   });
 
   @override
@@ -360,7 +378,7 @@ class _NameInput extends StatelessWidget {
       ),
       decoration: InputDecoration(
         counterText: '',
-        hintText: 'Tên hiển thị',
+        hintText: hintText,
         hintStyle: AppTextStyles.bodySecondary(context).copyWith(
           fontSize: 18,
           fontWeight: FontWeight.w500,

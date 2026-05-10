@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
@@ -18,6 +19,8 @@ import 'data/repositories/auth_repository.dart';
 import 'data/repositories/user_repository.dart';
 import 'data/repositories/transaction_repository.dart';
 import 'data/repositories/budget_repository.dart';
+import 'data/repositories/user_category_repository.dart';
+import 'features/profile/controllers/user_category_controller.dart';
 import 'features/feed/controllers/feed_controller.dart';
 import 'core/services/exchange_rate_service.dart';
 import 'core/theme/app_scroll_behavior.dart';
@@ -48,6 +51,7 @@ class MyApp extends StatelessWidget {
         Provider(create: (_) => UserRepository()),
         Provider(create: (_) => TransactionRepository()),
         Provider(create: (_) => BudgetRepository()),
+        Provider(create: (_) => UserCategoryRepository()),
         ChangeNotifierProvider(
           create: (context) => AuthController(
             authRepository: context.read<AuthRepository>(),
@@ -89,8 +93,8 @@ class MyApp extends StatelessWidget {
           ),
         ),
         ChangeNotifierProvider(
-          create: (_) => BudgetController(
-            budgetRepository: BudgetRepository(),
+          create: (context) => UserCategoryController(
+            repository: context.read<UserCategoryRepository>(),
           ),
         ),
       ],
@@ -104,8 +108,9 @@ class MyApp extends StatelessWidget {
             darkTheme: AppTheme.darkTheme,
             themeMode: profile.themeMode,
             locale: Locale(profile.languageCode),
-            supportedLocales: const [Locale('vi'), Locale('en')],
+            supportedLocales: AppLocalizations.supportedLocales,
             localizationsDelegates: const [
+              AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,

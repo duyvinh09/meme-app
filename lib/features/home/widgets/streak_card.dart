@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 
 class StreakCard extends StatelessWidget {
   final int streak;
@@ -16,12 +17,12 @@ class StreakCard extends StatelessWidget {
 
   bool get canStart => streak < 3;
 
-  String get badgeText {
-    if (streak >= 30) return 'Cực đỉnh';
-    if (streak >= 14) return 'Ổn áp';
-    if (streak >= 7) return 'Đều đặn';
-    if (streak >= 3) return 'Đang lên mood';
-    return 'Bắt đầu thôi';
+  String badgeText(BuildContext context) {
+    if (streak >= 30) return context.l10n.streakLevel1;
+    if (streak >= 14) return context.l10n.streakLevel2;
+    if (streak >= 7) return context.l10n.streakLevel3;
+    if (streak >= 3) return context.l10n.streakLevel4;
+    return context.l10n.streakLevel5;
   }
 
   Color get fireColor {
@@ -49,7 +50,7 @@ class StreakCard extends StatelessWidget {
         : fireColor.withOpacity(0.18);
 
     final badge = _StartBadge(
-      text: badgeText,
+      text: badgeText(context),
       isClickable: canStart && onStartTap != null,
       onTap: canStart ? onStartTap : null,
       accentColor: fireColor,
@@ -102,14 +103,14 @@ class StreakCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Chuỗi duy trì',
+                    context.l10n.streak,
                     style: AppTextStyles.cardTitle(context).copyWith(
                       fontSize: 17,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '$streak ngày liên tiếp',
+                    context.l10n.daysStreak(streak),
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w800,

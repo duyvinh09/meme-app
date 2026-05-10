@@ -8,6 +8,7 @@ import '../../../core/routes/route_names.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../controllers/auth_controller.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
 
   String? localError;
+  bool _primaryAuthBusy = false;
 
   @override
   void dispose() {
@@ -46,9 +48,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       localError = null;
     });
 
+    final l10n = context.l10n;
     final nameError = AppValidators.requiredText(
       name,
-      message: 'Vui lòng nhập tên hiển thị',
+      message: l10n.pleaseEnterName,
     );
     if (nameError != null) {
       setState(() => localError = nameError);
@@ -91,8 +94,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final auth = context.watch<AuthController>();
     final errorText = localError ?? auth.error;
+    final authBusy = auth.isLoading || _primaryAuthBusy;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -113,14 +118,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 18),
 
                 Text(
-                  'Tạo tài khoản mới ✨',
+                  l10n.createNewAccount,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.pageTitle(context),
                 ),
                 const SizedBox(height: 8),
 
                 Text(
-                  'Bắt đầu lưu khoảnh khắc chi tiêu theo cách vui hơn, thật hơn.',
+                  l10n.registerSlogan,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySecondary(context),
                 ),
@@ -131,7 +136,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Tham gia Meme',
+                        l10n.joinMeme,
                         style: AppTextStyles.pageTitle(context).copyWith(
                           fontSize: 24,
                         ),
@@ -139,14 +144,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 8),
 
                       Text(
-                        'Tạo hồ sơ để quản lý chi tiêu, lưu ảnh và kết nối với bạn bè.',
+                        l10n.registerSubtitle,
                         style: AppTextStyles.bodySecondary(context),
                       ),
                       const SizedBox(height: 20),
 
                       CustomTextField(
                         controller: nameController,
-                        hintText: 'Tên hiển thị',
+                        hintText: l10n.displayName,
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.badge_outlined,
                       ),
@@ -154,7 +159,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       CustomTextField(
                         controller: usernameController,
-                        hintText: 'Username',
+                        hintText: l10n.username,
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.alternate_email_rounded,
                       ),
@@ -163,7 +168,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Dùng 3-20 ký tự: chữ thường, số, dấu . hoặc _',
+                          l10n.usernameHint,
                           style: AppTextStyles.caption(context),
                         ),
                       ),
@@ -171,7 +176,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       CustomTextField(
                         controller: emailController,
-                        hintText: 'Email',
+                        hintText: l10n.email,
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                         prefixIcon: Icons.email_outlined,
@@ -180,7 +185,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       CustomTextField(
                         controller: passwordController,
-                        hintText: 'Mật khẩu',
+                        hintText: l10n.password,
                         obscureText: true,
                         textInputAction: TextInputAction.done,
                         prefixIcon: Icons.lock_outline_rounded,
@@ -190,7 +195,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Mật khẩu tối thiểu 6 ký tự',
+                          l10n.passwordHint,
                           style: AppTextStyles.caption(context),
                         ),
                       ),
@@ -202,15 +207,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
 
                       CustomButton(
-                        text: 'Đăng ký',
+                        text: l10n.register,
                         isLoading: auth.isLoading,
-                        onPressed: () => _register(auth),
+                        onPressedAsync: () => _register(auth),
+                        onBusyChanged: (busy) =>
+                            setState(() => _primaryAuthBusy = busy),
                       ),
                       const SizedBox(height: 14),
 
                       Center(
                         child: TextButton(
-                          onPressed: auth.isLoading
+                          onPressed: authBusy
                               ? null
                               : () {
                             Navigator.pop(context);
@@ -218,11 +225,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: RichText(
                             text: TextSpan(
                               style: AppTextStyles.bodySecondary(context),
-                              children: const [
-                                TextSpan(text: 'Đã có tài khoản? '),
+                              children: [
+                                TextSpan(text: l10n.alreadyHaveAccount),
                                 TextSpan(
-                                  text: 'Đăng nhập',
-                                  style: TextStyle(
+                                  text: l10n.login,
+                                  style: const TextStyle(
                                     color: AppColors.primaryBlue,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -260,8 +267,8 @@ class _AuthLogo extends StatelessWidget {
         shape: BoxShape.circle,
         color: AppColors.primaryBlue,
         border: Border.all(
-          color: Colors.white.withOpacity(
-            AppColors.isDark(context) ? 0.14 : 0.92,
+          color: Colors.white.withValues(
+            alpha: AppColors.isDark(context) ? 0.14 : 0.92,
           ),
           width: 3,
         ),
@@ -295,8 +302,8 @@ class _AuthCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              AppColors.isDark(context) ? 0.16 : 0.05,
+            color: Colors.black.withValues(
+              alpha: AppColors.isDark(context) ? 0.16 : 0.05,
             ),
             blurRadius: 18,
             offset: const Offset(0, 6),
@@ -328,10 +335,10 @@ class _AuthErrorBox extends StatelessWidget {
         vertical: 12,
       ),
       decoration: BoxDecoration(
-        color: AppColors.expense.withOpacity(0.12),
+        color: AppColors.expense.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.expense.withOpacity(0.22),
+          color: AppColors.expense.withValues(alpha: 0.22),
         ),
       ),
       child: Row(

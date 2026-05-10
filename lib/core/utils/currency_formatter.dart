@@ -52,6 +52,34 @@ class AppCurrencyFormatter {
     }
   }
 
+  /// After formatting, counts only ASCII digits `0–9`. If count exceeds [maxDigits],
+  /// trims before the excess digit(s), strips a dangling thousands/decimal delimiter,
+  /// then appends `'...'`.
+  static String truncateFormattedMoneyDigits(String formatted, int maxDigits) {
+    if (maxDigits <= 0 || formatted.isEmpty) return formatted;
+
+    var digitCount = 0;
+    var cutBeforeIndex = formatted.length;
+
+    for (var i = 0; i < formatted.length; i++) {
+      final cu = formatted.codeUnitAt(i);
+      final isAsciiDigit = cu >= 0x30 && cu <= 0x39;
+      if (!isAsciiDigit) continue;
+
+      digitCount++;
+      if (digitCount > maxDigits) {
+        cutBeforeIndex = i;
+        break;
+      }
+    }
+
+    if (digitCount <= maxDigits) return formatted;
+
+    var prefix = formatted.substring(0, cutBeforeIndex);
+    prefix = prefix.replaceAll(RegExp(r'[\s.,\u00a0]+$'), '');
+    return '$prefix...';
+  }
+
   static String formatFromVnd({
     required double amountVnd,
     required String? currency,
@@ -92,6 +120,6 @@ class AppCurrencyFormatter {
       currentUsdToVndRate().round(),
     );
 
-    return '1 USD ≈ ${rate}₫';
+    return '1 USD ≈ $rate₫';
   }
 }

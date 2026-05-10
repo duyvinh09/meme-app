@@ -4,6 +4,7 @@ class BudgetModel {
   final String id;
   final String userId;
   final String name;
+  final String? nameEn;
   final int iconCodePoint;
   final String colorHex;
   final double limitAmount;
@@ -17,6 +18,7 @@ class BudgetModel {
     required this.id,
     required this.userId,
     required this.name,
+    this.nameEn,
     required this.iconCodePoint,
     required this.colorHex,
     required this.limitAmount,
@@ -49,6 +51,7 @@ class BudgetModel {
       id: id,
       userId: (map['userId'] ?? '').toString(),
       name: (map['name'] ?? map['category'] ?? '').toString(),
+      nameEn: map['nameEn']?.toString(),
       iconCodePoint: map['iconCodePoint'] is num
           ? (map['iconCodePoint'] as num).toInt()
           : 0xe57f,
@@ -73,6 +76,7 @@ class BudgetModel {
       'id': id,
       'userId': userId,
       'name': name,
+      'nameEn': nameEn,
       'iconCodePoint': iconCodePoint,
       'colorHex': colorHex,
       'limitAmount': limitAmount,

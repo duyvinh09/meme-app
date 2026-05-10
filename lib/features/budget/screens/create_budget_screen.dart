@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -28,13 +30,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
   Color selectedColor = AppColors.primaryBlue;
   IconData selectedIcon = Icons.account_balance_wallet_rounded;
 
-  final List<_PeriodOption> periodOptions = const [
-    _PeriodOption('daily', 'Hằng ngày', Icons.wb_sunny_outlined),
-    _PeriodOption('weekly', 'Hằng tuần', Icons.calendar_view_week_outlined),
-    _PeriodOption('biweekly', '2 tuần/lần', Icons.date_range_outlined),
-    _PeriodOption('monthly', 'Hằng tháng', Icons.calendar_month_outlined),
-    _PeriodOption('yearly', 'Hằng năm', Icons.event_note_outlined),
-    _PeriodOption('custom', 'Tuỳ chỉnh', Icons.edit_calendar_outlined),
+  List<_PeriodOption> get periodOptions => [
+    _PeriodOption('daily', context.l10n.daily, Icons.wb_sunny_outlined),
+    _PeriodOption('weekly', context.l10n.weekly, Icons.calendar_view_week_outlined),
+    _PeriodOption('biweekly', context.l10n.biweekly, Icons.date_range_outlined),
+    _PeriodOption('monthly', context.l10n.monthly, Icons.calendar_month_outlined),
+    _PeriodOption('yearly', context.l10n.yearly, Icons.event_note_outlined),
+    _PeriodOption('custom', context.l10n.custom, Icons.edit_calendar_outlined),
   ];
 
   final List<Color> colorOptions = const [
@@ -77,7 +79,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
   String get displayName {
     final text = nameController.text.trim();
-    return text.isEmpty ? 'Tên ngân sách' : text;
+    return text.isEmpty ? context.l10n.budgetNamePreview : text;
   }
 
   double _parseMoneyInput({
@@ -121,24 +123,24 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
   String get displayPeriodText {
     switch (period) {
       case 'daily':
-        return 'Hằng ngày';
+        return context.l10n.daily;
       case 'weekly':
-        return 'Hằng tuần';
+        return context.l10n.weekly;
       case 'biweekly':
-        return '2 tuần/lần';
+        return context.l10n.biweekly;
       case 'monthly':
-        return 'Hằng tháng';
+        return context.l10n.monthly;
       case 'yearly':
-        return 'Hằng năm';
+        return context.l10n.yearly;
       case 'custom':
-        return 'Tuỳ chỉnh';
+        return context.l10n.custom;
       default:
-        return 'Hằng tháng';
+        return context.l10n.monthly;
     }
   }
 
   String get displayTypeText {
-    return budgetType == 'total' ? 'Tổng' : 'Danh mục';
+    return budgetType == 'total' ? context.l10n.total : context.l10n.category;
   }
 
   Future<void> _createBudget() async {
@@ -149,12 +151,12 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
     final rawAmount = amountController.text.trim();
 
     if (rawName.isEmpty) {
-      _showSnack('Vui lòng nhập tên ngân sách');
+      _showSnack(context.l10n.pleaseEnterBudgetName);
       return;
     }
 
     if (rawAmount.isEmpty) {
-      _showSnack('Vui lòng nhập số tiền ngân sách');
+      _showSnack(context.l10n.pleaseEnterBudgetAmount);
       return;
     }
 
@@ -167,7 +169,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
     );
 
     if (inputAmount <= 0) {
-      _showSnack('Số tiền ngân sách phải lớn hơn 0');
+      _showSnack(context.l10n.budgetAmountPositive);
       return;
     }
 
@@ -186,12 +188,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
         limitAmount: amount,
         period: period,
         budgetType: budgetType,
+        inputLocaleIsEnglish:
+            Localizations.localeOf(context).languageCode == 'en',
       );
 
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
-      _showSnack('Không thể tạo ngân sách: $e');
+      _showSnack(context.l10n.cannotCreateBudget(e.toString()));
     }
   }
 
@@ -200,6 +204,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: AppDurations.snackBar,
         content: Text(message),
       ),
     );
@@ -238,11 +243,11 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
             const SizedBox(height: 22),
 
-            const _SectionTitle(title: 'Tên ngân sách'),
+            _SectionTitle(title: context.l10n.budgetNameLabel),
             const SizedBox(height: 8),
             CustomTextField(
               controller: nameController,
-              hintText: 'VD: Chi tiêu hằng ngày',
+              hintText: context.l10n.budgetNameHint,
               textInputAction: TextInputAction.next,
               prefixIcon: Icons.drive_file_rename_outline_rounded,
               onChanged: (_) => setState(() {}),
@@ -250,7 +255,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
             const SizedBox(height: 18),
 
-            const _SectionTitle(title: 'Số tiền ngân sách'),
+            _SectionTitle(title: context.l10n.budgetAmountLabel),
             const SizedBox(height: 8),
             _AmountField(
               controller: amountController,
@@ -260,7 +265,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
             const SizedBox(height: 20),
 
-            const _SectionTitle(title: 'Chu kỳ'),
+            _SectionTitle(title: context.l10n.period),
             const SizedBox(height: 10),
             _PeriodGrid(
               periodOptions: periodOptions,
@@ -275,14 +280,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
             const SizedBox(height: 20),
 
-            const _SectionTitle(title: 'Loại ngân sách'),
+            _SectionTitle(title: context.l10n.budgetType),
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
                   child: _BudgetTypeCard(
-                    title: 'Tổng',
-                    subtitle: 'Tất cả chi tiêu',
+                    title: context.l10n.total,
+                    subtitle: context.l10n.allSpending,
                     icon: Icons.language_rounded,
                     selected: budgetType == 'total',
                     selectedColor: selectedColor,
@@ -296,8 +301,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: _BudgetTypeCard(
-                    title: 'Danh mục',
-                    subtitle: 'Đồng bộ từ danh mục',
+                    title: context.l10n.category,
+                    subtitle: context.l10n.syncFromCategory,
                     icon: Icons.folder_rounded,
                     selected: budgetType == 'category',
                     selectedColor: selectedColor,
@@ -313,7 +318,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
             const SizedBox(height: 20),
 
-            const _SectionTitle(title: 'Màu'),
+            _SectionTitle(title: context.l10n.color),
             const SizedBox(height: 10),
             Wrap(
               spacing: 12,
@@ -341,7 +346,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                       boxShadow: selected
                           ? [
                         BoxShadow(
-                          color: color.withOpacity(0.20),
+                          color: color.withValues(alpha: 0.20),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -352,7 +357,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                         ? const Icon(
                       Icons.check_rounded,
                       color: Colors.white,
-                      size: 22,
+                       size: 22,
                     )
                         : null,
                   ),
@@ -362,7 +367,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
             const SizedBox(height: 22),
 
-            const _SectionTitle(title: 'Biểu tượng'),
+            _SectionTitle(title: context.l10n.icon),
             const SizedBox(height: 10),
             Wrap(
               spacing: 12,
@@ -402,9 +407,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
             const SizedBox(height: 24),
 
             CustomButton(
-              text: 'Tạo ngân sách',
-              onPressed: canSubmit ? _createBudget : null,
+              text: context.l10n.createBudget,
+              onPressedAsync: canSubmit ? _createBudget : null,
               backgroundColor: selectedColor,
+              foregroundColor: AppColors.foregroundOnAccent(selectedColor),
               height: 54,
               borderRadius: 18,
             ),
@@ -441,7 +447,7 @@ class _TopBar extends StatelessWidget {
               ),
             ),
             child: Text(
-              'Huỷ',
+              context.l10n.cancelLabel,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
@@ -451,7 +457,7 @@ class _TopBar extends StatelessWidget {
         ),
         const Spacer(),
         Text(
-          'Thêm ngân sách',
+          context.l10n.addBudget,
           style: AppTextStyles.pageTitle(context).copyWith(
             fontSize: 21,
             fontWeight: FontWeight.w900,
@@ -493,7 +499,7 @@ class _PreviewBudgetCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(AppColors.isDark(context) ? 0.10 : 0.06),
+            color: color.withValues(alpha: AppColors.isDark(context) ? 0.10 : 0.06),
             blurRadius: 14,
             offset: const Offset(0, 5),
           ),
@@ -506,7 +512,7 @@ class _PreviewBudgetCard extends StatelessWidget {
             height: 62,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: color.withOpacity(0.16),
+              color: color.withValues(alpha: 0.16),
             ),
             child: Icon(
               icon,
@@ -610,7 +616,7 @@ class _AmountField extends StatelessWidget {
       decoration: InputDecoration(
         hintText: AppCurrencyFormatter.formatInputHint(currency),
         hintStyle: TextStyle(
-          color: AppColors.textSecondary(context).withOpacity(0.50),
+          color: AppColors.textSecondary(context).withValues(alpha: 0.50),
           fontSize: 38,
           fontWeight: FontWeight.w900,
         ),
@@ -775,7 +781,7 @@ class _BudgetTypeCard extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: selected
-                    ? Colors.white.withOpacity(0.88)
+                    ? Colors.white.withValues(alpha: 0.88)
                     : AppColors.textSecondary(context),
                 fontSize: 11.5,
                 fontWeight: FontWeight.w600,

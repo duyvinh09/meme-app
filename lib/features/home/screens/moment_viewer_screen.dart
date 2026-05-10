@@ -7,8 +7,11 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
@@ -87,15 +90,21 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
     switch (tx.category) {
       case 'Ăn uống':
+      case 'Food':
       case 'Lương':
+      case 'Salary':
         return AppColors.income;
       case 'Mua sắm':
+      case 'Shopping':
         return AppColors.primaryPink;
       case 'Đi lại':
+      case 'Transport':
         return AppColors.primaryBlue;
       case 'Giải trí':
+      case 'Entertainment':
         return AppColors.warning;
       case 'Học tập':
+      case 'Education':
         return AppColors.primaryPurple;
       default:
         return AppColors.textSecondary(context);
@@ -115,10 +124,15 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   }
 
   String _formatUploadTime(DateTime date) {
-    return 'lúc ${DateFormat('H:mm', 'vi_VN').format(date)} ngày ${date.day} tháng ${date.month}, ${date.year}';
+    final locale = Localizations.localeOf(context).toString();
+    final l10n = context.l10n;
+    final time = DateFormat.Hm(locale).format(date);
+    final day = DateFormat.yMMMd(locale).format(date);
+    return l10n.momentViewerUploadTime(time, day);
   }
 
   Future<void> _showMoreMenu(TransactionModel tx) async {
+    final l10n = context.l10n;
     final result = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: AppColors.card(context),
@@ -145,13 +159,15 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                 const SizedBox(height: 16),
                 _BottomSheetActionTile(
                   icon: Icons.download_rounded,
-                  title: tx.isVideo ? 'Lưu video vào máy' : 'Lưu ảnh vào máy',
+                  title: tx.isVideo
+                      ? l10n.momentViewerSaveVideo
+                      : l10n.momentViewerSaveImage,
                   color: AppColors.textPrimary(context),
                   onTap: () => Navigator.pop(sheetContext, 'save'),
                 ),
                 _BottomSheetActionTile(
                   icon: Icons.delete_outline_rounded,
-                  title: 'Xoá giao dịch',
+                  title: l10n.momentViewerDeleteTransaction,
                   color: AppColors.expense,
                   onTap: () => Navigator.pop(sheetContext, 'delete'),
                 ),
@@ -172,15 +188,17 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   }
 
   Future<void> _saveMediaToGallery(TransactionModel tx) async {
+    final l10n = context.l10n;
     final mediaUrl = tx.isVideo ? tx.playableVideoUrl : tx.displayImageUrl;
 
     if (mediaUrl.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          duration: AppDurations.snackBar,
           content: Text(
             tx.isVideo
-                ? 'Video này chưa có link để lưu vào máy'
-                : 'Ảnh dạng icon/category không thể lưu trực tiếp vào máy',
+                ? l10n.momentViewerVideoNoLink
+                : l10n.momentViewerImageNoLink,
           ),
         ),
       );
@@ -200,10 +218,15 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          duration: AppDurations.snackBar,
           content: Text(
             ok == true
-                ? (tx.isVideo ? 'Đã lưu video vào máy' : 'Đã lưu ảnh vào máy')
-                : (tx.isVideo ? 'Lưu video thất bại' : 'Lưu ảnh thất bại'),
+                ? (tx.isVideo
+                    ? l10n.momentViewerSaveVideoSuccess
+                    : l10n.momentViewerSaveImageSuccess)
+                : (tx.isVideo
+                    ? l10n.momentViewerSaveVideoFailed
+                    : l10n.momentViewerSaveImageFailed),
           ),
         ),
       );
@@ -214,8 +237,11 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          duration: AppDurations.snackBar,
           content: Text(
-            tx.isVideo ? 'Không thể lưu video vào máy' : 'Không thể lưu ảnh vào máy',
+            tx.isVideo
+                ? l10n.momentViewerCannotSaveVideo
+                : l10n.momentViewerCannotSaveImage,
           ),
         ),
       );
@@ -229,21 +255,22 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   }
 
   Future<void> _deleteTransaction(TransactionModel tx) async {
+    final l10n = context.l10n;
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Xoá giao dịch'),
-          content: const Text('Bạn có chắc muốn xoá giao dịch này không?'),
+          title: Text(l10n.momentViewerDeleteConfirmTitle),
+          content: Text(l10n.momentViewerDeleteConfirmMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Huỷ'),
+              child: Text(l10n.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text(
-                'Xoá',
+              child: Text(
+                l10n.delete,
                 style: TextStyle(
                   color: AppColors.expense,
                 ),
@@ -267,8 +294,9 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
       context.read<FeedController>().removeDeletedTransaction(tx.id);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã xoá giao dịch'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.momentViewerDeleted),
         ),
       );
 
@@ -277,8 +305,9 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Xoá giao dịch thất bại'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.momentViewerDeleteFailed),
         ),
       );
     }
@@ -292,7 +321,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
         body: SafeArea(
           child: Center(
             child: Text(
-              'Không có giao dịch để hiển thị',
+              context.l10n.momentViewerEmpty,
               style: AppTextStyles.bodySecondary(context),
             ),
           ),
@@ -493,6 +522,38 @@ class _MomentMediaCard extends StatelessWidget {
     required this.overlayCardBg,
   });
 
+  String _localizedCategoryLabel(BuildContext context, String category) {
+    final l10n = context.l10n;
+    switch (category.trim()) {
+      case 'Ăn uống':
+      case 'Food':
+        return l10n.food;
+      case 'Lương':
+      case 'Salary':
+        return l10n.salary;
+      case 'Mua sắm':
+      case 'Shopping':
+        return l10n.shopping;
+      case 'Đi lại':
+      case 'Transport':
+        return l10n.transport;
+      case 'Giải trí':
+      case 'Entertainment':
+        return l10n.entertainment;
+      case 'Học tập':
+      case 'Education':
+        return l10n.education;
+      case 'Quà tặng':
+      case 'Gift':
+        return l10n.gift;
+      case 'Khác':
+      case 'Other':
+        return l10n.other;
+      default:
+        return BudgetNameLocalizer.display(context, category);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
@@ -566,7 +627,7 @@ class _MomentMediaCard extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    transaction.category,
+                    _localizedCategoryLabel(context, transaction.category),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,

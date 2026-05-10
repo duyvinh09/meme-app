@@ -22,4 +22,6 @@ class RouteNames {
   static const friendRequests = '/friend-requests';
 
   static const feed = '/feed';
+
+  static const manageCategories = '/manage-categories';
 }

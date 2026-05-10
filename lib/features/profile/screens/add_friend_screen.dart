@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/widgets/async_filled_button.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 
@@ -27,9 +30,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
 
   Timer? _debounce;
   UserModel? foundUser;
+  AddFriendConnectionState? _connectionForFoundUser;
 
   bool isSearching = false;
-  bool isSubmitting = false;
   String? infoText;
 
   @override
@@ -47,6 +50,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     if (keyword.isEmpty) {
       setState(() {
         foundUser = null;
+        _connectionForFoundUser = null;
         infoText = null;
         isSearching = false;
       });
@@ -77,24 +81,54 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       if (user == null || user.uid == widget.myUid) {
         setState(() {
           foundUser = null;
-          infoText = 'Không tìm thấy người dùng phù hợp';
+          _connectionForFoundUser = null;
+          infoText = context.l10n.noUsersFound;
           isSearching = false;
         });
         return;
       }
 
+      final resolvedUser = user;
       setState(() {
-        foundUser = user;
+        foundUser = resolvedUser;
+        _connectionForFoundUser = null;
         infoText = null;
         isSearching = false;
       });
+
+      await _resolveConnectionForFound(resolvedUser);
     } catch (_) {
       if (!mounted) return;
 
       setState(() {
         foundUser = null;
+        _connectionForFoundUser = null;
         infoText = 'Có lỗi khi tìm kiếm';
         isSearching = false;
+      });
+    }
+  }
+
+  Future<void> _resolveConnectionForFound(UserModel user) async {
+    final myUid = widget.myUid;
+    if (myUid == null) return;
+
+    final targetUid = user.uid;
+    try {
+      final state = await widget.repo.getAddFriendConnectionState(
+        myUid: myUid,
+        targetUid: targetUid,
+      );
+      if (!mounted) return;
+      if (foundUser?.uid != targetUid) return;
+      setState(() {
+        _connectionForFoundUser = state;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      if (foundUser?.uid != targetUid) return;
+      setState(() {
+        _connectionForFoundUser = AddFriendConnectionState.canSend;
       });
     }
   }
@@ -103,11 +137,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
     final myUid = widget.myUid;
     final user = foundUser;
 
-    if (myUid == null || user == null || isSubmitting) return;
-
-    setState(() {
-      isSubmitting = true;
-    });
+    if (myUid == null || user == null) return;
 
     try {
       final result = await widget.repo.sendFriendRequest(
@@ -118,18 +148,27 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       if (!mounted) return;
 
       if (result != null && result != 'auto_accepted') {
+        if (mounted && result == 'Đã gửi lời mời trước đó') {
+          setState(() {
+            _connectionForFoundUser = AddFriendConnectionState.pendingSent;
+          });
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result)),
+          SnackBar(
+            duration: AppDurations.snackBar,
+            content: Text(result),
+          ),
         );
         return;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          duration: AppDurations.snackBar,
           content: Text(
             result == 'auto_accepted'
-                ? 'Hai bạn đã tự động trở thành bạn bè'
-                : 'Đã gửi lời mời kết bạn',
+                ? context.l10n.alreadyFriends(user.name.isEmpty ? context.l10n.user : user.name)
+                : context.l10n.requestSent(user.name.isEmpty ? context.l10n.user : user.name),
           ),
         ),
       );
@@ -140,15 +179,10 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
+          duration: AppDurations.snackBar,
           content: Text('Gửi lời mời thất bại'),
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isSubmitting = false;
-        });
-      }
     }
   }
 
@@ -205,7 +239,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                         ),
                         Center(
                           child: Text(
-                            'Thêm bạn',
+                            context.l10n.addFriendTitle,
                             style: AppTextStyles.pageTitle(context).copyWith(
                               fontSize: 24,
                             ),
@@ -221,7 +255,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                     height: 152,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primaryBlue.withOpacity(0.08),
+                      color: AppColors.primaryBlue.withValues(alpha: 0.08),
                     ),
                     child: Center(
                       child: Container(
@@ -229,7 +263,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                         height: 108,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primaryBlue.withOpacity(0.12),
+                          color: AppColors.primaryBlue.withValues(alpha: 0.12),
                         ),
                         child: const Icon(
                           Icons.person_add_alt_1_rounded,
@@ -243,7 +277,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                   const SizedBox(height: 24),
 
                   Text(
-                    'Tìm người dùng Meme',
+                    context.l10n.addFriendTitle,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.sectionTitle(context).copyWith(
                       fontSize: 22,
@@ -251,7 +285,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Nhập username để gửi lời mời kết bạn và theo dõi chi tiêu chung',
+                    context.l10n.noFriendsSubtitle,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.bodySecondary(context).copyWith(
                       fontSize: 15,
@@ -281,7 +315,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
                         ? _FoundUserCard(
                       key: const ValueKey('found_user'),
                       user: foundUser!,
-                      isSubmitting: isSubmitting,
+                      connectionState: _connectionForFoundUser,
                       onSendRequest: _sendRequest,
                       buttonColor: yellow,
                     )
@@ -353,7 +387,7 @@ class _SearchBox extends StatelessWidget {
               ),
               decoration: InputDecoration(
                 isDense: true,
-                hintText: 'Tìm theo username...',
+                hintText: context.l10n.addFriendSearchHint,
                 hintStyle: AppTextStyles.bodySecondary(context).copyWith(
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
@@ -377,14 +411,14 @@ class _SearchBox extends StatelessWidget {
 
 class _FoundUserCard extends StatelessWidget {
   final UserModel user;
-  final bool isSubmitting;
-  final VoidCallback onSendRequest;
+  final AddFriendConnectionState? connectionState;
+  final Future<void> Function() onSendRequest;
   final Color buttonColor;
 
   const _FoundUserCard({
     super.key,
     required this.user,
-    required this.isSubmitting,
+    required this.connectionState,
     required this.onSendRequest,
     required this.buttonColor,
   });
@@ -398,15 +432,15 @@ class _FoundUserCard extends StatelessWidget {
         : const Color(0xFFF3F7FF);
 
     final borderColor = isDark
-        ? Colors.white.withOpacity(0.10)
+        ? Colors.white.withValues(alpha: 0.10)
         : const Color(0xFFD8E6FF);
 
     final textPrimary = isDark ? Colors.white : const Color(0xFF172033);
     final textSecondary =
-    isDark ? Colors.white.withOpacity(0.62) : const Color(0xFF667085);
+    isDark ? Colors.white.withValues(alpha: 0.62) : const Color(0xFF667085);
 
     final avatarUrl = user.avatarUrl.trim();
-    final name = user.name.trim().isEmpty ? 'Người dùng' : user.name.trim();
+    final name = user.name.trim().isEmpty ? context.l10n.user : user.name.trim();
     final username = user.username.trim();
 
     return Container(
@@ -427,7 +461,7 @@ class _FoundUserCard extends StatelessWidget {
             height: 58,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: isDark ? Colors.white.withOpacity(0.08) : Colors.white,
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
               border: Border.all(
                 color: borderColor,
                 width: 1.2,
@@ -488,52 +522,105 @@ class _FoundUserCard extends StatelessWidget {
 
           const SizedBox(width: 10),
 
-          SizedBox(
-            width: 86,
-            height: 42,
-            child: FilledButton(
-              onPressed: isSubmitting ? null : onSendRequest,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                AppColors.primaryBlue.withOpacity(0.55),
-                disabledForegroundColor: Colors.white.withOpacity(0.85),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                ),
-              ),
-              child: isSubmitting
-                  ? const SizedBox(
-                width: 17,
-                height: 17,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              )
-                  : const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.person_add_alt_1_rounded,
-                    size: 17,
-                  ),
-                  SizedBox(width: 5),
-                  Text(
-                    'Thêm',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ],
-              ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 148,
+              minHeight: 42,
             ),
+            child: _buildConnectionTrailing(context, textSecondary),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildConnectionTrailing(
+    BuildContext context,
+    Color textSecondary,
+  ) {
+    final state = connectionState;
+    if (state == null) {
+      return const Center(
+        child: SizedBox(
+          width: 22,
+          height: 22,
+          child: CircularProgressIndicator(strokeWidth: 2.2),
+        ),
+      );
+    }
+
+    if (state == AddFriendConnectionState.pendingSent) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Text(
+          context.l10n.friendBadgeInvitationSent,
+          textAlign: TextAlign.end,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: AppColors.primaryBlue,
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      );
+    }
+
+    if (state == AddFriendConnectionState.alreadyFriends) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: textSecondary.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+          ),
+          child: Text(
+            context.l10n.friendBadgeAlreadyFriendsLabel,
+            style: TextStyle(
+              color: textSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: 86,
+      height: 42,
+      child: AsyncFilledButton(
+        onPressedAsync: onSendRequest,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primaryBlue,
+          foregroundColor: Colors.white,
+          disabledBackgroundColor:
+              AppColors.primaryBlue.withValues(alpha: 0.55),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.85),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.person_add_alt_1_rounded,
+              size: 17,
+            ),
+            const SizedBox(width: 5),
+            Text(
+              context.l10n.sendFriendRequest,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -561,21 +648,21 @@ class _SearchHintBox extends StatelessWidget {
           _SearchHintRow(
             icon: Icons.person_outline_rounded,
             text: 'Tìm bạn bè bằng username để kết nối',
-            iconBg: AppColors.primaryBlue.withOpacity(0.15),
+            iconBg: AppColors.primaryBlue.withValues(alpha: 0.15),
             iconColor: AppColors.primaryBlue,
           ),
           const SizedBox(height: 14),
           _SearchHintRow(
             icon: Icons.alternate_email_rounded,
             text: 'Nhập đúng username của người bạn muốn thêm',
-            iconBg: Colors.orange.withOpacity(0.15),
+            iconBg: Colors.orange.withValues(alpha: 0.15),
             iconColor: Colors.orange,
           ),
           const SizedBox(height: 14),
           _SearchHintRow(
             icon: Icons.link_rounded,
             text: 'Kết nối và theo dõi chi tiêu chung',
-            iconBg: Colors.green.withOpacity(0.15),
+            iconBg: Colors.green.withValues(alpha: 0.15),
             iconColor: Colors.green,
           ),
         ],

@@ -8,10 +8,44 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
+
+String _localizedTransactionCategory(BuildContext context, String category) {
+  final l10n = context.l10n;
+  switch (category.trim()) {
+    case 'Ăn uống':
+    case 'Food':
+      return l10n.food;
+    case 'Mua sắm':
+    case 'Shopping':
+      return l10n.shopping;
+    case 'Đi lại':
+    case 'Transport':
+      return l10n.transport;
+    case 'Giải trí':
+    case 'Entertainment':
+      return l10n.entertainment;
+    case 'Học tập':
+    case 'Education':
+      return l10n.education;
+    case 'Lương':
+    case 'Salary':
+      return l10n.salary;
+    case 'Quà tặng':
+    case 'Gift':
+      return l10n.gift;
+    case 'Khác':
+    case 'Other':
+      return l10n.other;
+    default:
+      return BudgetNameLocalizer.display(context, category);
+  }
+}
 
 class TransactionMapPanel extends StatelessWidget {
   final List<TransactionModel> transactions;
@@ -92,7 +126,7 @@ class TransactionMapPanel extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             Text(
-              'Chưa có dữ liệu bản đồ',
+              context.l10n.mapEmptyTitle,
               textAlign: TextAlign.center,
               style: AppTextStyles.sectionTitle(context).copyWith(
                 fontSize: 20,
@@ -101,7 +135,7 @@ class TransactionMapPanel extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Các giao dịch mới sau khi bạn cấp quyền vị trí sẽ được hiển thị trên bản đồ.',
+              context.l10n.mapEmptySubtitle,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 14,
@@ -195,7 +229,7 @@ class TransactionMapPanel extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      '${items.length} giao dịch tại ${groups.length} vị trí',
+                      context.l10n.mapSummary(items.length, groups.length),
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -258,7 +292,7 @@ class TransactionMapPanel extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${group.count} giao dịch ở đây',
+                              context.l10n.mapTransactionsHere(group.count),
                               style: AppTextStyles.sectionTitle(context)
                                   .copyWith(
                                 fontSize: 20,
@@ -333,9 +367,23 @@ class TransactionMapPanel extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        tx.caption.trim().isNotEmpty
-                            ? tx.caption.trim()
-                            : tx.category,
+                        () {
+                          final caption = tx.caption.trim();
+                          final localizedCategory =
+                              _localizedTransactionCategory(context, tx.category);
+                          final normalizedCaption = caption.toLowerCase();
+                          final normalizedCategory = tx.category.trim().toLowerCase();
+                          final normalizedLocalizedCategory =
+                              localizedCategory.toLowerCase();
+
+                          if (caption.isEmpty ||
+                              normalizedCaption == normalizedCategory ||
+                              normalizedCaption == normalizedLocalizedCategory) {
+                            return localizedCategory;
+                          }
+
+                          return caption;
+                        }(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.sectionTitle(context).copyWith(
@@ -602,6 +650,17 @@ class _LocationTransactionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<ProfileController>().currency;
+    final localizedCategory =
+        _localizedTransactionCategory(context, transaction.category);
+    final caption = transaction.caption.trim();
+    final normalizedCaption = caption.toLowerCase();
+    final normalizedCategory = transaction.category.trim().toLowerCase();
+    final normalizedLocalizedCategory = localizedCategory.toLowerCase();
+    final titleText = caption.isEmpty ||
+            normalizedCaption == normalizedCategory ||
+            normalizedCaption == normalizedLocalizedCategory
+        ? localizedCategory
+        : caption;
 
     final isExpense = transaction.type == 'expense';
     final sign = isExpense ? '-' : '+';
@@ -637,9 +696,7 @@ class _LocationTransactionTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(15),
         ),
         title: Text(
-          transaction.caption.trim().isNotEmpty
-              ? transaction.caption.trim()
-              : transaction.category,
+          titleText,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.cardTitle(context).copyWith(
@@ -647,7 +704,7 @@ class _LocationTransactionTile extends StatelessWidget {
           ),
         ),
         subtitle: Text(
-          transaction.category,
+          localizedCategory,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.caption(context),

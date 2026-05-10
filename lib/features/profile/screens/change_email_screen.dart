@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/widgets/async_filled_button.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/profile_controller.dart';
@@ -21,8 +24,25 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
 
   bool obscurePassword = true;
 
+  bool get _canSubmitChangeEmail =>
+      newEmailController.text.trim().isNotEmpty &&
+      passwordController.text.trim().isNotEmpty;
+
+  void _onFieldsChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    newEmailController.addListener(_onFieldsChanged);
+    passwordController.addListener(_onFieldsChanged);
+  }
+
   @override
   void dispose() {
+    newEmailController.removeListener(_onFieldsChanged);
+    passwordController.removeListener(_onFieldsChanged);
     newEmailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -37,6 +57,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: AppDurations.snackBar,
         content: Text(message),
         behavior: SnackBarBehavior.floating,
       ),
@@ -49,6 +70,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     final auth = context.read<AuthController>();
     final profile = context.read<ProfileController>();
     final authRepository = context.read<AuthRepository>();
+    final l10n = context.l10n;
 
     final user = auth.user;
     final currentEmail = user?.email ?? '';
@@ -58,22 +80,22 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     final password = passwordController.text.trim();
 
     if (uid == null || currentEmail.isEmpty) {
-      _showMessage('Không tìm thấy tài khoản hiện tại');
+      _showMessage(l10n.accountNotFound);
       return;
     }
 
     if (!_isValidEmail(newEmail)) {
-      _showMessage('Email mới không hợp lệ');
+      _showMessage(l10n.invalidEmail);
       return;
     }
 
     if (newEmail.toLowerCase() == currentEmail.toLowerCase()) {
-      _showMessage('Email mới đang trùng với email hiện tại');
+      _showMessage(l10n.emailSameAsCurrent);
       return;
     }
 
     if (password.length < 6) {
-      _showMessage('Vui lòng nhập mật khẩu hiện tại');
+      _showMessage(l10n.pleaseEnterPassword);
       return;
     }
 
@@ -88,12 +110,10 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
     if (!mounted) return;
 
     if (ok) {
-      _showMessage('Đã đổi email đăng nhập thành công');
+      _showMessage(l10n.emailChangedSuccessfully);
       Navigator.pop(context);
     } else {
-      _showMessage(
-        'Không thể đổi email. Vui lòng kiểm tra mật khẩu hoặc đăng nhập lại.',
-      );
+      _showMessage(l10n.deleteAccountError);
     }
   }
 
@@ -131,6 +151,7 @@ class _ChangeEmailScreenState extends State<ChangeEmailScreen> {
               passwordController: passwordController,
               obscurePassword: obscurePassword,
               isSaving: profile.isSaving,
+              canSubmit: _canSubmitChangeEmail,
               onTogglePassword: () {
                 setState(() {
                   obscurePassword = !obscurePassword;
@@ -154,6 +175,7 @@ class _ChangeEmailHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Row(
       children: [
         _RoundBackButton(onTap: onBack),
@@ -163,14 +185,14 @@ class _ChangeEmailHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Đổi email đăng nhập',
+                l10n.changeEmailTitle,
                 style: AppTextStyles.sectionTitle(context).copyWith(
                   fontWeight: FontWeight.w900,
                 ),
               ),
               const SizedBox(height: 3),
               Text(
-                'Cập nhật email dùng để đăng nhập tài khoản của bạn',
+                l10n.changeEmailSubtitle,
                 style: AppTextStyles.caption(context).copyWith(
                   height: 1.3,
                   fontWeight: FontWeight.w600,
@@ -230,6 +252,7 @@ class _IntroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(AppSizes.cardPadding),
       decoration: BoxDecoration(
@@ -267,14 +290,14 @@ class _IntroCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Email hiện tại',
+                  l10n.currentEmail,
                   style: AppTextStyles.caption(context).copyWith(
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  currentEmail.isEmpty ? 'Không rõ' : currentEmail,
+                  currentEmail.isEmpty ? l10n.unknown : currentEmail,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.body(context).copyWith(
@@ -295,20 +318,23 @@ class _FormCard extends StatelessWidget {
   final TextEditingController passwordController;
   final bool obscurePassword;
   final bool isSaving;
+  final bool canSubmit;
   final VoidCallback onTogglePassword;
-  final VoidCallback onSubmit;
+  final Future<void> Function() onSubmit;
 
   const _FormCard({
     required this.newEmailController,
     required this.passwordController,
     required this.obscurePassword,
     required this.isSaving,
+    required this.canSubmit,
     required this.onTogglePassword,
     required this.onSubmit,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(AppSizes.cardPadding),
       decoration: BoxDecoration(
@@ -329,7 +355,7 @@ class _FormCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Thông tin email mới',
+            l10n.newEmailInfo,
             style: AppTextStyles.body(context).copyWith(
               fontSize: 16,
               fontWeight: FontWeight.w900,
@@ -339,7 +365,7 @@ class _FormCard extends StatelessWidget {
           const SizedBox(height: 14),
 
           _InputLabel(
-            label: 'Email mới',
+            label: l10n.newEmail,
           ),
           const SizedBox(height: 8),
           _InputBox(
@@ -349,7 +375,7 @@ class _FormCard extends StatelessWidget {
               textInputAction: TextInputAction.next,
               cursorColor: AppColors.primaryBlue,
               decoration: InputDecoration(
-                hintText: 'Nhập email mới của bạn',
+                hintText: l10n.enterNewEmail,
                 prefixIcon: Icon(
                   Icons.email_outlined,
                   color: AppColors.textSecondary(context),
@@ -366,7 +392,7 @@ class _FormCard extends StatelessWidget {
           const SizedBox(height: 14),
 
           _InputLabel(
-            label: 'Mật khẩu hiện tại',
+            label: l10n.password,
           ),
           const SizedBox(height: 8),
           _InputBox(
@@ -376,10 +402,10 @@ class _FormCard extends StatelessWidget {
               textInputAction: TextInputAction.done,
               cursorColor: AppColors.primaryBlue,
               onSubmitted: (_) {
-                if (!isSaving) onSubmit();
+                onSubmit();
               },
               decoration: InputDecoration(
-                hintText: 'Nhập mật khẩu để xác nhận',
+                hintText: l10n.enterPasswordToConfirm,
                 prefixIcon: Icon(
                   Icons.lock_outline_rounded,
                   color: AppColors.textSecondary(context),
@@ -404,18 +430,20 @@ class _FormCard extends StatelessWidget {
 
           const SizedBox(height: 14),
 
-          _NoticeBox(),
+          const _NoticeBox(),
 
           const SizedBox(height: 24),
 
           SizedBox(
             width: double.infinity,
             height: AppSizes.buttonHeight,
-            child: FilledButton(
-              onPressed: isSaving ? null : onSubmit,
+            child: AsyncFilledButton(
+              isLoading: isSaving,
+              onPressedAsync: canSubmit ? onSubmit : null,
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
-                disabledBackgroundColor: AppColors.primaryBlue.withOpacity(0.45),
+                disabledBackgroundColor:
+                    AppColors.primaryBlue.withValues(alpha: 0.45),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(
@@ -424,18 +452,9 @@ class _FormCard extends StatelessWidget {
                 ),
                 elevation: 0,
               ),
-              child: isSaving
-                  ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.4,
-                  color: Colors.white,
-                ),
-              )
-                  : const Text(
-                'Cập nhật email',
-                style: TextStyle(
+              child: Text(
+                l10n.updateEmail,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w900,
                 ),
@@ -467,8 +486,11 @@ class _InputLabel extends StatelessWidget {
 }
 
 class _NoticeBox extends StatelessWidget {
+  const _NoticeBox();
+
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
@@ -489,7 +511,7 @@ class _NoticeBox extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Để bảo vệ tài khoản, bạn cần nhập lại mật khẩu hiện tại trước khi đổi email đăng nhập.',
+              l10n.changeEmailNotice,
               style: AppTextStyles.caption(context).copyWith(
                 fontSize: 13,
                 height: 1.4,

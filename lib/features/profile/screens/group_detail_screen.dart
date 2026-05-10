@@ -3,10 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
+import '../../../core/widgets/async_filled_button.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
@@ -35,13 +38,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return AppColors.primaryBlue;
   }
 
-  String _formatCreatedAt(dynamic value) {
+  String _formatCreatedAt(BuildContext context, dynamic value) {
     if (value is Timestamp) {
       final date = value.toDate();
       return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
     }
 
-    return 'Không rõ';
+    return context.l10n.unknown;
   }
 
   double _toDouble(dynamic value) {
@@ -92,8 +95,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
   }) async {
     if (myUid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy người dùng hiện tại'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.currentUserNotFound),
         ),
       );
       return;
@@ -101,8 +105,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     if (members.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nhóm chưa có thành viên để đóng góp'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupNoMembersToContribute),
         ),
       );
       return;
@@ -110,6 +115,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     final repo = context.read<UserRepository>();
     final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
     final currency = context.read<ProfileController>().currency;
 
     final amountController = TextEditingController();
@@ -120,16 +126,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     if (!isOwner && meInGroup.isEmpty) {
       messenger.showSnackBar(
-        const SnackBar(
-          content: Text('Bạn không còn thuộc nhóm này'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.youAreNotMember),
         ),
       );
       return;
     }
 
     String selectedUid = isOwner ? (members.first['uid'] ?? '').toString() : myUid;
-
-    bool isSaving = false;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -148,8 +153,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             }).toList();
 
             final selectedName = selectedMember.isEmpty
-                ? 'Bạn'
-                : (selectedMember.first['name'] ?? 'Bạn').toString();
+                ? context.l10n.you
+                : (selectedMember.first['name'] ?? context.l10n.you).toString();
 
             final selectedUsername = selectedMember.isEmpty
                 ? ''
@@ -158,6 +163,70 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
             final selectedAvatar = selectedMember.isEmpty
                 ? ''
                 : (selectedMember.first['avatarUrl'] ?? '').toString();
+
+            Future<void> submitContribution() async {
+              final inputAmount = _parseMoney(
+                amountController.text,
+                currency,
+              );
+
+              if (inputAmount <= 0) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    duration: AppDurations.snackBar,
+                    content: Text(context.l10n.enterValidAmount),
+                  ),
+                );
+                return;
+              }
+
+              if (!isOwner && selectedUid != myUid) {
+                messenger.showSnackBar(
+                  SnackBar(
+                    duration: AppDurations.snackBar,
+                    content: Text(
+                      context.l10n.canOnlyAddForSelf,
+                    ),
+                  ),
+                );
+                return;
+              }
+
+              final amount = AppCurrencyFormatter.toVnd(
+                inputAmount: inputAmount,
+                currency: currency,
+              );
+
+              try {
+                final navigator = Navigator.of(sheetContext);
+                await repo.addGroupContribution(
+                  groupId: groupId,
+                  actorUid: myUid,
+                  memberUid: selectedUid,
+                  amount: amount,
+                );
+
+                if (!mounted) return;
+
+                navigator.pop();
+
+                messenger.showSnackBar(
+                  SnackBar(
+                    duration: AppDurations.snackBar,
+                    content: Text(l10n.contributionAdded),
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+
+                messenger.showSnackBar(
+                  SnackBar(
+                    duration: AppDurations.snackBar,
+                    content: Text(l10n.cannotAddContribution(e.toString())),
+                  ),
+                );
+              }
+            }
 
             return Padding(
               padding: EdgeInsets.fromLTRB(
@@ -173,14 +242,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     width: 44,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: AppColors.textSecondary(context).withOpacity(0.25),
+                      color: AppColors.textSecondary(context).withValues(alpha: 0.25),
                       borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                     ),
                   ),
                   const SizedBox(height: 18),
 
                   Text(
-                    'Thêm tiền đóng góp',
+                    context.l10n.addContribution,
                     style: AppTextStyles.sectionTitle(context).copyWith(
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
@@ -191,14 +260,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
                   if (isOwner)
                     DropdownButtonFormField<String>(
-                      value: selectedUid,
+                      initialValue: selectedUid,
                       dropdownColor: AppColors.card(context),
                       style: AppTextStyles.body(context).copyWith(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                       decoration: InputDecoration(
-                        labelText: 'Chọn thành viên',
+                        labelText: context.l10n.selectMember,
                         labelStyle: TextStyle(
                           color: AppColors.textSecondary(context),
                         ),
@@ -220,7 +289,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       ),
                       items: members.map((member) {
                         final uid = (member['uid'] ?? '').toString();
-                        final name = (member['name'] ?? 'Người dùng').toString();
+                        final name = (member['name'] ?? context.l10n.user).toString();
                         final username = (member['username'] ?? '').toString();
 
                         return DropdownMenuItem<String>(
@@ -244,10 +313,10 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: groupColor.withOpacity(0.10),
+                        color: groupColor.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
                         border: Border.all(
-                          color: groupColor.withOpacity(0.22),
+                          color: groupColor.withValues(alpha: 0.22),
                         ),
                       ),
                       child: Row(
@@ -271,7 +340,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Bạn đang đóng góp cho',
+                                  context.l10n.youAreContributingFor,
                                   style: AppTextStyles.caption(context).copyWith(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -315,14 +384,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       fontWeight: FontWeight.w900,
                     ),
                     decoration: InputDecoration(
-                      labelText: 'Số tiền',
+                      labelText: context.l10n.amount,
                       hintText: AppCurrencyFormatter.formatInputHint(currency),
                       suffixText: AppCurrencyFormatter.symbol(currency),
                       labelStyle: TextStyle(
                         color: AppColors.textSecondary(context),
                       ),
                       hintStyle: TextStyle(
-                        color: AppColors.textSecondary(context).withOpacity(0.65),
+                        color: AppColors.textSecondary(context).withValues(alpha: 0.65),
                       ),
                       suffixStyle: AppTextStyles.caption(context).copyWith(
                         fontSize: 15,
@@ -350,75 +419,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
                   SizedBox(
                     width: double.infinity,
-                    child: FilledButton(
-                      onPressed: isSaving
-                          ? null
-                          : () async {
-                        final inputAmount = _parseMoney(
-                          amountController.text,
-                          currency,
-                        );
-
-                        if (inputAmount <= 0) {
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Nhập số tiền hợp lệ'),
-                            ),
-                          );
-                          return;
-                        }
-
-                        if (!isOwner && selectedUid != myUid) {
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Bạn chỉ có thể thêm tiền cho chính mình',
-                              ),
-                            ),
-                          );
-                          return;
-                        }
-
-                        final amount = AppCurrencyFormatter.toVnd(
-                          inputAmount: inputAmount,
-                          currency: currency,
-                        );
-
-                        setSheetState(() {
-                          isSaving = true;
-                        });
-
-                        try {
-                          await repo.addGroupContribution(
-                            groupId: groupId,
-                            actorUid: myUid,
-                            memberUid: selectedUid,
-                            amount: amount,
-                          );
-
-                          if (!mounted) return;
-
-                          Navigator.of(sheetContext).pop();
-
-                          messenger.showSnackBar(
-                            const SnackBar(
-                              content: Text('Đã thêm tiền đóng góp'),
-                            ),
-                          );
-                        } catch (e) {
-                          if (!mounted) return;
-
-                          setSheetState(() {
-                            isSaving = false;
-                          });
-
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text('Không thể thêm đóng góp: $e'),
-                            ),
-                          );
-                        }
-                      },
+                    child: AsyncFilledButton(
+                      onPressedAsync: submitContribution,
                       style: FilledButton.styleFrom(
                         backgroundColor: groupColor,
                         foregroundColor: Colors.white,
@@ -428,7 +430,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                         ),
                       ),
                       child: Text(
-                        isSaving ? 'Đang lưu...' : 'Xác nhận',
+                        context.l10n.confirm,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
@@ -454,9 +456,9 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     final currency = context.watch<ProfileController>().currency;
 
     if (initialGroupId.isEmpty || myUid == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: Text('Không tìm thấy nhóm'),
+          child: Text(context.l10n.groupNotFound),
         ),
       );
     }
@@ -486,7 +488,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           'id': initialGroupId,
         };
 
-        final groupName = (groupData['name'] ?? 'Nhóm').toString();
+        final groupName = (groupData['name'] ?? context.l10n.group).toString();
         final colorHex = (groupData['color'] ?? '#79AFFF').toString();
         final createdAt = groupData['createdAt'];
 
@@ -544,7 +546,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                         const SizedBox(width: 14),
                         Expanded(
                           child: Text(
-                            'Chi tiết nhóm',
+                            context.l10n.groupDetails,
                             style: AppTextStyles.pageTitle(context),
                           ),
                         ),
@@ -557,7 +559,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       groupName: groupName,
                       memberCount: memberCount,
                       groupColor: groupColor,
-                      createdAtText: _formatCreatedAt(createdAt),
+                      createdAtText: _formatCreatedAt(context, createdAt),
                       isOwner: isOwner,
                     ),
 
@@ -608,33 +610,70 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       onDeleteOrLeave: () async {
                         if (groupId.isEmpty) return;
 
+                        final messenger = ScaffoldMessenger.of(context);
+                        final l10n = context.l10n;
+                        final repo = context.read<UserRepository>();
+                        final navigator = Navigator.of(context);
+
                         final ok = await showDialog<bool>(
                           context: context,
-                          builder: (_) => AlertDialog(
+                          builder: (dialogCtx) => AlertDialog(
                             title: Text(
-                              isOwner ? 'Xoá nhóm' : 'Rời nhóm',
+                              isOwner ? l10n.deleteGroup : l10n.leaveGroup,
                             ),
-                            content: Text(
-                              isOwner
-                                  ? 'Bạn có chắc muốn xoá nhóm này không? Hành động này sẽ xoá nhóm khỏi tất cả thành viên.'
-                                  : 'Bạn có chắc muốn rời khỏi nhóm này không?',
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  isOwner
+                                      ? l10n.deleteGroupConfirmation
+                                      : l10n.leaveGroupConfirmation,
+                                ),
+                                const SizedBox(height: 22),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(dialogCtx, false),
+                                        style: OutlinedButton.styleFrom(
+                                          minimumSize:
+                                              const Size.fromHeight(48),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                          ),
+                                        ),
+                                        child: Text(l10n.cancel),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          minimumSize:
+                                              const Size.fromHeight(48),
+                                          backgroundColor: AppColors.expense,
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(14),
+                                          ),
+                                        ),
+                                        onPressed: () =>
+                                            Navigator.pop(dialogCtx, true),
+                                        child: Text(
+                                          isOwner
+                                              ? l10n.deleteGroup
+                                              : l10n.leaveGroup,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context, false),
-                                child: const Text('Huỷ'),
-                              ),
-                              FilledButton(
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: AppColors.expense,
-                                  foregroundColor: Colors.white,
-                                ),
-                                onPressed: () => Navigator.pop(context, true),
-                                child: Text(
-                                  isOwner ? 'Xoá nhóm' : 'Rời nhóm',
-                                ),
-                              ),
-                            ],
                           ),
                         );
 
@@ -642,12 +681,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
                         try {
                           if (isOwner) {
-                            await context.read<UserRepository>().deleteGroup(
+                            await repo.deleteGroup(
                               myUid: myUid,
                               groupId: groupId,
                             );
                           } else {
-                            await context.read<UserRepository>().leaveGroup(
+                            await repo.leaveGroup(
                               myUid: myUid,
                               groupId: groupId,
                             );
@@ -655,24 +694,26 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
                           if (!mounted) return;
 
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(
+                              duration: AppDurations.snackBar,
                               content: Text(
-                                isOwner ? 'Đã xoá nhóm' : 'Bạn đã rời nhóm',
+                                isOwner ? l10n.groupDeleted : l10n.youLeftGroup,
                               ),
                             ),
                           );
 
-                          Navigator.pop(context, true);
+                          navigator.pop(true);
                         } catch (e) {
                           if (!mounted) return;
 
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          messenger.showSnackBar(
                             SnackBar(
+                              duration: AppDurations.snackBar,
                               content: Text(
                                 isOwner
-                                    ? 'Không thể xoá nhóm: $e'
-                                    : 'Không thể rời nhóm: $e',
+                                    ? l10n.cannotDeleteGroup(e.toString())
+                                    : l10n.cannotLeaveGroup(e.toString()),
                               ),
                             ),
                           );
@@ -716,7 +757,7 @@ class _GroupHeroCard extends StatelessWidget {
             height: 94,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
-              color: groupColor.withOpacity(0.18),
+              color: groupColor.withValues(alpha: 0.18),
             ),
             child: Icon(
               Icons.groups_2_rounded,
@@ -735,7 +776,7 @@ class _GroupHeroCard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            '$memberCount thành viên',
+            context.l10n.membersCount(memberCount),
             style: AppTextStyles.bodySecondary(context).copyWith(
               fontSize: 15,
               fontWeight: FontWeight.w600,
@@ -749,15 +790,15 @@ class _GroupHeroCard extends StatelessWidget {
                 vertical: 7,
               ),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.14),
+                color: AppColors.primaryBlue.withValues(alpha: 0.14),
                 borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                 border: Border.all(
-                  color: AppColors.primaryBlue.withOpacity(0.20),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.20),
                 ),
               ),
-              child: const Text(
-                'Chủ nhóm',
-                style: TextStyle(
+              child: Text(
+                context.l10n.groupOwner,
+                style: const TextStyle(
                   color: AppColors.primaryBlue,
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -773,7 +814,7 @@ class _GroupHeroCard extends StatelessWidget {
             children: [
               _InfoChip(
                 icon: Icons.palette_outlined,
-                text: 'Màu nhóm',
+                text: context.l10n.groupColor,
                 color: groupColor,
               ),
               _InfoChip(
@@ -818,7 +859,7 @@ class _GoalProgressCard extends StatelessWidget {
                 height: 46,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: groupColor.withOpacity(0.16),
+                  color: groupColor.withValues(alpha: 0.16),
                 ),
                 child: Icon(
                   Icons.flag_rounded,
@@ -828,7 +869,7 @@ class _GoalProgressCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Mục tiêu đóng góp',
+                  context.l10n.contributionGoal,
                   style: AppTextStyles.sectionTitle(context),
                 ),
               ),
@@ -845,7 +886,7 @@ class _GoalProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           Text(
-            'trên $goalAmountText',
+            context.l10n.ofAmount(goalAmountText),
             style: AppTextStyles.bodySecondary(context).copyWith(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -863,7 +904,7 @@ class _GoalProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Đã đạt ${(progress * 100).round()}%',
+            context.l10n.reachedPercentage((progress * 100).round()),
             style: AppTextStyles.caption(context).copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -875,7 +916,7 @@ class _GoalProgressCard extends StatelessWidget {
             child: FilledButton.icon(
               onPressed: onAddContribution,
               icon: const Icon(Icons.add_card_rounded),
-              label: const Text('Thêm tiền đóng góp'),
+              label: Text(context.l10n.addContribution),
               style: FilledButton.styleFrom(
                 backgroundColor: groupColor,
                 foregroundColor: Colors.white,
@@ -919,7 +960,7 @@ class _MembersContributionCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Thành viên đóng góp',
+            context.l10n.contributingMembers,
             style: AppTextStyles.sectionTitle(context),
           ),
           const SizedBox(height: 14),
@@ -934,7 +975,7 @@ class _MembersContributionCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Text(
-                'Chưa có thành viên nào',
+                context.l10n.noMembersYet,
                 style: AppTextStyles.bodySecondary(context).copyWith(
                   fontSize: 15,
                 ),
@@ -954,7 +995,7 @@ class _MembersContributionCard extends StatelessWidget {
 
               final avatarUrl = (member['avatarUrl'] ?? '').toString();
               final username = (member['username'] ?? '').toString();
-              final name = (member['name'] ?? 'Người dùng').toString();
+              final name = (member['name'] ?? context.l10n.user).toString();
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 10),
@@ -1014,7 +1055,7 @@ class _MembersContributionCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Đã đóng ${money(paidAmount)}',
+                        context.l10n.paidAmount(money(paidAmount)),
                         style: TextStyle(
                           color: groupColor,
                           fontSize: 12,
@@ -1053,24 +1094,24 @@ class _GroupOptionsCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tuỳ chọn nhóm',
+            context.l10n.groupOptions,
             style: AppTextStyles.sectionTitle(context),
           ),
           const SizedBox(height: 14),
           _ActionTile(
             icon: Icons.edit_outlined,
-            title: 'Chỉnh sửa nhóm',
-            subtitle: 'Đổi tên, màu, mục tiêu hoặc thành viên',
+            title: context.l10n.editGroup,
+            subtitle: context.l10n.editGroupSubtitle,
             color: AppColors.primaryBlue,
             onTap: onEdit,
           ),
           const SizedBox(height: 10),
           _ActionTile(
             icon: isOwner ? Icons.delete_outline_rounded : Icons.exit_to_app_rounded,
-            title: isOwner ? 'Xoá nhóm' : 'Rời nhóm',
+            title: isOwner ? context.l10n.deleteGroup : context.l10n.leaveGroup,
             subtitle: isOwner
-                ? 'Xoá nhóm này cho tất cả thành viên'
-                : 'Rời khỏi nhóm này',
+                ? context.l10n.deleteGroupSubtitle
+                : context.l10n.leaveGroupSubtitle,
             color: AppColors.expense,
             onTap: onDeleteOrLeave,
           ),
@@ -1223,7 +1264,7 @@ class _ActionTile extends StatelessWidget {
               height: 42,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: color.withOpacity(0.16),
+                color: color.withValues(alpha: 0.16),
               ),
               child: Icon(
                 icon,

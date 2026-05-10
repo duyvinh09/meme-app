@@ -1,11 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../core/services/budget_translation_service.dart';
+import '../datasources/remote/transaction_remote_datasource.dart';
 import '../models/budget_model.dart';
 
 class BudgetRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
+  final TransactionRemoteDataSource _transactions = TransactionRemoteDataSource();
 
   CollectionReference<Map<String, dynamic>> _collection(String uid) {
     return _db.collection('users').doc(uid).collection('budgets');
@@ -49,6 +52,9 @@ class BudgetRepository {
     required String period,
     DateTime? startDate,
     DateTime? endDate,
+
+    /// English UI: user types English — store Vietnamese [name] + English [nameEn].
+    bool inputLocaleIsEnglish = false,
   }) async {
     final id = _uuid.v4();
     final safeName = (name ?? category ?? '').trim();
@@ -65,8 +71,27 @@ class BudgetRepository {
       throw Exception('Danh mục mặc định không cần tạo budget');
     }
 
+    late final String canonicalName;
+    late final String? nameEnValue;
+
+    if (inputLocaleIsEnglish) {
+      final vi =
+          await BudgetTranslationService.translateEnglishToVietnamese(safeName);
+      canonicalName =
+          (vi != null && vi.trim().isNotEmpty) ? vi.trim() : safeName;
+      nameEnValue = BudgetTranslationService.sentenceCase(safeName);
+    } else {
+      canonicalName = safeName;
+      nameEnValue =
+          await BudgetTranslationService.translateVietnameseToEnglish(safeName);
+    }
+
+    if (defaultCategoryNames.contains(canonicalName)) {
+      throw Exception('Danh mục mặc định không cần tạo budget');
+    }
+
     final existed = await _collection(uid)
-        .where('name', isEqualTo: safeName)
+        .where('name', isEqualTo: canonicalName)
         .where('isDefault', isEqualTo: false)
         .limit(1)
         .get();
@@ -78,7 +103,8 @@ class BudgetRepository {
     final budget = BudgetModel(
       id: id,
       userId: uid,
-      name: safeName,
+      name: canonicalName,
+      nameEn: nameEnValue,
       iconCodePoint:
       iconCodePoint ?? 0xe57f, // Icons.account_balance_wallet_outlined
       colorHex: colorHex ?? '#79AFFF',
@@ -91,6 +117,22 @@ class BudgetRepository {
     );
 
     await _collection(uid).doc(id).set(budget.toMap());
+  }
+
+  Future<void> ensureEnglishTranslations({
+    required String uid,
+    required List<BudgetModel> budgets,
+  }) async {
+    for (final budget in budgets) {
+      if (budget.name.trim().isEmpty) continue;
+      if ((budget.nameEn ?? '').trim().isNotEmpty) continue;
+
+      final translated = await BudgetTranslationService
+          .translateVietnameseToEnglish(budget.name);
+      if (translated == null || translated.trim().isEmpty) continue;
+
+      await _collection(uid).doc(budget.id).update({'nameEn': translated});
+    }
   }
 
   Future<void> ensureDefaultBudgets(String uid) async {}
@@ -192,5 +234,83 @@ class BudgetRepository {
         .collection('budgets')
         .doc(budgetId)
         .delete();
+  }
+
+  Future<void> updateBudget({
+    required String uid,
+    required String budgetId,
+    required String name,
+    required double limitAmount,
+    required int iconCodePoint,
+    required String colorHex,
+    required String period,
+    required String budgetType,
+
+    bool inputLocaleIsEnglish = false,
+  }) async {
+    final safeName = name.trim();
+
+    if (safeName.isEmpty) {
+      throw Exception('Tên chủ đề không được để trống');
+    }
+
+    if (limitAmount <= 0) {
+      throw Exception('Số tiền mục tiêu phải lớn hơn 0');
+    }
+
+    late final String canonicalName;
+    late final String? nameEnValue;
+
+    if (inputLocaleIsEnglish) {
+      final vi =
+          await BudgetTranslationService.translateEnglishToVietnamese(safeName);
+      canonicalName =
+          (vi != null && vi.trim().isNotEmpty) ? vi.trim() : safeName;
+      nameEnValue = BudgetTranslationService.sentenceCase(safeName);
+    } else {
+      canonicalName = safeName;
+      nameEnValue =
+          await BudgetTranslationService.translateVietnameseToEnglish(safeName);
+    }
+
+    if (defaultCategoryNames.contains(canonicalName)) {
+      throw Exception('Danh mục mặc định không cần tạo budget');
+    }
+
+    final existed = await _collection(uid)
+        .where('name', isEqualTo: canonicalName)
+        .where('isDefault', isEqualTo: false)
+        .limit(1)
+        .get();
+
+    final hasDuplicate = existed.docs.any((doc) => doc.id != budgetId);
+    if (hasDuplicate) {
+      throw Exception('Chủ đề này đã tồn tại');
+    }
+
+    final budgetRef = _collection(uid).doc(budgetId);
+    final existingSnap = await budgetRef.get();
+    if (!existingSnap.exists) {
+      throw Exception('Không tìm thấy ngân sách');
+    }
+    final prevName = (existingSnap.data()?['name'] ?? '').toString().trim();
+
+    if (prevName.isNotEmpty && prevName != canonicalName) {
+      await _transactions.migrateTransactionsCategoryName(
+        uid: uid,
+        oldName: prevName,
+        newName: canonicalName,
+      );
+    }
+
+    await budgetRef.update({
+      'name': canonicalName,
+      'nameEn': nameEnValue,
+      'limitAmount': limitAmount,
+      'iconCodePoint': iconCodePoint,
+      'colorHex': colorHex,
+      'period': period,
+      'budgetType': budgetType,
+    });
   }
 }

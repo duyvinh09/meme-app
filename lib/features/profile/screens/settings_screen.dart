@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/services/exchange_rate_service.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../controllers/profile_controller.dart';
@@ -14,6 +16,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileController>();
+    final l10n = context.l10n;
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -36,7 +39,7 @@ class SettingsScreen extends StatelessWidget {
                   ),
                   const Spacer(),
                   Text(
-                    'Cài đặt',
+                    l10n.settings,
                     style: AppTextStyles.pageTitle(context).copyWith(
                       fontSize: 26,
                     ),
@@ -48,19 +51,19 @@ class SettingsScreen extends StatelessWidget {
             ),
 
             _SettingsSection(
-              title: 'Ngôn ngữ',
+              title: l10n.language,
               children: [
                 _SettingsOptionTile(
                   flagEmoji: '🇻🇳',
                   iconColor: AppColors.expense,
-                  title: 'Tiếng Việt',
+                  title: l10n.vietnamese,
                   selected: profile.languageCode == 'vi',
                   onTap: () => profile.setLanguage('vi'),
                 ),
                 _SettingsOptionTile(
                   flagEmoji: '🇺🇸',
                   iconColor: AppColors.primaryBlue,
-                  title: 'English',
+                  title: l10n.english,
                   selected: profile.languageCode == 'en',
                   onTap: () => profile.setLanguage('en'),
                 ),
@@ -70,26 +73,26 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             _SettingsSection(
-              title: 'Giao diện',
+              title: l10n.appearance,
               children: [
                 _SettingsOptionTile(
                   icon: Icons.light_mode_outlined,
                   iconColor: AppColors.warning,
-                  title: 'Sáng',
+                  title: l10n.light,
                   selected: profile.themeMode.name == 'light',
                   onTap: () => profile.setThemeMode('light'),
                 ),
                 _SettingsOptionTile(
                   icon: Icons.dark_mode_outlined,
                   iconColor: AppColors.primaryPurple,
-                  title: 'Tối',
+                  title: l10n.dark,
                   selected: profile.themeMode.name == 'dark',
                   onTap: () => profile.setThemeMode('dark'),
                 ),
                 _SettingsOptionTile(
                   icon: Icons.settings_suggest_outlined,
                   iconColor: AppColors.primaryBlue,
-                  title: 'Theo hệ thống',
+                  title: l10n.system,
                   selected: profile.themeMode.name == 'system',
                   onTap: () => profile.setThemeMode('system'),
                 ),
@@ -99,19 +102,19 @@ class SettingsScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             _SettingsSection(
-              title: 'Tiền tệ',
+              title: l10n.currency,
               children: [
                 _SettingsOptionTile(
                   flagEmoji: '🇻🇳',
                   iconColor: AppColors.income,
-                  title: 'VNĐ',
+                  title: l10n.vnd,
                   selected: profile.currency == 'VND',
                   onTap: () => profile.setCurrency('VND'),
                 ),
                 _SettingsOptionTile(
                   flagEmoji: '🇺🇸',
                   iconColor: AppColors.primaryBlue,
-                  title: 'USD',
+                  title: l10n.usd,
                   selected: profile.currency == 'USD',
                   onTap: () => profile.setCurrency('USD'),
                 ),
@@ -336,8 +339,9 @@ class _ExchangeRateRowState extends State<_ExchangeRateRow> {
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
+        duration: AppDurations.snackBar,
         content: Text(
-          'Đã cập nhật tỷ giá: ${AppCurrencyFormatter.rateText()}',
+          context.l10n.exchangeRateUpdated(AppCurrencyFormatter.rateText()),
         ),
       ),
     );
@@ -345,6 +349,7 @@ class _ExchangeRateRowState extends State<_ExchangeRateRow> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
       child: Row(
@@ -371,7 +376,7 @@ class _ExchangeRateRowState extends State<_ExchangeRateRow> {
               size: 17,
             ),
             label: Text(
-              isUpdating ? 'Đang cập nhật' : 'Cập nhật',
+              isUpdating ? l10n.updating : l10n.update,
             ),
           ),
         ],

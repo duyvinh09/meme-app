@@ -27,6 +27,9 @@ class BudgetController extends ChangeNotifier {
     _sub = budgetRepository.streamBudgets(uid).listen(
           (data) {
         budgets = data;
+        unawaited(
+          budgetRepository.ensureEnglishTranslations(uid: uid, budgets: data),
+        );
         isLoading = false;
         errorMessage = null;
         notifyListeners();
@@ -54,6 +57,8 @@ class BudgetController extends ChangeNotifier {
 
     required double limitAmount,
     required String budgetType,
+
+    bool inputLocaleIsEnglish = false,
   }) async {
     await budgetRepository.createBudget(
       uid: uid,
@@ -66,6 +71,7 @@ class BudgetController extends ChangeNotifier {
       startDate: startDate,
       endDate: endDate,
       budgetType: budgetType,
+      inputLocaleIsEnglish: inputLocaleIsEnglish,
     );
   }
 
@@ -76,6 +82,31 @@ class BudgetController extends ChangeNotifier {
     await budgetRepository.deleteBudget(
       uid: uid,
       budgetId: budgetId,
+    );
+  }
+
+  Future<void> updateBudget({
+    required String uid,
+    required String budgetId,
+    required String name,
+    required double limitAmount,
+    required int iconCodePoint,
+    required String colorHex,
+    required String period,
+    required String budgetType,
+
+    bool inputLocaleIsEnglish = false,
+  }) async {
+    await budgetRepository.updateBudget(
+      uid: uid,
+      budgetId: budgetId,
+      name: name,
+      limitAmount: limitAmount,
+      iconCodePoint: iconCodePoint,
+      colorHex: colorHex,
+      period: period,
+      budgetType: budgetType,
+      inputLocaleIsEnglish: inputLocaleIsEnglish,
     );
   }
 
@@ -90,9 +121,12 @@ class BudgetController extends ChangeNotifier {
   }
 
   BudgetModel? findBudgetByName(String name) {
+    final normalized = name.trim().toLowerCase();
     try {
       return budgets.firstWhere((budget) {
-        return budget.name.trim().toLowerCase() == name.trim().toLowerCase();
+        final rawName = budget.name.trim().toLowerCase();
+        final englishName = (budget.nameEn ?? '').trim().toLowerCase();
+        return rawName == normalized || englishName == normalized;
       });
     } catch (_) {
       return null;

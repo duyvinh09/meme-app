@@ -72,4 +72,30 @@ class TransactionRemoteDataSource {
   Future<void> deleteTransaction(String uid, String transactionId) async {
     await _collection(uid).doc(transactionId).delete();
   }
+
+  /// Rewrites [category] on all transactions when a budget or user category is renamed.
+  /// Call before updating the budget/category document so stored keys stay in sync.
+  Future<void> migrateTransactionsCategoryName({
+    required String uid,
+    required String oldName,
+    required String newName,
+  }) async {
+    final trimmedOld = oldName.trim();
+    final trimmedNew = newName.trim();
+    if (trimmedOld.isEmpty || trimmedOld == trimmedNew) return;
+
+    final snap = await _collection(uid)
+        .where('category', isEqualTo: trimmedOld)
+        .get();
+
+    const batchLimit = 450;
+    final docs = snap.docs;
+    for (var i = 0; i < docs.length; i += batchLimit) {
+      final batch = _db.batch();
+      for (final doc in docs.skip(i).take(batchLimit)) {
+        batch.update(doc.reference, {'category': trimmedNew});
+      }
+      await batch.commit();
+    }
+  }
 }

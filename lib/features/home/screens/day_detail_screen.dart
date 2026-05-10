@@ -7,6 +7,8 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
@@ -26,19 +28,9 @@ class DayDetailScreen extends StatelessWidget {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
-  String _formatHeaderDate(DateTime date) {
-    const weekdays = [
-      'Thứ Hai',
-      'Thứ Ba',
-      'Thứ Tư',
-      'Thứ Năm',
-      'Thứ Sáu',
-      'Thứ Bảy',
-      'Chủ Nhật',
-    ];
-
-    final weekday = weekdays[date.weekday - 1];
-    return '$weekday, ngày ${date.day} thg ${date.month}, ${date.year}';
+  String _formatHeaderDate(BuildContext context, DateTime date) {
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat('EEEE, d MMM, y', locale).format(date);
   }
 
   String _formatCompactMoney({
@@ -80,14 +72,14 @@ class DayDetailScreen extends StatelessWidget {
       body: SafeArea(
         child: dayTransactions.isEmpty
             ? _EmptyDayView(
-          selectedDateText: _formatHeaderDate(selectedDate),
+          selectedDateText: _formatHeaderDate(context, selectedDate),
         )
             : Padding(
           padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
           child: Column(
             children: [
               _HeaderBar(
-                title: _formatHeaderDate(selectedDate),
+                title: _formatHeaderDate(context, selectedDate),
                 onClose: () => Navigator.pop(context),
               ),
 
@@ -335,7 +327,7 @@ class _EmptyDayView extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Không có giao dịch trong ngày này',
+              context.l10n.dayDetailEmpty,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 15,
@@ -358,6 +350,38 @@ class _MomentGridCard extends StatelessWidget {
     required this.amountText,
     required this.timeText,
   });
+
+  String _localizedCategoryLabel(BuildContext context, String category) {
+    final l10n = context.l10n;
+    switch (category.trim()) {
+      case 'Ăn uống':
+      case 'Food':
+        return l10n.food;
+      case 'Lương':
+      case 'Salary':
+        return l10n.salary;
+      case 'Mua sắm':
+      case 'Shopping':
+        return l10n.shopping;
+      case 'Đi lại':
+      case 'Transport':
+        return l10n.transport;
+      case 'Giải trí':
+      case 'Entertainment':
+        return l10n.entertainment;
+      case 'Học tập':
+      case 'Education':
+        return l10n.education;
+      case 'Quà tặng':
+      case 'Gift':
+        return l10n.gift;
+      case 'Khác':
+      case 'Other':
+        return l10n.other;
+      default:
+        return BudgetNameLocalizer.display(context, category);
+    }
+  }
 
   Color _parseColorHex(BuildContext context, String? value) {
     if (value == null || value.trim().isEmpty) {
@@ -394,15 +418,21 @@ class _MomentGridCard extends StatelessWidget {
 
     switch (transaction.category) {
       case 'Ăn uống':
+      case 'Food':
       case 'Lương':
+      case 'Salary':
         return AppColors.income;
       case 'Mua sắm':
+      case 'Shopping':
         return AppColors.primaryPink;
       case 'Đi lại':
+      case 'Transport':
         return AppColors.primaryBlue;
       case 'Giải trí':
+      case 'Entertainment':
         return AppColors.warning;
       case 'Học tập':
+      case 'Education':
         return AppColors.primaryPurple;
       default:
         return AppColors.textSecondary(context);
@@ -474,7 +504,7 @@ class _MomentGridCard extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    transaction.category,
+                    _localizedCategoryLabel(context, transaction.category),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(

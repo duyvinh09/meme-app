@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -37,12 +39,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  String _getGreetingByTime() {
+  String _getGreetingByTime(BuildContext context) {
     final hour = DateTime.now().hour;
 
-    if (hour < 12) return 'Chào buổi sáng';
-    if (hour < 18) return 'Chào buổi chiều';
-    return 'Chào buổi tối';
+    if (hour < 12) return context.l10n.goodMorning;
+    if (hour < 18) return context.l10n.goodAfternoon;
+    return context.l10n.goodEvening;
   }
 
   String _getGreetingIcon() {
@@ -69,7 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (todayTransactions.isEmpty) {
       return Text(
-        'Hôm nay bạn chưa thêm giao dịch nào.',
+        context.l10n.noTransactionsToday,
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: AppTextStyles.caption(context).copyWith(
@@ -101,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
       chips.add(
         _SummaryChip(
           icon: Icons.south_west_rounded,
-          text: 'Đã nhận ${money(todayIncome)} hôm nay',
+          text: context.l10n.receivedToday(money(todayIncome)),
           accentColor: AppColors.income,
         ),
       );
@@ -111,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
       chips.add(
         _SummaryChip(
           icon: Icons.north_east_rounded,
-          text: 'Đã chi ${money(todayExpense)} hôm nay',
+          text: context.l10n.spentToday(money(todayExpense)),
           accentColor: AppColors.expense,
         ),
       );
@@ -140,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final home = context.watch<HomeController>();
     final currency = context.watch<ProfileController>().currency;
 
-    final greetingText = _getGreetingByTime();
+    final greetingText = _getGreetingByTime(context);
     final greetingIcon = _getGreetingIcon();
     final avatarUrl = home.profile?.avatarUrl ?? '';
 
@@ -162,10 +164,14 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                Expanded(
+                const Expanded(
                   child: Text(
                     'Meme',
-                    style: AppTextStyles.pageTitle(context),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
                 _TopActionButton(
@@ -182,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
               avatarUrl: avatarUrl,
               greetingIcon: greetingIcon,
               greetingText: greetingText,
-              userName: home.profile?.name ?? 'Bạn',
+              userName: home.profile?.name ?? context.l10n.you,
               todaySummary: _buildTodaySummary(
                 home: home,
                 currency: currency,
@@ -219,13 +225,13 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: Text(
-                    'Giao dịch gần đây',
+                    context.l10n.recentTransactions,
                     style: AppTextStyles.sectionTitle(context),
                   ),
                 ),
                 if (home.transactions.isNotEmpty)
                   Text(
-                    '${home.transactions.length} giao dịch',
+                    context.l10n.transactionCount(home.transactions.length),
                     style: AppTextStyles.bodySecondary(context).copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -437,14 +443,14 @@ class _EmptyTransactionCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Chưa có giao dịch nào',
+            context.l10n.noTransactions,
             style: AppTextStyles.sectionTitle(context).copyWith(
               fontSize: 18,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Hãy thêm giao dịch đầu tiên để bắt đầu theo dõi chi tiêu',
+            context.l10n.addFirstTransaction,
             textAlign: TextAlign.center,
             style: AppTextStyles.bodySecondary(context),
           ),

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -96,6 +97,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   }
 
   Future<void> _showMonthYearPicker() async {
+    final l10n = context.l10n;
     final now = DateTime.now();
 
     int selectedYear = currentMonth.year;
@@ -137,7 +139,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     Row(
                       children: [
                         Text(
-                          'Chọn tháng',
+                          l10n.selectMonth,
                           style: AppTextStyles.sectionTitle(context).copyWith(
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
@@ -151,7 +153,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               DateTime(now.year, now.month),
                             );
                           },
-                          child: const Text('Hôm nay'),
+                          child: Text(l10n.todayLabel),
                         ),
                       ],
                     ),
@@ -278,7 +280,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                               ),
                             ),
                             child: Text(
-                              'Tháng $month',
+                              l10n.monthLabel(month),
                               style: TextStyle(
                                 color: isSelected
                                     ? AppColors.primaryBlue
@@ -309,11 +311,17 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final locale = Localizations.localeOf(context).toString();
     final home = context.watch<HomeController>();
     final days = _daysInMonth(currentMonth);
 
     final monthTitle = _capitalizeMonth(
-      DateFormat('MMMM yyyy', 'vi_VN').format(currentMonth),
+      DateFormat('MMMM yyyy', locale).format(currentMonth),
+    );
+    final weekdayLabels = List.generate(
+      7,
+          (index) => DateFormat('EEE', locale).format(DateTime(2024, 1, 1 + index)),
     );
 
     return Scaffold(
@@ -337,7 +345,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'Lịch giao dịch',
+                      l10n.calendarTransactionsTitle,
                       style: AppTextStyles.pageTitle(context).copyWith(
                         fontSize: 28,
                       ),
@@ -435,13 +443,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
                 ),
                 child: Row(
                   children: List.generate(7, (index) {
-                    const labels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
                     final isWeekend = index >= 5;
 
                     return Expanded(
                       child: Center(
                         child: Text(
-                          labels[index],
+                          weekdayLabels[index],
                           style: AppTextStyles.caption(context).copyWith(
                             color: isWeekend
                                 ? AppColors.primaryBlue

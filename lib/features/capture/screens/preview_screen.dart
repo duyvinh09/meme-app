@@ -8,13 +8,17 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/routes/route_names.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../budget/controllers/budget_controller.dart';
+import '../../profile/controllers/user_category_controller.dart';
 import '../../feed/controllers/feed_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../controllers/capture_controller.dart';
@@ -56,6 +60,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
   bool categoryOpen = false;
   bool privacyOpen = false;
   bool _loadedBudgets = false;
+  bool _loadedUserCategories = false;
+  bool _submitTapBusy = false;
 
   double amountValue = 0;
 
@@ -67,20 +73,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
   bool get isImage => widget.mediaType == 'image' && widget.imageFile != null;
 
   bool get hasMedia => isImage || isVideo;
-
-  final expenseCategories = const [
-    'Ăn uống',
-    'Mua sắm',
-    'Đi lại',
-    'Học tập',
-    'Khác',
-  ];
-
-  final incomeCategories = const [
-    'Lương',
-    'Quà tặng',
-    'Khác',
-  ];
 
   final Map<String, Map<String, dynamic>> categoryMeta = {
     'Ăn uống': {
@@ -130,7 +122,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   String get privacyLabel {
-    return privacy == 'private' ? 'Riêng tư' : 'Mọi người';
+    return privacy == 'private' ? context.l10n.private : context.l10n.everyone;
   }
 
   IconData get privacyIcon {
@@ -145,6 +137,70 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   Color get currentCategoryColor {
     return _colorForCategory(category);
+  }
+
+  String _toCanonicalCategory(String label) {
+    final l10n = context.l10n;
+    switch (label.trim()) {
+      case 'Ăn uống':
+      case 'Food':
+        return 'Ăn uống';
+      case 'Mua sắm':
+      case 'Shopping':
+        return 'Mua sắm';
+      case 'Đi lại':
+      case 'Transport':
+        return 'Đi lại';
+      case 'Học tập':
+      case 'Education':
+        return 'Học tập';
+      case 'Giải trí':
+      case 'Entertainment':
+        return 'Giải trí';
+      case 'Lương':
+      case 'Salary':
+        return 'Lương';
+      case 'Quà tặng':
+      case 'Gift':
+        return 'Quà tặng';
+      case 'Khác':
+      case 'Other':
+        return 'Khác';
+      default:
+        if (label == l10n.food) return 'Ăn uống';
+        if (label == l10n.shopping) return 'Mua sắm';
+        if (label == l10n.transport) return 'Đi lại';
+        if (label == l10n.education) return 'Học tập';
+        if (label == l10n.entertainment) return 'Giải trí';
+        if (label == l10n.salary) return 'Lương';
+        if (label == l10n.gift) return 'Quà tặng';
+        if (label == l10n.other) return 'Khác';
+        return label;
+    }
+  }
+
+  String _localizedCategoryLabel(String categoryValue) {
+    final l10n = context.l10n;
+    switch (_toCanonicalCategory(categoryValue)) {
+      case 'Ăn uống':
+        return l10n.food;
+      case 'Mua sắm':
+        return l10n.shopping;
+      case 'Đi lại':
+        return l10n.transport;
+      case 'Học tập':
+        return l10n.education;
+      case 'Giải trí':
+        return l10n.entertainment;
+      case 'Lương':
+        return l10n.salary;
+      case 'Quà tặng':
+        return l10n.gift;
+      case 'Khác':
+        return l10n.other;
+      default:
+        return BudgetNameLocalizer.display(context, categoryValue);
+    }
   }
 
   @override
@@ -207,6 +263,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       _loadedBudgets = true;
     }
+
+    if (!_loadedUserCategories) {
+      final uid = context.read<AuthController>().user?.uid;
+
+      if (uid != null) {
+        context.read<UserCategoryController>().load(uid);
+      }
+
+      _loadedUserCategories = true;
+    }
   }
 
   @override
@@ -217,44 +283,112 @@ class _PreviewScreenState extends State<PreviewScreen> {
     super.dispose();
   }
 
-  List<String> currentCategories(BuildContext context) {
-    if (type == 'income') {
-      return incomeCategories;
+  List<String> _mergedExpenseCategoryLabels(
+    BuildContext context, {
+    required bool listen,
+  }) {
+    final l10n = context.l10n;
+
+    BudgetController budgetController(BuildContext ctx) =>
+        listen ? ctx.watch<BudgetController>() : ctx.read<BudgetController>();
+
+    UserCategoryController userCategoryController(BuildContext ctx) =>
+        listen ? ctx.watch<UserCategoryController>() : ctx.read<UserCategoryController>();
+
+    final seen = <String>{};
+    final out = <String>[];
+
+    void addRaw(String raw) {
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) return;
+
+      final key = _toCanonicalCategory(trimmed);
+      if (seen.contains(key)) return;
+
+      seen.add(key);
+      out.add(trimmed);
     }
 
-    final budgetController = context.watch<BudgetController>();
+    for (final label in [
+      l10n.food,
+      l10n.shopping,
+      l10n.transport,
+      l10n.entertainment,
+      l10n.education,
+      l10n.other,
+    ]) {
+      addRaw(label);
+    }
 
-    final customBudgetNames = budgetController.budgets
-        .map((budget) => budget.name.trim())
-        .where((name) => name.isNotEmpty)
-        .where((name) => !expenseCategories.contains(name))
-        .toSet()
-        .toList();
+    for (final uc in userCategoryController(context).categoriesForExpense()) {
+      addRaw(uc.name);
+    }
 
-    return [
-      ...expenseCategories,
-      ...customBudgetNames,
-    ];
+    for (final budget in budgetController(context).budgets) {
+      addRaw(budget.name);
+    }
+
+    return out;
+  }
+
+  List<String> _mergedIncomeCategoryLabels(
+    BuildContext context, {
+    required bool listen,
+  }) {
+    final l10n = context.l10n;
+
+    UserCategoryController userCategoryController(BuildContext ctx) =>
+        listen ? ctx.watch<UserCategoryController>() : ctx.read<UserCategoryController>();
+
+    final seen = <String>{};
+    final out = <String>[];
+
+    void addRaw(String raw) {
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) return;
+
+      final key = _toCanonicalCategory(trimmed);
+      if (seen.contains(key)) return;
+
+      seen.add(key);
+      out.add(trimmed);
+    }
+
+    for (final label in [
+      l10n.salary,
+      l10n.gift,
+      l10n.other,
+    ]) {
+      addRaw(label);
+    }
+
+    for (final uc in userCategoryController(context).categoriesForIncome()) {
+      addRaw(uc.name);
+    }
+
+    return out;
+  }
+
+  List<String> currentCategories(BuildContext context) {
+    if (type == 'income') {
+      return _mergedIncomeCategoryLabels(context, listen: true);
+    }
+
+    return _mergedExpenseCategoryLabels(context, listen: true);
   }
 
   List<String> expenseCategoriesForAction() {
-    final budgetController = context.read<BudgetController>();
+    return _mergedExpenseCategoryLabels(context, listen: false);
+  }
 
-    final customBudgetNames = budgetController.budgets
-        .map((budget) => budget.name.trim())
-        .where((name) => name.isNotEmpty)
-        .where((name) => !expenseCategories.contains(name))
-        .toSet()
-        .toList();
-
-    return [
-      ...expenseCategories,
-      ...customBudgetNames,
-    ];
+  List<String> incomeCategoriesForAction() {
+    return _mergedIncomeCategoryLabels(context, listen: false);
   }
 
   IconData _iconForCategory(String label) {
-    final defaultIcon = categoryMeta[label]?['icon'] as IconData?;
+    final lookupLabel = _toCanonicalCategory(label);
+
+    final defaultIcon = categoryMeta[lookupLabel]?['icon'] as IconData?;
 
     if (defaultIcon != null) {
       return defaultIcon;
@@ -269,11 +403,22 @@ class _PreviewScreenState extends State<PreviewScreen> {
       );
     }
 
+    final userCat = context.read<UserCategoryController>().findByName(label);
+
+    if (userCat != null) {
+      return IconData(
+        userCat.iconCodePoint,
+        fontFamily: 'MaterialIcons',
+      );
+    }
+
     return Icons.account_balance_wallet_outlined;
   }
 
   Color _colorForCategory(String label) {
-    final defaultColor = categoryMeta[label]?['color'] as Color?;
+    final lookupLabel = _toCanonicalCategory(label);
+
+    final defaultColor = categoryMeta[lookupLabel]?['color'] as Color?;
 
     if (defaultColor != null) {
       return defaultColor;
@@ -283,6 +428,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
     if (budget != null) {
       final cleaned = budget.colorHex.replaceAll('#', '');
+
+      if (cleaned.length == 6) {
+        return Color(int.parse('FF$cleaned', radix: 16));
+      }
+    }
+
+    final userCat = context.read<UserCategoryController>().findByName(label);
+
+    if (userCat != null) {
+      final cleaned = userCat.colorHex.replaceAll('#', '');
 
       if (cleaned.length == 6) {
         return Color(int.parse('FF$cleaned', radix: 16));
@@ -304,9 +459,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Số tiền tối đa 10 chữ số'),
-          duration: Duration(milliseconds: 1000),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.maxAmountDigits),
         ),
       );
     });
@@ -369,18 +524,18 @@ class _PreviewScreenState extends State<PreviewScreen> {
       context: context,
       builder: (_) {
         return AlertDialog(
-          title: const Text('Vượt mục tiêu budget'),
+          title: Text(context.l10n.overBudgetLimitTitle),
           content: Text(
-            'Giao dịch này sẽ làm chủ đề "$category" vượt mục tiêu $limitText khoảng $overText. Bạn vẫn muốn lưu chứ?',
+            context.l10n.overBudgetLimitWarning(category, limitText, overText),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Huỷ'),
+              child: Text(context.l10n.cancel),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Vẫn lưu'),
+              child: Text(context.l10n.saveAnyway),
             ),
           ],
         );
@@ -416,23 +571,23 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       final captionText = captionController.text.trim();
       final sign = type == 'expense' ? '-' : '+';
-      final privacyText = privacy == 'private' ? 'Riêng tư' : 'Mọi người';
+      final privacyText = privacy == 'private' ? context.l10n.private : context.l10n.everyone;
 
       final shareText = StringBuffer()
         ..writeln('Meme')
         ..writeln()
-        ..writeln('Loại: ${type == 'expense' ? 'Chi tiêu' : 'Thu nhập'}')
-        ..writeln('Danh mục: $category');
+        ..writeln(context.l10n.shareType(type == 'expense' ? context.l10n.expense : context.l10n.income))
+        ..writeln(context.l10n.shareCategory(_localizedCategoryLabel(category)));
 
       if (amountController.text.trim().isNotEmpty) {
-        shareText.writeln('Số tiền: $sign$amountText');
+        shareText.writeln(context.l10n.shareAmount('$sign$amountText'));
       }
 
       if (captionText.isNotEmpty) {
-        shareText.writeln('Chi tiết: $captionText');
+        shareText.writeln(context.l10n.shareDetails(captionText));
       }
 
-      shareText.writeln('Quyền riêng tư: $privacyText');
+      shareText.writeln(context.l10n.sharePrivacy(privacyText));
 
       final mediaFile = isVideo ? widget.videoFile : widget.imageFile;
 
@@ -460,8 +615,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể chia sẻ lúc này'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.cannotShareNow),
         ),
       );
     }
@@ -483,8 +639,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
     if (amountValue <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập số tiền hợp lệ'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.enterValidAmount),
         ),
       );
       return;
@@ -492,8 +649,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
     if (amountValue > kMaxAmountValue) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Số tiền vượt quá giới hạn 10 chữ số'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.amountLimitExceeded),
         ),
       );
       return;
@@ -530,7 +688,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       userId: uid,
       amount: amountValue,
       type: type,
-      category: category,
+      category: _toCanonicalCategory(category),
       caption: captionController.text.trim(),
       note: '',
       sharedToFeed: privacy == 'friends',
@@ -553,22 +711,25 @@ class _PreviewScreenState extends State<PreviewScreen> {
         if (budget.limitAmount > 0 && nextSpent > budget.limitAmount) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
+              duration: AppDurations.snackBar,
               content: Text(
-                'Đã lưu, nhưng chủ đề "$category" đã vượt mục tiêu.',
+                context.l10n.savedWithOverLimit(category),
               ),
             ),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Đã lưu giao dịch thành công'),
+            SnackBar(
+              duration: AppDurations.snackBar,
+              content: Text(context.l10n.transactionSavedSuccessfully),
             ),
           );
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Đã lưu giao dịch thành công'),
+          SnackBar(
+            duration: AppDurations.snackBar,
+            content: Text(context.l10n.transactionSavedSuccessfully),
           ),
         );
       }
@@ -580,8 +741,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
       Navigator.popUntil(context, (route) => route.isFirst);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lưu giao dịch thất bại'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.transactionSaveFailed),
         ),
       );
     }
@@ -597,9 +759,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       return {
         'label': label,
+        'displayLabel': _localizedCategoryLabel(label),
         'icon': _iconForCategory(label),
         'color': _colorForCategory(label),
         'isCustomBudget': isCustomBudget,
+        'badgeText': isCustomBudget ? context.l10n.limitLabel : null,
       };
     }).toList();
 
@@ -607,22 +771,23 @@ class _PreviewScreenState extends State<PreviewScreen> {
       children: List.generate(items.length, (index) {
         final item = items[index];
         final label = item['label'] as String;
+        final displayLabel = item['displayLabel'] as String;
         final color = item['color'] as Color;
         final icon = item['icon'] as IconData;
-        final isCustomBudget = item['isCustomBudget'] == true;
-        final isSelected = category == label;
+        final badgeText = item['badgeText'] as String?;
+        final isSelected = _toCanonicalCategory(category) == _toCanonicalCategory(label);
 
         return Column(
           children: [
             _DropdownItem(
               icon: icon,
-              label: label,
+              label: displayLabel,
               color: color,
               isSelected: isSelected,
-              badgeText: isCustomBudget ? 'Giới hạn' : null,
+              badgeText: badgeText,
               onTap: () {
                 setState(() {
-                  category = label;
+                  category = _toCanonicalCategory(label);
                   categoryOpen = false;
                 });
               },
@@ -638,13 +803,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final items = [
       {
         'value': 'friends',
-        'label': 'Mọi người',
+        'label': context.l10n.everyone,
         'icon': Icons.groups_2_outlined,
         'color': AppColors.income,
       },
       {
         'value': 'private',
-        'label': 'Riêng tư',
+        'label': context.l10n.private,
         'icon': Icons.lock_outline_rounded,
         'color': AppColors.expense,
       },
@@ -757,9 +922,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       setState(() {
         type = 'expense';
-        category = categories.contains(category)
-            ? category
-            : categories.first;
+        final currentCanonical = _toCanonicalCategory(category);
+        category = categories.any(
+          (item) => _toCanonicalCategory(item) == currentCanonical,
+        )
+            ? currentCanonical
+            : _toCanonicalCategory(categories.first);
         categoryOpen = false;
         privacyOpen = false;
       });
@@ -770,11 +938,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
     void switchToIncome() {
       if (type == 'income') return;
 
+      final categories = incomeCategoriesForAction();
+
       setState(() {
         type = 'income';
-        category = incomeCategories.contains(category)
-            ? category
-            : incomeCategories.first;
+        final currentCanonical = _toCanonicalCategory(category);
+        category = categories.any(
+          (item) => _toCanonicalCategory(item) == currentCanonical,
+        )
+            ? currentCanonical
+            : _toCanonicalCategory(categories.first);
         categoryOpen = false;
         privacyOpen = false;
       });
@@ -967,11 +1140,22 @@ class _PreviewScreenState extends State<PreviewScreen> {
     );
   }
 
+  Future<void> _handleSubmitTap() async {
+    if (_submitTapBusy || !hasAmountInput) return;
+    setState(() => _submitTapBusy = true);
+    try {
+      await _saveTransaction();
+    } finally {
+      if (mounted) setState(() => _submitTapBusy = false);
+    }
+  }
+
   Widget _buildSubmitButton({
-    required bool isSaving,
+    required bool controllerSaving,
   }) {
+    final busy = controllerSaving || _submitTapBusy;
     return GestureDetector(
-      onTap: hasAmountInput && !isSaving ? _saveTransaction : null,
+      onTap: hasAmountInput && !busy ? () => _handleSubmitTap() : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         width: 108,
@@ -1000,7 +1184,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
               ),
             ),
             child: Center(
-              child: isSaving
+              child: busy
                   ? const SizedBox(
                 width: 28,
                 height: 28,
@@ -1079,7 +1263,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                   Expanded(
                                     child: _dropdownPill(
                                       icon: currentCategoryIcon,
-                                      label: category,
+                                      label: _localizedCategoryLabel(category),
                                       isOpen: categoryOpen,
                                       onTap: () {
                                         setState(() {
@@ -1128,7 +1312,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 children: [
                                   _bottomAction(
                                     icon: Icons.photo_camera_back_outlined,
-                                    label: 'Chụp lại',
+                                    label: context.l10n.retake,
                                     onTap: () {
                                       Navigator.pushReplacement(
                                         context,
@@ -1140,13 +1324,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                   ),
 
                                   _buildSubmitButton(
-                                    isSaving: isSaving,
+                                    controllerSaving: isSaving,
                                   ),
 
                                   if (hasMedia)
                                     _bottomAction(
                                       icon: Icons.ios_share_rounded,
-                                      label: 'Share',
+                                      label: context.l10n.share,
                                       onTap: _shareMoment,
                                     )
                                   else
@@ -1198,9 +1382,9 @@ class _CancelButton extends StatelessWidget {
                 color: Colors.white.withOpacity(0.08),
               ),
             ),
-            child: const Text(
-              'Huỷ',
-              style: TextStyle(
+            child: Text(
+              context.l10n.cancel,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 15.5,
                 fontWeight: FontWeight.w700,
@@ -1422,7 +1606,7 @@ class _InputOverlayCard extends StatelessWidget {
                   ),
                   decoration: InputDecoration(
                     isDense: true,
-                    hintText: 'Thêm chi tiết',
+                    hintText: context.l10n.addDetails,
                     hintStyle: TextStyle(
                       color: Colors.white.withOpacity(0.50),
                       fontWeight: FontWeight.w600,

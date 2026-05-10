@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
+import '../../../core/widgets/custom_button.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
@@ -24,18 +28,18 @@ class EditGroupScreen extends StatefulWidget {
 }
 
 class _EditGroupScreenState extends State<EditGroupScreen> {
-  static const int kMaxGroupNameLength = 50;
+  static const int kMaxGroupNameLength = UserRepository.maxGroupNameLength;
 
   late final TextEditingController nameController;
   late final TextEditingController goalController;
   late Color selectedColor;
 
   String originalName = '';
-  String originalGoalText = '';
-  String originalColorHex = '';
+  late final double _storedGoalAmountVnd;
+  late final String _originalColorCanonical;
   Set<String> originalMemberIds = {};
 
-  bool didFormatInitialGoal = false;
+  bool _didSeedGoalField = false;
 
   final List<Color> groupColors = const [
     AppColors.primaryBlue,
@@ -53,7 +57,6 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   ];
 
   Set<String> selectedMemberIds = {};
-  bool isSaving = false;
   bool isLoadingMembers = true;
 
   List<Map<String, dynamic>> currentMemberProfiles = [];
@@ -63,19 +66,17 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     super.initState();
 
     originalName = (widget.groupData['name'] ?? '').toString().trim();
+    _storedGoalAmountVnd = _toDouble(widget.groupData['goalAmount']);
 
     nameController = TextEditingController(
       text: originalName,
     );
 
-    final goalAmount = _toDouble(widget.groupData['goalAmount']);
+    goalController = TextEditingController();
 
-    goalController = TextEditingController(
-      text: goalAmount <= 0 ? '' : goalAmount.round().toString(),
-    );
-
-    originalColorHex = (widget.groupData['color'] ?? '#79AFFF').toString();
-    selectedColor = _parseHexColor(originalColorHex);
+    final colorRaw = (widget.groupData['color'] ?? '#79AFFF').toString();
+    _originalColorCanonical = _normalizeStoredHex(colorRaw);
+    selectedColor = _parseHexColor(colorRaw);
 
     final memberIds = (widget.groupData['memberIds'] as List?)
         ?.map((e) => e.toString())
@@ -85,16 +86,109 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     selectedMemberIds = memberIds;
     originalMemberIds = {...memberIds};
 
+    nameController.addListener(_scheduleRebuildForDirty);
+    goalController.addListener(_scheduleRebuildForDirty);
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadCurrentMembers();
+      _seedGoalFieldDisplay();
     });
+  }
+
+  void _scheduleRebuildForDirty() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
+    nameController.removeListener(_scheduleRebuildForDirty);
+    goalController.removeListener(_scheduleRebuildForDirty);
     nameController.dispose();
     goalController.dispose();
     super.dispose();
+  }
+
+  String _normalizeStoredHex(String hex) {
+    final raw = hex.replaceAll('#', '').trim().toUpperCase();
+    return raw.length == 6 ? '#$raw' : '#79AFFF';
+  }
+
+  void _seedGoalFieldDisplay() {
+    if (!mounted) return;
+
+    final currency = context.read<ProfileController>().currency;
+
+    if (_storedGoalAmountVnd <= 0) {
+      goalController.clear();
+      setState(() {
+        _didSeedGoalField = true;
+      });
+      return;
+    }
+
+    switch (AppCurrencyFormatter.normalizeCurrency(currency)) {
+      case 'USD':
+        final amount = AppCurrencyFormatter.fromVnd(
+          amountVnd: _storedGoalAmountVnd,
+          currency: 'USD',
+        );
+        goalController.text = NumberFormat.currency(
+          locale: 'en_US',
+          decimalDigits: 2,
+          symbol: '',
+        ).format(amount).trim();
+        break;
+      default:
+        goalController.text = NumberFormat.decimalPattern(
+          'vi_VN',
+        ).format(_storedGoalAmountVnd.round());
+        break;
+    }
+
+    setState(() {
+      _didSeedGoalField = true;
+    });
+  }
+
+  String _colorToHex(Color color) {
+    return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
+  }
+
+  bool _membersChanged() {
+    if (selectedMemberIds.length != originalMemberIds.length) return true;
+    for (final id in selectedMemberIds) {
+      if (!originalMemberIds.contains(id)) return true;
+    }
+    return false;
+  }
+
+  bool _goalChanged(String? currency) {
+    if (!_didSeedGoalField) return false;
+
+    final c = AppCurrencyFormatter.normalizeCurrency(currency);
+    final raw = goalController.text.trim();
+
+    if (raw.isEmpty) {
+      return _storedGoalAmountVnd.round() != 0;
+    }
+
+    final parsed = _parseMoney(raw, c);
+    if (parsed <= 0) {
+      return _storedGoalAmountVnd.round() != 0;
+    }
+
+    final editedVnd = AppCurrencyFormatter.toVnd(
+      inputAmount: parsed,
+      currency: currency,
+    );
+    return editedVnd.round() != _storedGoalAmountVnd.round();
+  }
+
+  bool _hasPendingEdits(String? currency) {
+    if (nameController.text.trim() != originalName) return true;
+    if (_colorToHex(selectedColor) != _originalColorCanonical) return true;
+    if (_membersChanged()) return true;
+    return _goalChanged(currency);
   }
 
   String get groupId {
@@ -103,11 +197,6 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
   String get ownerUid {
     return (widget.groupData['ownerUid'] ?? '').toString();
-  }
-
-  bool _isOwner(BuildContext context) {
-    final myUid = context.read<AuthController>().user?.uid;
-    return myUid != null && myUid == ownerUid;
   }
 
   Future<void> _loadCurrentMembers() async {
@@ -169,10 +258,6 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     return AppColors.primaryBlue;
   }
 
-  String _toHex(Color color) {
-    return '#${color.value.toRadixString(16).substring(2).toUpperCase()}';
-  }
-
   List<Map<String, dynamic>> _mergeMembersAndFriends({
     required List<Map<String, dynamic>> currentMembers,
     required List<Map<String, dynamic>> friends,
@@ -227,8 +312,9 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   void _toggleMember(String uid) {
     if (uid == ownerUid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Chủ nhóm luôn phải ở trong nhóm'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.ownerMustBeInGroup),
         ),
       );
       return;
@@ -246,15 +332,14 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   }
 
   Future<void> _save() async {
-    if (isSaving) return;
-
     final myUid = context.read<AuthController>().user?.uid;
     final currency = context.read<ProfileController>().currency;
 
     if (myUid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy người dùng hiện tại'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.currentUserNotFound),
         ),
       );
       return;
@@ -262,8 +347,9 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
     if (myUid != ownerUid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Chỉ chủ nhóm mới có thể chỉnh sửa nhóm'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.onlyOwnerCanEditGroup),
         ),
       );
       return;
@@ -271,8 +357,9 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
     if (groupId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không tìm thấy thông tin nhóm'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupInfoNotFound),
         ),
       );
       return;
@@ -283,8 +370,9 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tên nhóm'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.pleaseEnterGroupName),
         ),
       );
       return;
@@ -292,8 +380,9 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
     if (name.length > kMaxGroupNameLength) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tên nhóm tối đa 50 ký tự'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupNameTooLong),
         ),
       );
       return;
@@ -301,8 +390,9 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
     if (inputAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập số tiền mục tiêu'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.pleaseEnterGoalAmount),
         ),
       );
       return;
@@ -318,25 +408,22 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
       ownerUid,
     }.toList();
 
-    setState(() {
-      isSaving = true;
-    });
-
     try {
       await context.read<UserRepository>().updateGroup(
         myUid: myUid,
         groupId: groupId,
         name: name,
         memberIds: finalMemberIds,
-        colorHex: _toHex(selectedColor),
+        colorHex: _colorToHex(selectedColor),
         goalAmount: goalAmount,
       );
 
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã cập nhật nhóm'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupUpdated),
         ),
       );
 
@@ -346,15 +433,10 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Cập nhật nhóm thất bại: $e'),
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupUpdateFailedWithError(e.toString())),
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isSaving = false;
-        });
-      }
     }
   }
 
@@ -363,6 +445,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     final myUid = context.read<AuthController>().user?.uid;
     final currency = context.watch<ProfileController>().currency;
     final isOwner = myUid != null && myUid == ownerUid;
+    final pendingEdits = isOwner ? _hasPendingEdits(currency) : false;
 
     if (!isOwner) {
       return Scaffold(
@@ -381,7 +464,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        'Chỉnh sửa nhóm',
+                        context.l10n.editGroup,
                         style: AppTextStyles.pageTitle(context),
                       ),
                     ),
@@ -395,7 +478,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  'Bạn không có quyền chỉnh sửa nhóm này',
+                  context.l10n.noPermissionToEditGroup,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.sectionTitle(context).copyWith(
                     fontSize: 22,
@@ -403,7 +486,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                 ),
                 const SizedBox(height: 10),
                 Text(
-                  'Chỉ chủ nhóm mới có thể đổi thông tin, mời thành viên hoặc xoá thành viên khỏi nhóm.',
+                  context.l10n.onlyOwnerCanEditNote,
                   textAlign: TextAlign.center,
                   style: AppTextStyles.bodySecondary(context).copyWith(
                     height: 1.45,
@@ -437,7 +520,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                 const SizedBox(width: 14),
                 Expanded(
                   child: Text(
-                    'Chỉnh sửa nhóm',
+                    context.l10n.editGroup,
                     style: AppTextStyles.pageTitle(context),
                   ),
                 ),
@@ -468,22 +551,18 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
                   _EditInputField(
                     controller: nameController,
-                    label: 'Tên nhóm',
-                    hintText: 'Nhập tên nhóm',
+                    label: context.l10n.groupName,
+                    hintText: context.l10n.groupNameHint,
                     icon: Icons.groups_2_outlined,
                     cursorColor: selectedColor,
                     maxLength: kMaxGroupNameLength,
-                    inputFormatters: [
-                      LengthLimitingTextInputFormatter(kMaxGroupNameLength),
-                    ],
-                    onChanged: (_) => setState(() {}),
                   ),
 
                   const SizedBox(height: 14),
 
                   _EditInputField(
                     controller: goalController,
-                    label: 'Số tiền mục tiêu',
+                    label: context.l10n.goalAmount,
                     hintText: AppCurrencyFormatter.formatInputHint(currency),
                     icon: Icons.flag_rounded,
                     suffixText: AppCurrencyFormatter.symbol(currency),
@@ -500,7 +579,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                   Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Màu nhóm',
+                      context.l10n.groupColor,
                       style: AppTextStyles.sectionTitle(context).copyWith(
                         fontSize: 18,
                       ),
@@ -572,9 +651,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
             const SizedBox(height: 18),
 
             StreamBuilder<List<Map<String, dynamic>>>(
-              stream: myUid == null
-                  ? const Stream.empty()
-                  : context.read<UserRepository>().streamFriends(myUid),
+              stream: context.read<UserRepository>().streamFriends(myUid),
               builder: (context, snapshot) {
                 final friends = snapshot.data ?? [];
 
@@ -598,12 +675,12 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Thành viên nhóm',
+                        context.l10n.groupMembers,
                         style: AppTextStyles.sectionTitle(context),
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Chọn bạn bè để mời vào nhóm. Thành viên cũ vẫn được giữ lại dù không còn là bạn bè.',
+                        context.l10n.groupMembersNote,
                         style: AppTextStyles.bodySecondary(context).copyWith(
                           fontSize: 13,
                           height: 1.4,
@@ -613,13 +690,13 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
                       if (mergedItems.isEmpty)
                         Text(
-                          'Chưa có thành viên hoặc bạn bè để hiển thị',
+                          context.l10n.noMembersOrFriends,
                           style: AppTextStyles.bodySecondary(context),
                         )
                       else
                         ...mergedItems.map((item) {
                           final uid = (item['uid'] ?? '').toString();
-                          final name = (item['name'] ?? 'Người dùng').toString();
+                          final name = (item['name'] ?? context.l10n.user).toString();
                           final username = (item['username'] ?? '').toString();
                           final avatarUrl = (item['avatarUrl'] ?? '').toString();
 
@@ -657,41 +734,13 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
 
             const SizedBox(height: 24),
 
-            SizedBox(
+            CustomButton(
               height: 58,
-              child: FilledButton(
-                onPressed: isSaving ? null : _save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: selectedColor,
-                  foregroundColor: Colors.white,
-                  disabledBackgroundColor: selectedColor.withOpacity(0.45),
-                  disabledForegroundColor: Colors.white.withOpacity(0.82),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                  ),
-                ),
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: isSaving
-                      ? const SizedBox(
-                    key: ValueKey('saving'),
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Text(
-                    key: ValueKey('save_text'),
-                    'Lưu thay đổi',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-              ),
+              borderRadius: AppSizes.radiusPill,
+              text: context.l10n.saveChanges,
+              backgroundColor: selectedColor,
+              foregroundColor: AppColors.foregroundOnAccent(selectedColor),
+              onPressedAsync: pendingEdits ? _save : null,
             ),
           ],
         ),
@@ -730,15 +779,15 @@ class _MemberSelectTile extends StatelessWidget {
     final subtitleParts = <String>[];
 
     if (isOwner) {
-      subtitleParts.add('Chủ nhóm');
+      subtitleParts.add(context.l10n.groupOwner);
     } else if (isOldMember) {
-      subtitleParts.add('Thành viên hiện tại');
+      subtitleParts.add(context.l10n.currentMember);
     }
 
     if (isFriend) {
-      subtitleParts.add('Bạn bè');
+      subtitleParts.add(context.l10n.friendsTitle);
     } else if (isOldMember) {
-      subtitleParts.add('Không còn là bạn bè');
+      subtitleParts.add(context.l10n.notFriendsAnymore);
     }
 
     return Container(
@@ -772,7 +821,7 @@ class _MemberSelectTile extends StatelessWidget {
               : null,
         ),
         title: Text(
-          name.trim().isEmpty ? 'Người dùng' : name.trim(),
+          name.trim().isEmpty ? context.l10n.user : name.trim(),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.body(context).copyWith(
@@ -880,7 +929,7 @@ class _InfoNoteCard extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Khi thêm thành viên mới, nhóm sẽ xuất hiện trong tài khoản của họ. Khi bỏ chọn thành viên, nhóm sẽ bị xoá khỏi danh sách nhóm của người đó.',
+              context.l10n.groupMemberManagementNote,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
@@ -901,7 +950,6 @@ class _EditInputField extends StatelessWidget {
   final IconData icon;
   final String? suffixText;
   final TextInputType? keyboardType;
-  final ValueChanged<String>? onChanged;
   final List<TextInputFormatter>? inputFormatters;
   final int? maxLength;
   final Color cursorColor;
@@ -914,13 +962,14 @@ class _EditInputField extends StatelessWidget {
     required this.cursorColor,
     this.suffixText,
     this.keyboardType,
-    this.onChanged,
     this.inputFormatters,
     this.maxLength,
   });
 
   @override
   Widget build(BuildContext context) {
+    final counterLimit = maxLength;
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface(context),
@@ -933,8 +982,28 @@ class _EditInputField extends StatelessWidget {
         controller: controller,
         keyboardType: keyboardType,
         inputFormatters: inputFormatters,
-        onChanged: onChanged,
         cursorColor: cursorColor,
+        maxLength: counterLimit,
+        buildCounter:
+            counterLimit == null || counterLimit <= 0
+                ? null
+                : (_, {required currentLength, required isFocused, required maxLength}) {
+                    final lim = maxLength ?? counterLimit;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 10, bottom: 6),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '$currentLength/$lim',
+                          style: AppTextStyles.caption(context).copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary(context),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
         style: AppTextStyles.body(context).copyWith(
           fontSize: 17,
           fontWeight: FontWeight.w800,
@@ -943,9 +1012,7 @@ class _EditInputField extends StatelessWidget {
           labelText: label,
           hintText: hintText,
           suffixText: suffixText,
-          counterText: maxLength == null
-              ? null
-              : '${controller.text.length}/$maxLength',
+          counterText: counterLimit != null ? '' : null,
           prefixIcon: Icon(
             icon,
             color: AppColors.textSecondary(context),
@@ -957,7 +1024,7 @@ class _EditInputField extends StatelessWidget {
           hintStyle: AppTextStyles.caption(context).copyWith(
             fontSize: 15,
             fontWeight: FontWeight.w600,
-            color: AppColors.textSecondary(context).withOpacity(0.65),
+            color: AppColors.textSecondary(context).withValues(alpha: 0.65),
           ),
           suffixStyle: AppTextStyles.caption(context).copyWith(
             fontSize: 15,

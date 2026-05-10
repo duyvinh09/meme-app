@@ -7,7 +7,9 @@ import 'package:video_player/video_player.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
@@ -81,8 +83,8 @@ class _FeedScreenState extends State<FeedScreen> {
     if (myUid == null) {
       return Scaffold(
         backgroundColor: palette.background,
-        body: const Center(
-          child: Text('Không có người dùng'),
+        body: Center(
+          child: Text(context.l10n.noUser),
         ),
       );
     }
@@ -138,7 +140,7 @@ class _FeedScreenState extends State<FeedScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(24),
                           child: Text(
-                            'Lỗi tải feed:\n${feed.errorMessage}',
+                            context.l10n.loadFeedError(feed.errorMessage!),
                             textAlign: TextAlign.center,
                             style: AppTextStyles.body(context).copyWith(
                               color: palette.textPrimary,
@@ -281,13 +283,13 @@ class _FilteredEmptyFeed extends StatelessWidget {
     required this.onSelected,
   });
 
-  String _emptyFilterText() {
+  String _emptyFilterText(BuildContext context) {
     if (selectedUserId == 'me') {
-      return 'Bạn chưa có bài đăng nào';
+      return context.l10n.youHaveNoPosts;
     }
 
     if (selectedUserId == 'all') {
-      return 'Chưa có bài đăng nào';
+      return context.l10n.noPostsYet;
     }
 
     UserModel? selectedFriend;
@@ -301,9 +303,9 @@ class _FilteredEmptyFeed extends StatelessWidget {
 
     final name = selectedFriend?.name.trim().isNotEmpty == true
         ? selectedFriend!.name.trim()
-        : 'Người này';
+        : context.l10n.someone;
 
-    return '$name chưa có bài đăng nào';
+    return context.l10n.userHasNoPosts(name);
   }
 
   @override
@@ -324,7 +326,7 @@ class _FilteredEmptyFeed extends StatelessWidget {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    _emptyFilterText(),
+                    _emptyFilterText(context),
                     textAlign: TextAlign.center,
                     style: AppTextStyles.sectionTitle(context).copyWith(
                       color: palette.textPrimary,
@@ -395,7 +397,7 @@ class _FeedEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Feed bạn bè đang trống',
+              context.l10n.emptyFeedFriends,
               textAlign: TextAlign.center,
               style: AppTextStyles.pageTitle(context).copyWith(
                 color: palette.textPrimary,
@@ -404,7 +406,7 @@ class _FeedEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              'Khi bạn hoặc bạn bè chia sẻ giao dịch ở chế độ "Bạn bè", bài đăng sẽ xuất hiện ở đây.',
+              context.l10n.emptyFeedFriendsSubtitle,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 color: palette.textSecondary,
@@ -428,33 +430,66 @@ class _FeedPostPage extends StatelessWidget {
     required this.palette,
   });
 
-  String _formatFeedTime(DateTime createdAt) {
+  String _localizedCategoryLabel(BuildContext context, String category) {
+    final l10n = context.l10n;
+    switch (category.trim()) {
+      case 'Ăn uống':
+      case 'Food':
+        return l10n.food;
+      case 'Mua sắm':
+      case 'Shopping':
+        return l10n.shopping;
+      case 'Đi lại':
+      case 'Transport':
+        return l10n.transport;
+      case 'Giải trí':
+      case 'Entertainment':
+        return l10n.entertainment;
+      case 'Học tập':
+      case 'Education':
+        return l10n.education;
+      case 'Lương':
+      case 'Salary':
+        return l10n.salary;
+      case 'Quà tặng':
+      case 'Gift':
+        return l10n.gift;
+      case 'Khác':
+      case 'Other':
+        return l10n.other;
+      default:
+        return BudgetNameLocalizer.display(context, category);
+    }
+  }
+
+  String _formatFeedTime(BuildContext context, DateTime createdAt) {
     final now = DateTime.now();
 
     final safeCreatedAt = createdAt.isAfter(now) ? now : createdAt;
     final diff = now.difference(safeCreatedAt);
 
     if (diff.inSeconds < 60) {
-      return 'Vừa xong';
+      return context.l10n.justNow;
     }
 
     if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}ph';
+      return context.l10n.minutesAgo(diff.inMinutes);
     }
 
     if (diff.inHours < 24) {
-      return '${diff.inHours}g';
+      return context.l10n.hoursAgo(diff.inHours);
     }
 
     if (diff.inDays <= 7) {
-      return '${diff.inDays}ngày';
+      return context.l10n.daysAgo(diff.inDays);
     }
 
     if (now.year == createdAt.year) {
-      return '${createdAt.day} thg ${createdAt.month}';
+      return context.l10n.dateAt('${createdAt.day} thg ${createdAt.month}');
     }
 
-    return 'ngày ${createdAt.day} thg ${createdAt.month}, ${createdAt.year}';
+    return context.l10n.dateAt(
+        '${createdAt.day} thg ${createdAt.month}, ${createdAt.year}');
   }
 
   @override
@@ -462,6 +497,8 @@ class _FeedPostPage extends StatelessWidget {
     final viewerUid = context.read<AuthController>().user?.uid;
     final isOwner = viewerUid == transaction.userId;
     final currency = context.watch<ProfileController>().currency;
+    final localizedCategory =
+        _localizedCategoryLabel(context, transaction.category);
 
     final amountText = AppCurrencyFormatter.formatFromVnd(
       amountVnd: transaction.amount,
@@ -507,7 +544,7 @@ class _FeedPostPage extends StatelessWidget {
                     const SizedBox(height: 18),
                     _UploaderInfo(
                       user: user,
-                      timeText: _formatFeedTime(transaction.createdAt),
+                      timeText: _formatFeedTime(context, transaction.createdAt),
                       palette: palette,
                       isPrivate: transaction.privacy == 'private',
                       isOwner: isOwner,
@@ -532,7 +569,7 @@ class _FeedPostPage extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
-                          '${transaction.type == 'expense' ? '-' : '+'}$amountText • ${transaction.category}',
+                          '${transaction.type == 'expense' ? '-' : '+'}$amountText • $localizedCategory',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: transaction.type == 'expense'
@@ -586,12 +623,13 @@ class _FeedHeaderState extends State<_FeedHeader> {
   bool _menuOpen = false;
 
   String _shortName(
+      BuildContext context,
       String value, {
         int maxLength = 12,
       }) {
     final name = value.trim();
 
-    if (name.isEmpty) return 'Bạn bè';
+    if (name.isEmpty) return context.l10n.friendsTitle;
 
     if (name.length <= maxLength) {
       return name;
@@ -604,9 +642,9 @@ class _FeedHeaderState extends State<_FeedHeader> {
     return user.name.isNotEmpty ? user.name : user.username;
   }
 
-  String _selectedLabel() {
-    if (widget.selectedUserId == 'all') return 'Mọi người';
-    if (widget.selectedUserId == 'me') return 'Bạn';
+  String _selectedLabel(BuildContext context) {
+    if (widget.selectedUserId == 'all') return context.l10n.everyone;
+    if (widget.selectedUserId == 'me') return context.l10n.you;
 
     UserModel? selectedFriend;
 
@@ -617,9 +655,10 @@ class _FeedHeaderState extends State<_FeedHeader> {
       }
     }
 
-    if (selectedFriend == null) return 'Mọi người';
+    if (selectedFriend == null) return context.l10n.everyone;
 
     return _shortName(
+      context,
       _displayName(selectedFriend),
       maxLength: 10,
     );
@@ -778,7 +817,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
                       size: 17,
                       color: widget.palette.textPrimary,
                     ),
-                    label: 'Mọi người',
+                    label: context.l10n.everyone,
                     onTap: () => _selectUser('all'),
                   ),
                   _menuDivider(),
@@ -788,7 +827,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
                       size: 18,
                       color: widget.palette.textPrimary,
                     ),
-                    label: 'Bạn',
+                    label: context.l10n.you,
                     onTap: () => _selectUser('me'),
                   ),
                   if (sortedFriends.isNotEmpty) _menuDivider(),
@@ -810,6 +849,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
                                 : null,
                           ),
                           label: _shortName(
+                            context,
                             _displayName(friend),
                             maxLength: 14,
                           ),
@@ -882,7 +922,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
                         const SizedBox(width: 8),
                         Flexible(
                           child: Text(
-                            _selectedLabel(),
+                            _selectedLabel(context),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             softWrap: false,
@@ -1235,10 +1275,10 @@ class _UploaderInfo extends StatelessWidget {
     final avatarUrl = user?.avatarUrl ?? '';
 
     final username = isOwner
-        ? 'Bạn'
+        ? context.l10n.you
         : (user?.username.isNotEmpty == true
         ? user!.username
-        : (user?.name ?? 'Bạn bè'));
+        : (user?.name ?? context.l10n.friendsTitle));
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -1311,7 +1351,7 @@ class FeedGalleryScreen extends StatelessWidget {
               child: imageEntries.isEmpty
                   ? Center(
                 child: Text(
-                  'Chưa có ảnh nào trong feed',
+                  context.l10n.noPhotosInFeed,
                   style: TextStyle(
                     color: palette.textPrimary,
                     fontSize: 18,
@@ -1437,7 +1477,7 @@ class FeedGalleryScreen extends StatelessWidget {
                           border: Border.all(color: palette.pillBorder),
                         ),
                         child: Text(
-                          'Tất cả ảnh',
+                          context.l10n.allPhotos,
                           style: TextStyle(
                             color: palette.textPrimary,
                             fontSize: 17,

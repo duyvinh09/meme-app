@@ -8,6 +8,7 @@ import 'package:flutter/rendering.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_text_styles.dart';
+import '../extensions/localization_extension.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -25,6 +26,8 @@ import '../../features/profile/screens/feedback_screen.dart';
 import '../../features/profile/screens/friend_requests_screen.dart';
 import '../../features/profile/screens/friends_screen.dart';
 import '../../features/profile/screens/groups_screen.dart';
+import '../../features/profile/screens/manage_categories_screen.dart';
+import '../../features/profile/controllers/user_category_controller.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
@@ -121,6 +124,11 @@ class AppRoutes {
           builder: (_) => const FriendRequestsScreen(),
         );
 
+      case RouteNames.manageCategories:
+        return MaterialPageRoute(
+          builder: (_) => const ManageCategoriesScreen(),
+        );
+
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
@@ -181,6 +189,11 @@ class _MainShellState extends State<MainShell> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
+      final uid = context.read<AuthController>().user?.uid;
+      if (uid != null) {
+        context.read<UserCategoryController>().load(uid);
+      }
 
       _showCaptureFabTemporarily();
       _requestLocationPermissionOnFirstOpen();
@@ -468,31 +481,32 @@ class _FloatingGlassNavbar extends StatelessWidget {
         ? Colors.white.withOpacity(0.82)
         : Colors.black.withOpacity(0.62);
 
+    final l10n = context.l10n;
     final items = <_NavBarItemData>[
-      const _NavBarItemData(
+      _NavBarItemData(
         icon: Icons.home_outlined,
         activeIcon: Icons.home_rounded,
-        label: 'Trang chủ',
+        label: l10n.tabHome,
       ),
-      const _NavBarItemData(
+      _NavBarItemData(
         icon: Icons.bar_chart_outlined,
         activeIcon: Icons.analytics_rounded,
-        label: 'Thống kê',
+        label: l10n.tabStats,
       ),
-      const _NavBarItemData(
+      _NavBarItemData(
         icon: Icons.auto_awesome_outlined,
         activeIcon: Icons.auto_awesome_rounded,
-        label: 'Bạn bè',
+        label: l10n.tabFriends,
       ),
-      const _NavBarItemData(
+      _NavBarItemData(
         icon: Icons.savings_outlined,
         activeIcon: Icons.savings_rounded,
-        label: 'Ví sách',
+        label: l10n.tabBudget,
       ),
-      const _NavBarItemData(
+      _NavBarItemData(
         icon: Icons.person_outline_rounded,
         activeIcon: Icons.person_rounded,
-        label: 'Cá nhân',
+        label: l10n.profile,
       ),
     ];
 
@@ -577,7 +591,7 @@ class _FloatingGlassNavbar extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   i == 2 && isRefreshingFeed
-                                      ? 'Đang tải'
+                                      ? l10n.tabLoading
                                       : item.label,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,

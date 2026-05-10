@@ -3,7 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../datasources/remote/user_remote_datasource.dart';
 import '../models/user_model.dart';
 
+/// Connection state shown when searching a username on Add Friend.
+enum AddFriendConnectionState {
+  canSend,
+  pendingSent,
+  alreadyFriends,
+}
+
 class UserRepository {
+  /// Max length for group names (Firestore + UI). UTF-16 code units.
+  static const int maxGroupNameLength = 50;
   final UserRemoteDataSource _remote = UserRemoteDataSource();
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -320,6 +329,67 @@ class UserRepository {
     await batch.commit();
   }
 
+  /// Withdraw a friend request I sent to [toUid] (clears both sides).
+  Future<void> cancelSentFriendRequest({
+    required String myUid,
+    required String toUid,
+  }) async {
+    final batch = _db.batch();
+
+    final receivedRef = _db
+        .collection('users')
+        .doc(toUid)
+        .collection('friend_requests')
+        .doc(myUid);
+
+    final sentRef = _db
+        .collection('users')
+        .doc(myUid)
+        .collection('sent_friend_requests')
+        .doc(toUid);
+
+    batch.delete(receivedRef);
+    batch.delete(sentRef);
+
+    await batch.commit();
+  }
+
+  Future<AddFriendConnectionState> getAddFriendConnectionState({
+    required String myUid,
+    required String targetUid,
+  }) async {
+    if (myUid == targetUid) {
+      return AddFriendConnectionState.canSend;
+    }
+
+    final friendDoc = await _db
+        .collection('users')
+        .doc(myUid)
+        .collection('friends')
+        .doc(targetUid)
+        .get();
+
+    if (friendDoc.exists) {
+      return AddFriendConnectionState.alreadyFriends;
+    }
+
+    final sentDoc = await _db
+        .collection('users')
+        .doc(myUid)
+        .collection('sent_friend_requests')
+        .doc(targetUid)
+        .get();
+
+    if (sentDoc.exists) {
+      final status = sentDoc.data()?['status']?.toString() ?? 'pending';
+      if (status == 'pending') {
+        return AddFriendConnectionState.pendingSent;
+      }
+    }
+
+    return AddFriendConnectionState.canSend;
+  }
+
   Stream<List<Map<String, dynamic>>> streamFriends(String uid) {
     return _db
         .collection('users')
@@ -450,6 +520,15 @@ class UserRepository {
     required String colorHex,
     required double goalAmount,
   }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty || trimmedName.length > maxGroupNameLength) {
+      throw ArgumentError(
+        trimmedName.isEmpty
+            ? 'Group name cannot be empty'
+            : 'Group name must be at most $maxGroupNameLength characters',
+      );
+    }
+
     final groupRef = _db
         .collection('users')
         .doc(myUid)
@@ -484,7 +563,7 @@ class UserRepository {
 
     final updatedData = {
       ...data,
-      'name': name,
+      'name': trimmedName,
       'ownerUid': ownerUid,
       'memberIds': newMemberIds.toList(),
       'memberCount': newMemberIds.length,
@@ -644,13 +723,22 @@ class UserRepository {
     List<String> memberIds = const [],
     String colorHex = '#79AFFF',
   }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty || trimmedName.length > maxGroupNameLength) {
+      throw ArgumentError(
+        trimmedName.isEmpty
+            ? 'Group name cannot be empty'
+            : 'Group name must be at most $maxGroupNameLength characters',
+      );
+    }
+
     final doc = _db.collection('users').doc(uid).collection('groups').doc();
 
     final uniqueMemberIds = {uid, ...memberIds}.toList();
 
     final groupData = {
       'id': doc.id,
-      'name': name,
+      'name': trimmedName,
       'ownerUid': uid,
       'memberIds': uniqueMemberIds,
       'memberCount': uniqueMemberIds.length,

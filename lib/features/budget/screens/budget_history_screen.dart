@@ -5,16 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_icon_registry.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/budget_name_localizer.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../stats/controllers/stats_controller.dart';
+import '../../stats/screens/category_detail_screen.dart';
 import '../../../data/models/transaction_model.dart';
 
 class BudgetHistoryScreen extends StatefulWidget {
   final String budgetName;
+  final String? budgetNameEn;
   final double limitAmount;
   final int iconCodePoint;
   final String colorHex;
@@ -22,6 +27,7 @@ class BudgetHistoryScreen extends StatefulWidget {
   const BudgetHistoryScreen({
     super.key,
     required this.budgetName,
+    this.budgetNameEn,
     required this.limitAmount,
     required this.iconCodePoint,
     required this.colorHex,
@@ -77,10 +83,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
       return Icons.account_balance_wallet_outlined;
     }
 
-    return IconData(
-      codePoint,
-      fontFamily: 'MaterialIcons',
-    );
+    return AppIconRegistry.fromCodePoint(codePoint);
   }
 
   List<_BudgetPeriodData> _buildMonthlyPeriods(
@@ -127,11 +130,11 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
   }
 
   String _monthLabel(DateTime date) {
-    return '${date.month.toString().padLeft(2, '0')}/${date.year}';
+    return context.l10n.monthYear(date.month, date.year);
   }
 
   String _shortMonthLabel(DateTime date) {
-    return 'thg ${date.month}';
+    return context.l10n.shortMonth(date.month);
   }
 
   String _compactMoney(double value) {
@@ -185,6 +188,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
     final color = _parseHexColor(widget.colorHex);
     final icon = _budgetIcon(widget.iconCodePoint);
     final stats = context.watch<StatsController>();
+    final l10n = context.l10n;
 
     // final periods = _buildMonthlyPeriods(
     //   stats.transactions.whereType<TransactionModel>().toList(),
@@ -226,15 +230,19 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
           ),
           children: [
             _HistoryHeader(
-              title: 'Lịch sử ngân sách',
+              title: l10n.budgetHistory,
               onBack: () => Navigator.pop(context),
             ),
 
             const SizedBox(height: 24),
 
             _BudgetSummaryCard(
-              budgetName: widget.budgetName,
-              limitText: '${money(widget.limitAmount)} / Hằng tháng',
+              budgetName: BudgetNameLocalizer.display(
+                context,
+                widget.budgetName,
+                budgetNameEn: widget.budgetNameEn,
+              ),
+              limitText: '${money(widget.limitAmount)} / ${l10n.monthly}',
               icon: icon,
               color: color,
               averageText: money(average),
@@ -271,6 +279,30 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
               limitAmount: widget.limitAmount,
               money: money,
               monthLabel: _monthLabel,
+              onPeriodTap: (periodDate) {
+                final list = stats.transactions
+                    .where(
+                      (tx) =>
+                          tx.type == 'expense' &&
+                          tx.category == widget.budgetName &&
+                          tx.createdAt.year == periodDate.year &&
+                          tx.createdAt.month == periodDate.month,
+                    )
+                    .toList()
+                  ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                    builder: (_) => CategoryDetailScreen(
+                      category: widget.budgetName,
+                      type: 'expense',
+                      periodTitle: _monthLabel(periodDate),
+                      transactions: list,
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -352,6 +384,7 @@ class _BudgetSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       decoration: BoxDecoration(
@@ -370,7 +403,7 @@ class _BudgetSummaryCard extends StatelessWidget {
                 height: 64,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: color.withOpacity(0.16),
+                  color: color.withValues(alpha: 0.16),
                 ),
                 child: Icon(
                   icon,
@@ -425,7 +458,7 @@ class _BudgetSummaryCard extends StatelessWidget {
                   icon: Icons.show_chart_rounded,
                   iconColor: AppColors.primaryBlue,
                   value: averageText,
-                  label: 'Trung bình',
+                  label: l10n.average,
                 ),
               ),
               Expanded(
@@ -433,7 +466,7 @@ class _BudgetSummaryCard extends StatelessWidget {
                   icon: Icons.warning_amber_rounded,
                   iconColor: AppColors.expense,
                   value: overText,
-                  label: 'Vượt ngân sách',
+                  label: l10n.overBudget,
                 ),
               ),
             ],
@@ -448,7 +481,7 @@ class _BudgetSummaryCard extends StatelessWidget {
                   icon: Icons.arrow_downward_rounded,
                   iconColor: AppColors.income,
                   value: bestText,
-                  label: 'Kỳ tốt nhất',
+                  label: l10n.bestPeriod,
                 ),
               ),
               Expanded(
@@ -456,7 +489,7 @@ class _BudgetSummaryCard extends StatelessWidget {
                   icon: Icons.arrow_upward_rounded,
                   iconColor: AppColors.expense,
                   value: worstText,
-                  label: 'Kỳ tệ nhất',
+                  label: l10n.worstPeriod,
                 ),
               ),
             ],
@@ -540,7 +573,7 @@ class _PeriodCountSelector extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              'Số kỳ',
+              context.l10n.periodCount,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -610,6 +643,7 @@ class _BudgetChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final maxSpent = periods.isEmpty
         ? 0.0
         : periods.map((e) => e.total).reduce(math.max);
@@ -632,7 +666,7 @@ class _BudgetChartCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'So sánh qua từng kỳ',
+            l10n.compareOverPeriods,
             style: AppTextStyles.sectionTitle(context).copyWith(
               fontSize: 22,
               fontWeight: FontWeight.w900,
@@ -644,19 +678,19 @@ class _BudgetChartCard extends StatelessWidget {
           Wrap(
             spacing: 16,
             runSpacing: 8,
-            children: const [
+            children: [
               _LegendItem(
                 color: AppColors.warning,
-                label: 'Giới hạn ngân sách',
+                label: l10n.budgetLimitLegend,
                 isLine: true,
               ),
               _LegendItem(
                 color: AppColors.income,
-                label: 'Trong ngân sách',
+                label: l10n.withinBudgetLegend,
               ),
               _LegendItem(
                 color: AppColors.expense,
-                label: 'Vượt ngân sách!',
+                label: l10n.overBudgetLegend,
               ),
             ],
           ),
@@ -750,8 +784,8 @@ class _BudgetChartCard extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            barColor.withOpacity(0.92),
-                            barColor.withOpacity(0.42),
+                            barColor.withValues(alpha: 0.92),
+                            barColor.withValues(alpha: 0.42),
                           ],
                         ),
                       ),
@@ -836,12 +870,14 @@ class _PeriodDetailCard extends StatelessWidget {
   final double limitAmount;
   final String Function(double value) money;
   final String Function(DateTime date) monthLabel;
+  final void Function(DateTime periodDate) onPeriodTap;
 
   const _PeriodDetailCard({
     required this.periods,
     required this.limitAmount,
     required this.money,
     required this.monthLabel,
+    required this.onPeriodTap,
   });
 
   @override
@@ -859,7 +895,7 @@ class _PeriodDetailCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Chi tiết từng kỳ',
+            context.l10n.periodDetail,
             style: AppTextStyles.sectionTitle(context).copyWith(
               fontSize: 22,
               fontWeight: FontWeight.w900,
@@ -872,6 +908,7 @@ class _PeriodDetailCard extends StatelessWidget {
               limitAmount: limitAmount,
               money: money,
               monthLabel: monthLabel,
+              onTap: () => onPeriodTap(item.date),
             );
           }),
         ],
@@ -885,51 +922,55 @@ class _PeriodDetailItem extends StatelessWidget {
   final double limitAmount;
   final String Function(double value) money;
   final String Function(DateTime date) monthLabel;
+  final VoidCallback onTap;
 
   const _PeriodDetailItem({
     required this.item,
     required this.limitAmount,
     required this.money,
     required this.monthLabel,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final color = item.isOverLimit ? AppColors.expense : AppColors.primaryBlue;
     final remaining = limitAmount - item.total;
     final percentText = limitAmount <= 0
         ? '0%'
         : '${((item.total / limitAmount) * 100).toStringAsFixed(0)}%';
 
-    final bg = item.isCurrent
-        ? AppColors.primaryBlue.withOpacity(0.12)
-        : Colors.transparent;
+    const radius = Radius.circular(20);
 
-    final borderColor = item.isCurrent
-        ? AppColors.primaryBlue.withOpacity(0.42)
-        : Colors.transparent;
-
-    return Container(
+    return Material(
+      color: Colors.transparent,
+      borderRadius: const BorderRadius.all(radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(radius),
+        child: Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: item.isCurrent
-            ? AppColors.primaryBlue.withOpacity(0.10)
-            : AppColors.surface(context).withOpacity(
-          AppColors.isDark(context) ? 0.72 : 0.92,
+            ? AppColors.primaryBlue.withValues(alpha: 0.10)
+            : AppColors.surface(context).withValues(
+          alpha: AppColors.isDark(context) ? 0.72 : 0.92,
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: item.isCurrent
-              ? AppColors.primaryBlue.withOpacity(0.42)
+              ? AppColors.primaryBlue.withValues(alpha: 0.42)
               : item.isOverLimit
-              ? AppColors.expense.withOpacity(0.35)
+              ? AppColors.expense.withValues(alpha: 0.35)
               : AppColors.innerBorder(context),
           width: item.isCurrent ? 1.3 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              AppColors.isDark(context) ? 0.12 : 0.035,
+            color: Colors.black.withValues(
+              alpha: AppColors.isDark(context) ? 0.12 : 0.035,
             ),
             blurRadius: 12,
             offset: const Offset(0, 6),
@@ -972,10 +1013,10 @@ class _PeriodDetailItem extends StatelessWidget {
                               color: AppColors.primaryBlue,
                               borderRadius: BorderRadius.circular(999),
                             ),
-                            child: const Text(
-                              'Hiện tại',
+                            child: Text(
+                              l10n.currentPeriod,
                               maxLines: 1,
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w900,
@@ -1069,12 +1110,12 @@ class _PeriodDetailItem extends StatelessWidget {
                                   size: 17,
                                 ),
                                 const SizedBox(width: 6),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'Vượt ngân sách!',
+                                    l10n.overBudgetWarning,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: AppColors.expense,
                                       fontSize: 13,
                                       fontWeight: FontWeight.w800,
@@ -1084,7 +1125,7 @@ class _PeriodDetailItem extends StatelessWidget {
                               ] else ...[
                                 Expanded(
                                   child: Text(
-                                    'Còn lại: ${money(remaining < 0 ? 0 : remaining)}',
+                                    l10n.remainingLabel(money(remaining < 0 ? 0 : remaining)),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: AppTextStyles.bodySecondary(context)
@@ -1103,7 +1144,7 @@ class _PeriodDetailItem extends StatelessWidget {
 
                         Flexible(
                           child: Text(
-                            'Ngân sách: ${money(limitAmount)}',
+                            l10n.budgetLimitLabel(money(limitAmount)),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.right,
@@ -1120,6 +1161,8 @@ class _PeriodDetailItem extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
         ),
       ),
     );

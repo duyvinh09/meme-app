@@ -11,7 +11,8 @@ import '../../profile/controllers/profile_controller.dart';
 import '../widgets/transaction_map_panel.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
-import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 
 enum _MoneyType {
   expense,
@@ -175,23 +176,63 @@ class _StatsScreenState extends State<StatsScreen> {
   Color? _defaultCategoryColor(String category) {
     switch (category) {
       case 'Ăn uống':
+      case 'Food':
         return AppColors.income;
       case 'Mua sắm':
+      case 'Shopping':
         return AppColors.primaryPink;
       case 'Đi lại':
+      case 'Transport':
         return AppColors.primaryBlue;
       case 'Giải trí':
+      case 'Entertainment':
         return AppColors.warning;
       case 'Học tập':
+      case 'Education':
         return AppColors.primaryPurple;
       case 'Lương':
+      case 'Salary':
         return AppColors.income;
       case 'Quà tặng':
+      case 'Gift':
         return AppColors.expense;
       case 'Khác':
+      case 'Other':
         return const Color(0xFFAAAAAA);
       default:
         return null;
+    }
+  }
+
+  String _localizedCategoryLabel(String category) {
+    final l10n = context.l10n;
+    switch (category.trim()) {
+      case 'Ăn uống':
+      case 'Food':
+        return l10n.food;
+      case 'Mua sắm':
+      case 'Shopping':
+        return l10n.shopping;
+      case 'Đi lại':
+      case 'Transport':
+        return l10n.transport;
+      case 'Giải trí':
+      case 'Entertainment':
+        return l10n.entertainment;
+      case 'Học tập':
+      case 'Education':
+        return l10n.education;
+      case 'Lương':
+      case 'Salary':
+        return l10n.salary;
+      case 'Quà tặng':
+      case 'Gift':
+        return l10n.gift;
+      case 'Khác':
+      case 'Other':
+        return l10n.other;
+      default:
+        return BudgetNameLocalizer.display(context, category);
     }
   }
 
@@ -223,10 +264,10 @@ class _StatsScreenState extends State<StatsScreen> {
 
   String _formatPeriodTitle() {
     if (selectedViewMode == _ViewMode.month) {
-      return 'Tháng ${selectedDate.month}/${selectedDate.year}';
+      return context.l10n.monthYear(selectedDate.month, selectedDate.year);
     }
 
-    return 'Năm ${selectedDate.year}';
+    return '${context.l10n.year} ${selectedDate.year}';
   }
 
   bool _isCurrentPeriod() {
@@ -293,7 +334,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     Row(
                       children: [
                         Text(
-                          'Chọn tháng thống kê',
+                          context.l10n.selectMonthStats,
                           style: TextStyle(
                             color: palette.textPrimary,
                             fontSize: 22,
@@ -308,7 +349,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               DateTime(now.year, now.month),
                             );
                           },
-                          child: const Text('Hiện tại'),
+                          child: Text(context.l10n.current),
                         ),
                       ],
                     ),
@@ -414,7 +455,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               ),
                             ),
                             child: Text(
-                              'Tháng $month',
+                              context.l10n.monthLabel(month),
                               style: TextStyle(
                                 color: isSelected
                                     ? AppColors.primaryBlue
@@ -487,7 +528,7 @@ class _StatsScreenState extends State<StatsScreen> {
                     Row(
                       children: [
                         Text(
-                          'Chọn năm thống kê',
+                          context.l10n.selectYearStats,
                           style: TextStyle(
                             color: palette.textPrimary,
                             fontSize: 22,
@@ -502,7 +543,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               DateTime(now.year, now.month),
                             );
                           },
-                          child: const Text('Hiện tại'),
+                          child: Text(context.l10n.current),
                         ),
                       ],
                     ),
@@ -519,7 +560,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               });
                             },
                             icon: const Icon(Icons.chevron_left_rounded),
-                            label: const Text('Năm cũ hơn'),
+                            label: Text(context.l10n.olderYears),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -531,7 +572,7 @@ class _StatsScreenState extends State<StatsScreen> {
                               });
                             },
                             icon: const Icon(Icons.chevron_right_rounded),
-                            label: const Text('Năm mới hơn'),
+                            label: Text(context.l10n.newerYears),
                           ),
                         ),
                       ],
@@ -613,10 +654,10 @@ class _StatsScreenState extends State<StatsScreen> {
 
   String _formatCompareTitle() {
     if (selectedViewMode == _ViewMode.month) {
-      return 'so với tháng trước';
+      return context.l10n.compareToPreviousMonth;
     }
 
-    return 'so với năm trước';
+    return context.l10n.compareToPreviousYear;
   }
 
   String _getChartTitle() {
@@ -624,13 +665,13 @@ class _StatsScreenState extends State<StatsScreen> {
 
     if (selectedViewMode == _ViewMode.month) {
       return isExpense
-          ? 'Chi tiêu theo danh mục trong tháng'
-          : 'Thu nhập theo danh mục trong tháng';
+          ? context.l10n.expenseByCategoryMonth
+          : context.l10n.incomeByCategoryMonth;
     }
 
     return isExpense
-        ? 'Chi tiêu theo danh mục trong năm'
-        : 'Thu nhập theo danh mục trong năm';
+        ? context.l10n.expenseByCategoryYear
+        : context.l10n.incomeByCategoryYear;
   }
 
   String _getEmptyChartText() {
@@ -638,13 +679,13 @@ class _StatsScreenState extends State<StatsScreen> {
 
     if (selectedViewMode == _ViewMode.month) {
       return isExpense
-          ? 'Chưa có dữ liệu chi tiêu trong tháng này'
-          : 'Chưa có dữ liệu thu nhập trong tháng này';
+          ? context.l10n.noExpenseDataMonth
+          : context.l10n.noIncomeDataMonth;
     }
 
     return isExpense
-        ? 'Chưa có dữ liệu chi tiêu trong năm này'
-        : 'Chưa có dữ liệu thu nhập trong năm này';
+        ? context.l10n.noExpenseDataYear
+        : context.l10n.noIncomeDataYear;
   }
 
   String _getAnalysisText(double percent) {
@@ -653,19 +694,19 @@ class _StatsScreenState extends State<StatsScreen> {
 
     if (percent == 0) {
       return isExpense
-          ? 'Chi tiêu của bạn không thay đổi so với kỳ trước.'
-          : 'Thu nhập của bạn không thay đổi so với kỳ trước.';
+          ? context.l10n.expenseNoChange
+          : context.l10n.incomeNoChange;
     }
 
     if (percent > 0) {
       return isExpense
-          ? 'Bạn đã chi nhiều hơn $absPercent% so với kỳ trước.'
-          : 'Bạn đã nhận nhiều hơn $absPercent% so với kỳ trước.';
+          ? context.l10n.expenseMore(absPercent)
+          : context.l10n.incomeMore(absPercent);
     }
 
     return isExpense
-        ? 'Bạn đã chi ít hơn $absPercent% so với kỳ trước.'
-        : 'Bạn đã nhận ít hơn $absPercent% so với kỳ trước.';
+        ? context.l10n.expenseLess(absPercent)
+        : context.l10n.incomeLess(absPercent);
   }
 
   int _getPercent(
@@ -687,6 +728,13 @@ class _StatsScreenState extends State<StatsScreen> {
       return AppCurrencyFormatter.formatFromVnd(
         amountVnd: value,
         currency: currency,
+      );
+    }
+
+    String moneyCompactTop(double value) {
+      return AppCurrencyFormatter.truncateFormattedMoneyDigits(
+        money(value),
+        7,
       );
     }
 
@@ -764,7 +812,7 @@ class _StatsScreenState extends State<StatsScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      'Thống kê',
+                      context.l10n.statsTitle,
                       style: TextStyle(
                         color: palette.textPrimary,
                         fontSize: 28,
@@ -778,8 +826,8 @@ class _StatsScreenState extends State<StatsScreen> {
 
             _MoneyTypeSelector(
               selectedType: selectedType,
-              incomeAmount: money(incomeTotal),
-              expenseAmount: money(expenseTotal),
+              incomeAmount: moneyCompactTop(incomeTotal),
+              expenseAmount: moneyCompactTop(expenseTotal),
               onChanged: (type) {
                 setState(() {
                   selectedType = type;
@@ -793,7 +841,7 @@ class _StatsScreenState extends State<StatsScreen> {
             _RowSegment(
               selectedIndex:
               selectedViewMode == _ViewMode.month ? 0 : 1,
-              labels: const ['Tháng', 'Năm'],
+              labels: [context.l10n.month, context.l10n.year],
               onChanged: (index) {
                 setState(() {
                   selectedViewMode =
@@ -815,8 +863,8 @@ class _StatsScreenState extends State<StatsScreen> {
               palette: palette,
               showCurrentButton: !_isCurrentPeriod(),
               currentButtonText: selectedViewMode == _ViewMode.month
-                  ? 'Về tháng này'
-                  : 'Về năm nay',
+                  ? context.l10n.backToThisMonth
+                  : context.l10n.backToThisYear,
               onTapTitle: _showPeriodPicker,
               onGoCurrent: _goToCurrentPeriod,
               onPrevious: () {
@@ -834,7 +882,7 @@ class _StatsScreenState extends State<StatsScreen> {
             const SizedBox(height: 18),
 
             _AnalysisCard(
-              title: isExpense ? 'Tổng chi' : 'Tổng thu',
+              title: isExpense ? context.l10n.totalExpenseLabel : context.l10n.totalIncomeLabel,
               period: _formatPeriodTitle(),
               amount: money(currentTotal),
               previousAmount: money(previousTotal),
@@ -853,7 +901,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
             _RowSegment(
               selectedIndex: selectedContentTab.index,
-              labels: const ['Danh mục', 'Bản đồ'],
+              labels: [context.l10n.categories, context.l10n.map],
               onChanged: (value) {
                 setState(() {
                   selectedContentTab = _StatsContentTab.values[value];
@@ -1009,7 +1057,7 @@ class _StatsScreenState extends State<StatsScreen> {
                             ),
                           ),
                           _ChartCenterInfo(
-                            title: isExpense ? 'Tổng chi' : 'Tổng thu',
+                            title: isExpense ? context.l10n.totalExpenseLabel : context.l10n.totalIncomeLabel,
                             amount: money(currentTotal),
                             accent: mainColor,
                             palette: palette,
@@ -1031,7 +1079,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
                         return _ChartLegendTile(
                           color: color,
-                          title: item.key,
+                          title: _localizedCategoryLabel(item.key),
                           percent: percent,
                           amount: money(item.value),
                           palette: palette,
@@ -1048,7 +1096,7 @@ class _StatsScreenState extends State<StatsScreen> {
             if (selectedContentTab != _StatsContentTab.map &&
                 categoryEntries.isNotEmpty) ...[
               Text(
-                isExpense ? 'Chi tiết chi tiêu' : 'Chi tiết thu nhập',
+                isExpense ? context.l10n.expenseDetails : context.l10n.incomeDetails,
                 style: TextStyle(
                   color: palette.textPrimary,
                   fontSize: 20,
@@ -1074,8 +1122,10 @@ class _StatsScreenState extends State<StatsScreen> {
 
                 return _DetailCategoryTile(
                   color: color,
-                  title: item.key,
-                  subtitle: '$percent% tổng ${isExpense ? 'chi' : 'thu'}',
+                  title: _localizedCategoryLabel(item.key),
+                  subtitle: isExpense 
+                      ? context.l10n.percentOfTotalExpense(percent)
+                      : context.l10n.percentOfTotalIncome(percent),
                   value: money(item.value),
                   palette: palette,
                   onTap: () {
@@ -1149,7 +1199,7 @@ class _SafeMapPanel extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Bản đồ giao dịch',
+                  context.l10n.transactionMap,
                   style: TextStyle(
                     color: palette.textPrimary,
                     fontSize: 16,
@@ -1176,7 +1226,7 @@ class _SafeMapPanel extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    interactionEnabled ? 'Đang điều khiển' : 'Điều khiển map',
+                    interactionEnabled ? context.l10n.controlling : context.l10n.mapControl,
                     style: TextStyle(
                       color: interactionEnabled
                           ? AppColors.primaryBlue
@@ -1227,18 +1277,18 @@ class _SafeMapPanel extends StatelessWidget {
                                 color: Colors.white.withOpacity(0.16),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.touch_app_rounded,
                                   color: Colors.white,
                                   size: 18,
                                 ),
-                                SizedBox(width: 7),
+                                const SizedBox(width: 7),
                                 Text(
-                                  'Chạm để điều khiển bản đồ',
-                                  style: TextStyle(
+                                  context.l10n.tapToControlMap,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w800,
@@ -1259,8 +1309,8 @@ class _SafeMapPanel extends StatelessWidget {
 
           Text(
             interactionEnabled
-                ? 'Bấm “Đang điều khiển” để tắt tương tác map.'
-                : 'Tổng quan giao dịch gần đây.',
+                ? context.l10n.tapControllingToDisable
+                : context.l10n.recentTransactionsOverview,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: palette.textSecondary,
@@ -1466,7 +1516,7 @@ class _MoneyTypeSelector extends StatelessWidget {
       children: [
         Expanded(
           child: _MoneyTypeCard(
-            title: 'Thu nhập',
+            title: context.l10n.income,
             amount: incomeAmount,
             icon: Icons.south_west_rounded,
             accent: const Color(0xFF7DDC86),
@@ -1478,7 +1528,7 @@ class _MoneyTypeSelector extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _MoneyTypeCard(
-            title: 'Chi tiêu',
+            title: context.l10n.expense,
             amount: expenseAmount,
             icon: Icons.north_east_rounded,
             accent: const Color(0xFFFF7A7A),
@@ -1721,7 +1771,7 @@ class _AnalysisCard extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            'Kỳ trước: $previousAmount',
+            context.l10n.previousPeriodAmount(previousAmount),
             style: TextStyle(
               color: palette.textSecondary,
               fontSize: 13,

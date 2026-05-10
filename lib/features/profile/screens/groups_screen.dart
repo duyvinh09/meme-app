@@ -3,8 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
 import '../../../data/repositories/user_repository.dart';
@@ -26,9 +28,9 @@ class _GroupsScreenState extends State<GroupsScreen> {
     final currency = context.watch<ProfileController>().currency;
 
     if (uid == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: Text('Không có người dùng'),
+          child: Text(context.l10n.user),
         ),
       );
     }
@@ -105,7 +107,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Nhóm',
+                      context.l10n.groupsTitle,
                       style: AppTextStyles.pageTitle(context),
                     ),
                   ),
@@ -290,7 +292,9 @@ class _GroupTile extends StatelessWidget {
           children: [
             const SizedBox(height: 4),
             Text(
-              memberCount > 0 ? '$memberCount thành viên' : 'Chưa có thành viên',
+              memberCount > 0
+                  ? context.l10n.membersCount(memberCount)
+                  : context.l10n.noFriends,
               style: AppTextStyles.caption(context).copyWith(
                 fontSize: 13,
               ),
@@ -341,7 +345,7 @@ class CreateGroupScreen extends StatefulWidget {
 }
 
 class _CreateGroupScreenState extends State<CreateGroupScreen> {
-  static const int kMaxGroupNameLength = 50;
+  static const int kMaxGroupNameLength = UserRepository.maxGroupNameLength;
 
   final TextEditingController groupNameController = TextEditingController();
   final TextEditingController searchController = TextEditingController();
@@ -390,8 +394,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tên nhóm'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupNameHint),
         ),
       );
       return;
@@ -399,8 +404,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
     if (name.length > kMaxGroupNameLength) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tên nhóm tối đa 50 ký tự'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupNameTooLong),
         ),
       );
       return;
@@ -411,8 +417,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
     if (inputAmount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập số tiền mục tiêu'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.contributionGoalHint),
         ),
       );
       return;
@@ -440,8 +447,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đã tạo nhóm'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.groupCreated),
         ),
       );
 
@@ -450,8 +458,9 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tạo nhóm thất bại'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.profileUpdateFailed),
         ),
       );
     } finally {
@@ -508,7 +517,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             Align(
                               alignment: Alignment.centerLeft,
                               child: _ActionPillButton(
-                                label: 'Huỷ',
+                                label: context.l10n.cancel,
                                 onTap: () => Navigator.pop(context),
                                 textColor: AppColors.textSecondary(context),
                                 backgroundColor: AppColors.surface(context),
@@ -517,7 +526,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             ),
                             Center(
                               child: Text(
-                                'Tạo nhóm',
+                                context.l10n.createVerb,
                                 style: AppTextStyles.pageTitle(context).copyWith(
                                   fontSize: 24,
                                 ),
@@ -526,7 +535,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             Align(
                               alignment: Alignment.centerRight,
                               child: _ActionPillButton(
-                                label: isCreating ? '...' : 'Tạo',
+                                label: isCreating ? '...' : context.l10n.createVerb,
                                 onTap: _createGroup,
                                 textColor: AppColors.primaryBlue,
                                 backgroundColor: AppColors.surface(context),
@@ -553,7 +562,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                       const SizedBox(height: 22),
 
                       _LargeInputBox(
-                        height: 90,
+                        height: 62,
                         child: TextField(
                           controller: groupNameController,
                           textAlign: TextAlign.center,
@@ -562,29 +571,46 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           inputFormatters: [
                             LengthLimitingTextInputFormatter(kMaxGroupNameLength),
                           ],
+                          buildCounter:
+                              (_, {required currentLength, required isFocused, required maxLength}) {
+                            final m = maxLength ?? kMaxGroupNameLength;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Text(
+                                  '$currentLength/$m',
+                                  style: AppTextStyles.caption(context).copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                           onChanged: (_) => setState(() {}),
                           style: AppTextStyles.body(context).copyWith(
-                            fontSize: 26,
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
                           ),
                           decoration: TextInputDecoration(
-                            hintText: 'Tên nhóm',
-                            counterText: '${groupNameController.text.length}/$kMaxGroupNameLength',
+                            hintText: context.l10n.groupName,
+                            counterText: '',
                             hintStyle:
                             AppTextStyles.bodySecondary(context).copyWith(
                               color: AppColors.textSecondary(context)
                                   .withOpacity(0.75),
-                              fontSize: 26,
+                              fontSize: 20,
                               fontWeight: FontWeight.w600,
                             ),
                           ).toInputDecoration(),
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
 
                       _LargeInputBox(
-                        height: 78,
+                        height: 56,
                         child: TextField(
                           controller: goalAmountController,
                           textAlign: TextAlign.center,
@@ -595,17 +621,19 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                           currency == 'VND' ? [MoneyInputFormatter()] : [],
                           cursorColor: selectedColor,
                           style: AppTextStyles.body(context).copyWith(
-                            fontSize: 24,
+                            fontSize: 19,
                             fontWeight: FontWeight.w800,
                           ),
                           decoration: TextInputDecoration(
                             hintText:
-                            'Mục tiêu tiền, ví dụ ${AppCurrencyFormatter.formatInputHint(currency)}',
+                            context.l10n.goalAmountHintExample(
+                              AppCurrencyFormatter.formatInputHint(currency),
+                            ),
                             hintStyle:
                             AppTextStyles.bodySecondary(context).copyWith(
                               color: AppColors.textSecondary(context)
                                   .withOpacity(0.75),
-                              fontSize: 18,
+                              fontSize: 16,
                               fontWeight: FontWeight.w600,
                             ),
                           ).toInputDecoration().copyWith(
@@ -613,7 +641,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             AppCurrencyFormatter.symbol(currency),
                             suffixStyle:
                             AppTextStyles.caption(context).copyWith(
-                              fontSize: 16,
+                              fontSize: 14,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -625,7 +653,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Màu',
+                          context.l10n.appearance,
                           style: AppTextStyles.sectionTitle(context).copyWith(
                             fontSize: 18,
                           ),
@@ -696,7 +724,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Thêm thành viên',
+                              context.l10n.addMembers,
                               style:
                               AppTextStyles.sectionTitle(context).copyWith(
                                 fontSize: 18,
@@ -704,7 +732,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             ),
                           ),
                           Text(
-                            '${selectedFriendIds.length} đã chọn',
+                            context.l10n.selectedCount(selectedFriendIds.length),
                             style: const TextStyle(
                               color: AppColors.primaryBlue,
                               fontSize: 16,
@@ -736,7 +764,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             bottom: 26,
                           ),
                           child: Text(
-                            'Không tìm thấy bạn bè phù hợp',
+                            context.l10n.noUsersFound,
                             style: AppTextStyles.bodySecondary(context).copyWith(
                               fontSize: 16,
                             ),
@@ -800,10 +828,10 @@ class _LargeInputBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: height,
-      padding: const EdgeInsets.symmetric(horizontal: 22),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.innerBorder(context),
         ),
@@ -853,7 +881,7 @@ class _SearchFriendBox extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
               decoration: TextInputDecoration(
-                hintText: 'Tìm kiếm bạn bè...',
+                hintText: context.l10n.friendsSearchHint,
                 hintStyle: AppTextStyles.bodySecondary(context).copyWith(
                   color: AppColors.textSecondary(context).withOpacity(0.75),
                   fontSize: 18,
@@ -971,7 +999,7 @@ class _NoFriendState extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Text(
-            'Chưa có bạn bè liên kết',
+            context.l10n.noFriends,
             style: AppTextStyles.bodySecondary(context).copyWith(
               fontSize: 17,
             ),
@@ -1055,14 +1083,14 @@ class _EmptyGroupsView extends StatelessWidget {
             ),
             const SizedBox(height: 22),
             Text(
-              'Chưa có nhóm',
+              context.l10n.noGroups,
               style: AppTextStyles.pageTitle(context).copyWith(
                 fontSize: 26,
               ),
             ),
             const SizedBox(height: 12),
             Text(
-              'Tạo nhóm để cùng theo dõi chi tiêu và quản lý hoạt động chung',
+              context.l10n.noGroupsSubtitle,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 16,
@@ -1076,9 +1104,9 @@ class _EmptyGroupsView extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onCreateGroup,
                 icon: const Icon(Icons.add),
-                label: const Text(
-                  'Tạo nhóm',
-                  style: TextStyle(
+                label: Text(
+                  context.l10n.createGroup,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),

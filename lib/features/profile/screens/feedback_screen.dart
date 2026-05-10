@@ -4,8 +4,11 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../controllers/profile_controller.dart';
 
@@ -23,21 +26,31 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   final emailController = TextEditingController();
   final feedbackController = TextEditingController();
 
-  bool isSending = false;
   bool didPrefillEmail = false;
   int currentLength = 0;
+
+  bool _canSubmitFeedback() {
+    final email = emailController.text.trim();
+    final message = feedbackController.text.trim();
+    if (email.isEmpty || message.isEmpty) return false;
+    if (!_isValidEmail(email)) return false;
+    if (message.length > maxLength) return false;
+    return true;
+  }
+
+  void _syncFeedbackFields() {
+    if (!mounted) return;
+    setState(() {
+      currentLength = feedbackController.text.length;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
 
-    feedbackController.addListener(() {
-      if (!mounted) return;
-
-      setState(() {
-        currentLength = feedbackController.text.length;
-      });
-    });
+    emailController.addListener(_syncFeedbackFields);
+    feedbackController.addListener(_syncFeedbackFields);
   }
 
   @override
@@ -55,6 +68,8 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   @override
   void dispose() {
+    emailController.removeListener(_syncFeedbackFields);
+    feedbackController.removeListener(_syncFeedbackFields);
     emailController.dispose();
     feedbackController.dispose();
     super.dispose();
@@ -72,25 +87,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     required String username,
     required String message,
   }) async {
-    final subject = Uri.encodeComponent('Góp ý từ ứng dụng Meme');
+    final l10n = context.l10n;
+    final subject = Uri.encodeComponent(l10n.feedbackEmailSubject);
 
     final body = Uri.encodeComponent(
-      '''
-Xin chào Admin,
-
-Bạn vừa nhận được một góp ý mới từ ứng dụng Meme.
-
-Thông tin người gửi:
-- Tên: ${name.isEmpty ? 'Không rõ' : name}
-- Username: ${username.isEmpty ? 'Không rõ' : '@$username'}
-- Email: ${fromEmail.isEmpty ? 'Không cung cấp' : fromEmail}
-
-Nội dung góp ý:
-$message
-
----
-Email này được tạo tự động từ màn Góp ý của app Meme.
-''',
+      l10n.feedbackEmailBody(
+        name.isEmpty ? l10n.unknown : name,
+        username.isEmpty ? l10n.unknown : '@$username',
+        fromEmail.isEmpty ? l10n.unknown : fromEmail,
+        message,
+      ),
     );
 
     final uri = Uri.parse(
@@ -111,18 +117,18 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
   }
 
   Future<void> submitFeedback() async {
-    if (isSending) return;
-
     final auth = context.read<AuthController>();
     final profile = context.read<ProfileController>();
+    final l10n = context.l10n;
 
     final message = feedbackController.text.trim();
     final email = emailController.text.trim();
 
     if (email.isNotEmpty && !_isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Email không hợp lệ'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.invalidEmailGeneric),
         ),
       );
       return;
@@ -130,8 +136,9 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
 
     if (message.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập nội dung góp ý'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.pleaseEnterFeedback),
         ),
       );
       return;
@@ -139,16 +146,13 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
 
     if (message.length > maxLength) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Nội dung góp ý không được quá 500 ký tự'),
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.feedbackTooLong(maxLength)),
         ),
       );
       return;
     }
-
-    setState(() {
-      isSending = true;
-    });
 
     try {
       final name = profile.user?.name ?? '';
@@ -177,10 +181,11 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
+          duration: AppDurations.snackBar,
           content: Text(
             emailOpened
-                ? 'Đã mở email để gửi góp ý cho admin'
-                : 'Đã lưu góp ý. Thiết bị chưa mở được ứng dụng email.',
+                ? l10n.feedbackSentEmail
+                : l10n.feedbackSaved,
           ),
         ),
       );
@@ -191,20 +196,17 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Không thể gửi góp ý: $e'),
+          duration: AppDurations.snackBar,
+          content: Text(l10n.feedbackError(e.toString())),
         ),
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          isSending = false;
-        });
-      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: SafeArea(
@@ -240,7 +242,7 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
                       ),
                       Center(
                         child: Text(
-                          'Góp ý',
+                          l10n.feedbackTitle,
                           style: AppTextStyles.sectionTitle(context).copyWith(
                             fontSize: 20,
                           ),
@@ -270,14 +272,14 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Gửi phản hồi',
+                        l10n.sendFeedback,
                         style: AppTextStyles.pageTitle(context).copyWith(
                           fontSize: 24,
                         ),
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Chia sẻ ý kiến, đề xuất hoặc báo lỗi để Meme ngày càng hoàn thiện hơn.',
+                        l10n.feedbackSubtitle,
                         textAlign: TextAlign.center,
                         style: AppTextStyles.bodySecondary(context).copyWith(
                           fontSize: 14,
@@ -291,7 +293,7 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
                 const SizedBox(height: 22),
 
                 Text(
-                  'Email của bạn',
+                  l10n.yourEmail,
                   style: AppTextStyles.body(context).copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
@@ -323,7 +325,7 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Email này được điền sẵn từ tài khoản của bạn.',
+                  l10n.emailPrefilledNote,
                   style: AppTextStyles.caption(context).copyWith(
                     fontSize: 13,
                   ),
@@ -335,7 +337,7 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
                   children: [
                     Expanded(
                       child: Text(
-                        'Phản hồi của bạn *',
+                        l10n.yourFeedback,
                         style: AppTextStyles.body(context).copyWith(
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
@@ -369,8 +371,7 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
                       return const SizedBox.shrink();
                     },
                     decoration: InputDecoration(
-                      hintText:
-                      'Chia sẻ ý kiến, báo lỗi hoặc đề xuất tính năng mới...',
+                      hintText: l10n.feedbackHint,
                       hintStyle: AppTextStyles.bodySecondary(context),
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.all(18),
@@ -380,41 +381,13 @@ Email này được tạo tự động từ màn Góp ý của app Meme.
 
                 const SizedBox(height: 24),
 
-                SizedBox(
-                  width: double.infinity,
+                CustomButton(
                   height: 56,
-                  child: FilledButton.icon(
-                    onPressed: isSending ? null : submitFeedback,
-                    icon: isSending
-                        ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.3,
-                        color: Colors.white,
-                      ),
-                    )
-                        : const Icon(Icons.send_outlined),
-                    label: Text(
-                      isSending ? 'Đang gửi...' : 'Gửi phản hồi',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                      AppColors.primaryBlue.withOpacity(0.45),
-                      disabledForegroundColor: Colors.white.withOpacity(0.82),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          AppSizes.radiusMedium,
-                        ),
-                      ),
-                    ),
-                  ),
+                  borderRadius: AppSizes.radiusMedium,
+                  text: l10n.sendFeedback,
+                  icon: Icons.send_outlined,
+                  onPressedAsync:
+                      _canSubmitFeedback() ? submitFeedback : null,
                 ),
               ],
             ),

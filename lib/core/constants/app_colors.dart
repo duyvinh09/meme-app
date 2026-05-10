@@ -68,19 +68,26 @@ class AppColors {
 
   static Color subtleOverlay(BuildContext context) {
     return isDark(context)
-        ? Colors.white.withOpacity(0.06)
-        : Colors.black.withOpacity(0.035);
+        ? Colors.white.withValues(alpha: 0.06)
+        : Colors.black.withValues(alpha: 0.035);
   }
 
   static Color glassBackground(BuildContext context) {
     return isDark(context)
-        ? Colors.white.withOpacity(0.08)
-        : Colors.white.withOpacity(0.18);
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.white.withValues(alpha: 0.18);
   }
 
   static Color glassBorder(BuildContext context) {
     return isDark(context)
-        ? Colors.white.withOpacity(0.14)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.08);
+  }
+
+  /// Readable foreground on an arbitrary accent color (buttons, icon grids).
+  static Color foregroundOnAccent(Color accent) {
+    return accent.computeLuminance() > 0.56
+        ? const Color(0xFF18181B)
+        : Colors.white;
   }
 }

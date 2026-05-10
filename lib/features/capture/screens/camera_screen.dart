@@ -7,6 +7,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/routes/route_names.dart';
@@ -632,7 +633,7 @@ class _CameraScreenState extends State<CameraScreen> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Đang lấy vị trí...',
+                context.l10n.gettingLocation,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
@@ -659,7 +660,7 @@ class _CameraScreenState extends State<CameraScreen> {
               const SizedBox(width: 5),
               Flexible(
                 child: Text(
-                  name.isNotEmpty ? name : 'Đã lưu vị trí hiện tại',
+                  name.isNotEmpty ? name : context.l10n.currentLocationSaved,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -683,7 +684,7 @@ class _CameraScreenState extends State<CameraScreen> {
             ),
             const SizedBox(width: 5),
             Text(
-              'Chưa có vị trí',
+              context.l10n.noLocation,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -950,9 +951,9 @@ class _CameraScreenState extends State<CameraScreen> {
                           color: Colors.white.withOpacity(0.08),
                         ),
                       ),
-                      child: const Text(
-                        'Huỷ',
-                        style: TextStyle(
+                      child: Text(
+                        context.l10n.cancel,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
                           fontWeight: FontWeight.w700,
@@ -1011,13 +1012,13 @@ class _CameraScreenState extends State<CameraScreen> {
                       child: TextButton(
                         onPressed: _skipToPreview,
                         child: Text(
-                          'Bỏ qua ảnh',
-                          style: AppTextStyles.bodySecondary(context).copyWith(
-                            color: Colors.white70,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        context.l10n.skipPhoto,
+                        style: AppTextStyles.bodySecondary(context).copyWith(
+                          color: Colors.white70,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
+                      ),
                       ),
                     ),
                   ],

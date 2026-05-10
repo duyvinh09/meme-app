@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -43,22 +45,22 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Xoá bạn bè'),
+        title: Text(context.l10n.deleteFriendQuestion),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Bạn có chắc muốn xoá "$friendName" khỏi danh sách bạn bè không?',
+              context.l10n.deleteFriendWarning(friendName),
             ),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.primaryBlue.withOpacity(0.10),
+                color: AppColors.primaryBlue.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: AppColors.primaryBlue.withOpacity(0.18),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.18),
                 ),
               ),
               child: Row(
@@ -72,7 +74,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Người này vẫn sẽ ở trong các nhóm chung. Nếu muốn xoá khỏi nhóm, bạn cần vào nhóm để chỉnh sửa thành viên hoặc rời nhóm.',
+                      context.l10n.deleteFriendGroupsNote,
                       style: TextStyle(
                         color: AppColors.textSecondary(context),
                         fontSize: 13,
@@ -87,17 +89,29 @@ class _FriendsScreenState extends State<FriendsScreen> {
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Huỷ'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.expense,
-              foregroundColor: Colors.white,
+          SizedBox(
+            width: double.maxFinite,
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: Text(context.l10n.cancel),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.expense,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () => Navigator.pop(context, true),
+                    child: Text(context.l10n.delete),
+                  ),
+                ),
+              ],
             ),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xoá bạn'),
           ),
         ],
       ),
@@ -113,8 +127,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
     if (!context.mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã xoá bạn bè'),
+      SnackBar(
+        duration: AppDurations.snackBar,
+        content: Text(context.l10n.friendDeleted(friendName)),
       ),
     );
   }
@@ -124,9 +139,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
     final uid = context.read<AuthController>().user?.uid;
 
     if (uid == null) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
-          child: Text('Không có người dùng'),
+          child: Text(context.l10n.user),
         ),
       );
     }
@@ -205,7 +220,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Bạn bè',
+                          context.l10n.friendsTitle,
                           style: AppTextStyles.pageTitle(context),
                         ),
                       ),
@@ -307,7 +322,7 @@ class _FriendTile extends StatelessWidget {
               : null,
         ),
         title: Text(
-          friendName.isEmpty ? 'Người dùng' : friendName,
+          friendName.isEmpty ? context.l10n.user : friendName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: AppTextStyles.body(context).copyWith(
@@ -327,10 +342,10 @@ class _FriendTile extends StatelessWidget {
               onRemove();
             }
           },
-          itemBuilder: (context) => const [
+          itemBuilder: (context) => [
             PopupMenuItem(
               value: 'remove',
-              child: Text('Xoá bạn'),
+              child: Text(context.l10n.delete),
             ),
           ],
         ),
@@ -359,7 +374,7 @@ class _EmptyFriendsView extends StatelessWidget {
               height: 118,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primaryBlue.withOpacity(0.18),
+                color: AppColors.primaryBlue.withValues(alpha: 0.18),
               ),
               child: const Icon(
                 Icons.group_outlined,
@@ -369,14 +384,14 @@ class _EmptyFriendsView extends StatelessWidget {
             ),
             const SizedBox(height: 22),
             Text(
-              'Chưa có bạn bè',
+              context.l10n.noFriends,
               style: AppTextStyles.pageTitle(context).copyWith(
                 fontSize: 26,
               ),
             ),
             const SizedBox(height: 12),
             Text(
-              'Thêm bạn bè để theo dõi khoản vay và chi tiêu chung',
+              context.l10n.noFriendsSubtitle,
               textAlign: TextAlign.center,
               style: AppTextStyles.bodySecondary(context).copyWith(
                 fontSize: 16,
@@ -390,9 +405,9 @@ class _EmptyFriendsView extends StatelessWidget {
               child: FilledButton.icon(
                 onPressed: onAddFriend,
                 icon: const Icon(Icons.add),
-                label: const Text(
-                  'Thêm bạn',
-                  style: TextStyle(
+                label: Text(
+                  context.l10n.addFriend,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),

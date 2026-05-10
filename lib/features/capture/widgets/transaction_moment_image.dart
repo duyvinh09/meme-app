@@ -3,6 +3,9 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
+
 class TransactionMomentImage extends StatelessWidget {
   final String imageUrl;
   final String category;
@@ -344,6 +347,38 @@ class TransactionMomentImage extends StatelessWidget {
 
             final showCategoryText = !isTiny;
 
+            final l10n = context.l10n;
+            String localizedCategoryLabel() {
+              switch (category.trim()) {
+                case 'Ăn uống':
+                case 'Food':
+                  return l10n.food;
+                case 'Mua sắm':
+                case 'Shopping':
+                  return l10n.shopping;
+                case 'Đi lại':
+                case 'Transport':
+                  return l10n.transport;
+                case 'Giải trí':
+                case 'Entertainment':
+                  return l10n.entertainment;
+                case 'Học tập':
+                case 'Education':
+                  return l10n.education;
+                case 'Lương':
+                case 'Salary':
+                  return l10n.salary;
+                case 'Quà tặng':
+                case 'Gift':
+                  return l10n.gift;
+                case 'Khác':
+                case 'Other':
+                  return l10n.other;
+                default:
+                  return BudgetNameLocalizer.display(context, category);
+              }
+            }
+
             return Container(
               width: double.infinity,
               height: double.infinity,
@@ -408,7 +443,7 @@ class TransactionMomentImage extends StatelessWidget {
                           if (showCategoryText) ...[
                             SizedBox(height: isSmall ? 8 : 18),
                             Text(
-                              isVideo ? 'Video' : category,
+                              isVideo ? 'Video' : localizedCategoryLabel(),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               textAlign: TextAlign.center,
