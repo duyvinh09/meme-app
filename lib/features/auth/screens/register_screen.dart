@@ -23,9 +23,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final usernameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final confirmPasswordController = TextEditingController();
 
   String? localError;
   bool _primaryAuthBusy = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   @override
   void dispose() {
@@ -33,7 +36,79 @@ class _RegisterScreenState extends State<RegisterScreen> {
     usernameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    confirmPasswordController.dispose();
     super.dispose();
+  }
+
+  _PasswordStrength _passwordStrength(
+      BuildContext context,
+      String password,
+      ) {
+    final text = password.trim();
+
+    if (text.isEmpty) {
+      return _PasswordStrength(
+        label: 'Chưa nhập mật khẩu',
+        progress: 0,
+        color: AppColors.textSecondary(context),
+        description: 'Mật khẩu nên có chữ và số.',
+      );
+    }
+
+    final hasLetter = RegExp(r'[A-Za-zÀ-ỹ]').hasMatch(text);
+    final hasNumber = RegExp(r'[0-9]').hasMatch(text);
+    final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~`]').hasMatch(text);
+    final hasMinLength = text.length >= 6;
+    final hasGoodLength = text.length >= 8;
+
+    int score = 0;
+
+    if (hasMinLength) score++;
+    if (hasLetter) score++;
+    if (hasNumber) score++;
+    if (hasSpecial) score++;
+    if (hasGoodLength) score++;
+
+    if (!hasMinLength) {
+      return const _PasswordStrength(
+        label: 'Yếu',
+        progress: 0.25,
+        color: AppColors.expense,
+        description: 'Tối thiểu 6 ký tự, nên có cả chữ và số.',
+      );
+    }
+
+    if (hasLetter && hasNumber && score >= 3) {
+      if (hasSpecial || hasGoodLength) {
+        return const _PasswordStrength(
+          label: 'Mạnh',
+          progress: 1,
+          color: AppColors.income,
+          description: 'Mật khẩu tốt, có chữ, số và đủ độ dài.',
+        );
+      }
+
+      return const _PasswordStrength(
+        label: 'Vừa',
+        progress: 0.65,
+        color: AppColors.warning,
+        description: 'Mật khẩu ổn. Thêm ký tự đặc biệt để mạnh hơn.',
+      );
+    }
+
+    return const _PasswordStrength(
+      label: 'Yếu',
+      progress: 0.35,
+      color: AppColors.expense,
+      description: 'Nên có cả chữ và số để bảo mật hơn.',
+    );
+  }
+
+  bool _passwordHasLetterAndNumber(String password) {
+    final hasLetter = RegExp(r'[A-Za-zÀ-ỹ]').hasMatch(password);
+    final hasNumber = RegExp(r'[0-9]').hasMatch(password);
+
+    return hasLetter && hasNumber;
   }
 
   Future<void> _register(AuthController auth) async {
@@ -43,6 +118,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final username = usernameController.text.trim().toLowerCase();
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
+    final confirmPassword = confirmPasswordController.text.trim();
 
     setState(() {
       localError = null;
@@ -76,6 +152,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
+    if (!_passwordHasLetterAndNumber(password)) {
+      setState(() {
+        localError = 'Mật khẩu cần có cả chữ và số';
+      });
+      return;
+    }
+
+    if (confirmPassword.isEmpty) {
+      setState(() {
+        localError = 'Vui lòng nhập lại mật khẩu';
+      });
+      return;
+    }
+
+    if (password != confirmPassword) {
+      setState(() {
+        localError = 'Mật khẩu nhập lại không khớp';
+      });
+      return;
+    }
+
     final ok = await auth.register(
       name: name,
       username: username,
@@ -98,6 +195,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final auth = context.watch<AuthController>();
     final errorText = localError ?? auth.error;
     final authBusy = auth.isLoading || _primaryAuthBusy;
+    final passwordStrength = _passwordStrength(
+      context,
+      passwordController.text,
+    );
+    final passwordsMatch = confirmPasswordController.text.trim().isNotEmpty &&
+        passwordController.text.trim() == confirmPasswordController.text.trim();
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -183,22 +286,55 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      CustomTextField(
+                      _PasswordTextField(
                         controller: passwordController,
                         hintText: l10n.password,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
+                        textInputAction: TextInputAction.next,
+                        onChanged: (_) => setState(() {}),
+                        onToggleObscure: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 10),
+
+                      _PasswordStrengthView(
+                        strength: passwordStrength,
+                      ),
+                      const SizedBox(height: 12),
+
+                      _PasswordTextField(
+                        controller: confirmPasswordController,
+                        hintText: 'Nhập lại mật khẩu',
+                        obscureText: _obscureConfirmPassword,
                         textInputAction: TextInputAction.done,
-                        prefixIcon: Icons.lock_outline_rounded,
+                        onChanged: (_) => setState(() {}),
+                        suffixStatusIcon: confirmPasswordController.text.trim().isEmpty
+                            ? null
+                            : passwordsMatch
+                            ? Icons.check_circle_rounded
+                            : Icons.error_rounded,
+                        suffixStatusColor: passwordsMatch
+                            ? AppColors.income
+                            : AppColors.expense,
+                        onToggleObscure: () {
+                          setState(() {
+                            _obscureConfirmPassword = !_obscureConfirmPassword;
+                          });
+                        },
                       ),
                       const SizedBox(height: 8),
 
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          l10n.passwordHint,
+                          'Mật khẩu tối thiểu 6 ký tự, nên gồm cả chữ và số.',
                           style: AppTextStyles.caption(context),
                         ),
                       ),
+                      const SizedBox(height: 16),
                       const SizedBox(height: 16),
 
                       if (errorText != null && errorText.trim().isNotEmpty) ...[
@@ -311,6 +447,189 @@ class _AuthCard extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _PasswordStrength {
+  final String label;
+  final double progress;
+  final Color color;
+  final String description;
+
+  const _PasswordStrength({
+    required this.label,
+    required this.progress,
+    required this.color,
+    required this.description,
+  });
+}
+
+class _PasswordTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final bool obscureText;
+  final TextInputAction textInputAction;
+  final ValueChanged<String>? onChanged;
+  final VoidCallback onToggleObscure;
+  final IconData? suffixStatusIcon;
+  final Color? suffixStatusColor;
+
+  const _PasswordTextField({
+    required this.controller,
+    required this.hintText,
+    required this.obscureText,
+    required this.textInputAction,
+    required this.onToggleObscure,
+    this.onChanged,
+    this.suffixStatusIcon,
+    this.suffixStatusColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      textInputAction: textInputAction,
+      onChanged: onChanged,
+      cursorColor: AppColors.primaryBlue,
+      style: AppTextStyles.body(context).copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: AppTextStyles.bodySecondary(context).copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        prefixIcon: Icon(
+          Icons.lock_outline_rounded,
+          color: AppColors.textSecondary(context),
+        ),
+        suffixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (suffixStatusIcon != null) ...[
+              Icon(
+                suffixStatusIcon,
+                color: suffixStatusColor,
+                size: 20,
+              ),
+              const SizedBox(width: 2),
+            ],
+            IconButton(
+              tooltip: obscureText ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+              onPressed: onToggleObscure,
+              icon: Icon(
+                obscureText
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: AppColors.textSecondary(context),
+              ),
+            ),
+          ],
+        ),
+        filled: true,
+        fillColor: AppColors.surface(context),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+          borderSide: BorderSide(
+            color: AppColors.innerBorder(context),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+          borderSide: BorderSide(
+            color: AppColors.innerBorder(context),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+          borderSide: const BorderSide(
+            color: AppColors.primaryBlue,
+            width: 1.3,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PasswordStrengthView extends StatelessWidget {
+  final _PasswordStrength strength;
+
+  const _PasswordStrengthView({
+    required this.strength,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: strength.color.withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: strength.color.withOpacity(0.18),
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.shield_outlined,
+                color: strength.color,
+                size: 17,
+              ),
+              const SizedBox(width: 7),
+              Expanded(
+                child: Text(
+                  'Độ mạnh mật khẩu: ${strength.label}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: strength.color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 9),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: strength.progress,
+              minHeight: 6,
+              backgroundColor: AppColors.innerBorder(context),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                strength.color,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  strength.description,
+                  style: AppTextStyles.caption(context).copyWith(
+                    fontSize: 12.5,
+                    height: 1.25,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

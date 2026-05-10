@@ -46,18 +46,22 @@ const List<Color> _kBuiltinIncomeColors = [
 
 Color _colorFromHex(String hex) {
   final cleaned = hex.replaceAll('#', '');
+
   if (cleaned.length == 6) {
     return Color(int.parse('FF$cleaned', radix: 16));
   }
+
   return AppColors.primaryBlue;
 }
 
-/// Normalize stored hex (e.g. #aBc / ABC) for equality checks.
+/// Normalize stored hex for equality checks.
 String _normalizeCategoryHex(String raw) {
   final s = raw.trim().replaceAll('#', '').toUpperCase();
+
   if (s.length == 6) {
     return '#$s';
   }
+
   return raw.trim().toUpperCase();
 }
 
@@ -111,12 +115,14 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
   @override
   void initState() {
     super.initState();
+
     _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+
     super.dispose();
   }
 
@@ -125,16 +131,19 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     super.didChangeDependencies();
 
     if (_requestedLoad) return;
+
     _requestedLoad = true;
 
     final uid = context.read<AuthController>().user?.uid;
+
     if (uid != null) {
       context.read<UserCategoryController>().load(uid);
     }
   }
 
-  String _categoryTypeForTab(int index) =>
-      index == 0 ? 'expense' : 'income';
+  String _categoryTypeForTab(int index) {
+    return index == 0 ? 'expense' : 'income';
+  }
 
   Future<void> _confirmDelete(UserCategoryModel model) async {
     final ok = await showDialog<bool>(
@@ -156,7 +165,9 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
               onPressed: () => Navigator.pop(ctx, true),
               child: Text(
                 ctx.l10n.deleteCategoryConfirmAction,
-                style: TextStyle(color: AppColors.expense),
+                style: const TextStyle(
+                  color: AppColors.expense,
+                ),
               ),
             ),
           ],
@@ -167,14 +178,17 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
     if (ok != true || !mounted) return;
 
     final uid = context.read<AuthController>().user?.uid;
+
     if (uid == null) return;
 
     try {
       await context.read<UserCategoryController>().deleteCategory(
-            uid: uid,
-            categoryId: model.id,
-          );
+        uid: uid,
+        categoryId: model.id,
+      );
+
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: AppDurations.snackBar,
@@ -183,6 +197,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       );
     } catch (_) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: AppDurations.snackBar,
@@ -200,7 +215,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetBodyContext) {
+      builder: (_) {
         return _AddCategorySheet(
           initialDraftType: sheetInitialType,
           colorOptions: _colorOptions,
@@ -209,6 +224,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
           onSaved: () {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
+
               scaffoldMessenger.showSnackBar(
                 SnackBar(
                   duration: AppDurations.snackBar,
@@ -246,7 +262,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (sheetBodyContext) {
+      builder: (_) {
         return _AddCategorySheet(
           initialDraftType: model.isExpense ? 'expense' : 'income',
           colorOptions: _colorOptions,
@@ -256,6 +272,7 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
           onSaved: () {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
+
               scaffoldMessenger.showSnackBar(
                 SnackBar(
                   duration: AppDurations.snackBar,
@@ -275,89 +292,298 @@ class _ManageCategoriesScreenState extends State<ManageCategoriesScreen>
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leadingWidth: 56,
-        leading: IconButton(
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          style: IconButton.styleFrom(
-            backgroundColor: AppColors.card(context),
-            foregroundColor: AppColors.textPrimary(context),
-            side: BorderSide(color: AppColors.border(context)),
-            shape: const CircleBorder(),
-            fixedSize: const Size(44, 44),
-          ),
-        ),
-        title: Text(
-          context.l10n.manageCategories,
-          style: AppTextStyles.sectionTitle(context).copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: [
-            Tab(text: context.l10n.categoriesExpenseTab),
-            Tab(text: context.l10n.categoriesIncomeTab),
-          ],
-        ),
-      ),
       floatingActionButton: GestureDetector(
         onTap: _showAddSheet,
         child: Container(
-          width: 60,
-          height: 60,
+          width: 66,
+          height: 66,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: AppColors.primaryBlue,
             border: Border.all(
-              color: Colors.white.withValues(
-                alpha: AppColors.isDark(context) ? 0.14 : 0.90,
+              color: Colors.white.withOpacity(
+                AppColors.isDark(context) ? 0.14 : 0.90,
               ),
               width: 3,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryBlue.withOpacity(0.28),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
           ),
           child: const Icon(
             Icons.add_rounded,
             color: Colors.white,
-            size: 28,
+            size: 34,
           ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _CategoryListPane(
-            builtinLabels: [
-              context.l10n.food,
-              context.l10n.shopping,
-              context.l10n.transport,
-              context.l10n.entertainment,
-              context.l10n.education,
-              context.l10n.other,
-            ],
-            builtinIcons: _kBuiltinExpenseIcons,
-            builtinColors: _kBuiltinExpenseColors,
-            items: controller.categoriesForExpense(),
-            onEdit: _showEditSheet,
-            onDelete: _confirmDelete,
-            emptyHint: context.l10n.categoriesExpenseEmpty,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+              child: _CategoriesHeader(
+                title: context.l10n.manageCategories,
+                onBack: () => Navigator.pop(context),
+              ),
+            ),
+
+            const SizedBox(height: 18),
+
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: _CategoryTypeSegment(
+                controller: _tabController,
+                expenseLabel: context.l10n.categoriesExpenseTab,
+                incomeLabel: context.l10n.categoriesIncomeTab,
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  _CategoryListPane(
+                    builtinLabels: [
+                      context.l10n.food,
+                      context.l10n.shopping,
+                      context.l10n.transport,
+                      context.l10n.entertainment,
+                      context.l10n.education,
+                      context.l10n.other,
+                    ],
+                    builtinIcons: _kBuiltinExpenseIcons,
+                    builtinColors: _kBuiltinExpenseColors,
+                    items: controller.categoriesForExpense(),
+                    onEdit: _showEditSheet,
+                    onDelete: _confirmDelete,
+                    emptyHint: context.l10n.categoriesExpenseEmpty,
+                  ),
+                  _CategoryListPane(
+                    builtinLabels: [
+                      context.l10n.salary,
+                      context.l10n.gift,
+                      context.l10n.other,
+                    ],
+                    builtinIcons: _kBuiltinIncomeIcons,
+                    builtinColors: _kBuiltinIncomeColors,
+                    items: controller.categoriesForIncome(),
+                    onEdit: _showEditSheet,
+                    onDelete: _confirmDelete,
+                    emptyHint: context.l10n.categoriesIncomeEmpty,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoriesHeader extends StatelessWidget {
+  final String title;
+  final VoidCallback onBack;
+
+  const _CategoriesHeader({
+    required this.title,
+    required this.onBack,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        InkWell(
+          onTap: onBack,
+          borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: AppColors.card(context),
+              borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+              border: Border.all(
+                color: AppColors.border(context),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(
+                    AppColors.isDark(context) ? 0.18 : 0.045,
+                  ),
+                  blurRadius: 14,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: AppColors.textPrimary(context),
+              size: 18,
+            ),
           ),
-          _CategoryListPane(
-            builtinLabels: [
-              context.l10n.salary,
-              context.l10n.gift,
-              context.l10n.other,
-            ],
-            builtinIcons: _kBuiltinIncomeIcons,
-            builtinColors: _kBuiltinIncomeColors,
-            items: controller.categoriesForIncome(),
-            onEdit: _showEditSheet,
-            onDelete: _confirmDelete,
-            emptyHint: context.l10n.categoriesIncomeEmpty,
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.pageTitle(context).copyWith(
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CategoryTypeSegment extends StatefulWidget {
+  final TabController controller;
+  final String expenseLabel;
+  final String incomeLabel;
+
+  const _CategoryTypeSegment({
+    required this.controller,
+    required this.expenseLabel,
+    required this.incomeLabel,
+  });
+
+  @override
+  State<_CategoryTypeSegment> createState() => _CategoryTypeSegmentState();
+}
+
+class _CategoryTypeSegmentState extends State<_CategoryTypeSegment> {
+  @override
+  void initState() {
+    super.initState();
+
+    widget.controller.addListener(_handleTabChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant _CategoryTypeSegment oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleTabChanged);
+      widget.controller.addListener(_handleTabChanged);
+    }
+  }
+
+  void _handleTabChanged() {
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleTabChanged);
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedIndex = widget.controller.index;
+
+    return Container(
+      padding: const EdgeInsets.all(5),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+        border: Border.all(
+          color: AppColors.border(context),
+        ),
+      ),
+      child: Row(
+        children: [
+          _SegmentItem(
+            selected: selectedIndex == 0,
+            label: widget.expenseLabel,
+            icon: Icons.north_east_rounded,
+            color: AppColors.expense,
+            onTap: () => widget.controller.animateTo(0),
+          ),
+          _SegmentItem(
+            selected: selectedIndex == 1,
+            label: widget.incomeLabel,
+            icon: Icons.south_west_rounded,
+            color: AppColors.income,
+            onTap: () => widget.controller.animateTo(1),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _SegmentItem extends StatelessWidget {
+  final bool selected;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SegmentItem({
+    required this.selected,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? color : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: selected
+                    ? Colors.white
+                    : AppColors.textSecondary(context),
+                size: 17,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: selected
+                        ? Colors.white
+                        : AppColors.textSecondary(context),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -398,10 +624,13 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
 
   bool _seededEditLocaleFields = false;
 
-  void _onFormFieldChanged() => setState(() {});
+  void _onFormFieldChanged() {
+    setState(() {});
+  }
 
   bool get _hasChangesFromSnapshot {
     final e = widget.editingCategory;
+
     if (e == null || _snapshotName == null) {
       return true;
     }
@@ -418,7 +647,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
 
   bool get _saveEnabled {
     if (widget.editingCategory == null) {
-      return true;
+      return _nameController.text.trim().isNotEmpty;
     }
 
     return _nameController.text.trim().isNotEmpty && _hasChangesFromSnapshot;
@@ -427,9 +656,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
   @override
   void initState() {
     super.initState();
+
     _nameController = TextEditingController();
 
     final edit = widget.editingCategory;
+
     if (edit != null) {
       _draftType = edit.isExpense ? 'expense' : 'income';
       _pickedIcon = IconData(
@@ -443,6 +674,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
       _snapshotHex = _normalizeCategoryHex(edit.colorHex);
     } else {
       final t = widget.initialDraftType;
+
       _draftType = t == 'income' ? 'income' : 'expense';
       _pickedIcon = widget.iconOptions.first;
       _pickedColor = widget.colorOptions.first;
@@ -456,12 +688,15 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
     super.didChangeDependencies();
 
     final edit = widget.editingCategory;
+
     if (edit != null && !_seededEditLocaleFields) {
       _seededEditLocaleFields = true;
+
       final lang = Localizations.localeOf(context).languageCode;
       final seed = lang == 'en' && (edit.nameEn ?? '').trim().isNotEmpty
           ? edit.nameEn!.trim()
           : edit.name.trim();
+
       _nameController.text = seed;
       _snapshotName = seed;
     }
@@ -471,6 +706,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
   void dispose() {
     _nameController.removeListener(_onFormFieldChanged);
     _nameController.dispose();
+
     super.dispose();
   }
 
@@ -479,9 +715,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
     final messenger = ScaffoldMessenger.of(context);
 
     final uid = context.read<AuthController>().user?.uid;
+
     if (uid == null) return;
 
     final raw = _nameController.text.trim();
+
     if (raw.isEmpty) {
       messenger.showSnackBar(
         SnackBar(
@@ -504,25 +742,26 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
 
     try {
       final edit = widget.editingCategory;
+
       if (edit != null) {
         await context.read<UserCategoryController>().updateCategory(
-              uid: uid,
-              categoryId: edit.id,
-              name: raw,
-              type: _draftType,
-              iconCodePoint: _pickedIcon.codePoint,
-              colorHex: hex,
-              inputLocaleIsEnglish: inputLocaleIsEnglish,
-            );
+          uid: uid,
+          categoryId: edit.id,
+          name: raw,
+          type: _draftType,
+          iconCodePoint: _pickedIcon.codePoint,
+          colorHex: hex,
+          inputLocaleIsEnglish: inputLocaleIsEnglish,
+        );
       } else {
         await context.read<UserCategoryController>().addCategory(
-              uid: uid,
-              name: raw,
-              type: _draftType,
-              iconCodePoint: _pickedIcon.codePoint,
-              colorHex: hex,
-              inputLocaleIsEnglish: inputLocaleIsEnglish,
-            );
+          uid: uid,
+          name: raw,
+          type: _draftType,
+          iconCodePoint: _pickedIcon.codePoint,
+          colorHex: hex,
+          inputLocaleIsEnglish: inputLocaleIsEnglish,
+        );
       }
 
       if (!mounted) return;
@@ -534,7 +773,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
       if (!mounted) return;
 
       final code =
-          e is ArgumentError ? (e.message is String ? e.message as String : '') : '';
+      e is ArgumentError ? (e.message is String ? e.message as String : '') : '';
 
       messenger.showSnackBar(
         SnackBar(
@@ -545,8 +784,11 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
     }
   }
 
-  void _setDraftType(String next) =>
-      setState(() => _draftType = next == 'income' ? 'income' : 'expense');
+  void _setDraftType(String next) {
+    setState(() {
+      _draftType = next == 'income' ? 'income' : 'expense';
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -561,156 +803,289 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
         decoration: BoxDecoration(
           color: AppColors.card(context),
           borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(24),
+            top: Radius.circular(34),
           ),
-          border: Border.all(color: AppColors.border(context)),
+          border: Border.all(
+            color: AppColors.border(context),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(
+                AppColors.isDark(context) ? 0.28 : 0.12,
+              ),
+              blurRadius: 24,
+              offset: const Offset(0, -8),
+            ),
+          ],
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          padding: const EdgeInsets.fromLTRB(18, 14, 18, 26),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
                 child: Container(
-                  width: 40,
-                  height: 4,
+                  width: 44,
+                  height: 5,
                   decoration: BoxDecoration(
                     color: AppColors.border(context),
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 18),
+
               Text(
                 widget.editingCategory != null
                     ? context.l10n.editCustomCategory
                     : context.l10n.addCustomCategory,
-                style: AppTextStyles.sectionTitle(context).copyWith(
-                  fontWeight: FontWeight.w800,
+                textAlign: TextAlign.center,
+                style: AppTextStyles.pageTitle(context).copyWith(
+                  fontSize: 23,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 18),
+
               CustomTextField(
                 controller: _nameController,
                 hintText: context.l10n.categoryNameHint,
               ),
-              const SizedBox(height: 12),
+
+              const SizedBox(height: 16),
+
               Text(
                 context.l10n.categoryTypeLabel,
                 style: AppTextStyles.caption(context).copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
+
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: ChoiceChip(
-                      label: Text(context.l10n.expense),
+
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: AppColors.surface(context),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                  border: Border.all(
+                    color: AppColors.innerBorder(context),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    _SheetTypeOption(
                       selected: _draftType == 'expense',
-                      onSelected: (_) => _setDraftType('expense'),
+                      label: context.l10n.expense,
+                      icon: Icons.north_east_rounded,
+                      color: AppColors.expense,
+                      onTap: () => _setDraftType('expense'),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ChoiceChip(
-                      label: Text(context.l10n.income),
+                    _SheetTypeOption(
                       selected: _draftType == 'income',
-                      onSelected: (_) => _setDraftType('income'),
+                      label: context.l10n.income,
+                      icon: Icons.south_west_rounded,
+                      color: AppColors.income,
+                      onTap: () => _setDraftType('income'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
+
+              const SizedBox(height: 18),
+
               Text(
                 context.l10n.categoryIconLabel,
                 style: AppTextStyles.caption(context).copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 120,
+
+              const SizedBox(height: 10),
+
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface(context),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: AppColors.innerBorder(context),
+                  ),
+                ),
                 child: GridView.builder(
+                  itemCount: widget.iconOptions.length,
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
                   gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
+                  const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 6,
                     mainAxisSpacing: 8,
                     crossAxisSpacing: 8,
                   ),
-                  itemCount: widget.iconOptions.length,
                   itemBuilder: (context, i) {
                     final icon = widget.iconOptions[i];
                     final selected = icon.codePoint == _pickedIcon.codePoint;
+
                     return Material(
                       color: selected
-                          ? _pickedColor.withValues(alpha: 0.2)
-                          : AppColors.isDark(context)
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : Colors.black.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(12),
+                          ? _pickedColor.withOpacity(0.18)
+                          : AppColors.card(context),
+                      borderRadius: BorderRadius.circular(14),
                       child: InkWell(
-                        onTap: () => setState(() {
-                          _pickedIcon = icon;
-                        }),
-                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          setState(() {
+                            _pickedIcon = icon;
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(14),
                         child: Icon(
                           icon,
                           color: selected
                               ? _pickedColor
                               : AppColors.textSecondary(context),
+                          size: 22,
                         ),
                       ),
                     );
                   },
                 ),
               ),
-              const SizedBox(height: 12),
+
+              const SizedBox(height: 18),
+
               Text(
                 context.l10n.categoryColorLabel,
                 style: AppTextStyles.caption(context).copyWith(
-                  fontWeight: FontWeight.w700,
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: widget.colorOptions.map((c) {
-                  final selected = c == _pickedColor;
-                  return GestureDetector(
-                    onTap: () => setState(() {
-                      _pickedColor = c;
-                    }),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: c,
-                        border: Border.all(
-                          color: selected ? Colors.white : Colors.transparent,
-                          width: 2.5,
+
+              const SizedBox(height: 10),
+
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: AppColors.surface(context),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: AppColors.innerBorder(context),
+                  ),
+                ),
+                child: Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: widget.colorOptions.map((c) {
+                    final selected = c.value == _pickedColor.value;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _pickedColor = c;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: c,
+                          border: Border.all(
+                            color: selected ? Colors.white : Colors.transparent,
+                            width: 3,
+                          ),
+                          boxShadow: selected
+                              ? [
+                            BoxShadow(
+                              color: c.withOpacity(0.35),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ]
+                              : null,
                         ),
-                        boxShadow: selected
-                            ? [
-                                BoxShadow(
-                                  color: c.withOpacity(0.45),
-                                  blurRadius: 8,
-                                ),
-                              ]
+                        child: selected
+                            ? const Icon(
+                          Icons.check_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        )
                             : null,
                       ),
-                    ),
-                  );
-                }).toList(),
+                    );
+                  }).toList(),
+                ),
               ),
+
               const SizedBox(height: 24),
+
               CustomButton(
                 text: context.l10n.saveCategory,
                 backgroundColor: _pickedColor,
                 foregroundColor: AppColors.foregroundOnAccent(_pickedColor),
                 onPressedAsync: _saveEnabled ? _save : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SheetTypeOption extends StatelessWidget {
+  final bool selected;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _SheetTypeOption({
+    required this.selected,
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? color : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: selected
+                    ? Colors.white
+                    : AppColors.textSecondary(context),
+                size: 17,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected
+                      ? Colors.white
+                      : AppColors.textSecondary(context),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ],
           ),
@@ -738,22 +1113,25 @@ class _CategoryListPane extends StatelessWidget {
     required this.onDelete,
     required this.emptyHint,
   }) : assert(
-          builtinLabels.length == builtinIcons.length &&
-              builtinLabels.length == builtinColors.length,
-        );
+  builtinLabels.length == builtinIcons.length &&
+      builtinLabels.length == builtinColors.length,
+  );
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(AppSizes.pagePadding),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 120),
       children: [
         Text(
           context.l10n.builtinCategoriesHeading,
-          style: AppTextStyles.caption(context).copyWith(
-            fontWeight: FontWeight.w800,
+          style: AppTextStyles.sectionTitle(context).copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
           ),
         ),
+
         const SizedBox(height: 10),
+
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -763,34 +1141,51 @@ class _CategoryListPane extends StatelessWidget {
             final color = builtinColors[i];
 
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 11,
+                vertical: 8,
+              ),
               decoration: BoxDecoration(
-                color: AppColors.isDark(context)
-                    ? Colors.white.withOpacity(0.06)
-                    : Colors.white,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: AppColors.border(context)),
+                color: AppColors.card(context),
+                borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                border: Border.all(
+                  color: AppColors.border(context),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(
+                      AppColors.isDark(context) ? 0.12 : 0.035,
+                    ),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 28,
-                    height: 28,
+                    width: 30,
+                    height: 30,
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(9),
+                      shape: BoxShape.circle,
                       color: color.withOpacity(0.16),
                     ),
-                    child: Icon(icon, size: 16, color: color),
+                    child: Icon(
+                      icon,
+                      size: 16,
+                      color: color,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     label,
                     style: AppTextStyles.caption(context).copyWith(
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 5),
                   Icon(
                     Icons.lock_outline_rounded,
                     size: 14,
@@ -801,21 +1196,49 @@ class _CategoryListPane extends StatelessWidget {
             );
           }),
         ),
+
         const SizedBox(height: 22),
+
         Text(
           context.l10n.yourCategoriesHeading,
-          style: AppTextStyles.caption(context).copyWith(
-            fontWeight: FontWeight.w800,
+          style: AppTextStyles.sectionTitle(context).copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.w900,
           ),
         ),
+
         const SizedBox(height: 10),
+
         if (items.isEmpty)
-          Padding(
-            padding: const EdgeInsets.only(top: 24, bottom: 40),
-            child: Text(
-              emptyHint,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodySecondary(context),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 18,
+              vertical: 32,
+            ),
+            decoration: BoxDecoration(
+              color: AppColors.card(context),
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(
+                color: AppColors.border(context),
+              ),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.category_outlined,
+                  size: 50,
+                  color: AppColors.textSecondary(context).withOpacity(0.65),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  emptyHint,
+                  textAlign: TextAlign.center,
+                  style: AppTextStyles.bodySecondary(context).copyWith(
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+              ],
             ),
           )
         else
@@ -823,6 +1246,7 @@ class _CategoryListPane extends StatelessWidget {
             if (i.isOdd) {
               return const SizedBox(height: 10);
             }
+
             final index = i ~/ 2;
             final item = items[index];
             final color = _colorFromHex(item.colorHex);
@@ -834,46 +1258,63 @@ class _CategoryListPane extends StatelessWidget {
             return Container(
               decoration: BoxDecoration(
                 color: AppColors.card(context),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppColors.border(context)),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppColors.border(context),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withOpacity(
+                      AppColors.isDark(context) ? 0.10 : 0.055,
+                    ),
+                    blurRadius: 16,
+                    offset: const Offset(0, 7),
+                  ),
+                ],
               ),
               child: ListTile(
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 leading: Container(
-                  width: 44,
-                  height: 44,
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    color: color.withOpacity(0.14),
+                    shape: BoxShape.circle,
+                    color: color.withOpacity(0.16),
+                    border: Border.all(
+                      color: color.withOpacity(0.22),
+                    ),
                   ),
-                  child: Icon(icon, color: color),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 24,
+                  ),
                 ),
                 title: Text(
                   BudgetNameLocalizer.display(context, item.name),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.body(context).copyWith(
-                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Tooltip(
-                      message: context.l10n.editCustomCategory,
-                      child: IconButton(
-                        onPressed: () => onEdit(item),
-                        icon: Icon(
-                          Icons.edit_outlined,
-                          color: AppColors.primaryBlue,
-                        ),
-                      ),
+                    _CategoryActionButton(
+                      icon: Icons.edit_outlined,
+                      color: AppColors.primaryBlue,
+                      onTap: () => onEdit(item),
                     ),
-                    IconButton(
-                      onPressed: () => onDelete(item),
-                      icon: Icon(
-                        Icons.delete_outline_rounded,
-                        color: AppColors.expense,
-                      ),
+                    const SizedBox(width: 6),
+                    _CategoryActionButton(
+                      icon: Icons.delete_outline_rounded,
+                      color: AppColors.expense,
+                      onTap: () => onDelete(item),
                     ),
                   ],
                 ),
@@ -881,6 +1322,42 @@ class _CategoryListPane extends StatelessWidget {
             );
           }),
       ],
+    );
+  }
+}
+
+class _CategoryActionButton extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _CategoryActionButton({
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withOpacity(0.12),
+          border: Border.all(
+            color: color.withOpacity(0.18),
+          ),
+        ),
+        child: Icon(
+          icon,
+          color: color,
+          size: 19,
+        ),
+      ),
     );
   }
 }

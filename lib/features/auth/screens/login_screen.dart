@@ -24,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? localError;
   bool _primaryAuthBusy = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -134,12 +135,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      CustomTextField(
+                      _PasswordTextField(
                         controller: passwordController,
                         hintText: l10n.password,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
                         textInputAction: TextInputAction.done,
-                        prefixIcon: Icons.lock_outline_rounded,
+                        onToggleObscure: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
                       ),
                       const SizedBox(height: 10),
 
@@ -281,6 +286,80 @@ class _AuthCard extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _PasswordTextField extends StatelessWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final bool obscureText;
+  final TextInputAction textInputAction;
+  final VoidCallback onToggleObscure;
+
+  const _PasswordTextField({
+    required this.controller,
+    required this.hintText,
+    required this.obscureText,
+    required this.textInputAction,
+    required this.onToggleObscure,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      obscureText: obscureText,
+      textInputAction: textInputAction,
+      cursorColor: AppColors.primaryBlue,
+      style: AppTextStyles.body(context).copyWith(
+        fontWeight: FontWeight.w700,
+      ),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: AppTextStyles.bodySecondary(context).copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+        prefixIcon: Icon(
+          Icons.lock_outline_rounded,
+          color: AppColors.textSecondary(context),
+        ),
+        suffixIcon: IconButton(
+          tooltip: obscureText ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+          onPressed: onToggleObscure,
+          icon: Icon(
+            obscureText
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            color: AppColors.textSecondary(context),
+          ),
+        ),
+        filled: true,
+        fillColor: AppColors.surface(context),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+          borderSide: BorderSide(
+            color: AppColors.innerBorder(context),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+          borderSide: BorderSide(
+            color: AppColors.innerBorder(context),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+          borderSide: const BorderSide(
+            color: AppColors.primaryBlue,
+            width: 1.3,
+          ),
+        ),
+      ),
     );
   }
 }
