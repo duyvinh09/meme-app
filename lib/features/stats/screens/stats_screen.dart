@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../auth/controllers/auth_controller.dart';
@@ -842,6 +843,10 @@ class _StatsScreenState extends State<StatsScreen> {
               selectedIndex:
               selectedViewMode == _ViewMode.month ? 0 : 1,
               labels: [context.l10n.month, context.l10n.year],
+              icons: const [
+                Icons.calendar_view_month_rounded,
+                Icons.calendar_today_rounded,
+              ],
               onChanged: (index) {
                 setState(() {
                   selectedViewMode =
@@ -902,6 +907,10 @@ class _StatsScreenState extends State<StatsScreen> {
             _RowSegment(
               selectedIndex: selectedContentTab.index,
               labels: [context.l10n.categories, context.l10n.map],
+              icons: const [
+                Icons.pie_chart_rounded,
+                Icons.map_rounded,
+              ],
               onChanged: (value) {
                 setState(() {
                   selectedContentTab = _StatsContentTab.values[value];
@@ -1954,48 +1963,102 @@ class _SmallIconButton extends StatelessWidget {
 class _RowSegment extends StatelessWidget {
   final int selectedIndex;
   final List<String> labels;
+  final List<IconData>? icons;
   final ValueChanged<int> onChanged;
   final _StatsPalette palette;
 
   const _RowSegment({
     required this.selectedIndex,
     required this.labels,
+    this.icons,
     required this.onChanged,
     required this.palette,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final trackBg = isDark
+        ? const Color(0xFF1B1E28)
+        : const Color(0xFFF1F5F9);
+
+    final trackBorder = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : const Color(0xFFE2E8F0);
+
     return Container(
-      padding: const EdgeInsets.all(5),
+      padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: palette.cardBackground,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: palette.cardBorder),
+        color: trackBg,
+        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+        border: Border.all(
+          color: trackBorder,
+          width: 1.0,
+        ),
       ),
       child: Row(
         children: List.generate(labels.length, (index) {
           final selected = selectedIndex == index;
+          final icon = (icons != null && index < icons!.length) ? icons![index] : null;
 
           return Expanded(
             child: GestureDetector(
-              onTap: () => onChanged(index),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                onChanged(index);
+              },
+              behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                padding: const EdgeInsets.symmetric(vertical: 11),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOutCubic,
+                padding: const EdgeInsets.symmetric(vertical: 9.5),
                 decoration: BoxDecoration(
-                  color: selected ? palette.textPrimary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
+                  gradient: selected
+                      ? const LinearGradient(
+                          colors: [Color(0xFF0099FF), Color(0xFF0066FF)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        )
+                      : null,
+                  color: selected ? null : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                  boxShadow: selected
+                      ? [
+                          BoxShadow(
+                            color: const Color(0xFF007AFF).withValues(alpha: 0.32),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : null,
                 ),
-                child: Text(
-                  labels[index],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: selected ? palette.background : palette.textSecondary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                  ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    if (icon != null) ...[
+                      Icon(
+                        icon,
+                        size: 16.5,
+                        color: selected
+                            ? Colors.white
+                            : (isDark ? Colors.white60 : const Color(0xFF64748B)),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      labels[index],
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: selected
+                            ? Colors.white
+                            : (isDark ? Colors.white70 : const Color(0xFF475569)),
+                        fontSize: 13.5,
+                        fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                        letterSpacing: -0.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

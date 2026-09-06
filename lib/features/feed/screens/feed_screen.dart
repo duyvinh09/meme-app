@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
@@ -11,16 +16,28 @@ import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/models/post_reaction_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../profile/widgets/avatar_with_frame.dart';
+import '../../chat/controllers/chat_controller.dart';
+import '../widgets/reaction_flying_animator.dart';
+import '../widgets/feed_reaction_input_bar.dart';
+import '../widgets/post_activity_bar.dart';
+import '../widgets/new_post_floating_banner.dart';
 import '../controllers/feed_controller.dart';
 
 class FeedScreen extends StatefulWidget {
-  const FeedScreen({super.key});
+  final bool isActive;
+
+  const FeedScreen({
+    super.key,
+    this.isActive = true,
+  });
 
   @override
   State<FeedScreen> createState() => _FeedScreenState();
@@ -29,12 +46,131 @@ class FeedScreen extends StatefulWidget {
 class _FeedScreenState extends State<FeedScreen> {
   bool loaded = false;
   String selectedUserId = 'all';
+  bool _isFilterMenuOpen = false;
+  int _currentPageIndex = 0;
+  String? _topPostId;
+  int _newPostsCount = 0;
 
   final PageController _pageController = PageController();
+  final GlobalKey<ReactionFlyingOverlayState> _flyingOverlayKey =
+      GlobalKey<ReactionFlyingOverlayState>();
+
+  final Set<String> _viewedPostIds = {};
+  final Set<String> _animatedOwnerPostIds = {};
+  final Set<String> _knownReactionIds = {};
+  final math.Random _random = math.Random();
+
+  StreamSubscription<List<PostReactionModel>>? _currentPostReactionsSub;
+  String? _subscribedPostId;
+  Size _screenSize = Size.zero;
+
+  @override
+  void didUpdateWidget(covariant FeedScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      if (_isFilterMenuOpen) {
+        setState(() {
+          _isFilterMenuOpen = false;
+        });
+      }
+    }
+  }
+
+  void _recordViewIfNeeded(TransactionModel tx) {
+    final authUser = context.read<AuthController>().user;
+    final myUid = authUser?.uid;
+
+    if (myUid == null) return;
+
+    if (tx.userId != myUid) {
+      if (!_viewedPostIds.contains(tx.id)) {
+        _viewedPostIds.add(tx.id);
+
+        final profile = context.read<ProfileController>().user;
+        final myName = (profile?.name.trim().isNotEmpty == true)
+            ? profile!.name.trim()
+            : (profile?.username.trim().isNotEmpty == true
+                ? profile!.username.trim()
+                : (authUser?.displayName?.trim().isNotEmpty == true
+                    ? authUser!.displayName!.trim()
+                    : 'Bạn'));
+        final myAvatar = profile?.avatarUrl ?? '';
+        final myFrame = profile?.avatarFrame ?? 'default';
+
+        context.read<ChatController>().recordPostView(
+          postId: tx.id,
+          userId: myUid,
+          userName: myName,
+          userAvatar: myAvatar,
+          userFrame: myFrame,
+        );
+      }
+    }
+  }
+
+  void _updateActivePostReactionSubscription(TransactionModel? currentTx, String myUid) {
+    if (currentTx == null || currentTx.userId != myUid) {
+      _currentPostReactionsSub?.cancel();
+      _currentPostReactionsSub = null;
+      _subscribedPostId = null;
+      return;
+    }
+
+    if (_subscribedPostId == currentTx.id) return;
+    _subscribedPostId = currentTx.id;
+
+    _currentPostReactionsSub?.cancel();
+    final bool isFirstViewOfThisPost = !_animatedOwnerPostIds.contains(currentTx.id);
+
+    _currentPostReactionsSub = context
+        .read<ChatController>()
+        .postReactionsStream(currentTx.id)
+        .listen((reactions) {
+      if (!mounted || reactions.isEmpty) return;
+
+      final screenSize = _screenSize;
+
+      if (isFirstViewOfThisPost && !_animatedOwnerPostIds.contains(currentTx.id)) {
+        _animatedOwnerPostIds.add(currentTx.id);
+
+        for (final r in reactions) {
+          _knownReactionIds.add(r.id);
+        }
+
+        // Animate up to the 3 most recent unique emojis falling down
+        final recentEmojis = reactions.reversed.map((r) => r.emoji).toSet().take(3).toList();
+        for (int i = 0; i < recentEmojis.length; i++) {
+          Future.delayed(Duration(milliseconds: 200 + i * 350), () {
+            if (mounted) {
+              _flyingOverlayKey.currentState?.triggerReaction(
+                recentEmojis[i],
+                originOffset: Offset(screenSize.width / 2 + (i - 1) * 45, 75),
+                isFalling: true,
+                particleCount: 12,
+              );
+            }
+          });
+        }
+      } else {
+        // Real-time reactions arriving while user is looking at their post
+        final newReactions = reactions.where((r) => !_knownReactionIds.contains(r.id)).toList();
+        for (final r in newReactions) {
+          _knownReactionIds.add(r.id);
+          _flyingOverlayKey.currentState?.triggerReaction(
+            r.emoji,
+            originOffset: Offset(screenSize.width / 2 + (_random.nextDouble() - 0.5) * 80, 75),
+            isFalling: true,
+            particleCount: 14,
+          );
+        }
+      }
+    });
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _screenSize = MediaQuery.sizeOf(context);
 
     if (!loaded) {
       final uid = context.read<AuthController>().user?.uid;
@@ -49,6 +185,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
   @override
   void dispose() {
+    _currentPostReactionsSub?.cancel();
     _pageController.dispose();
     super.dispose();
   }
@@ -58,6 +195,12 @@ class _FeedScreenState extends State<FeedScreen> {
     required List<TransactionModel> transactions,
     required _FeedPalette palette,
   }) async {
+    if (_isFilterMenuOpen) {
+      setState(() {
+        _isFilterMenuOpen = false;
+      });
+    }
+
     final selectedIndex = await Navigator.push<int>(
       context,
       MaterialPageRoute(
@@ -68,13 +211,32 @@ class _FeedScreenState extends State<FeedScreen> {
       ),
     );
 
+    if (mounted && _isFilterMenuOpen) {
+      setState(() {
+        _isFilterMenuOpen = false;
+      });
+    }
+
     if (selectedIndex != null && _pageController.hasClients) {
       _pageController.jumpToPage(selectedIndex);
     }
   }
 
+  void _changeFilter(String value) {
+    setState(() {
+      selectedUserId = value;
+      _currentPageIndex = 0;
+      _newPostsCount = 0;
+      _topPostId = null;
+    });
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    _screenSize = MediaQuery.sizeOf(context);
     final feed = context.watch<FeedController>();
     final auth = context.read<AuthController>();
     final myUid = auth.user?.uid;
@@ -91,8 +253,10 @@ class _FeedScreenState extends State<FeedScreen> {
 
     return Scaffold(
       backgroundColor: palette.background,
-      body: SafeArea(
-        child: FutureBuilder<UserModel?>(
+      body: ReactionFlyingOverlay(
+        key: _flyingOverlayKey,
+        child: SafeArea(
+          child: FutureBuilder<UserModel?>(
           future: context.read<UserRepository>().getUserProfile(myUid),
           builder: (context, myProfileSnapshot) {
             final myProfile = myProfileSnapshot.data;
@@ -164,73 +328,357 @@ class _FeedScreenState extends State<FeedScreen> {
                         selectedUserIdValue: selectedUserId,
                         feedTransactions: filteredTransactions,
                         palette: palette,
-                        onSelected: (value) {
-                          setState(() {
-                            selectedUserId = value;
-                          });
-                        },
+                        onSelected: _changeFilter,
                       );
                     }
 
+                    final safeIndex = _currentPageIndex.clamp(
+                      0,
+                      filteredTransactions.isEmpty ? 0 : filteredTransactions.length - 1,
+                    );
+                    final currentTransaction = filteredTransactions.isNotEmpty
+                        ? filteredTransactions[safeIndex]
+                        : null;
+                    final isCurrentPostOwner = currentTransaction != null &&
+                        currentTransaction.userId == myUid;
+
+                    // Handle jump to tagged post if opened via mention notification
+                    final targetPostId = feed.targetPostId;
+                    if (targetPostId != null && targetPostId.isNotEmpty) {
+                      if (selectedUserId != 'all') {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              selectedUserId = 'all';
+                            });
+                          }
+                        });
+                      }
+                      if (filteredTransactions.isNotEmpty) {
+                        final targetIdx = filteredTransactions.indexWhere((tx) => tx.id == targetPostId);
+                        if (targetIdx != -1) {
+                          feed.targetPostId = null;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (!mounted) return;
+                            if (_pageController.hasClients) {
+                              _pageController.jumpToPage(targetIdx);
+                              setState(() {
+                                _currentPageIndex = targetIdx;
+                              });
+                            } else {
+                              Future.delayed(const Duration(milliseconds: 150), () {
+                                if (mounted && _pageController.hasClients) {
+                                  _pageController.jumpToPage(targetIdx);
+                                  setState(() {
+                                    _currentPageIndex = targetIdx;
+                                  });
+                                }
+                              });
+                            }
+                          });
+                        }
+                      }
+                    }
+
+                    if (filteredTransactions.isNotEmpty) {
+                      final currentTopId = filteredTransactions.first.id;
+                      final isTopPostMine = filteredTransactions.first.userId == myUid;
+
+                      if (_topPostId == null) {
+                        _topPostId = currentTopId;
+                      } else if (_topPostId != currentTopId) {
+                        if (isTopPostMine) {
+                          // When user uploads a post themselves, do NOT show popup,
+                          // update top post and immediately jump to page 0 to show it
+                          _topPostId = currentTopId;
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              if (_newPostsCount != 0) {
+                                setState(() {
+                                  _newPostsCount = 0;
+                                });
+                              }
+                              if (_currentPageIndex != 0 && _pageController.hasClients) {
+                                _pageController.jumpToPage(0);
+                                setState(() {
+                                  _currentPageIndex = 0;
+                                });
+                              }
+                            }
+                          });
+                        } else if (_currentPageIndex > 0) {
+                          final oldTopIndex = filteredTransactions.indexWhere(
+                            (tx) => tx.id == _topPostId,
+                          );
+                          final count = oldTopIndex > 0 ? oldTopIndex : 1;
+                          if (count != _newPostsCount) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                setState(() {
+                                  _newPostsCount = count;
+                                });
+                              }
+                            });
+                          }
+                        } else {
+                          _topPostId = currentTopId;
+                          if (_newPostsCount != 0) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (mounted) {
+                                setState(() {
+                                  _newPostsCount = 0;
+                                });
+                              }
+                            });
+                          }
+                        }
+                      }
+                    }
+
+                    if (currentTransaction != null &&
+                        _subscribedPostId != currentTransaction.id) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          _recordViewIfNeeded(currentTransaction);
+                          _updateActivePostReactionSubscription(currentTransaction, myUid);
+                        }
+                      });
+                    }
+
+                    final barBottomOffset =
+                        (_screenSize.height < 740) ? 104.0 : 106.0;
+
                     return Stack(
                       children: [
-                        Positioned.fill(
-                          child: PageView.builder(
-                            controller: _pageController,
-                            scrollDirection: Axis.vertical,
-                            allowImplicitScrolling: true,
-                            itemCount: filteredTransactions.length,
-                            itemBuilder: (context, index) {
-                              final tx = filteredTransactions[index];
+                          Positioned.fill(
+                            child: PageView.builder(
+                              key: ValueKey('feed_pageview_$selectedUserId'),
+                              controller: _pageController,
+                              scrollDirection: Axis.vertical,
+                              allowImplicitScrolling: true,
+                              itemCount: filteredTransactions.length,
+                              onPageChanged: (index) {
+                                setState(() {
+                                  _currentPageIndex = index;
+                                  if (index == 0) {
+                                    _newPostsCount = 0;
+                                    _topPostId = filteredTransactions.isNotEmpty
+                                        ? filteredTransactions.first.id
+                                        : null;
+                                  }
+                                });
+                                if (index >= 0 && index < filteredTransactions.length) {
+                                  final activeTx = filteredTransactions[index];
+                                  _recordViewIfNeeded(activeTx);
+                                  _updateActivePostReactionSubscription(activeTx, myUid);
+                                }
+                              },
+                              itemBuilder: (context, index) {
+                                final tx = filteredTransactions[index];
 
-                              return _FeedPostPage(
-                                transaction: tx,
-                                palette: palette,
-                              );
-                            },
-                          ),
-                        ),
-
-                        Positioned(
-                          top: 8,
-                          left: 14,
-                          right: 14,
-                          child: SafeArea(
-                            bottom: false,
-                            child: _FeedHeader(
-                              myProfile: myProfile,
-                              friendProfiles: friendProfiles,
-                              selectedUserId: selectedUserId,
-                              feedTransactions: filteredTransactions,
-                              onOpenGallery: () {
-                                _openGallery(
-                                  context: context,
-                                  transactions: filteredTransactions,
+                                return _FeedPostPage(
+                                  transaction: tx,
                                   palette: palette,
                                 );
                               },
-                              onCaptureTap: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  RouteNames.addTransaction,
-                                );
-                              },
-                              onSelected: (value) {
-                                setState(() {
-                                  selectedUserId = value;
-                                });
-                              },
-                              palette: palette,
                             ),
                           ),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            );
-          },
+
+                          // Floating Dropdown Banner for New Posts (Slide-down under dropdown header)
+                          Positioned(
+                            top: 72.0,
+                            left: 0,
+                            right: 0,
+                            child: SafeArea(
+                              bottom: false,
+                              child: NewPostFloatingBanner(
+                                newPostsCount: _newPostsCount,
+                                onTap: () {
+                                  _pageController.animateToPage(
+                                    0,
+                                    duration: const Duration(milliseconds: 400),
+                                    curve: Curves.easeOutCubic,
+                                  );
+                                  setState(() {
+                                    _newPostsCount = 0;
+                                    _topPostId = filteredTransactions.isNotEmpty
+                                        ? filteredTransactions.first.id
+                                        : null;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+
+                          // Fixed Global Floating Bar (Own Post: PostActivityBar | Friend Post: FeedReactionInputBar)
+                          if (currentTransaction != null)
+                            Positioned(
+                              bottom: barBottomOffset,
+                              left: 16,
+                              right: 16,
+                              child: SafeArea(
+                                top: false,
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 480),
+                                    child: isCurrentPostOwner
+                                        ? (currentTransaction.privacy != 'private'
+                                            ? PostActivityBar(
+                                                key: ValueKey('activity_bar_${currentTransaction.id}'),
+                                                transaction: currentTransaction,
+                                                isDark: AppColors.isDark(context),
+                                              )
+                                            : const SizedBox.shrink())
+                                        : FeedReactionInputBar(
+                                            key: ValueKey('feed_bar_${currentTransaction.id}'),
+                                            isDark: AppColors.isDark(context),
+                                            onOpenChat: () async {
+                                              if (_isFilterMenuOpen) {
+                                                setState(() {
+                                                  _isFilterMenuOpen = false;
+                                                });
+                                              }
+                                              UserModel? targetUser = friendProfiles
+                                                  .where((u) => u.uid == currentTransaction.userId)
+                                                  .firstOrNull;
+                                              targetUser ??= await context
+                                                  .read<UserRepository>()
+                                                  .getUserProfile(currentTransaction.userId);
+                                              if (targetUser != null && context.mounted) {
+                                                Navigator.pushNamed(
+                                                  context,
+                                                  RouteNames.chatConversation,
+                                                  arguments: {
+                                                    'friend': targetUser,
+                                                    'initialPostReply': currentTransaction,
+                                                  },
+                                                );
+                                              }
+                                            },
+                                            onSelectEmoji: (emoji) {
+                                              final authUser = context.read<AuthController>().user;
+                                              final myUid = authUser?.uid ?? '';
+                                              final profile = context.read<ProfileController>().user;
+                                              final myName = (profile?.name.trim().isNotEmpty == true)
+                                                  ? profile!.name.trim()
+                                                  : (profile?.username.trim().isNotEmpty == true
+                                                      ? profile!.username.trim()
+                                                      : (authUser?.displayName?.trim().isNotEmpty == true
+                                                          ? authUser!.displayName!.trim()
+                                                          : 'Bạn'));
+                                              final myAvatar = profile?.avatarUrl ?? '';
+
+                                              final screenSize = _screenSize;
+                                              final originY = screenSize.height - barBottomOffset - 27.0;
+
+                                              HapticFeedback.mediumImpact();
+                                              _flyingOverlayKey.currentState?.triggerReaction(
+                                                emoji,
+                                                originOffset: Offset(
+                                                  screenSize.width / 2,
+                                                  originY,
+                                                ),
+                                              );
+
+                                              context.read<ChatController>().sendPostReaction(
+                                                postId: currentTransaction.id,
+                                                postOwnerId: currentTransaction.userId,
+                                                myUid: myUid,
+                                                userName: myName,
+                                                userAvatar: myAvatar,
+                                                emoji: emoji,
+                                                postImageUrl: currentTransaction.displayImageUrl,
+                                                postCaption: currentTransaction.caption,
+                                                postCreatedAt: currentTransaction.createdAt,
+                                              );
+                                            },
+                                          ),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                          // Blurred Backdrop Barrier when dropdown is open (covers posts, activity bar & message input bar)
+                          if (_isFilterMenuOpen)
+                            Positioned.fill(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: () {
+                                  setState(() {
+                                    _isFilterMenuOpen = false;
+                                  });
+                                },
+                                child: TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  duration: const Duration(milliseconds: 180),
+                                  curve: Curves.easeOut,
+                                  builder: (context, val, child) {
+                                    return ClipRect(
+                                      child: BackdropFilter(
+                                        filter: ImageFilter.blur(
+                                          sigmaX: 10 * val,
+                                          sigmaY: 10 * val,
+                                        ),
+                                        child: Container(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.35 * val,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+
+                          Positioned(
+                            top: 8,
+                            left: 14,
+                            right: 14,
+                            child: SafeArea(
+                              bottom: false,
+                              child: _FeedHeader(
+                                myProfile: myProfile,
+                                friendProfiles: friendProfiles,
+                                selectedUserId: selectedUserId,
+                                feedTransactions: filteredTransactions,
+                                isMenuOpen: _isFilterMenuOpen,
+                                onMenuOpenChanged: (open) {
+                                  setState(() {
+                                    _isFilterMenuOpen = open;
+                                  });
+                                },
+                                onOpenGallery: () {
+                                  _openGallery(
+                                    context: context,
+                                    transactions: filteredTransactions,
+                                    palette: palette,
+                                  );
+                                },
+                                onCaptureTap: () {
+                                  if (_isFilterMenuOpen) {
+                                    setState(() {
+                                      _isFilterMenuOpen = false;
+                                    });
+                                  }
+                                  Navigator.pushNamed(
+                                    context,
+                                    RouteNames.addTransaction,
+                                  );
+                                },
+                                onSelected: _changeFilter,
+                                palette: palette,
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -264,7 +712,7 @@ class _FeedScreenState extends State<FeedScreen> {
   }
 }
 
-class _FilteredEmptyFeed extends StatelessWidget {
+class _FilteredEmptyFeed extends StatefulWidget {
   final String selectedUserId;
   final List<UserModel> friendProfiles;
   final UserModel? myProfile;
@@ -283,19 +731,26 @@ class _FilteredEmptyFeed extends StatelessWidget {
     required this.onSelected,
   });
 
+  @override
+  State<_FilteredEmptyFeed> createState() => _FilteredEmptyFeedState();
+}
+
+class _FilteredEmptyFeedState extends State<_FilteredEmptyFeed> {
+  bool _isMenuOpen = false;
+
   String _emptyFilterText(BuildContext context) {
-    if (selectedUserId == 'me') {
+    if (widget.selectedUserId == 'me') {
       return context.l10n.youHaveNoPosts;
     }
 
-    if (selectedUserId == 'all') {
+    if (widget.selectedUserId == 'all') {
       return context.l10n.noPostsYet;
     }
 
     UserModel? selectedFriend;
 
-    for (final friend in friendProfiles) {
-      if (friend.uid == selectedUserId) {
+    for (final friend in widget.friendProfiles) {
+      if (friend.uid == widget.selectedUserId) {
         selectedFriend = friend;
         break;
       }
@@ -303,7 +758,9 @@ class _FilteredEmptyFeed extends StatelessWidget {
 
     final name = selectedFriend?.name.trim().isNotEmpty == true
         ? selectedFriend!.name.trim()
-        : context.l10n.someone;
+        : selectedFriend?.username.trim().isNotEmpty == true
+            ? selectedFriend!.username.trim()
+            : context.l10n.someone;
 
     return context.l10n.userHasNoPosts(name);
   }
@@ -322,14 +779,14 @@ class _FilteredEmptyFeed extends StatelessWidget {
                   Icon(
                     Icons.dynamic_feed_outlined,
                     size: 56,
-                    color: palette.accent.withOpacity(0.8),
+                    color: widget.palette.accent.withValues(alpha: 0.8),
                   ),
                   const SizedBox(height: 18),
                   Text(
                     _emptyFilterText(context),
                     textAlign: TextAlign.center,
                     style: AppTextStyles.sectionTitle(context).copyWith(
-                      color: palette.textPrimary,
+                      color: widget.palette.textPrimary,
                       fontSize: 22,
                       fontWeight: FontWeight.w900,
                     ),
@@ -339,6 +796,40 @@ class _FilteredEmptyFeed extends StatelessWidget {
             ),
           ),
         ),
+
+        // Blurred Backdrop Barrier when dropdown is open in empty state
+        if (_isMenuOpen)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() {
+                  _isMenuOpen = false;
+                });
+              },
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0.0, end: 1.0),
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                builder: (context, val, child) {
+                  return ClipRect(
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(
+                        sigmaX: 10 * val,
+                        sigmaY: 10 * val,
+                      ),
+                      child: Container(
+                        color: Colors.black.withValues(
+                          alpha: 0.35 * val,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+
         Positioned(
           top: 8,
           left: 14,
@@ -346,10 +837,16 @@ class _FilteredEmptyFeed extends StatelessWidget {
           child: SafeArea(
             bottom: false,
             child: _FeedHeader(
-              myProfile: myProfile,
-              friendProfiles: friendProfiles,
-              selectedUserId: selectedUserIdValue,
-              feedTransactions: feedTransactions,
+              myProfile: widget.myProfile,
+              friendProfiles: widget.friendProfiles,
+              selectedUserId: widget.selectedUserIdValue,
+              feedTransactions: widget.feedTransactions,
+              isMenuOpen: _isMenuOpen,
+              onMenuOpenChanged: (open) {
+                setState(() {
+                  _isMenuOpen = open;
+                });
+              },
               onOpenGallery: () {},
               onCaptureTap: () {
                 Navigator.pushNamed(
@@ -357,8 +854,8 @@ class _FilteredEmptyFeed extends StatelessWidget {
                   RouteNames.addTransaction,
                 );
               },
-              onSelected: onSelected,
-              palette: palette,
+              onSelected: widget.onSelected,
+              palette: widget.palette,
             ),
           ),
         ),
@@ -484,12 +981,20 @@ class _FeedPostPage extends StatelessWidget {
       return context.l10n.daysAgo(diff.inDays);
     }
 
+    final locale = Localizations.localeOf(context).languageCode;
+    final isVietnamese = locale == 'vi';
+
     if (now.year == createdAt.year) {
-      return context.l10n.dateAt('${createdAt.day} thg ${createdAt.month}');
+      if (isVietnamese) {
+        return '${createdAt.day} thg ${createdAt.month}';
+      }
+      return DateFormat('d MMM', 'en').format(createdAt);
     }
 
-    return context.l10n.dateAt(
-        '${createdAt.day} thg ${createdAt.month}, ${createdAt.year}');
+    if (isVietnamese) {
+      return '${createdAt.day} thg ${createdAt.month}, ${createdAt.year}';
+    }
+    return DateFormat('d MMM, y', 'en').format(createdAt);
   }
 
   @override
@@ -513,7 +1018,28 @@ class _FeedPostPage extends StatelessWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             final maxWidth = constraints.maxWidth;
-            final imageSize = maxWidth - 28;
+            final maxHeight = constraints.maxHeight;
+
+            final isShort = maxHeight < 740;
+            final hasNote = transaction.note.trim().isNotEmpty && isOwner;
+            final hasAmount = isOwner || transaction.privacy == 'group';
+
+            final topSpacing = isShort
+                ? ((maxHeight < 660) ? 84.0 : 96.0)
+                : ((maxHeight < 800) ? 120.0 : 140.0);
+            final itemGap = isShort ? 8.0 : 12.0;
+            final bottomPadding = isShort ? 72.0 : 80.0;
+
+            final infoOverhead = 32.0 +
+                (hasNote ? (itemGap * 0.6 + 22.0) : 0.0) +
+                (hasAmount ? (itemGap * 0.6 + 22.0) : 0.0) +
+                itemGap;
+
+            final totalOverhead = topSpacing + bottomPadding + infoOverhead;
+            final maxAvailableImageHeight = maxHeight - totalOverhead;
+            final imageSize = math
+                .min(maxWidth, maxAvailableImageHeight)
+                .clamp(160.0, maxWidth);
 
             return Container(
               width: double.infinity,
@@ -529,10 +1055,10 @@ class _FeedPostPage extends StatelessWidget {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 108),
+                padding: EdgeInsets.only(bottom: bottomPadding),
                 child: Column(
                   children: [
-                    const SizedBox(height: 160),
+                    SizedBox(height: topSpacing),
                     SizedBox(
                       width: imageSize,
                       height: imageSize,
@@ -541,42 +1067,49 @@ class _FeedPostPage extends StatelessWidget {
                         palette: palette,
                       ),
                     ),
-                    const SizedBox(height: 18),
+                    SizedBox(height: itemGap),
                     _UploaderInfo(
                       user: user,
                       timeText: _formatFeedTime(context, transaction.createdAt),
                       palette: palette,
                       isPrivate: transaction.privacy == 'private',
                       isOwner: isOwner,
+                      groupName: transaction.privacy == 'group'
+                          ? (transaction.groupName ?? 'Nhóm')
+                          : null,
                     ),
-                    if (transaction.note.trim().isNotEmpty && isOwner) ...[
-                      const SizedBox(height: 10),
+                    if (hasNote) ...[
+                      SizedBox(height: itemGap * 0.6),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
                           transaction.note.trim(),
                           textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodySecondary(context).copyWith(
                             color: palette.textSecondary,
-                            fontSize: 14,
-                            height: 1.45,
+                            fontSize: isShort ? 13 : 14,
+                            height: 1.35,
                           ),
                         ),
                       ),
                     ],
-                    if (isOwner) ...[
-                      const SizedBox(height: 10),
+                    if (hasAmount) ...[
+                      SizedBox(height: itemGap * 0.6),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
                           '${transaction.type == 'expense' ? '-' : '+'}$amountText • $localizedCategory',
                           textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: transaction.type == 'expense'
                                 ? AppColors.expense
                                 : AppColors.income,
                             fontWeight: FontWeight.w800,
-                            fontSize: 15,
+                            fontSize: isShort ? 14 : 15,
                           ),
                         ),
                       ),
@@ -598,17 +1131,20 @@ class _FeedHeader extends StatefulWidget {
   final List<UserModel> friendProfiles;
   final String selectedUserId;
   final List<TransactionModel> feedTransactions;
+  final bool isMenuOpen;
+  final ValueChanged<bool> onMenuOpenChanged;
   final VoidCallback onOpenGallery;
   final VoidCallback onCaptureTap;
   final ValueChanged<String> onSelected;
   final _FeedPalette palette;
 
   const _FeedHeader({
-    super.key,
     required this.myProfile,
     required this.friendProfiles,
     required this.selectedUserId,
     required this.feedTransactions,
+    required this.isMenuOpen,
+    required this.onMenuOpenChanged,
     required this.onOpenGallery,
     required this.onCaptureTap,
     required this.onSelected,
@@ -620,7 +1156,6 @@ class _FeedHeader extends StatefulWidget {
 }
 
 class _FeedHeaderState extends State<_FeedHeader> {
-  bool _menuOpen = false;
 
   String _shortName(
       BuildContext context,
@@ -770,10 +1305,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
   }
 
   void _selectUser(String value) {
-    setState(() {
-      _menuOpen = false;
-    });
-
+    widget.onMenuOpenChanged(false);
     widget.onSelected(value);
   }
 
@@ -893,9 +1425,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
               const Spacer(),
               GestureDetector(
                 onTap: () {
-                  setState(() {
-                    _menuOpen = !_menuOpen;
-                  });
+                  widget.onMenuOpenChanged(!widget.isMenuOpen);
                 },
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
@@ -935,7 +1465,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
                         ),
                         const SizedBox(width: 4),
                         AnimatedRotation(
-                          turns: _menuOpen ? 0.5 : 0.0,
+                          turns: widget.isMenuOpen ? 0.5 : 0.0,
                           duration: const Duration(milliseconds: 180),
                           curve: Curves.easeOut,
                           child: Icon(
@@ -974,7 +1504,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
               ),
             );
           },
-          child: _menuOpen
+          child: widget.isMenuOpen
               ? Padding(
             key: const ValueKey('feed-dropdown-open'),
             padding: const EdgeInsets.only(top: 12),
@@ -1045,7 +1575,7 @@ class _MainSquarePost extends StatelessWidget {
     final captionText = transaction.caption.trim();
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(38),
+      borderRadius: BorderRadius.circular(56),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -1065,7 +1595,7 @@ class _MainSquarePost extends StatelessWidget {
               categoryColorHex: transaction.categoryColorHex,
               caption: null,
               fit: BoxFit.cover,
-              borderRadius: BorderRadius.circular(38),
+              borderRadius: BorderRadius.circular(56),
               // isVideo: transaction.isVideo,
               // showVideoBadge: false,
             ),
@@ -1089,43 +1619,487 @@ class _MainSquarePost extends StatelessWidget {
 
           if (captionText.isNotEmpty)
             Positioned(
-              left: 18,
-              right: 18,
-              bottom: 16,
-              child: Center(
+              left: 14,
+              right: 14,
+              bottom: 14,
+              child: Align(
+                alignment: Alignment.bottomCenter,
                 child: Container(
-                  constraints: const BoxConstraints(
-                    maxWidth: 315,
-                  ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 9,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.34),
+                    color: Colors.black.withValues(alpha: 0.34),
                     borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.14),
+                      color: Colors.white.withValues(alpha: 0.14),
                       width: 1,
                     ),
                   ),
-                  child: Text(
-                    captionText,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    softWrap: true,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      height: 1.18,
-                    ),
-                  ),
+                  child: _buildCaptionWithMentions(context, captionText, transaction),
                 ),
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCaptionWithMentions(
+    BuildContext context,
+    String text,
+    TransactionModel transaction,
+  ) {
+    final mentionRegex = RegExp(r'(@[a-zA-Z0-9_.]+)');
+    final matches = mentionRegex.allMatches(text);
+
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
+        softWrap: true,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          height: 1.18,
+        ),
+      );
+    }
+
+    final spans = <InlineSpan>[];
+    int lastIndex = 0;
+
+    for (final match in matches) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            height: 1.18,
+          ),
+        ));
+      }
+
+      final mentionToken = match.group(0)!;
+      final cleanUsername = mentionToken.substring(1).toLowerCase();
+
+      // Check if this mention is active:
+      // - If post is private: NEVER active (plain normal text).
+      // - If transaction has taggedUsernames: active ONLY if cleanUsername is in taggedUsernames.
+      // - Legacy fallback for older transactions: active if friends post.
+      final isMentionActive = transaction.privacy != 'private' &&
+          (transaction.taggedUsernames.isNotEmpty
+              ? transaction.taggedUsernames.contains(cleanUsername)
+              : (transaction.privacy == 'friends'));
+
+      if (isMentionActive) {
+        spans.add(
+          TextSpan(
+            text: mentionToken,
+            style: const TextStyle(
+              color: Color(0xFF00E5FF),
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              height: 1.18,
+            ),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () {
+                HapticFeedback.lightImpact();
+                _openMentionedUserProfile(context, cleanUsername);
+              },
+          ),
+        );
+      } else {
+        // Plain text: NOT cyan, NOT bold, NOT clickable
+        spans.add(
+          TextSpan(
+            text: mentionToken,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              height: 1.18,
+            ),
+          ),
+        );
+      }
+
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w700,
+          height: 1.18,
+        ),
+      ));
+    }
+
+    return Text.rich(
+      TextSpan(children: spans),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      softWrap: true,
+    );
+  }
+
+  void _openMentionedUserProfile(BuildContext context, String username) async {
+    final userRepo = context.read<UserRepository>();
+    final user = await userRepo.findUserByUsername(username);
+
+    if (!context.mounted) return;
+
+    if (user != null) {
+      _showMentionedUserSheet(context, user);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('@$username: ${context.l10n.noMatchingFriends}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _showMentionedUserSheet(BuildContext context, UserModel user) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (bottomSheetContext) {
+        return _MentionedUserProfileSheet(user: user);
+      },
+    );
+  }
+}
+
+class _MentionedUserProfileSheet extends StatefulWidget {
+  final UserModel user;
+
+  const _MentionedUserProfileSheet({
+    required this.user,
+  });
+
+  @override
+  State<_MentionedUserProfileSheet> createState() =>
+      _MentionedUserProfileSheetState();
+}
+
+class _MentionedUserProfileSheetState
+    extends State<_MentionedUserProfileSheet> {
+  bool _isLoading = true;
+  bool _isFriend = false;
+  bool _requestSent = false;
+  bool _isActionBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkFriendship();
+  }
+
+  Future<void> _checkFriendship() async {
+    final myUid = context.read<AuthController>().user?.uid;
+    if (myUid == null || myUid == widget.user.uid) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      return;
+    }
+
+    final userRepo = context.read<UserRepository>();
+    final isFriend = await userRepo.isFriendWith(myUid, widget.user.uid);
+    final requestSent =
+        isFriend ? false : await userRepo.hasSentFriendRequestTo(myUid, widget.user.uid);
+
+    if (mounted) {
+      setState(() {
+        _isFriend = isFriend;
+        _requestSent = requestSent;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleSendFriendRequest() async {
+    final myUid = context.read<AuthController>().user?.uid;
+    if (myUid == null || _isActionBusy) return;
+
+    setState(() {
+      _isActionBusy = true;
+    });
+
+    final userRepo = context.read<UserRepository>();
+    final result = await userRepo.sendFriendRequest(
+      myUid: myUid,
+      targetUser: widget.user,
+    );
+
+    if (mounted) {
+      setState(() {
+        _isActionBusy = false;
+        if (result == 'auto_accepted') {
+          _isFriend = true;
+        } else {
+          _requestSent = true;
+        }
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final myUid = context.read<AuthController>().user?.uid;
+    final isMe = myUid != null && myUid == widget.user.uid;
+    final user = widget.user;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E212B) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.12)
+                : Colors.black.withValues(alpha: 0.08),
+          ),
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Drag handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Avatar with Frame
+            AvatarWithFrame(
+              avatarUrl: user.avatarUrl,
+              frameId: user.avatarFrame,
+              size: 76,
+            ),
+            const SizedBox(height: 14),
+
+            // Name
+            Text(
+              user.name.isNotEmpty ? user.name : user.username,
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 4),
+
+            // @username
+            Text(
+              '@${user.username}',
+              style: const TextStyle(
+                color: Color(0xFF0099FF),
+                fontSize: 14.5,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // Streak badge if > 0
+            if (user.currentStreak > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF9500).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                  border: Border.all(
+                    color: const Color(0xFFFF9500).withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.local_fire_department_rounded,
+                      color: Color(0xFFFF9500),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      context.l10n.streakDayCount(user.currentStreak),
+                      style: const TextStyle(
+                        color: Color(0xFFFF9500),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 24),
+
+            // 3 CASES OF ACTION BUTTONS:
+            // Case 1: If user is ME -> Show "(Bạn)" pill button
+            if (isMe)
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.05),
+                        borderRadius:
+                            BorderRadius.circular(AppSizes.radiusPill),
+                      ),
+                      child: Text(
+                        context.l10n.you,
+                        style: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.black54,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            else if (_isLoading)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(12),
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Color(0xFF0099FF),
+                    ),
+                  ),
+                ),
+              )
+            // Case 3: If user IS FRIEND -> Show Message Button
+            else if (_isFriend)
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Navigator.pushNamed(
+                          context,
+                          RouteNames.chatConversation,
+                          arguments: {'friend': user},
+                        );
+                      },
+                      icon: const Icon(Icons.chat_bubble_rounded, size: 18),
+                      label: Text(
+                        context.l10n.messageFriend,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0099FF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusPill),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            // Case 2: If user IS NOT FRIEND -> Show Add Friend button (or Request Sent if pending)
+            else
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: _requestSent || _isActionBusy
+                          ? null
+                          : _handleSendFriendRequest,
+                      icon: _isActionBusy
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              _requestSent
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.person_add_rounded,
+                              size: 18,
+                            ),
+                      label: Text(
+                        _requestSent
+                            ? context.l10n.friendRequestSent
+                            : context.l10n.addFriend,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _requestSent
+                            ? (isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : Colors.black.withValues(alpha: 0.08))
+                            : const Color(0xFF0099FF),
+                        foregroundColor: _requestSent
+                            ? (isDark ? Colors.white70 : Colors.black54)
+                            : Colors.white,
+                        disabledBackgroundColor: isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.black.withValues(alpha: 0.08),
+                        disabledForegroundColor:
+                            isDark ? Colors.white70 : Colors.black54,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusPill),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1228,7 +2202,7 @@ class _FeedMutedVideoPlayerState extends State<_FeedMutedVideoPlayer> {
           categoryColorHex: widget.categoryColorHex,
           caption: null,
           fit: BoxFit.cover,
-          borderRadius: BorderRadius.circular(38),
+          borderRadius: BorderRadius.circular(56),
           isVideo: true,
           showVideoBadge: false,
         ),
@@ -1261,6 +2235,7 @@ class _UploaderInfo extends StatelessWidget {
   final _FeedPalette palette;
   final bool isPrivate;
   final bool isOwner;
+  final String? groupName;
 
   const _UploaderInfo({
     required this.user,
@@ -1268,6 +2243,7 @@ class _UploaderInfo extends StatelessWidget {
     required this.palette,
     required this.isPrivate,
     required this.isOwner,
+    this.groupName,
   });
 
   @override
@@ -1284,17 +2260,10 @@ class _UploaderInfo extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         if (!isOwner) ...[
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: palette.avatarBackground,
-            backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-            child: avatarUrl.isEmpty
-                ? Icon(
-              Icons.person,
-              color: palette.textPrimary,
-              size: 18,
-            )
-                : null,
+          AvatarWithFrame(
+            avatarUrl: avatarUrl,
+            frameId: user?.avatarFrame,
+            size: 36,
           ),
           const SizedBox(width: 10),
         ],
@@ -1306,6 +2275,35 @@ class _UploaderInfo extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
+        if (groupName != null && groupName!.isNotEmpty) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: AppColors.primaryBlue.withOpacity(0.18),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.groups_2_rounded,
+                  size: 13,
+                  color: AppColors.primaryBlue,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  groupName!,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(width: 10),
         Text(
           timeText,
@@ -1456,7 +2454,7 @@ class FeedGalleryScreen extends StatelessWidget {
               child: Row(
                 children: [
                   _HeaderCircleButton(
-                    icon: Icons.chevron_left_rounded,
+                    icon: Icons.arrow_back_ios_new_rounded,
                     palette: palette,
                     onTap: () => Navigator.pop(context),
                   ),

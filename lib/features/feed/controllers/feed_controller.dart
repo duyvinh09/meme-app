@@ -18,8 +18,27 @@ class FeedController extends ChangeNotifier {
   List<TransactionModel> feedTransactions = [];
   bool isLoading = false;
   String? errorMessage;
+  String? targetPostId;
+
+  Future<void> setTargetPostId(String? postId) async {
+    targetPostId = postId;
+    if (postId != null && postId.isNotEmpty) {
+      final exists = feedTransactions.any((tx) => tx.id == postId);
+      if (!exists) {
+        final tx = await transactionRepository.fetchTransactionById(postId);
+        if (tx != null) {
+          final alreadyIn = feedTransactions.any((t) => t.id == tx.id);
+          if (!alreadyIn) {
+            feedTransactions.insert(0, tx);
+          }
+        }
+      }
+    }
+    notifyListeners();
+  }
 
   StreamSubscription<List<String>>? _friendSub;
+  Timer? _pollingTimer;
 
   String? _currentUid;
   List<String> _currentFriendIds = [];
@@ -32,9 +51,10 @@ class FeedController extends ChangeNotifier {
     notifyListeners();
 
     await _friendSub?.cancel();
+    _pollingTimer?.cancel();
 
     _friendSub = userRepository.streamFriendIds(uid).listen(
-          (friendIds) async {
+      (friendIds) async {
         _currentFriendIds = friendIds;
         await _fetchFeed(uid: uid, friendIds: friendIds);
       },
@@ -46,6 +66,17 @@ class FeedController extends ChangeNotifier {
         notifyListeners();
       },
     );
+
+    // Periodically fetch new feed updates in background
+    _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (_currentUid != null && !isLoading) {
+        _fetchFeed(
+          uid: _currentUid!,
+          friendIds: _currentFriendIds,
+          showLoading: false,
+        );
+      }
+    });
   }
 
   Future<void> refresh() async {
@@ -100,8 +131,11 @@ class FeedController extends ChangeNotifier {
 
     final isMine = transaction.userId == uid;
 
-    final shouldShow =
-        isMine || (transaction.sharedToFeed == true && transaction.privacy == 'friends');
+    final shouldShow = isMine ||
+        (transaction.sharedToFeed == true &&
+            (transaction.privacy == 'friends' ||
+                transaction.privacy == 'close_friends' ||
+                transaction.privacy == 'everyone'));
 
     if (!shouldShow) return;
 
@@ -121,6 +155,7 @@ class FeedController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _pollingTimer?.cancel();
     _friendSub?.cancel();
     super.dispose();
   }

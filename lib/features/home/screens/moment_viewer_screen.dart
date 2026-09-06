@@ -559,7 +559,7 @@ class _MomentMediaCard extends StatelessWidget {
     final isDark = AppColors.isDark(context);
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(34),
+      borderRadius: BorderRadius.circular(56),
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -581,7 +581,7 @@ class _MomentMediaCard extends StatelessWidget {
               width: double.infinity,
               height: double.infinity,
               fit: BoxFit.cover,
-              borderRadius: BorderRadius.circular(34),
+              borderRadius: BorderRadius.circular(56),
               isVideo: transaction.isVideo,
               showVideoBadge: false,
             ),
@@ -640,20 +640,18 @@ class _MomentMediaCard extends StatelessWidget {
           ),
 
           Positioned(
-            left: 18,
-            right: 18,
-            bottom: 18,
+            left: 14,
+            right: 14,
+            bottom: 14,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (transaction.caption.trim().isNotEmpty) ...[
                   Container(
-                    constraints: const BoxConstraints(
-                      maxWidth: 280,
-                    ),
+                    width: double.infinity,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 7,
+                      horizontal: 16,
+                      vertical: 8,
                     ),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.34),
@@ -665,7 +663,7 @@ class _MomentMediaCard extends StatelessWidget {
                     ),
                     child: Text(
                       transaction.caption.trim(),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
@@ -680,13 +678,10 @@ class _MomentMediaCard extends StatelessWidget {
                 ],
 
                 Container(
-                  constraints: const BoxConstraints(
-                    minWidth: 160,
-                    maxWidth: 285,
-                  ),
+                  width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 18,
-                    vertical: 11,
+                    vertical: 12,
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
@@ -698,7 +693,7 @@ class _MomentMediaCard extends StatelessWidget {
                         Colors.black.withOpacity(0.34),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(28),
                     border: Border.all(
                       color: chipColor.withOpacity(0.45),
                       width: 1.1,

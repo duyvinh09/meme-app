@@ -7,10 +7,12 @@ import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
 import '../../../core/widgets/async_filled_button.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../../../core/routes/route_names.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import 'edit_group_screen.dart';
@@ -54,17 +56,22 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     return double.tryParse(value.toString()) ?? 0;
   }
 
-  double _parseMoney(String value, String currency) {
-    final cleaned = currency == 'USD'
-        ? value.replaceAll(RegExp(r'[^0-9.]'), '')
-        : value.replaceAll(RegExp(r'[^0-9]'), '');
 
-    return double.tryParse(cleaned) ?? 0;
+  String _cachedMemberIdsKey = '';
+  Future<List<Map<String, dynamic>>>? _cachedMembersFuture;
+
+  Future<List<Map<String, dynamic>>> _getMembersFuture(List<String> memberIds) {
+    final sortedKey = (List<String>.from(memberIds)..sort()).join(',');
+    if (_cachedMembersFuture == null || _cachedMemberIdsKey != sortedKey) {
+      _cachedMemberIdsKey = sortedKey;
+      _cachedMembersFuture = _loadMembersByIds(memberIds);
+    }
+    return _cachedMembersFuture!;
   }
 
   Future<List<Map<String, dynamic>>> _loadMembersByIds(
-      List<String> memberIds,
-      ) async {
+    List<String> memberIds,
+  ) async {
     final repo = context.read<UserRepository>();
     final result = <Map<String, dynamic>>[];
 
@@ -113,19 +120,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       return;
     }
 
-    final repo = context.read<UserRepository>();
-    final messenger = ScaffoldMessenger.of(context);
-    final l10n = context.l10n;
     final currency = context.read<ProfileController>().currency;
-
-    final amountController = TextEditingController();
 
     final meInGroup = members.where((member) {
       return (member['uid'] ?? '').toString() == myUid;
     }).toList();
 
     if (!isOwner && meInGroup.isEmpty) {
-      messenger.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: AppDurations.snackBar,
           content: Text(context.l10n.youAreNotMember),
@@ -134,9 +136,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       return;
     }
 
-    String selectedUid = isOwner ? (members.first['uid'] ?? '').toString() : myUid;
-
-    await showModalBottomSheet<void>(
+    final added = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.card(context),
@@ -145,308 +145,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
           top: Radius.circular(28),
         ),
       ),
-      builder: (sheetContext) {
-        return StatefulBuilder(
-          builder: (sheetContext, setSheetState) {
-            final selectedMember = members.where((member) {
-              return (member['uid'] ?? '').toString() == selectedUid;
-            }).toList();
-
-            final selectedName = selectedMember.isEmpty
-                ? context.l10n.you
-                : (selectedMember.first['name'] ?? context.l10n.you).toString();
-
-            final selectedUsername = selectedMember.isEmpty
-                ? ''
-                : (selectedMember.first['username'] ?? '').toString();
-
-            final selectedAvatar = selectedMember.isEmpty
-                ? ''
-                : (selectedMember.first['avatarUrl'] ?? '').toString();
-
-            Future<void> submitContribution() async {
-              final inputAmount = _parseMoney(
-                amountController.text,
-                currency,
-              );
-
-              if (inputAmount <= 0) {
-                messenger.showSnackBar(
-                  SnackBar(
-                    duration: AppDurations.snackBar,
-                    content: Text(context.l10n.enterValidAmount),
-                  ),
-                );
-                return;
-              }
-
-              if (!isOwner && selectedUid != myUid) {
-                messenger.showSnackBar(
-                  SnackBar(
-                    duration: AppDurations.snackBar,
-                    content: Text(
-                      context.l10n.canOnlyAddForSelf,
-                    ),
-                  ),
-                );
-                return;
-              }
-
-              final amount = AppCurrencyFormatter.toVnd(
-                inputAmount: inputAmount,
-                currency: currency,
-              );
-
-              try {
-                final navigator = Navigator.of(sheetContext);
-                await repo.addGroupContribution(
-                  groupId: groupId,
-                  actorUid: myUid,
-                  memberUid: selectedUid,
-                  amount: amount,
-                );
-
-                if (!mounted) return;
-
-                navigator.pop();
-
-                messenger.showSnackBar(
-                  SnackBar(
-                    duration: AppDurations.snackBar,
-                    content: Text(l10n.contributionAdded),
-                  ),
-                );
-              } catch (e) {
-                if (!mounted) return;
-
-                messenger.showSnackBar(
-                  SnackBar(
-                    duration: AppDurations.snackBar,
-                    content: Text(l10n.cannotAddContribution(e.toString())),
-                  ),
-                );
-              }
-            }
-
-            return Padding(
-              padding: EdgeInsets.fromLTRB(
-                18,
-                18,
-                18,
-                MediaQuery.of(sheetContext).viewInsets.bottom + 24,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: AppColors.textSecondary(context).withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-
-                  Text(
-                    context.l10n.addContribution,
-                    style: AppTextStyles.sectionTitle(context).copyWith(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  if (isOwner)
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedUid,
-                      dropdownColor: AppColors.card(context),
-                      style: AppTextStyles.body(context).copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: context.l10n.selectMember,
-                        labelStyle: TextStyle(
-                          color: AppColors.textSecondary(context),
-                        ),
-                        filled: true,
-                        fillColor: AppColors.surface(context),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                          borderSide: BorderSide(
-                            color: AppColors.innerBorder(context),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                          borderSide: BorderSide(
-                            color: groupColor,
-                            width: 1.4,
-                          ),
-                        ),
-                      ),
-                      items: members.map((member) {
-                        final uid = (member['uid'] ?? '').toString();
-                        final name = (member['name'] ?? context.l10n.user).toString();
-                        final username = (member['username'] ?? '').toString();
-
-                        return DropdownMenuItem<String>(
-                          value: uid,
-                          child: Text(
-                            username.isEmpty ? name : '$name (@$username)',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-
-                        setSheetState(() {
-                          selectedUid = value;
-                        });
-                      },
-                    )
-                  else
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: groupColor.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                        border: Border.all(
-                          color: groupColor.withValues(alpha: 0.22),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 22,
-                            backgroundColor: AppColors.surface(context),
-                            backgroundImage: selectedAvatar.isNotEmpty
-                                ? NetworkImage(selectedAvatar)
-                                : null,
-                            child: selectedAvatar.isEmpty
-                                ? Icon(
-                              Icons.person_rounded,
-                              color: AppColors.textSecondary(context),
-                            )
-                                : null,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  context.l10n.youAreContributingFor,
-                                  style: AppTextStyles.caption(context).copyWith(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  selectedUsername.isEmpty
-                                      ? selectedName
-                                      : '$selectedName (@$selectedUsername)',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.body(context).copyWith(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.lock_rounded,
-                            color: groupColor,
-                            size: 20,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                  const SizedBox(height: 14),
-
-                  TextField(
-                    controller: amountController,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: currency == 'VND' ? [MoneyInputFormatter()] : [],
-                    cursorColor: groupColor,
-                    style: AppTextStyles.body(context).copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: context.l10n.amount,
-                      hintText: AppCurrencyFormatter.formatInputHint(currency),
-                      suffixText: AppCurrencyFormatter.symbol(currency),
-                      labelStyle: TextStyle(
-                        color: AppColors.textSecondary(context),
-                      ),
-                      hintStyle: TextStyle(
-                        color: AppColors.textSecondary(context).withValues(alpha: 0.65),
-                      ),
-                      suffixStyle: AppTextStyles.caption(context).copyWith(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      filled: true,
-                      fillColor: AppColors.surface(context),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                        borderSide: BorderSide(
-                          color: AppColors.innerBorder(context),
-                        ),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                        borderSide: BorderSide(
-                          color: groupColor,
-                          width: 1.4,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 18),
-
-                  SizedBox(
-                    width: double.infinity,
-                    child: AsyncFilledButton(
-                      onPressedAsync: submitContribution,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: groupColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                        ),
-                      ),
-                      child: Text(
-                        context.l10n.confirm,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
+      builder: (_) => _AddContributionSheet(
+        members: members,
+        groupId: groupId,
+        myUid: myUid,
+        isOwner: isOwner,
+        groupColor: groupColor,
+        currency: currency,
+      ),
     );
 
-    amountController.dispose();
+    if (added == true && mounted) {
+      AppToast.show(context, context.l10n.contributionAdded);
+    }
   }
 
   @override
@@ -457,8 +168,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
     if (initialGroupId.isEmpty || myUid == null) {
       return Scaffold(
+        backgroundColor: AppColors.background(context),
         body: Center(
-          child: Text(context.l10n.groupNotFound),
+          child: Text(
+            context.l10n.groupNotFound,
+            style: AppTextStyles.body(context),
+          ),
         ),
       );
     }
@@ -470,60 +185,60 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
       );
     }
 
-    return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('users')
-          .doc(myUid)
-          .collection('groups')
-          .doc(initialGroupId)
-          .snapshots(),
-      builder: (context, snapshot) {
-        final latestData = snapshot.data?.data();
+    return Scaffold(
+      backgroundColor: AppColors.background(context),
+      body: SafeArea(
+        child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('users')
+              .doc(myUid)
+              .collection('groups')
+              .doc(initialGroupId)
+              .snapshots(),
+          builder: (streamContext, snapshot) {
+            final latestData = snapshot.data?.data();
 
-        final groupData = latestData == null
-            ? widget.groupData
-            : {
-          ...widget.groupData,
-          ...latestData,
-          'id': initialGroupId,
-        };
+            final groupData = latestData == null
+                ? widget.groupData
+                : {
+                    ...widget.groupData,
+                    ...latestData,
+                    'id': initialGroupId,
+                  };
 
-        final groupName = (groupData['name'] ?? context.l10n.group).toString();
-        final colorHex = (groupData['color'] ?? '#79AFFF').toString();
-        final createdAt = groupData['createdAt'];
+            final groupName = (groupData['name'] ?? context.l10n.group).toString();
+            final colorHex = (groupData['color'] ?? '#79AFFF').toString();
+            final createdAt = groupData['createdAt'];
 
-        final memberIds = (groupData['memberIds'] as List?)
-            ?.map((e) => e.toString())
-            .toList() ??
-            [];
+            final memberIds = (groupData['memberIds'] as List?)
+                    ?.map((e) => e.toString())
+                    .toList() ??
+                [];
 
-        final memberCount = _toDouble(
-          groupData['memberCount'] ?? memberIds.length,
-        ).toInt();
+            final memberCount = _toDouble(
+              groupData['memberCount'] ?? memberIds.length,
+            ).toInt();
 
-        final goalAmount = _toDouble(groupData['goalAmount']);
-        final currentAmount = _toDouble(groupData['currentAmount']);
+            final goalAmount = _toDouble(groupData['goalAmount']);
+            final currentAmount = _toDouble(groupData['currentAmount']);
 
-        final memberContributions = Map<String, dynamic>.from(
-          groupData['memberContributions'] ?? {},
-        );
+            final memberContributions = Map<String, dynamic>.from(
+              groupData['memberContributions'] ?? {},
+            );
 
-        final progress = goalAmount <= 0
-            ? 0.0
-            : (currentAmount / goalAmount).clamp(0.0, 1.0).toDouble();
+            final progress = goalAmount <= 0
+                ? 0.0
+                : (currentAmount / goalAmount).clamp(0.0, 1.0).toDouble();
 
-        final ownerUid = (groupData['ownerUid'] ?? '').toString();
-        final groupId = (groupData['id'] ?? '').toString();
-        final isOwner = myUid == ownerUid;
+            final ownerUid = (groupData['ownerUid'] ?? '').toString();
+            final groupId = (groupData['id'] ?? '').toString();
+            final isOwner = myUid == ownerUid;
 
-        final groupColor = _parseHexColor(colorHex);
+            final groupColor = _parseHexColor(colorHex);
 
-        return Scaffold(
-          backgroundColor: AppColors.background(context),
-          body: SafeArea(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _loadMembersByIds(memberIds),
-              builder: (context, membersSnapshot) {
+            return FutureBuilder<List<Map<String, dynamic>>>(
+              future: _getMembersFuture(memberIds),
+              builder: (futureContext, membersSnapshot) {
                 final isLoadingMembers =
                     membersSnapshot.connectionState == ConnectionState.waiting;
 
@@ -540,7 +255,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     Row(
                       children: [
                         _TopCircleButton(
-                          icon: Icons.arrow_back_ios_new,
+                          icon: Icons.arrow_back_ios_new_rounded,
                           onTap: () => Navigator.pop(context),
                         ),
                         const SizedBox(width: 14),
@@ -548,6 +263,19 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                           child: Text(
                             context.l10n.groupDetails,
                             style: AppTextStyles.pageTitle(context),
+                          ),
+                        ),
+                        _TopCircleButton(
+                          icon: Icons.chat_bubble_outline_rounded,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            RouteNames.groupChatConversation,
+                            arguments: {
+                              'groupId': groupId,
+                              'groupName': groupName,
+                              'groupColor': colorHex,
+                              'memberUids': memberIds,
+                            },
                           ),
                         ),
                       ],
@@ -561,6 +289,16 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       groupColor: groupColor,
                       createdAtText: _formatCreatedAt(context, createdAt),
                       isOwner: isOwner,
+                      onOpenChat: () => Navigator.pushNamed(
+                        context,
+                        RouteNames.groupChatConversation,
+                        arguments: {
+                          'groupId': groupId,
+                          'groupName': groupName,
+                          'groupColor': colorHex,
+                          'memberUids': memberIds,
+                        },
+                      ),
                     ),
 
                     const SizedBox(height: 18),
@@ -723,10 +461,340 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                   ],
                 );
               },
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _AddContributionSheet extends StatefulWidget {
+  final List<Map<String, dynamic>> members;
+  final String groupId;
+  final String myUid;
+  final bool isOwner;
+  final Color groupColor;
+  final String currency;
+
+  const _AddContributionSheet({
+    required this.members,
+    required this.groupId,
+    required this.myUid,
+    required this.isOwner,
+    required this.groupColor,
+    required this.currency,
+  });
+
+  @override
+  State<_AddContributionSheet> createState() => _AddContributionSheetState();
+}
+
+class _AddContributionSheetState extends State<_AddContributionSheet> {
+  late final TextEditingController _amountController;
+  late String _selectedUid;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController();
+    _selectedUid = widget.isOwner
+        ? (widget.members.isNotEmpty
+            ? (widget.members.first['uid'] ?? '').toString()
+            : widget.myUid)
+        : widget.myUid;
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  double _parseMoney(String value, String currency) {
+    final cleaned = currency == 'USD'
+        ? value.replaceAll(RegExp(r'[^0-9.]'), '')
+        : value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    return double.tryParse(cleaned) ?? 0;
+  }
+
+  Future<void> _submitContribution() async {
+    final inputAmount = _parseMoney(
+      _amountController.text,
+      widget.currency,
+    );
+
+    if (inputAmount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.enterValidAmount),
+        ),
+      );
+      return;
+    }
+
+    if (!widget.isOwner && _selectedUid != widget.myUid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.canOnlyAddForSelf),
+        ),
+      );
+      return;
+    }
+
+    final amount = AppCurrencyFormatter.toVnd(
+      inputAmount: inputAmount,
+      currency: widget.currency,
+    );
+
+    try {
+      final repo = context.read<UserRepository>();
+      await repo.addGroupContribution(
+        groupId: widget.groupId,
+        actorUid: widget.myUid,
+        memberUid: _selectedUid,
+        amount: amount,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(context.l10n.cannotAddContribution(e.toString())),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selectedMember = widget.members.where((member) {
+      return (member['uid'] ?? '').toString() == _selectedUid;
+    }).toList();
+
+    final selectedName = selectedMember.isEmpty
+        ? context.l10n.you
+        : (selectedMember.first['name'] ?? context.l10n.you).toString();
+
+    final selectedUsername = selectedMember.isEmpty
+        ? ''
+        : (selectedMember.first['username'] ?? '').toString();
+
+    final selectedAvatar = selectedMember.isEmpty
+        ? ''
+        : (selectedMember.first['avatarUrl'] ?? '').toString();
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        18,
+        18,
+        18,
+        MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 44,
+            height: 5,
+            decoration: BoxDecoration(
+              color: AppColors.textSecondary(context).withValues(alpha: 0.25),
+              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             ),
           ),
-        );
-      },
+          const SizedBox(height: 18),
+          Text(
+            context.l10n.addContribution,
+            style: AppTextStyles.sectionTitle(context).copyWith(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 18),
+          if (widget.isOwner)
+            DropdownButtonFormField<String>(
+              initialValue: _selectedUid,
+              dropdownColor: AppColors.card(context),
+              style: AppTextStyles.body(context).copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+              decoration: InputDecoration(
+                labelText: context.l10n.selectMember,
+                labelStyle: TextStyle(
+                  color: AppColors.textSecondary(context),
+                ),
+                filled: true,
+                fillColor: AppColors.surface(context),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  borderSide: BorderSide(
+                    color: AppColors.innerBorder(context),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                  borderSide: BorderSide(
+                    color: widget.groupColor,
+                    width: 1.4,
+                  ),
+                ),
+              ),
+              items: widget.members.map((member) {
+                final uid = (member['uid'] ?? '').toString();
+                final name = (member['name'] ?? context.l10n.user).toString();
+                final username = (member['username'] ?? '').toString();
+
+                return DropdownMenuItem<String>(
+                  value: uid,
+                  child: Text(
+                    username.isEmpty ? name : '$name (@$username)',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _selectedUid = value;
+                });
+              },
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: widget.groupColor.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                border: Border.all(
+                  color: widget.groupColor.withValues(alpha: 0.22),
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 22,
+                    backgroundColor: AppColors.surface(context),
+                    backgroundImage: selectedAvatar.isNotEmpty
+                        ? NetworkImage(selectedAvatar)
+                        : null,
+                    child: selectedAvatar.isEmpty
+                        ? Icon(
+                            Icons.person_rounded,
+                            color: AppColors.textSecondary(context),
+                          )
+                        : null,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.l10n.youAreContributingFor,
+                          style: AppTextStyles.caption(context).copyWith(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          selectedUsername.isEmpty
+                              ? selectedName
+                              : '$selectedName (@$selectedUsername)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.body(context).copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.lock_rounded,
+                    color: widget.groupColor,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(
+              decimal: true,
+            ),
+            inputFormatters:
+                widget.currency == 'VND' ? [MoneyInputFormatter()] : [],
+            cursorColor: widget.groupColor,
+            style: AppTextStyles.body(context).copyWith(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+            decoration: InputDecoration(
+              labelText: context.l10n.amount,
+              hintText: AppCurrencyFormatter.formatInputHint(widget.currency),
+              suffixText: AppCurrencyFormatter.symbol(widget.currency),
+              labelStyle: TextStyle(
+                color: AppColors.textSecondary(context),
+              ),
+              hintStyle: TextStyle(
+                color: AppColors.textSecondary(context).withValues(alpha: 0.65),
+              ),
+              suffixStyle: AppTextStyles.caption(context).copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+              ),
+              filled: true,
+              fillColor: AppColors.surface(context),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                borderSide: BorderSide(
+                  color: AppColors.innerBorder(context),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                borderSide: BorderSide(
+                  color: widget.groupColor,
+                  width: 1.4,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: AsyncFilledButton(
+              onPressedAsync: _submitContribution,
+              style: FilledButton.styleFrom(
+                backgroundColor: widget.groupColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                ),
+              ),
+              child: Text(
+                context.l10n.confirm,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -737,6 +805,7 @@ class _GroupHeroCard extends StatelessWidget {
   final Color groupColor;
   final String createdAtText;
   final bool isOwner;
+  final VoidCallback? onOpenChat;
 
   const _GroupHeroCard({
     required this.groupName,
@@ -744,6 +813,7 @@ class _GroupHeroCard extends StatelessWidget {
     required this.groupColor,
     required this.createdAtText,
     required this.isOwner,
+    this.onOpenChat,
   });
 
   @override
@@ -824,6 +894,43 @@ class _GroupHeroCard extends StatelessWidget {
               ),
             ],
           ),
+          if (onOpenChat != null) ...[
+            const SizedBox(height: 16),
+            InkWell(
+              onTap: onOpenChat,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                decoration: BoxDecoration(
+                  color: groupColor.withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: groupColor.withOpacity(0.4),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.chat_bubble_rounded,
+                      color: groupColor,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      context.l10n.groupChatOpen,
+                      style: TextStyle(
+                        color: groupColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1159,13 +1266,13 @@ class _TopCircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+      borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
       child: Container(
-        width: 52,
-        height: 52,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
+          shape: BoxShape.circle,
           color: AppColors.card(context),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
           border: Border.all(
             color: AppColors.border(context),
           ),

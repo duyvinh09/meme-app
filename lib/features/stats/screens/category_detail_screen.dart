@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_sizes.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/utils/budget_name_localizer.dart';
+import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../home/screens/moment_viewer_screen.dart';
+import '../../profile/controllers/profile_controller.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
   final String category;
@@ -21,35 +26,35 @@ class CategoryDetailScreen extends StatelessWidget {
     required this.transactions,
   });
 
-  Color _categoryColor(String category, String type) {
-    if (type == 'income') {
-      return const Color(0xFF7DDC86);
+  Color _categoryColor(String categoryName, String categoryType) {
+    if (categoryType == 'income') {
+      return AppColors.income;
     }
 
-    switch (category) {
+    switch (categoryName.trim()) {
       case 'Ăn uống':
-        return const Color(0xFF56C766);
+        return const Color(0xFFFF8A00);
       case 'Mua sắm':
-        return const Color(0xFFFF5D8F);
+        return const Color(0xFF8B5CF6);
       case 'Đi lại':
-        return const Color(0xFF4DA3FF);
+        return const Color(0xFF388AF6);
       case 'Giải trí':
-        return const Color(0xFFFFA640);
+        return const Color(0xFFEC4899);
       case 'Học tập':
-        return const Color(0xFF8E7DFF);
+        return const Color(0xFF10B981);
       default:
-        return const Color(0xFF6E7885);
+        return const Color(0xFF6B7280);
     }
   }
 
-  IconData _categoryIcon(String category, String type) {
-    if (type == 'income') {
-      return Icons.payments_rounded;
+  IconData _categoryIcon(String categoryName, String categoryType) {
+    if (categoryType == 'income') {
+      return Icons.account_balance_wallet_rounded;
     }
 
-    switch (category) {
+    switch (categoryName.trim()) {
       case 'Ăn uống':
-        return Icons.shopping_cart_rounded;
+        return Icons.restaurant_rounded;
       case 'Mua sắm':
         return Icons.shopping_bag_rounded;
       case 'Đi lại':
@@ -63,17 +68,19 @@ class CategoryDetailScreen extends StatelessWidget {
     }
   }
 
-  String _formatMoney(double value) {
-    return NumberFormat.currency(
-      locale: 'vi_VN',
-      symbol: '₫',
-      decimalDigits: 0,
-    ).format(value);
+  String _formatMoney(double value, String currency) {
+    return AppCurrencyFormatter.formatFromVnd(
+      amountVnd: value,
+      currency: currency,
+    );
   }
 
-  String _formatCompactMoney(TransactionModel tx) {
-    final text = NumberFormat('#,###', 'vi_VN').format(tx.amount.round());
-    return '${tx.type == 'expense' ? '-' : '+'}$textđ';
+  String _formatCompactMoney(TransactionModel tx, String currency) {
+    final formatted = AppCurrencyFormatter.formatFromVnd(
+      amountVnd: tx.amount,
+      currency: currency,
+    );
+    return '${tx.type == 'expense' ? '-' : '+'}$formatted';
   }
 
   String _formatDateTime(DateTime date) {
@@ -117,6 +124,7 @@ class CategoryDetailScreen extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final currency = context.watch<ProfileController>().currency;
 
     final bgColor = isDark ? const Color(0xFF090A0F) : const Color(0xFFF6F7FB);
     final cardColor = isDark ? const Color(0xFF171821) : Colors.white;
@@ -158,7 +166,7 @@ class CategoryDetailScreen extends StatelessWidget {
                     border: Border.all(color: borderColor),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.22 : 0.06),
+                        color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
                         blurRadius: 22,
                         offset: const Offset(0, 10),
                       ),
@@ -175,13 +183,13 @@ class CategoryDetailScreen extends StatelessWidget {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              accent.withOpacity(0.95),
-                              accent.withOpacity(0.62),
+                              accent.withValues(alpha: 0.95),
+                              accent.withValues(alpha: 0.62),
                             ],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: accent.withOpacity(0.24),
+                              color: accent.withValues(alpha: 0.24),
                               blurRadius: 22,
                               offset: const Offset(0, 8),
                             ),
@@ -215,16 +223,18 @@ class CategoryDetailScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 22),
-                      Text(
-                        _formatMoney(total),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: accent,
-                          fontSize: 38,
-                          fontWeight: FontWeight.w900,
-                          height: 1.05,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          _formatMoney(total, currency),
+                          maxLines: 1,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: accent,
+                            fontSize: 38,
+                            fontWeight: FontWeight.w900,
+                            height: 1.05,
+                          ),
                         ),
                       ),
                     ],
@@ -235,25 +245,21 @@ class CategoryDetailScreen extends StatelessWidget {
                   top: 0,
                   child: InkWell(
                     onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(999),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
                     child: Container(
-                      width: 58,
-                      height: 58,
+                      width: 48,
+                      height: 48,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isDark
-                            ? Colors.white.withOpacity(0.07)
-                            : Colors.black.withOpacity(0.05),
+                        color: AppColors.card(context),
                         border: Border.all(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.10)
-                              : Colors.black.withOpacity(0.08),
+                          color: AppColors.border(context),
                         ),
                       ),
                       child: Icon(
-                        Icons.chevron_left_rounded,
-                        color: primaryText,
-                        size: 38,
+                        Icons.arrow_back_ios_new_rounded,
+                        color: AppColors.textPrimary(context),
+                        size: 20,
                       ),
                     ),
                   ),
@@ -263,47 +269,50 @@ class CategoryDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 18),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickStatCard(
-                    icon: Icons.format_list_bulleted_rounded,
-                    iconColor: const Color(0xFF79AFFF),
-                    value: '${transactions.length}',
-                    label: l10n.total,
-                    cardColor: cardColor,
-                    borderColor: borderColor,
-                    primaryText: primaryText,
-                    secondaryText: secondaryText,
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _QuickStatCard(
+                      icon: Icons.format_list_bulleted_rounded,
+                      iconColor: const Color(0xFF79AFFF),
+                      value: '${transactions.length}',
+                      label: l10n.total,
+                      cardColor: cardColor,
+                      borderColor: borderColor,
+                      primaryText: primaryText,
+                      secondaryText: secondaryText,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickStatCard(
-                    icon: Icons.bar_chart_rounded,
-                    iconColor: const Color(0xFF7DDC86),
-                    value: _formatMoney(average),
-                    label: l10n.average,
-                    cardColor: cardColor,
-                    borderColor: borderColor,
-                    primaryText: primaryText,
-                    secondaryText: secondaryText,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _QuickStatCard(
+                      icon: Icons.bar_chart_rounded,
+                      iconColor: const Color(0xFF7DDC86),
+                      value: _formatMoney(average, currency),
+                      label: l10n.average,
+                      cardColor: cardColor,
+                      borderColor: borderColor,
+                      primaryText: primaryText,
+                      secondaryText: secondaryText,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickStatCard(
-                    icon: Icons.camera_alt_rounded,
-                    iconColor: const Color(0xFFFF7A7A),
-                    value: '$imageCount',
-                    label: l10n.allPhotos,
-                    cardColor: cardColor,
-                    borderColor: borderColor,
-                    primaryText: primaryText,
-                    secondaryText: secondaryText,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _QuickStatCard(
+                      icon: Icons.camera_alt_rounded,
+                      iconColor: const Color(0xFFFF7A7A),
+                      value: '$imageCount',
+                      label: l10n.allPhotos,
+                      cardColor: cardColor,
+                      borderColor: borderColor,
+                      primaryText: primaryText,
+                      secondaryText: secondaryText,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             const SizedBox(height: 18),
@@ -356,7 +365,7 @@ class CategoryDetailScreen extends StatelessWidget {
                         },
                         child: _ImagePreviewCard(
                           transaction: tx,
-                          amountText: _formatCompactMoney(tx),
+                          amountText: _formatCompactMoney(tx, currency),
                           categoryText: _localizedCategoryLabel(
                             context,
                             tx.category,
@@ -391,7 +400,7 @@ class CategoryDetailScreen extends StatelessWidget {
                     transaction: tx,
                     icon: icon,
                     accent: accent,
-                    amountText: _formatCompactMoney(tx),
+                    amountText: _formatCompactMoney(tx, currency),
                     categoryText: _localizedCategoryLabel(context, tx.category),
                     timeText: _formatDateTime(tx.createdAt),
                     cardColor: tileColor,
@@ -444,8 +453,8 @@ class _QuickStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 106,
-      padding: const EdgeInsets.all(12),
+      constraints: const BoxConstraints(minHeight: 102),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(22),
@@ -453,29 +462,36 @@ class _QuickStatCard extends StatelessWidget {
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
             color: iconColor,
-            size: 24,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: primaryText,
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
+            size: 22,
           ),
           const SizedBox(height: 6),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              maxLines: 1,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: primaryText,
+                fontSize: 15,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
               color: secondaryText,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -676,7 +692,7 @@ class _TransactionRow extends StatelessWidget {
           height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: accent.withOpacity(0.14),
+            color: accent.withValues(alpha: 0.14),
           ),
           child: Icon(
             icon,

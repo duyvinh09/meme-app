@@ -38,6 +38,11 @@ class TransactionRepository {
     String locationName = '',
     bool sharedToFeed = false,
     String privacy = 'private',
+    List<String> closeFriendUids = const [],
+    List<String> taggedUsernames = const [],
+    String? groupId,
+    String? groupName,
+    List<String> groupMemberIds = const [],
     int? categoryIconCodePoint,
     String? categoryColorHex,
     double? latitude,
@@ -112,8 +117,13 @@ class TransactionRepository {
       locationName: locationName,
       sharedToFeed: sharedToFeed,
       privacy: privacy,
+      closeFriendUids: closeFriendUids,
+      taggedUsernames: taggedUsernames,
       categoryIconCodePoint: categoryIconCodePoint,
       categoryColorHex: categoryColorHex,
+      groupId: groupId,
+      groupName: groupName,
+      groupMemberIds: groupMemberIds,
       latitude: latitude,
       longitude: longitude,
     );
@@ -205,6 +215,26 @@ class TransactionRepository {
     await _remote.deleteTransaction(userId, transactionId);
   }
 
+  Future<TransactionModel?> fetchTransactionById(String transactionId) async {
+    try {
+      final snapshot = await _db
+          .collectionGroup('transactions')
+          .where('id', isEqualTo: transactionId)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isEmpty) return null;
+      final doc = snapshot.docs.first;
+      final data = doc.data();
+      return TransactionModel.fromMap({
+        ...data,
+        'id': data['id'] ?? doc.id,
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<List<TransactionModel>> fetchFeedPosts({
     required String viewerUid,
     required List<String> userIds,
@@ -237,8 +267,40 @@ class TransactionRepository {
             continue;
           }
 
-          if (tx.sharedToFeed == true && tx.privacy == 'friends') {
-            items.add(tx);
+          if (tx.sharedToFeed == true) {
+            if (tx.privacy == 'friends' || tx.privacy == 'everyone') {
+              items.add(tx);
+            } else if (tx.privacy == 'close_friends') {
+              if (tx.closeFriendUids.contains(viewerUid)) {
+                items.add(tx);
+              } else {
+                final authorFriendDoc = await _db
+                    .collection('users')
+                    .doc(tx.userId)
+                    .collection('friends')
+                    .doc(viewerUid)
+                    .get();
+
+                if (authorFriendDoc.exists &&
+                    authorFriendDoc.data()?['isCloseFriend'] == true) {
+                  items.add(tx);
+                }
+              }
+            } else if (tx.privacy == 'group') {
+              if (tx.groupMemberIds.contains(viewerUid)) {
+                items.add(tx);
+              } else if (tx.groupId != null && tx.groupId!.isNotEmpty) {
+                final userGroupDoc = await _db
+                    .collection('users')
+                    .doc(viewerUid)
+                    .collection('groups')
+                    .doc(tx.groupId)
+                    .get();
+                if (userGroupDoc.exists) {
+                  items.add(tx);
+                }
+              }
+            }
           }
         } catch (_) {
           continue;

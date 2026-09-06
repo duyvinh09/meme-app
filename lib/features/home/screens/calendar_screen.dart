@@ -115,8 +115,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             final years = List.generate(
-              11,
-                  (index) => now.year - 8 + index,
+              41,
+              (index) => now.year - 20 + index,
             );
 
             return SafeArea(
@@ -129,7 +129,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                       width: 44,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: AppColors.textSecondary(context).withOpacity(0.22),
+                        color: AppColors.textSecondary(context).withValues(alpha: 0.22),
                         borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                       ),
                     ),
@@ -190,19 +190,29 @@ class _CalendarScreenState extends State<CalendarScreen> {
                                   value: years.contains(selectedYear)
                                       ? selectedYear
                                       : null,
+                                  menuMaxHeight: 280,
+                                  borderRadius: BorderRadius.circular(16),
+                                  icon: Icon(
+                                    Icons.arrow_drop_down_rounded,
+                                    color: AppColors.textPrimary(context),
+                                  ),
                                   hint: Text(
                                     '$selectedYear',
                                     style: AppTextStyles.sectionTitle(context),
                                   ),
                                   dropdownColor: AppColors.card(context),
                                   items: years.map((year) {
+                                    final isSelected = year == selectedYear;
                                     return DropdownMenuItem<int>(
                                       value: year,
                                       child: Text(
                                         '$year',
                                         style: TextStyle(
-                                          color: AppColors.textPrimary(context),
-                                          fontWeight: FontWeight.w800,
+                                          color: isSelected
+                                              ? AppColors.primaryBlue
+                                              : AppColors.textPrimary(context),
+                                          fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                                          fontSize: 16,
                                         ),
                                       ),
                                     );
@@ -267,14 +277,14 @@ class _CalendarScreenState extends State<CalendarScreen> {
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? AppColors.primaryBlue.withOpacity(0.18)
+                                  ? AppColors.primaryBlue.withValues(alpha: 0.18)
                                   : AppColors.surface(context),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
                                 color: isSelected
                                     ? AppColors.primaryBlue
                                     : isCurrentMonth
-                                    ? AppColors.primaryBlue.withOpacity(0.45)
+                                    ? AppColors.primaryBlue.withValues(alpha: 0.45)
                                     : AppColors.border(context),
                                 width: isSelected ? 1.6 : 1,
                               ),
@@ -339,7 +349,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
               Row(
                 children: [
                   _TopCircleButton(
-                    icon: Icons.arrow_back_ios_new,
+                    icon: Icons.arrow_back_ios_new_rounded,
                     onTap: () => Navigator.pop(context),
                   ),
                   const SizedBox(width: 14),
@@ -500,6 +510,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         hasData: hasData,
                         hasImage: hasImage,
                         imageTransactions: imageTxs,
+                        totalCount: txs.length,
                         isToday: isToday,
                         onTap: hasData
                             ? () {
@@ -536,13 +547,13 @@ class _TopCircleButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+      borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
       child: Container(
-        width: 52,
-        height: 52,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
+          shape: BoxShape.circle,
           color: AppColors.card(context),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
           border: Border.all(
             color: AppColors.border(context),
           ),
@@ -597,6 +608,7 @@ class _CalendarStickerCell extends StatelessWidget {
   final bool hasData;
   final bool hasImage;
   final List<TransactionModel> imageTransactions;
+  final int totalCount;
   final bool isToday;
   final VoidCallback? onTap;
 
@@ -607,6 +619,7 @@ class _CalendarStickerCell extends StatelessWidget {
     required this.hasData,
     required this.hasImage,
     required this.imageTransactions,
+    required this.totalCount,
     required this.isToday,
     required this.onTap,
   });
@@ -621,7 +634,7 @@ class _CalendarStickerCell extends StatelessWidget {
 
     final dayColor = isToday
         ? AppColors.primaryBlue
-        : AppColors.textPrimary(context).withOpacity(isDark ? 0.72 : 0.84);
+        : AppColors.textPrimary(context).withValues(alpha: isDark ? 0.72 : 0.84);
 
     Widget topWidget;
 
@@ -645,12 +658,61 @@ class _CalendarStickerCell extends StatelessWidget {
     } else if (isFuture) {
       topWidget = _SolidCircleMarker(
         color: isDark
-            ? Colors.white.withOpacity(0.24)
+            ? Colors.white.withValues(alpha: 0.24)
             : const Color(0xFFD8D3DD),
       );
     } else {
       topWidget = const _EmptyDayMarker();
     }
+
+    final showCountBadge = hasData && totalCount > 2;
+
+    final displayedTopWidget = showCountBadge
+        ? Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              topWidget,
+              Positioned(
+                top: 1,
+                right: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  constraints: const BoxConstraints(
+                    minWidth: 15,
+                    minHeight: 15,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF388AF6),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF141722) : Colors.white,
+                      width: 1.3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.22),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      totalCount > 99 ? '99+' : '$totalCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9.0,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : topWidget;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -669,11 +731,11 @@ class _CalendarStickerCell extends StatelessWidget {
                 height: topHeight,
                 child: Center(
                   child: OverflowBox(
-                    maxWidth: 68,
-                    maxHeight: 54,
+                    maxWidth: 72,
+                    maxHeight: 56,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: topWidget,
+                      child: displayedTopWidget,
                     ),
                   ),
                 ),
@@ -735,11 +797,11 @@ class _EmptyDayMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final borderColor = AppColors.isDark(context)
-        ? Colors.white.withOpacity(0.24)
+        ? Colors.white.withValues(alpha: 0.24)
         : const Color(0xFFC9C3CF);
 
     final iconColor = AppColors.isDark(context)
-        ? Colors.white.withOpacity(0.38)
+        ? Colors.white.withValues(alpha: 0.38)
         : const Color(0xFF9B93A5);
 
     return Container(
@@ -776,7 +838,7 @@ class _SolidCircleMarker extends StatelessWidget {
       height: 34,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: color.withOpacity(0.18),
+        color: color.withValues(alpha: 0.18),
         border: Border.all(
           color: color,
           width: 1.5,

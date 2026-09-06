@@ -52,6 +52,7 @@ class BudgetRepository {
     required String period,
     DateTime? startDate,
     DateTime? endDate,
+    String? categoryKey,
 
     /// English UI: user types English — store Vietnamese [name] + English [nameEn].
     bool inputLocaleIsEnglish = false,
@@ -67,10 +68,6 @@ class BudgetRepository {
       throw Exception('Số tiền mục tiêu phải lớn hơn 0');
     }
 
-    if (defaultCategoryNames.contains(safeName)) {
-      throw Exception('Danh mục mặc định không cần tạo budget');
-    }
-
     late final String canonicalName;
     late final String? nameEnValue;
 
@@ -84,10 +81,6 @@ class BudgetRepository {
       canonicalName = safeName;
       nameEnValue =
           await BudgetTranslationService.translateVietnameseToEnglish(safeName);
-    }
-
-    if (defaultCategoryNames.contains(canonicalName)) {
-      throw Exception('Danh mục mặc định không cần tạo budget');
     }
 
     final existed = await _collection(uid)
@@ -106,7 +99,7 @@ class BudgetRepository {
       name: canonicalName,
       nameEn: nameEnValue,
       iconCodePoint:
-      iconCodePoint ?? 0xe57f, // Icons.account_balance_wallet_outlined
+          iconCodePoint ?? 0xe57f, // Icons.account_balance_wallet_outlined
       colorHex: colorHex ?? '#79AFFF',
       limitAmount: limitAmount,
       spentAmount: 0,
@@ -114,6 +107,9 @@ class BudgetRepository {
       createdAt: DateTime.now(),
       period: period,
       budgetType: budgetType,
+      startDate: startDate,
+      endDate: endDate,
+      categoryKey: categoryKey,
     );
 
     await _collection(uid).doc(id).set(budget.toMap());
@@ -245,6 +241,9 @@ class BudgetRepository {
     required String colorHex,
     required String period,
     required String budgetType,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? categoryKey,
 
     bool inputLocaleIsEnglish = false,
   }) async {
@@ -273,10 +272,6 @@ class BudgetRepository {
           await BudgetTranslationService.translateVietnameseToEnglish(safeName);
     }
 
-    if (defaultCategoryNames.contains(canonicalName)) {
-      throw Exception('Danh mục mặc định không cần tạo budget');
-    }
-
     final existed = await _collection(uid)
         .where('name', isEqualTo: canonicalName)
         .where('isDefault', isEqualTo: false)
@@ -303,7 +298,7 @@ class BudgetRepository {
       );
     }
 
-    await budgetRef.update({
+    final updateData = <String, dynamic>{
       'name': canonicalName,
       'nameEn': nameEnValue,
       'limitAmount': limitAmount,
@@ -311,6 +306,11 @@ class BudgetRepository {
       'colorHex': colorHex,
       'period': period,
       'budgetType': budgetType,
-    });
+    };
+    if (startDate != null) updateData['startDate'] = Timestamp.fromDate(startDate);
+    if (endDate != null) updateData['endDate'] = Timestamp.fromDate(endDate);
+    if (categoryKey != null) updateData['categoryKey'] = categoryKey;
+
+    await budgetRef.update(updateData);
   }
 }

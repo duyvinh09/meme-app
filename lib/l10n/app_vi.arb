@@ -375,7 +375,7 @@
       }
     }
   },
-  "requestPending": "Yêu cầu kết bạn đã được gửi trước đó",
+  "requestPending": "Đang chờ",
   "friendRequests": "Lời mời kết bạn",
   "friendRequestsReceivedTab": "Đã nhận",
   "friendRequestsSentTab": "Đã gửi",
@@ -919,5 +919,699 @@
   "editCustomCategory": "Sửa danh mục",
   "categoryUpdated": "Đã cập nhật danh mục",
   "categoryUpdateFailed": "Không thể cập nhật danh mục",
-  "categoryNotFound": "Danh mục không còn tồn tại"
+  "categoryNotFound": "Danh mục không còn tồn tại",
+  "closeFriends": "Bạn thân",
+  "cameraPermissionRequired": "Bật máy ảnh để sử dụng Meme",
+  "openSettings": "Mở cài đặt",
+  "noCameraAvailable": "Không tìm thấy máy ảnh",
+  "dayTab": "Ngày",
+  "monthTab": "Tháng",
+  "expenseLabel": "Chi tiêu",
+  "incomeLabel": "Thu nhập",
+  "appIcon": "Biểu tượng ứng dụng",
+  "appIconSection": "Biểu tượng ứng dụng",
+  "appIconSubtitle": "Tùy chỉnh biểu tượng Meme trên màn hình chính",
+  "appIconPickerSubtitle": "Chọn kiểu biểu tượng Meme để hiển thị trên màn hình chính của bạn.",
+  "appIconClassic": "Meme Cổ Điển",
+  "appIconClassicDesc": "Phong cách biểu tượng gốc quen thuộc và vui nhộn",
+  "appIconNeon": "Meme Vàng Neon",
+  "appIconNeonDesc": "Tông vàng ấm áp, nổi bật và đậm cá tính",
+  "appIconOcean": "Meme Xanh Đại Dương",
+  "appIconOceanDesc": "Tông xanh dương hiện đại, tươi mát và năng động",
+  "appIconInUse": "Đang dùng",
+  "appIconChangedSuccess": "Đã đổi biểu tượng ứng dụng thành \"{name}\"",
+  "@appIconChangedSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "appIconChangeFailed": "Không thể đổi biểu tượng trên thiết bị này",
+  "cameraTheme": "Giao diện máy ảnh",
+  "cameraThemeSection": "Giao diện máy ảnh",
+  "cameraThemeSubtitle": "Tùy biến phong cách màu sắc và kính ngắm cho máy ảnh",
+  "cameraThemePickerSubtitle": "Tùy chỉnh kính ngắm, màu nút chụp và giao diện máy ảnh theo phong cách của bạn.",
+  "cameraThemeClassic": "Meme Cổ Điển",
+  "cameraThemeClassicDesc": "Giao diện tối tinh tế với điểm nhấn xanh ngọc lục bảo neon",
+  "cameraThemeCyber": "Cyber Neon",
+  "cameraThemeCyberDesc": "Phong cách cyberpunk với sắc tím rực rỡ và xanh điện tử",
+  "cameraThemeSunset": "Hoàng Hôn Vàng",
+  "cameraThemeSunsetDesc": "Không gian hoàng hôn ấm áp với ánh hổ phách sang trọng",
+  "cameraThemeOcean": "Gió Biển",
+  "cameraThemeOceanDesc": "Xanh sapphire sâu thẳm, tươi mát và tràn đầy năng lượng",
+  "cameraThemeMatcha": "Matcha Thiền",
+  "cameraThemeMatchaDesc": "Sắc xanh matcha thanh tịnh cùng tông rừng tự nhiên",
+  "cameraThemeAurora": "Bắc Cực Quang",
+  "cameraThemeAuroraDesc": "Ánh sáng phương bắc huyền ảo với làn sóng xanh mòng két và tím",
+  "cameraThemeSakura": "Hoa Anh Đào",
+  "cameraThemeSakuraDesc": "Sắc hồng pastel ngọt ngào và trẻ trung như hoa anh đào nở",
+  "cameraThemeGalaxy": "Tinh Vân Thiên Hà",
+  "cameraThemeGalaxyDesc": "Không gian vũ trụ huyền bí với tím cực tím, hồng magenta và xanh điện",
+  "cameraThemeLava": "Dòng Nham Thạch",
+  "cameraThemeLavaDesc": "Dòng magma rực lửa với đỏ thẫm và ngọn lửa vàng bốc cháy",
+  "cameraThemeVaporwave": "Retro Vaporwave",
+  "cameraThemeVaporwaveDesc": "Năng lượng synthwave thập niên 80 với xanh ngọc, hồng rực và ánh vàng",
+  "cameraThemeChangedSuccess": "Đã áp dụng chủ đề \"{name}\"",
+  "@cameraThemeChangedSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBubbleThemeTitle": "Giao diện bong bóng chat",
+  "chatBubbleSuggestions": "Gợi ý",
+  "chatBubbleAppliesToAll": "Kiểu bong bóng này áp dụng cho tất cả cuộc trò chuyện.",
+  "chatBubblePreviewMe": "Bây giờ bạn có thể đổi kiểu bong bóng chat để cuộc trò chuyện trông mới mẻ hơn. Thật tuyệt!",
+  "chatBubblePreviewFriend": "Trông đẹp đấy! Mình cũng đổi kiểu ngay đây.",
+  "chatBubbleSave": "Lưu",
+  "chatBubbleCancel": "Hủy",
+  "friendsCountTitle": "Bạn bè ({count})",
+  "@friendsCountTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "findNewFriends": "Tìm bạn bè",
+  "searchInFriends": "Tìm trong bạn bè...",
+  "friendsTabAll": "Tất cả",
+  "friendsTabClose": "Bạn thân",
+  "friendsTabRequests": "Lời mời",
+  "sendMessageAction": "Nhắn tin",
+  "addToCloseFriends": "Thêm vào bạn thân",
+  "removeFromCloseFriends": "Xóa khỏi bạn thân",
+  "addedToCloseFriends": "Đã thêm {name} vào bạn thân ⭐",
+  "@addedToCloseFriends": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removedFromCloseFriends": "Đã xóa {name} khỏi bạn thân",
+  "@removedFromCloseFriends": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noMatchingFriends": "Không tìm thấy bạn bè phù hợp",
+  "noCloseFriendsYet": "Chưa có bạn thân nào",
+  "noCloseFriendsSubtitle": "Chạm vào biểu tượng ngôi sao bên cạnh bạn bè để thêm họ vào bạn thân",
+  "typeMessageHint": "Tin nhắn...",
+  "emptyConversationPrompt": "✨ Gửi tin nhắn hoặc thả cảm xúc đầu tiên!",
+  "replyingToSelf": "Đang trả lời chính bạn",
+  "replyingToUser": "Đang trả lời {name}",
+  "@replyingToUser": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "replyingToPost": "Đang trả lời bài viết của {name}",
+  "@replyingToPost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "youRepliedToYourself": "Bạn đã trả lời chính mình",
+  "youRepliedToUser": "Bạn đã trả lời {name}",
+  "@youRepliedToUser": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "userRepliedToYou": "{name} đã trả lời bạn",
+  "@userRepliedToYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "userRepliedToThemself": "{name} đã trả lời chính họ",
+  "@userRepliedToThemself": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "activeNow": "Đang hoạt động",
+  "activeAgo": "Hoạt động {time} trước",
+  "@activeAgo": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineStatus": "Ngoại tuyến",
+  "feedMessageHint": "Tin nhắn...",
+  "sendReactionTitle": "Thả cảm xúc",
+  "postActivityTitle": "Hoạt động",
+  "noPostActivityYet": "Chưa có hoạt động nào!",
+  "postViewedStatus": "Đã xem!",
+  "oneNewPost": "1 bài viết mới!",
+  "newPostsCount": "{count} bài viết mới!",
+  "@newPostsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "closeFriendBadge": "Bạn thân",
+  "viewSentRequests": "Xem lời mời đã gửi",
+  "sentRequestsTitle": "Lời mời đã gửi",
+  "sentRequestsCount": "Đã gửi {count} lời mời",
+  "@sentRequestsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noSentRequestsYet": "Chưa có lời mời nào đã gửi!",
+  "sortDefault": "Mặc định",
+  "sortNewestFirst": "Mới nhất trước",
+  "sortOldestFirst": "Cũ nhất trước",
+  "sortBy": "Sắp xếp theo",
+  "cancelRequest": "Hủy",
+  "requestCancelled": "Đã hủy lời mời kết bạn",
+  "noFriendRequestsYet": "Chưa có lời mời kết bạn nào!",
+  "reply": "Trả lời",
+  "copy": "Sao chép",
+  "copiedToClipboard": "Đã sao chép tin nhắn",
+  "unsend": "Thu hồi",
+  "unsendConfirm": "Thu hồi tin nhắn?",
+  "unsendConfirmDesc": "Tin nhắn này sẽ được thu hồi đối với tất cả mọi người trong đoạn chat.",
+  "deleteForMe": "Xóa ở phía tôi",
+  "deleteForMeConfirm": "Xóa tin nhắn ở phía bạn?",
+  "deleteForMeConfirmDesc": "Tin nhắn này chỉ bị xóa ở phía bạn. Những người khác vẫn sẽ nhìn thấy.",
+  "report": "Báo cáo",
+  "reportMessage": "Báo cáo tin nhắn",
+  "reportMessageDesc": "Tại sao bạn muốn báo cáo tin nhắn này?",
+  "reportSpam": "Spam hoặc làm phiền",
+  "reportInappropriate": "Nội dung không phù hợp",
+  "reportViolence": "Ngôn từ thù ghét hoặc bạo lực",
+  "reportOther": "Lý do khác",
+  "reportSuccess": "Cảm ơn bạn. Báo cáo của bạn đã được gửi.",
+  "selectReaction": "Chọn cảm xúc",
+  "streakMaintaining": "Đang duy trì",
+  "bestStreakLabel": "Kỷ lục cá nhân",
+  "avatarCollection": "Bộ sưu tập",
+  "framesCount": "{unlocked}/{total} Khung",
+  "@framesCount": {
+    "placeholders": {
+      "unlocked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyMemeStreak": "Chuỗi Meme Hằng Ngày",
+  "unlockedStatus": "Đã mở khóa",
+  "unlockedBadgeCount": "{unlocked}/{total} Đã mở",
+  "@unlockedBadgeCount": {
+    "placeholders": {
+      "unlocked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "hasPostedStreakMotivation": "Bạn đã đăng bài hôm nay. Hãy tiếp tục duy trì phong độ tuyệt vời này!",
+  "notPostedStreakMotivation": "Hôm nay bạn chưa đăng bài. Hãy chia sẻ một khoảnh khắc để giữ chuỗi nhé!",
+  "avatarFrameCollectionTitle": "Bộ sưu tập Khung đại diện",
+  "currentEquipped": "Đang sử dụng",
+  "nextMilestone": "Cột mốc tiếp theo",
+  "daysLeftToUnlock": "Còn {count} ngày để mở khóa {frameName}",
+  "@daysLeftToUnlock": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "frameName": {
+        "type": "String"
+      }
+    }
+  },
+  "allFramesUnlocked": "Đã mở khóa toàn bộ khung avatar",
+  "allFramesUnlockedDesc": "Bạn đã chinh phục tất cả các cột mốc chuỗi cao nhất!",
+  "needStreakToUnlock": "Đạt chuỗi {days} ngày để mở khóa khung {frameName}!",
+  "@needStreakToUnlock": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "frameName": {
+        "type": "String"
+      }
+    }
+  },
+  "today": "Hôm nay",
+  "yesterday": "Hôm qua",
+  "generalOverview": "Tổng quan",
+  "appearanceAndThemes": "Giao diện & Chủ đề",
+  "systemPreferences": "Tùy chọn hệ thống",
+  "accountAndSupport": "Tài khoản & Hỗ trợ",
+  "selectThemeMode": "Chọn chế độ hiển thị",
+  "selectLanguage": "Chọn ngôn ngữ",
+  "selectCurrency": "Chọn đơn vị tiền tệ",
+  "themeModeLabel": "Chế độ giao diện",
+  "vietnameseDong": "Đồng Việt Nam",
+  "usDollar": "Đô la Mỹ",
+  "vndFull": "VND (₫ • Đồng Việt Nam)",
+  "usdFull": "USD ($ • Đô la Mỹ)",
+  "systemDefault": "Mặc định hệ thống",
+  "systemDefaultLanguage": "Mặc định hệ thống (Tự động)",
+  "conversationsTitle": "Cuộc trò chuyện",
+  "noConversationsYet": "Chưa có cuộc trò chuyện nào",
+  "startChattingWithFriends": "Nhắn tin cho bạn bè để bắt đầu trò chuyện",
+  "newMessage": "Tin nhắn mới",
+  "searchConversations": "Tìm cuộc trò chuyện...",
+  "markAllAsRead": "Đánh dấu tất cả đã đọc",
+  "startConversation": "Bắt đầu cuộc trò chuyện",
+  "youReactedToMessage": "Bạn đã thả cảm xúc {emoji} vào tin nhắn",
+  "@youReactedToMessage": {
+    "placeholders": {
+      "emoji": {
+        "type": "String"
+      }
+    }
+  },
+  "friendReactedToMessage": "{name} đã thả cảm xúc {emoji} vào tin nhắn",
+  "@friendReactedToMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "emoji": {
+        "type": "String"
+      }
+    }
+  },
+  "repliedToPostSnippet": "Đã trả lời bài viết: {text}",
+  "@repliedToPostSnippet": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "isTyping": "Đang soạn tin...",
+  "youPrefix": "Bạn: {text}",
+  "@youPrefix": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "taggedYouInPost": "{name} đã nhắc đến bạn trong một bài viết",
+  "@taggedYouInPost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tagFriends": "Gắn thẻ bạn bè",
+  "startTypingToTag": "Gõ @ để gắn thẻ bạn bè",
+  "viewTaggedProfile": "Xem trang cá nhân",
+  "messageFriend": "Nhắn tin",
+  "streakDayCount": "{count} ngày",
+  "@streakDayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "friendRequestSent": "Đã gửi lời mời",
+  "messageRecalled": "Tin nhắn đã bị thu hồi",
+  "recallTimeExpired": "Đã quá thời hạn 15 phút để thu hồi tin nhắn này",
+  "privateCannotTagFriends": "Chế độ riêng tư không gắn thẻ bạn bè",
+  "closeFriendsTagOnly": "Chỉ gắn thẻ được bạn bè trong danh sách Bạn thân",
+  "privacySection": "Quyền riêng tư",
+  "activeStatusTitle": "Trạng thái hoạt động",
+  "activeStatusSubtitle": "Khi tắt, bạn bè sẽ không thấy bạn hoạt động và bạn cũng không thấy trạng thái của họ.",
+  "chooseWhoCanSeeActive": "Chọn người có thể thấy khi bạn hoạt động",
+  "activeStatusPublic": "Công khai",
+  "activeStatusPublicDesc": "Mọi người trên ứng dụng đều có thể thấy trạng thái hoạt động của bạn.",
+  "activeStatusFriends": "Bạn bè",
+  "activeStatusFriendsDesc": "Bạn bè có thể thấy khi bạn hoạt động. Cả hai chỉ thấy nhau khi đều bật.",
+  "activeStatusNoOne": "Không ai cả",
+  "activeStatusNoOneDesc": "Không ai có thể thấy trạng thái hoạt động của bạn và bạn cũng không thấy của ai.",
+  "rewindTitle": "Meme Rewind",
+  "rewindMemories": "Kỷ niệm chi tiêu",
+  "rewindSelectPeriod": "Chọn khoảng thời gian",
+  "rewindWeek": "Tuần",
+  "rewindMonth": "Tháng",
+  "rewindQuarter": "Quý",
+  "rewindYear": "Năm",
+  "rewindThisWeek": "Tuần này",
+  "rewindThisMonth": "Tháng này",
+  "rewindThisQuarter": "Quý này",
+  "rewindThisYear": "Năm này",
+  "rewindOverviewTitle": "Hành trình giai đoạn này",
+  "rewindOverviewSubtitle": "Khoảng thời gian vừa qua của bạn thế nào?",
+  "rewindTotalExpense": "Tổng chi tiêu",
+  "rewindTotalIncome": "Tổng thu nhập",
+  "rewindTotalTransactions": "Giao dịch",
+  "rewindBalance": "Số dư còn lại",
+  "rewindSpentMore": "Bạn đã chi nhiều hơn {percent}% so với kỳ trước",
+  "@rewindSpentMore": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindSpentLess": "Bạn đã chi ít hơn {percent}% so với kỳ trước",
+  "@rewindSpentLess": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindSpentEqual": "Chi tiêu tương đương so với kỳ trước",
+  "rewindSpentGentleUp": "Bạn đã chi nhiều hơn một chút so với kỳ trước",
+  "rewindSpentGentleDown": "Bạn đã tiết kiệm hơn so với kỳ trước",
+  "rewindCategoryTitle": "Tiền của bạn đi đâu?",
+  "rewindCategorySubtitle": "Những danh mục chiếm nhiều chi tiêu nhất",
+  "rewindTopCategory": "Danh mục hàng đầu",
+  "rewindStreakTitle": "Chuỗi hoạt động của bạn",
+  "rewindStreakDays": "{count} ngày liên tiếp",
+  "@rewindStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindStreakSubtitle": "Bạn đã ghi chép chi tiêu đều đặn trong {count} ngày",
+  "@rewindStreakSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindStreakStarter": "Mới bắt đầu thôi, cố gắng duy trì nhé!",
+  "rewindStreakZero": "Bắt đầu chuỗi mới ngay hôm nay!",
+  "rewindTopExpensesTitle": "Khoản chi đáng nhớ nhất",
+  "rewindTopExpensesSubtitle": "Những khoản chi lớn nhất trong giai đoạn này",
+  "rewindBiggestDayTitle": "Ngày chi tiêu nhiều nhất",
+  "rewindBiggestDaySubtitle": "Ngày {date} là ngày bạn chi tiêu nhiều nhất",
+  "@rewindBiggestDaySubtitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindTransactionsOnDay": "{count} giao dịch trong ngày này",
+  "@rewindTransactionsOnDay": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindDailySpendingDistribution": "Phân bổ chi tiêu hằng ngày",
+  "rewindMomentsTitle": "Khoảnh khắc chi tiêu",
+  "rewindMomentsSubtitle": "Tiền bạc không chỉ là những con số. Đây là những khoảnh khắc gắn liền với chi tiêu của bạn.",
+  "rewindHighlightTitle": "Điểm nhấn của kỳ",
+  "rewindHighlightDominantTitle": "Danh mục chiếm ưu thế",
+  "rewindHighlightDominantDesc": "{category} chiếm {percent}% tổng chi tiêu của bạn.",
+  "@rewindHighlightDominantDesc": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindHighlightPeakDayTitle": "Ngày chi tiêu cao nhất",
+  "rewindHighlightPeakDayDesc": "Vào ngày {date}, bạn đã chi {percent}% tổng chi tiêu của kỳ này.",
+  "@rewindHighlightPeakDayDesc": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindHighlightBiggestExpenseTitle": "Khoản chi đáng nhớ",
+  "rewindHighlightBiggestExpenseDesc": "Khoản chi lớn nhất của bạn là dành cho {category}.",
+  "@rewindHighlightBiggestExpenseDesc": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindDaysThisWeek": "Các ngày trong tuần",
+  "rewindDaysRecentInPeriod": "7 ngày gần nhất trong kỳ",
+  "rewindComparisonTitle": "Kỳ này so với kỳ trước",
+  "rewindComparisonSubtitle": "Thói quen của bạn đang thay đổi thế nào?",
+  "rewindSummaryTitle": "Đây là hành trình của bạn ✨",
+  "rewindSummarySubtitle": "Một chương đáng nhớ cùng Meme App",
+  "rewindSaveCard": "Lưu ảnh",
+  "rewindShareCard": "Chia sẻ",
+  "rewindSeeYouNext": "Hẹn gặp lại bạn ở Rewind tiếp theo ❤️",
+  "rewindEmptyTitle": "Chưa có giao dịch nào trong kỳ này",
+  "rewindEmptySubtitle": "Hãy bắt đầu ghi chép chi tiêu để Meme Rewind có thể kể câu chuyện của bạn nhé!",
+  "rewindSaveSuccess": "Đã lưu ảnh vào thư viện!",
+  "rewindShareText": "Khám phá hành trình chi tiêu của mình trên Meme App! ✨",
+  "rewindThisPeriod": "Kỳ này",
+  "rewindPreviousPeriod": "Kỳ trước",
+  "rewindTransactionCount": "{count, plural, other{{count} giao dịch}}",
+  "@rewindTransactionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindLargestExpense": "Khoản chi lớn nhất",
+  "rewindDays": "{count, plural, other{{count} ngày}}",
+  "@rewindDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindActiveDaysInPeriod": "{count, plural, other{{count} ngày hoạt động trong {period}}}",
+  "@rewindActiveDaysInPeriod": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "groupBadge": "Nhóm",
+  "groupChat": "Nhóm chat",
+  "groupMembersCount": "{count, plural, other{{count} thành viên}}",
+  "@groupMembersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupChatOpen": "Mở nhóm chat",
+  "systemGroupCreated": "{name} đã tạo nhóm \"{group}\"",
+  "@systemGroupCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "systemGroupMemberAdded": "{name} đã thêm {member} vào nhóm",
+  "@systemGroupMemberAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "member": {
+        "type": "String"
+      }
+    }
+  },
+  "systemGroupMemberLeft": "{name} đã rời khỏi nhóm",
+  "@systemGroupMemberLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "systemGroupExpenseLogged": "{name} đã thêm chi tiêu {amount} cho \"{category}\"",
+  "@systemGroupExpenseLogged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "postToGroup": "Nhóm: {name}",
+  "@postToGroup": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupSpendingVisibleNote": "Thành viên trong nhóm có thể xem số tiền chi tiêu",
+  "groupAudience": "Nhóm: {name}",
+  "@groupAudience": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shortDaysStreak": "{count} Ngày",
+  "@shortDaysStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabAll": "Tất cả",
+  "tabUnread": "Chưa đọc",
+  "tabGroups": "Nhóm",
+  "createStory": "Tạo tin",
+  "whatAreYouThinking": "Bạn đang nghĩ gì?",
+  "activeNow": "Đang hoạt động",
+  "activeMinutesAgo": "Hoạt động {minutes} phút trước",
+  "@activeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "activeHoursAgo": "Hoạt động {hours} giờ trước",
+  "@activeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "newMessagesCount": "{count} tin nhắn mới",
+  "@newMessagesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareNote": "Chia sẻ ghi chú...",
+  "yourNote": "Ghi chú của bạn",
+  "newNote": "Ghi chú mới",
+  "shareVerb": "Chia sẻ",
+  "deleteNote": "Xóa ghi chú",
+  "noteSharedSuccess": "Đã chia sẻ ghi chú",
+  "noteDeletedSuccess": "Đã xóa ghi chú",
+  "sendDirectMessage": "Gửi tin nhắn",
+  "youRepliedToTheirNote": "Bạn đã phản hồi ghi chú của họ",
+  "userRepliedToYourNote": "{name} đã phản hồi ghi chú của bạn",
+  "@userRepliedToYourNote": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedWithAudience": "Đã chia sẻ với {audience}",
+  "@sharedWithAudience": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "audiencePublic": "Công khai",
+  "audienceFriends": "Bạn bè",
+  "expiresIn24Hours": "Hết hạn sau 24 giờ",
+  "expiresInHours": "Hết hạn sau {hours} giờ",
+  "@expiresInHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "shareNewNote": "Chia sẻ ghi chú mới",
+  "cameraThemeLockedNotice": "Đạt chuỗi 3 ngày để mở khóa giao diện này!",
+  "cameraThemeStreakRequirement": "Chuỗi 3 ngày",
+  "cameraThemeStreakBanner": "Đạt chuỗi {days} ngày để mở khóa toàn bộ giao diện máy ảnh (Hiện tại: {current} ngày)",
+  "@cameraThemeStreakBanner": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "current": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraThemeUnlockedBanner": "Bạn đã mở khóa toàn bộ giao diện máy ảnh với chuỗi {current} ngày! 🔥",
+  "@cameraThemeUnlockedBanner": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      }
+    }
+  },
+  "streakProgressFraction": "{current}/{total} ngày",
+  "@streakProgressFraction": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "draftPrefix": "Bản nháp: "
 }

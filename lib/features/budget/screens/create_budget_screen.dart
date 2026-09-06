@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/extensions/localization_extension.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
+import '../../../core/constants/app_icon_registry.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../profile/controllers/user_category_controller.dart';
 import '../controllers/budget_controller.dart';
+import '../services/budget_cycle_helper.dart';
 
 class CreateBudgetScreen extends StatefulWidget {
   const CreateBudgetScreen({super.key});
@@ -26,9 +30,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
   final amountController = TextEditingController();
 
   String period = 'monthly';
-  String budgetType = 'total';
+  String budgetType = 'category';
   Color selectedColor = AppColors.primaryBlue;
   IconData selectedIcon = Icons.account_balance_wallet_rounded;
+  String? selectedCategoryKey;
+
+  DateTime startDate = DateTime.now();
+  DateTime endDate = DateTime.now().add(const Duration(days: 30));
+  bool _loadedCategories = false;
 
   List<_PeriodOption> get periodOptions => [
     _PeriodOption('daily', context.l10n.daily, Icons.wb_sunny_outlined),
@@ -69,6 +78,18 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
     Icons.checkroom_rounded,
     Icons.medication_rounded,
   ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_loadedCategories) {
+      final uid = context.read<AuthController>().user?.uid;
+      if (uid != null) {
+        context.read<UserCategoryController>().load(uid);
+      }
+      _loadedCategories = true;
+    }
+  }
 
   @override
   void dispose() {
@@ -121,6 +142,14 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
   }
 
   String get displayPeriodText {
+    if (period == 'custom') {
+      final s =
+          '${startDate.day.toString().padLeft(2, '0')}/${startDate.month.toString().padLeft(2, '0')}';
+      final e =
+          '${endDate.day.toString().padLeft(2, '0')}/${endDate.month.toString().padLeft(2, '0')}';
+      return '$s - $e';
+    }
+
     switch (period) {
       case 'daily':
         return context.l10n.daily;
@@ -132,15 +161,176 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
         return context.l10n.monthly;
       case 'yearly':
         return context.l10n.yearly;
-      case 'custom':
-        return context.l10n.custom;
       default:
         return context.l10n.monthly;
     }
   }
 
   String get displayTypeText {
-    return budgetType == 'total' ? context.l10n.total : context.l10n.category;
+    if (budgetType == 'total') {
+      return context.l10n.total;
+    }
+    if (selectedCategoryKey != null && selectedCategoryKey!.isNotEmpty) {
+      return '${context.l10n.category}: ${BudgetNameLocalizer.display(context, selectedCategoryKey!)}';
+    }
+    return context.l10n.category;
+  }
+
+  String _periodDescription(String p) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    switch (p) {
+      case 'daily':
+        return isEn ? 'Resets at 00:00 every day' : 'Làm mới vào 00:00 mỗi ngày';
+      case 'weekly':
+        return isEn ? 'Monday to Sunday every week' : 'Thứ Hai đến Chủ Nhật hàng tuần';
+      case 'biweekly':
+        return isEn ? 'Repeats every 14 days' : 'Chu kỳ lặp lại mỗi 14 ngày';
+      case 'yearly':
+        return isEn ? 'From Jan 1st to Dec 31st each year' : 'Từ 01/01 đến 31/12 hàng năm';
+      case 'custom':
+        return isEn ? 'Fixed period between chosen dates' : 'Khoảng ngày cố định được chọn';
+      case 'monthly':
+      default:
+        return isEn
+            ? 'From 1st to the last day of each month'
+            : 'Từ ngày 1 đến ngày cuối cùng của tháng';
+    }
+  }
+
+  Future<void> _pickStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: startDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      builder: (ctx, child) => _datePickerTheme(ctx, child),
+    );
+    if (picked != null) {
+      setState(() {
+        startDate = picked;
+        if (endDate.isBefore(startDate)) {
+          endDate = startDate.add(const Duration(days: 30));
+        }
+      });
+    }
+  }
+
+  Future<void> _pickEndDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: endDate.isBefore(startDate) ? startDate : endDate,
+      firstDate: startDate,
+      lastDate: DateTime(2100),
+      builder: (ctx, child) => _datePickerTheme(ctx, child),
+    );
+    if (picked != null) {
+      setState(() {
+        endDate = picked;
+      });
+    }
+  }
+
+  Widget _datePickerTheme(BuildContext ctx, Widget? child) {
+    final isDark = AppColors.isDark(ctx);
+    return Theme(
+      data: Theme.of(ctx).copyWith(
+        colorScheme: isDark
+            ? ColorScheme.dark(
+                primary: selectedColor,
+                surface: AppColors.card(ctx),
+              )
+            : ColorScheme.light(
+                primary: selectedColor,
+                surface: AppColors.card(ctx),
+              ),
+      ),
+      child: child ?? const SizedBox.shrink(),
+    );
+  }
+
+  List<_CategoryOption> _buildCategoryOptions(BuildContext context) {
+    final l10n = context.l10n;
+    final List<_CategoryOption> list = [
+      _CategoryOption(
+        key: 'Ăn uống',
+        displayName: l10n.food,
+        icon: Icons.restaurant_rounded,
+        color: AppColors.income,
+        nameEn: 'Food',
+      ),
+      _CategoryOption(
+        key: 'Mua sắm',
+        displayName: l10n.shopping,
+        icon: Icons.shopping_bag_rounded,
+        color: AppColors.primaryPink,
+        nameEn: 'Shopping',
+      ),
+      _CategoryOption(
+        key: 'Đi lại',
+        displayName: l10n.transport,
+        icon: Icons.directions_car_rounded,
+        color: AppColors.primaryBlue,
+        nameEn: 'Transport',
+      ),
+      _CategoryOption(
+        key: 'Giải trí',
+        displayName: l10n.entertainment,
+        icon: Icons.theater_comedy_rounded,
+        color: AppColors.warning,
+        nameEn: 'Entertainment',
+      ),
+      _CategoryOption(
+        key: 'Học tập',
+        displayName: l10n.education,
+        icon: Icons.school_rounded,
+        color: AppColors.primaryPurple,
+        nameEn: 'Education',
+      ),
+      _CategoryOption(
+        key: 'Khác',
+        displayName: l10n.other,
+        icon: Icons.more_horiz_rounded,
+        color: const Color(0xFFAAAAAA),
+        nameEn: 'Other',
+      ),
+    ];
+
+    try {
+      final userCatController = context.watch<UserCategoryController>();
+      for (final uc in userCatController.categoriesForExpense()) {
+        Color c;
+        final hex = uc.colorHex.replaceAll('#', '');
+        if (hex.length == 6) {
+          c = Color(int.parse('FF$hex', radix: 16));
+        } else {
+          c = AppColors.primaryBlue;
+        }
+
+        final isEn = Localizations.localeOf(context).languageCode == 'en';
+        final dName = (isEn && uc.nameEn != null && uc.nameEn!.trim().isNotEmpty)
+            ? uc.nameEn!
+            : uc.name;
+
+        list.add(_CategoryOption(
+          key: uc.name,
+          displayName: dName,
+          icon: AppIconRegistry.fromCodePoint(uc.iconCodePoint),
+          color: c,
+          nameEn: uc.nameEn,
+        ));
+      }
+    } catch (_) {}
+
+    return list;
+  }
+
+  void _onCategorySelected(_CategoryOption cat) {
+    setState(() {
+      selectedCategoryKey = cat.key;
+      nameController.text = cat.displayName;
+      selectedIcon = cat.icon;
+      selectedColor = cat.color;
+    });
   }
 
   Future<void> _createBudget() async {
@@ -157,6 +347,11 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
 
     if (rawAmount.isEmpty) {
       _showSnack(context.l10n.pleaseEnterBudgetAmount);
+      return;
+    }
+
+    if (period == 'custom' && endDate.isBefore(startDate)) {
+      _showSnack('Ngày kết thúc phải sau hoặc bằng ngày bắt đầu');
       return;
     }
 
@@ -178,16 +373,29 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
       currency: currency,
     );
 
+    // If budgetType is marked 'total', but user typed a custom budget name that isn't a total budget name,
+    // ensure it is saved as 'category' so it acts as an individual wallet rather than capturing all expenses!
+    final effectiveBudgetType =
+        (budgetType == 'total' && BudgetCycleHelper.isTotalBudgetName(rawName))
+            ? 'total'
+            : 'category';
+
     try {
       await budget.createBudget(
         uid: uid,
         name: rawName,
         iconCodePoint: selectedIcon.codePoint,
         colorHex:
-        '#${selectedColor.value.toRadixString(16).substring(2).toUpperCase()}',
+            '#${selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
         limitAmount: amount,
         period: period,
-        budgetType: budgetType,
+        budgetType: effectiveBudgetType,
+        startDate: period == 'custom'
+            ? startDate
+            : (period == 'biweekly' ? startDate : null),
+        endDate: period == 'custom' ? endDate : null,
+        categoryKey:
+            effectiveBudgetType == 'category' ? selectedCategoryKey : null,
         inputLocaleIsEnglish:
             Localizations.localeOf(context).languageCode == 'en',
       );
@@ -195,7 +403,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
-      _showSnack(context.l10n.cannotCreateBudget(e.toString()));
+      final msg = e.toString().replaceAll('Exception: ', '');
+      _showSnack(context.l10n.cannotCreateBudget(msg));
     }
   }
 
@@ -214,6 +423,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
   Widget build(BuildContext context) {
     final canSubmit = amountController.text.trim().isNotEmpty &&
         nameController.text.trim().isNotEmpty;
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final categories = _buildCategoryOptions(context);
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -242,6 +453,62 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
             ),
 
             const SizedBox(height: 22),
+
+            _SectionTitle(title: context.l10n.budgetType),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _BudgetTypeCard(
+                    title: context.l10n.total,
+                    subtitle: context.l10n.allSpending,
+                    icon: Icons.language_rounded,
+                    selected: budgetType == 'total',
+                    selectedColor: selectedColor,
+                    onTap: () {
+                      setState(() {
+                        budgetType = 'total';
+                        selectedCategoryKey = null;
+                        if (nameController.text.isEmpty) {
+                          nameController.text = isEn ? 'Total Expenses' : 'Tổng chi tiêu';
+                        }
+                      });
+                    },
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _BudgetTypeCard(
+                    title: context.l10n.category,
+                    subtitle: context.l10n.syncFromCategory,
+                    icon: Icons.folder_rounded,
+                    selected: budgetType == 'category',
+                    selectedColor: selectedColor,
+                    onTap: () {
+                      setState(() {
+                        budgetType = 'category';
+                        if (categories.isNotEmpty && selectedCategoryKey == null) {
+                          _onCategorySelected(categories.first);
+                        }
+                      });
+                    },
+                  ),
+                ),
+              ],
+            ),
+
+            if (budgetType == 'category') ...[
+              const SizedBox(height: 18),
+              _SectionTitle(title: isEn ? 'Select Category' : 'Chọn danh mục chi tiêu'),
+              const SizedBox(height: 10),
+              _CategoryChipSelector(
+                categories: categories,
+                selectedKey: selectedCategoryKey,
+                onSelected: _onCategorySelected,
+              ),
+            ],
+
+            const SizedBox(height: 20),
 
             _SectionTitle(title: context.l10n.budgetNameLabel),
             const SizedBox(height: 8),
@@ -278,43 +545,41 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               },
             ),
 
-            const SizedBox(height: 20),
-
-            _SectionTitle(title: context.l10n.budgetType),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: _BudgetTypeCard(
-                    title: context.l10n.total,
-                    subtitle: context.l10n.allSpending,
-                    icon: Icons.language_rounded,
-                    selected: budgetType == 'total',
-                    selectedColor: selectedColor,
-                    onTap: () {
-                      setState(() {
-                        budgetType = 'total';
-                      });
-                    },
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 14,
+                    color: AppColors.textSecondary(context),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _BudgetTypeCard(
-                    title: context.l10n.category,
-                    subtitle: context.l10n.syncFromCategory,
-                    icon: Icons.folder_rounded,
-                    selected: budgetType == 'category',
-                    selectedColor: selectedColor,
-                    onTap: () {
-                      setState(() {
-                        budgetType = 'category';
-                      });
-                    },
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      _periodDescription(period),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary(context),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+
+            if (period == 'custom') ...[
+              const SizedBox(height: 16),
+              _CustomDateRangeCard(
+                startDate: startDate,
+                endDate: endDate,
+                selectedColor: selectedColor,
+                onTapStart: _pickStartDate,
+                onTapEnd: _pickEndDate,
+              ),
+            ],
 
             const SizedBox(height: 20),
 
@@ -324,7 +589,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               spacing: 12,
               runSpacing: 12,
               children: colorOptions.map((color) {
-                final selected = selectedColor.value == color.value;
+                final selected = selectedColor.toARGB32() == color.toARGB32();
 
                 return GestureDetector(
                   onTap: () {
@@ -345,20 +610,20 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                       ),
                       boxShadow: selected
                           ? [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.20),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
+                              BoxShadow(
+                                color: color.withValues(alpha: 0.20),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ]
                           : null,
                     ),
                     child: selected
                         ? const Icon(
-                      Icons.check_rounded,
-                      color: Colors.white,
-                       size: 22,
-                    )
+                            Icons.check_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          )
                         : null,
                   ),
                 );
@@ -404,7 +669,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               }).toList(),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 26),
 
             CustomButton(
               text: context.l10n.createBudget,
@@ -415,7 +680,254 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               borderRadius: 18,
             ),
           ],
-        )
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryOption {
+  final String key;
+  final String displayName;
+  final IconData icon;
+  final Color color;
+  final String? nameEn;
+
+  const _CategoryOption({
+    required this.key,
+    required this.displayName,
+    required this.icon,
+    required this.color,
+    this.nameEn,
+  });
+}
+
+class _CategoryChipSelector extends StatelessWidget {
+  final List<_CategoryOption> categories;
+  final String? selectedKey;
+  final ValueChanged<_CategoryOption> onSelected;
+
+  const _CategoryChipSelector({
+    required this.categories,
+    required this.selectedKey,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: categories.map((cat) {
+        final isSelected = selectedKey != null &&
+            (selectedKey == cat.key ||
+                selectedKey!.toLowerCase() == cat.key.toLowerCase());
+
+        return GestureDetector(
+          onTap: () => onSelected(cat),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? cat.color.withValues(alpha: 0.18)
+                  : AppColors.card(context),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected ? cat.color : AppColors.border(context),
+                width: isSelected ? 1.8 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  cat.icon,
+                  size: 17,
+                  color: isSelected ? cat.color : AppColors.textSecondary(context),
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  cat.displayName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    color: isSelected
+                        ? (AppColors.isDark(context) ? Colors.white : cat.color)
+                        : AppColors.textPrimary(context),
+                  ),
+                ),
+                if (isSelected) ...[
+                  const SizedBox(width: 5),
+                  Icon(
+                    Icons.check_circle_rounded,
+                    size: 15,
+                    color: cat.color,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+class _CustomDateRangeCard extends StatelessWidget {
+  final DateTime startDate;
+  final DateTime endDate;
+  final Color selectedColor;
+  final VoidCallback onTapStart;
+  final VoidCallback onTapEnd;
+
+  const _CustomDateRangeCard({
+    required this.startDate,
+    required this.endDate,
+    required this.selectedColor,
+    required this.onTapStart,
+    required this.onTapEnd,
+  });
+
+  String _format(DateTime dt) {
+    return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final totalDays = endDate.difference(startDate).inDays + 1;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: selectedColor.withValues(alpha: 0.35),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.date_range_rounded,
+                size: 18,
+                color: selectedColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                isEn ? 'Custom Date Range' : 'Khoảng thời gian áp dụng',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary(context),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: selectedColor.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  isEn ? '$totalDays days' : '$totalDays ngày',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selectedColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: onTapStart,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface(context),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border(context)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEn ? 'Start date' : 'Từ ngày',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary(context),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _format(startDate),
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 18,
+                  color: Color(0xFFAAAAAA),
+                ),
+              ),
+              Expanded(
+                child: GestureDetector(
+                  onTap: onTapEnd,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface(context),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border(context)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isEn ? 'End date' : 'Đến ngày',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textSecondary(context),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _format(endDate),
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -679,7 +1191,7 @@ class _PeriodGrid extends StatelessWidget {
         crossAxisCount: 2,
         mainAxisSpacing: 10,
         crossAxisSpacing: 10,
-          childAspectRatio: 3.25,
+        childAspectRatio: 3.25,
       ),
       itemBuilder: (context, index) {
         final item = periodOptions[index];

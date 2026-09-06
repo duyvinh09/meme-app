@@ -10,6 +10,7 @@ import '../../../core/routes/route_names.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/home_controller.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/calendar_section.dart';
@@ -145,6 +146,10 @@ class _HomeScreenState extends State<HomeScreen> {
     final greetingText = _getGreetingByTime(context);
     final greetingIcon = _getGreetingIcon();
     final avatarUrl = home.profile?.avatarUrl ?? '';
+    final now = DateTime.now();
+    final currentMonthTransactions = home.transactions
+        .where((tx) => tx.createdAt.year == now.year && tx.createdAt.month == now.month)
+        .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -186,6 +191,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             _WelcomeCard(
               avatarUrl: avatarUrl,
+              avatarFrame: home.profile?.avatarFrame ?? 'plain',
               greetingIcon: greetingIcon,
               greetingText: greetingText,
               userName: home.profile?.name ?? context.l10n.you,
@@ -198,9 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
 
             BalanceCard(
-              balance: home.balance,
-              income: home.totalIncome,
-              expense: home.totalExpense,
+              transactions: home.transactions,
             ),
 
             const SizedBox(height: 16),
@@ -229,9 +233,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: AppTextStyles.sectionTitle(context),
                   ),
                 ),
-                if (home.transactions.isNotEmpty)
+                if (currentMonthTransactions.isNotEmpty)
                   Text(
-                    context.l10n.transactionCount(home.transactions.length),
+                    context.l10n.transactionCount(currentMonthTransactions.length),
                     style: AppTextStyles.bodySecondary(context).copyWith(
                       fontWeight: FontWeight.w600,
                     ),
@@ -241,10 +245,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 12),
 
-            if (home.transactions.isEmpty)
+            if (currentMonthTransactions.isEmpty)
               const _EmptyTransactionCard()
             else
-              ...home.transactions
+              ...currentMonthTransactions
                   .take(5)
                   .map((e) => RecentTransactionCard(transaction: e)),
           ],
@@ -256,6 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _WelcomeCard extends StatelessWidget {
   final String avatarUrl;
+  final String avatarFrame;
   final String greetingIcon;
   final String greetingText;
   final String userName;
@@ -263,6 +268,7 @@ class _WelcomeCard extends StatelessWidget {
 
   const _WelcomeCard({
     required this.avatarUrl,
+    required this.avatarFrame,
     required this.greetingIcon,
     required this.greetingText,
     required this.userName,
@@ -275,38 +281,10 @@ class _WelcomeCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.primaryBlue.withOpacity(0.22),
-                width: 1.6,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryBlue.withOpacity(0.10),
-                  blurRadius: 12,
-                  spreadRadius: 1,
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(3),
-              child: CircleAvatar(
-                backgroundColor: AppColors.primaryBlue.withOpacity(0.12),
-                backgroundImage:
-                avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-                child: avatarUrl.isEmpty
-                    ? const Icon(
-                  Icons.person_rounded,
-                  color: AppColors.primaryBlue,
-                  size: 28,
-                )
-                    : null,
-              ),
-            ),
+          AvatarWithFrame(
+            avatarUrl: avatarUrl,
+            frameId: avatarFrame,
+            size: 54,
           ),
           const SizedBox(width: 14),
           Expanded(

@@ -1278,7 +1278,7 @@ abstract class AppLocalizations {
   /// No description provided for @requestPending.
   ///
   /// In vi, this message translates to:
-  /// **'Yêu cầu kết bạn đã được gửi trước đó'**
+  /// **'Đang chờ'**
   String get requestPending;
 
   /// No description provided for @friendRequests.
@@ -2750,6 +2750,1728 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Danh mục không còn tồn tại'**
   String get categoryNotFound;
+
+  /// No description provided for @closeFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn thân'**
+  String get closeFriends;
+
+  /// No description provided for @cameraPermissionRequired.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bật máy ảnh để sử dụng Meme'**
+  String get cameraPermissionRequired;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mở cài đặt'**
+  String get openSettings;
+
+  /// No description provided for @noCameraAvailable.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không tìm thấy máy ảnh'**
+  String get noCameraAvailable;
+
+  /// No description provided for @dayTab.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngày'**
+  String get dayTab;
+
+  /// No description provided for @monthTab.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tháng'**
+  String get monthTab;
+
+  /// No description provided for @expenseLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi tiêu'**
+  String get expenseLabel;
+
+  /// No description provided for @incomeLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thu nhập'**
+  String get incomeLabel;
+
+  /// No description provided for @appIcon.
+  ///
+  /// In vi, this message translates to:
+  /// **'Biểu tượng ứng dụng'**
+  String get appIcon;
+
+  /// No description provided for @appIconSection.
+  ///
+  /// In vi, this message translates to:
+  /// **'Biểu tượng ứng dụng'**
+  String get appIconSection;
+
+  /// No description provided for @appIconSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tùy chỉnh biểu tượng Meme trên màn hình chính'**
+  String get appIconSubtitle;
+
+  /// No description provided for @appIconPickerSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn kiểu biểu tượng Meme để hiển thị trên màn hình chính của bạn.'**
+  String get appIconPickerSubtitle;
+
+  /// No description provided for @appIconClassic.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Cổ Điển'**
+  String get appIconClassic;
+
+  /// No description provided for @appIconClassicDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Phong cách biểu tượng gốc quen thuộc và vui nhộn'**
+  String get appIconClassicDesc;
+
+  /// No description provided for @appIconNeon.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Vàng Neon'**
+  String get appIconNeon;
+
+  /// No description provided for @appIconNeonDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tông vàng ấm áp, nổi bật và đậm cá tính'**
+  String get appIconNeonDesc;
+
+  /// No description provided for @appIconOcean.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Xanh Đại Dương'**
+  String get appIconOcean;
+
+  /// No description provided for @appIconOceanDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tông xanh dương hiện đại, tươi mát và năng động'**
+  String get appIconOceanDesc;
+
+  /// No description provided for @appIconInUse.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang dùng'**
+  String get appIconInUse;
+
+  /// No description provided for @appIconChangedSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã đổi biểu tượng ứng dụng thành \"{name}\"'**
+  String appIconChangedSuccess(String name);
+
+  /// No description provided for @appIconChangeFailed.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không thể đổi biểu tượng trên thiết bị này'**
+  String get appIconChangeFailed;
+
+  /// No description provided for @cameraTheme.
+  ///
+  /// In vi, this message translates to:
+  /// **'Giao diện máy ảnh'**
+  String get cameraTheme;
+
+  /// No description provided for @cameraThemeSection.
+  ///
+  /// In vi, this message translates to:
+  /// **'Giao diện máy ảnh'**
+  String get cameraThemeSection;
+
+  /// No description provided for @cameraThemeSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tùy biến phong cách màu sắc và kính ngắm cho máy ảnh'**
+  String get cameraThemeSubtitle;
+
+  /// No description provided for @cameraThemePickerSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tùy chỉnh kính ngắm, màu nút chụp và giao diện máy ảnh theo phong cách của bạn.'**
+  String get cameraThemePickerSubtitle;
+
+  /// No description provided for @cameraThemeClassic.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Cổ Điển'**
+  String get cameraThemeClassic;
+
+  /// No description provided for @cameraThemeClassicDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Giao diện tối tinh tế với điểm nhấn xanh ngọc lục bảo neon'**
+  String get cameraThemeClassicDesc;
+
+  /// No description provided for @cameraThemeCyber.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cyber Neon'**
+  String get cameraThemeCyber;
+
+  /// No description provided for @cameraThemeCyberDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Phong cách cyberpunk với sắc tím rực rỡ và xanh điện tử'**
+  String get cameraThemeCyberDesc;
+
+  /// No description provided for @cameraThemeSunset.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoàng Hôn Vàng'**
+  String get cameraThemeSunset;
+
+  /// No description provided for @cameraThemeSunsetDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không gian hoàng hôn ấm áp với ánh hổ phách sang trọng'**
+  String get cameraThemeSunsetDesc;
+
+  /// No description provided for @cameraThemeOcean.
+  ///
+  /// In vi, this message translates to:
+  /// **'Gió Biển'**
+  String get cameraThemeOcean;
+
+  /// No description provided for @cameraThemeOceanDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xanh sapphire sâu thẳm, tươi mát và tràn đầy năng lượng'**
+  String get cameraThemeOceanDesc;
+
+  /// No description provided for @cameraThemeMatcha.
+  ///
+  /// In vi, this message translates to:
+  /// **'Matcha Thiền'**
+  String get cameraThemeMatcha;
+
+  /// No description provided for @cameraThemeMatchaDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Sắc xanh matcha thanh tịnh cùng tông rừng tự nhiên'**
+  String get cameraThemeMatchaDesc;
+
+  /// No description provided for @cameraThemeAurora.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bắc Cực Quang'**
+  String get cameraThemeAurora;
+
+  /// No description provided for @cameraThemeAuroraDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ánh sáng phương bắc huyền ảo với làn sóng xanh mòng két và tím'**
+  String get cameraThemeAuroraDesc;
+
+  /// No description provided for @cameraThemeSakura.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoa Anh Đào'**
+  String get cameraThemeSakura;
+
+  /// No description provided for @cameraThemeSakuraDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Sắc hồng pastel ngọt ngào và trẻ trung như hoa anh đào nở'**
+  String get cameraThemeSakuraDesc;
+
+  /// No description provided for @cameraThemeGalaxy.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tinh Vân Thiên Hà'**
+  String get cameraThemeGalaxy;
+
+  /// No description provided for @cameraThemeGalaxyDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không gian vũ trụ huyền bí với tím cực tím, hồng magenta và xanh điện'**
+  String get cameraThemeGalaxyDesc;
+
+  /// No description provided for @cameraThemeLava.
+  ///
+  /// In vi, this message translates to:
+  /// **'Dòng Nham Thạch'**
+  String get cameraThemeLava;
+
+  /// No description provided for @cameraThemeLavaDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Dòng magma rực lửa với đỏ thẫm và ngọn lửa vàng bốc cháy'**
+  String get cameraThemeLavaDesc;
+
+  /// No description provided for @cameraThemeVaporwave.
+  ///
+  /// In vi, this message translates to:
+  /// **'Retro Vaporwave'**
+  String get cameraThemeVaporwave;
+
+  /// No description provided for @cameraThemeVaporwaveDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Năng lượng synthwave thập niên 80 với xanh ngọc, hồng rực và ánh vàng'**
+  String get cameraThemeVaporwaveDesc;
+
+  /// No description provided for @cameraThemeChangedSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã áp dụng chủ đề \"{name}\"'**
+  String cameraThemeChangedSuccess(String name);
+
+  /// No description provided for @chatBubbleThemeTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Giao diện bong bóng chat'**
+  String get chatBubbleThemeTitle;
+
+  /// No description provided for @chatBubbleSuggestions.
+  ///
+  /// In vi, this message translates to:
+  /// **'Gợi ý'**
+  String get chatBubbleSuggestions;
+
+  /// No description provided for @chatBubbleAppliesToAll.
+  ///
+  /// In vi, this message translates to:
+  /// **'Kiểu bong bóng này áp dụng cho tất cả cuộc trò chuyện.'**
+  String get chatBubbleAppliesToAll;
+
+  /// No description provided for @chatBubblePreviewMe.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bây giờ bạn có thể đổi kiểu bong bóng chat để cuộc trò chuyện trông mới mẻ hơn. Thật tuyệt!'**
+  String get chatBubblePreviewMe;
+
+  /// No description provided for @chatBubblePreviewFriend.
+  ///
+  /// In vi, this message translates to:
+  /// **'Trông đẹp đấy! Mình cũng đổi kiểu ngay đây.'**
+  String get chatBubblePreviewFriend;
+
+  /// No description provided for @chatBubbleSave.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lưu'**
+  String get chatBubbleSave;
+
+  /// No description provided for @chatBubbleCancel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hủy'**
+  String get chatBubbleCancel;
+
+  /// No description provided for @friendsCountTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn bè ({count})'**
+  String friendsCountTitle(int count);
+
+  /// No description provided for @findNewFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm bạn bè'**
+  String get findNewFriends;
+
+  /// No description provided for @searchInFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm trong bạn bè...'**
+  String get searchInFriends;
+
+  /// No description provided for @friendsTabAll.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tất cả'**
+  String get friendsTabAll;
+
+  /// No description provided for @friendsTabClose.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn thân'**
+  String get friendsTabClose;
+
+  /// No description provided for @friendsTabRequests.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lời mời'**
+  String get friendsTabRequests;
+
+  /// No description provided for @sendMessageAction.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhắn tin'**
+  String get sendMessageAction;
+
+  /// No description provided for @addToCloseFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thêm vào bạn thân'**
+  String get addToCloseFriends;
+
+  /// No description provided for @removeFromCloseFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xóa khỏi bạn thân'**
+  String get removeFromCloseFriends;
+
+  /// No description provided for @addedToCloseFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã thêm {name} vào bạn thân ⭐'**
+  String addedToCloseFriends(String name);
+
+  /// No description provided for @removedFromCloseFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã xóa {name} khỏi bạn thân'**
+  String removedFromCloseFriends(String name);
+
+  /// No description provided for @noMatchingFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không tìm thấy bạn bè phù hợp'**
+  String get noMatchingFriends;
+
+  /// No description provided for @noCloseFriendsYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có bạn thân nào'**
+  String get noCloseFriendsYet;
+
+  /// No description provided for @noCloseFriendsSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chạm vào biểu tượng ngôi sao bên cạnh bạn bè để thêm họ vào bạn thân'**
+  String get noCloseFriendsSubtitle;
+
+  /// No description provided for @typeMessageHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tin nhắn...'**
+  String get typeMessageHint;
+
+  /// No description provided for @emptyConversationPrompt.
+  ///
+  /// In vi, this message translates to:
+  /// **'✨ Gửi tin nhắn hoặc thả cảm xúc đầu tiên!'**
+  String get emptyConversationPrompt;
+
+  /// No description provided for @replyingToSelf.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang trả lời chính bạn'**
+  String get replyingToSelf;
+
+  /// No description provided for @replyingToUser.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang trả lời {name}'**
+  String replyingToUser(String name);
+
+  /// No description provided for @replyingToPost.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang trả lời bài viết của {name}'**
+  String replyingToPost(String name);
+
+  /// No description provided for @youRepliedToYourself.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã trả lời chính mình'**
+  String get youRepliedToYourself;
+
+  /// No description provided for @youRepliedToUser.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã trả lời {name}'**
+  String youRepliedToUser(String name);
+
+  /// No description provided for @userRepliedToYou.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã trả lời bạn'**
+  String userRepliedToYou(String name);
+
+  /// No description provided for @userRepliedToThemself.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã trả lời chính họ'**
+  String userRepliedToThemself(String name);
+
+  /// No description provided for @activeNow.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang hoạt động'**
+  String get activeNow;
+
+  /// No description provided for @activeAgo.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoạt động {time} trước'**
+  String activeAgo(String time);
+
+  /// No description provided for @offlineStatus.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngoại tuyến'**
+  String get offlineStatus;
+
+  /// No description provided for @feedMessageHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tin nhắn...'**
+  String get feedMessageHint;
+
+  /// No description provided for @sendReactionTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thả cảm xúc'**
+  String get sendReactionTitle;
+
+  /// No description provided for @postActivityTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoạt động'**
+  String get postActivityTitle;
+
+  /// No description provided for @noPostActivityYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có hoạt động nào!'**
+  String get noPostActivityYet;
+
+  /// No description provided for @postViewedStatus.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã xem!'**
+  String get postViewedStatus;
+
+  /// No description provided for @oneNewPost.
+  ///
+  /// In vi, this message translates to:
+  /// **'1 bài viết mới!'**
+  String get oneNewPost;
+
+  /// No description provided for @newPostsCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} bài viết mới!'**
+  String newPostsCount(int count);
+
+  /// No description provided for @closeFriendBadge.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn thân'**
+  String get closeFriendBadge;
+
+  /// No description provided for @viewSentRequests.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem lời mời đã gửi'**
+  String get viewSentRequests;
+
+  /// No description provided for @sentRequestsTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lời mời đã gửi'**
+  String get sentRequestsTitle;
+
+  /// No description provided for @sentRequestsCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã gửi {count} lời mời'**
+  String sentRequestsCount(int count);
+
+  /// No description provided for @noSentRequestsYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có lời mời nào đã gửi!'**
+  String get noSentRequestsYet;
+
+  /// No description provided for @sortDefault.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mặc định'**
+  String get sortDefault;
+
+  /// No description provided for @sortNewestFirst.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mới nhất trước'**
+  String get sortNewestFirst;
+
+  /// No description provided for @sortOldestFirst.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cũ nhất trước'**
+  String get sortOldestFirst;
+
+  /// No description provided for @sortBy.
+  ///
+  /// In vi, this message translates to:
+  /// **'Sắp xếp theo'**
+  String get sortBy;
+
+  /// No description provided for @cancelRequest.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hủy'**
+  String get cancelRequest;
+
+  /// No description provided for @requestCancelled.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã hủy lời mời kết bạn'**
+  String get requestCancelled;
+
+  /// No description provided for @noFriendRequestsYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có lời mời kết bạn nào!'**
+  String get noFriendRequestsYet;
+
+  /// No description provided for @reply.
+  ///
+  /// In vi, this message translates to:
+  /// **'Trả lời'**
+  String get reply;
+
+  /// No description provided for @copy.
+  ///
+  /// In vi, this message translates to:
+  /// **'Sao chép'**
+  String get copy;
+
+  /// No description provided for @copiedToClipboard.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã sao chép tin nhắn'**
+  String get copiedToClipboard;
+
+  /// No description provided for @unsend.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thu hồi'**
+  String get unsend;
+
+  /// No description provided for @unsendConfirm.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thu hồi tin nhắn?'**
+  String get unsendConfirm;
+
+  /// No description provided for @unsendConfirmDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tin nhắn này sẽ được thu hồi đối với tất cả mọi người trong đoạn chat.'**
+  String get unsendConfirmDesc;
+
+  /// No description provided for @deleteForMe.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xóa ở phía tôi'**
+  String get deleteForMe;
+
+  /// No description provided for @deleteForMeConfirm.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xóa tin nhắn ở phía bạn?'**
+  String get deleteForMeConfirm;
+
+  /// No description provided for @deleteForMeConfirmDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tin nhắn này chỉ bị xóa ở phía bạn. Những người khác vẫn sẽ nhìn thấy.'**
+  String get deleteForMeConfirmDesc;
+
+  /// No description provided for @report.
+  ///
+  /// In vi, this message translates to:
+  /// **'Báo cáo'**
+  String get report;
+
+  /// No description provided for @reportMessage.
+  ///
+  /// In vi, this message translates to:
+  /// **'Báo cáo tin nhắn'**
+  String get reportMessage;
+
+  /// No description provided for @reportMessageDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tại sao bạn muốn báo cáo tin nhắn này?'**
+  String get reportMessageDesc;
+
+  /// No description provided for @reportSpam.
+  ///
+  /// In vi, this message translates to:
+  /// **'Spam hoặc làm phiền'**
+  String get reportSpam;
+
+  /// No description provided for @reportInappropriate.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nội dung không phù hợp'**
+  String get reportInappropriate;
+
+  /// No description provided for @reportViolence.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngôn từ thù ghét hoặc bạo lực'**
+  String get reportViolence;
+
+  /// No description provided for @reportOther.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lý do khác'**
+  String get reportOther;
+
+  /// No description provided for @reportSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cảm ơn bạn. Báo cáo của bạn đã được gửi.'**
+  String get reportSuccess;
+
+  /// No description provided for @selectReaction.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn cảm xúc'**
+  String get selectReaction;
+
+  /// No description provided for @streakMaintaining.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang duy trì'**
+  String get streakMaintaining;
+
+  /// No description provided for @bestStreakLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Kỷ lục cá nhân'**
+  String get bestStreakLabel;
+
+  /// No description provided for @avatarCollection.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bộ sưu tập'**
+  String get avatarCollection;
+
+  /// No description provided for @framesCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{unlocked}/{total} Khung'**
+  String framesCount(int unlocked, int total);
+
+  /// No description provided for @dailyMemeStreak.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chuỗi Meme Hằng Ngày'**
+  String get dailyMemeStreak;
+
+  /// No description provided for @unlockedStatus.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã mở khóa'**
+  String get unlockedStatus;
+
+  /// No description provided for @unlockedBadgeCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{unlocked}/{total} Đã mở'**
+  String unlockedBadgeCount(int unlocked, int total);
+
+  /// No description provided for @hasPostedStreakMotivation.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã đăng bài hôm nay. Hãy tiếp tục duy trì phong độ tuyệt vời này!'**
+  String get hasPostedStreakMotivation;
+
+  /// No description provided for @notPostedStreakMotivation.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hôm nay bạn chưa đăng bài. Hãy chia sẻ một khoảnh khắc để giữ chuỗi nhé!'**
+  String get notPostedStreakMotivation;
+
+  /// No description provided for @avatarFrameCollectionTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bộ sưu tập Khung đại diện'**
+  String get avatarFrameCollectionTitle;
+
+  /// No description provided for @currentEquipped.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang sử dụng'**
+  String get currentEquipped;
+
+  /// No description provided for @nextMilestone.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cột mốc tiếp theo'**
+  String get nextMilestone;
+
+  /// No description provided for @daysLeftToUnlock.
+  ///
+  /// In vi, this message translates to:
+  /// **'Còn {count} ngày để mở khóa {frameName}'**
+  String daysLeftToUnlock(int count, String frameName);
+
+  /// No description provided for @allFramesUnlocked.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã mở khóa toàn bộ khung avatar'**
+  String get allFramesUnlocked;
+
+  /// No description provided for @allFramesUnlockedDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã chinh phục tất cả các cột mốc chuỗi cao nhất!'**
+  String get allFramesUnlockedDesc;
+
+  /// No description provided for @needStreakToUnlock.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đạt chuỗi {days} ngày để mở khóa khung {frameName}!'**
+  String needStreakToUnlock(int days, String frameName);
+
+  /// No description provided for @today.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hôm nay'**
+  String get today;
+
+  /// No description provided for @yesterday.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hôm qua'**
+  String get yesterday;
+
+  /// No description provided for @generalOverview.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tổng quan'**
+  String get generalOverview;
+
+  /// No description provided for @appearanceAndThemes.
+  ///
+  /// In vi, this message translates to:
+  /// **'Giao diện & Chủ đề'**
+  String get appearanceAndThemes;
+
+  /// No description provided for @systemPreferences.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tùy chọn hệ thống'**
+  String get systemPreferences;
+
+  /// No description provided for @accountAndSupport.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tài khoản & Hỗ trợ'**
+  String get accountAndSupport;
+
+  /// No description provided for @selectThemeMode.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn chế độ hiển thị'**
+  String get selectThemeMode;
+
+  /// No description provided for @selectLanguage.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn ngôn ngữ'**
+  String get selectLanguage;
+
+  /// No description provided for @selectCurrency.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn đơn vị tiền tệ'**
+  String get selectCurrency;
+
+  /// No description provided for @themeModeLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chế độ giao diện'**
+  String get themeModeLabel;
+
+  /// No description provided for @vietnameseDong.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đồng Việt Nam'**
+  String get vietnameseDong;
+
+  /// No description provided for @usDollar.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đô la Mỹ'**
+  String get usDollar;
+
+  /// No description provided for @vndFull.
+  ///
+  /// In vi, this message translates to:
+  /// **'VND (₫ • Đồng Việt Nam)'**
+  String get vndFull;
+
+  /// No description provided for @usdFull.
+  ///
+  /// In vi, this message translates to:
+  /// **'USD (\$ • Đô la Mỹ)'**
+  String get usdFull;
+
+  /// No description provided for @systemDefault.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mặc định hệ thống'**
+  String get systemDefault;
+
+  /// No description provided for @systemDefaultLanguage.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mặc định hệ thống (Tự động)'**
+  String get systemDefaultLanguage;
+
+  /// No description provided for @conversationsTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cuộc trò chuyện'**
+  String get conversationsTitle;
+
+  /// No description provided for @noConversationsYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có cuộc trò chuyện nào'**
+  String get noConversationsYet;
+
+  /// No description provided for @startChattingWithFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhắn tin cho bạn bè để bắt đầu trò chuyện'**
+  String get startChattingWithFriends;
+
+  /// No description provided for @newMessage.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tin nhắn mới'**
+  String get newMessage;
+
+  /// No description provided for @searchConversations.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm cuộc trò chuyện...'**
+  String get searchConversations;
+
+  /// No description provided for @markAllAsRead.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đánh dấu tất cả đã đọc'**
+  String get markAllAsRead;
+
+  /// No description provided for @startConversation.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bắt đầu cuộc trò chuyện'**
+  String get startConversation;
+
+  /// No description provided for @youReactedToMessage.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã thả cảm xúc {emoji} vào tin nhắn'**
+  String youReactedToMessage(String emoji);
+
+  /// No description provided for @friendReactedToMessage.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã thả cảm xúc {emoji} vào tin nhắn'**
+  String friendReactedToMessage(String name, String emoji);
+
+  /// No description provided for @repliedToPostSnippet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã trả lời bài viết: {text}'**
+  String repliedToPostSnippet(String text);
+
+  /// No description provided for @isTyping.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang soạn tin...'**
+  String get isTyping;
+
+  /// No description provided for @youPrefix.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn: {text}'**
+  String youPrefix(String text);
+
+  /// No description provided for @taggedYouInPost.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã nhắc đến bạn trong một bài viết'**
+  String taggedYouInPost(String name);
+
+  /// No description provided for @tagFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Gắn thẻ bạn bè'**
+  String get tagFriends;
+
+  /// No description provided for @startTypingToTag.
+  ///
+  /// In vi, this message translates to:
+  /// **'Gõ @ để gắn thẻ bạn bè'**
+  String get startTypingToTag;
+
+  /// No description provided for @viewTaggedProfile.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem trang cá nhân'**
+  String get viewTaggedProfile;
+
+  /// No description provided for @messageFriend.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhắn tin'**
+  String get messageFriend;
+
+  /// No description provided for @streakDayCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} ngày'**
+  String streakDayCount(int count);
+
+  /// No description provided for @friendRequestSent.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã gửi lời mời'**
+  String get friendRequestSent;
+
+  /// No description provided for @messageRecalled.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tin nhắn đã bị thu hồi'**
+  String get messageRecalled;
+
+  /// No description provided for @recallTimeExpired.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã quá thời hạn 15 phút để thu hồi tin nhắn này'**
+  String get recallTimeExpired;
+
+  /// No description provided for @privateCannotTagFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chế độ riêng tư không gắn thẻ bạn bè'**
+  String get privateCannotTagFriends;
+
+  /// No description provided for @closeFriendsTagOnly.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chỉ gắn thẻ được bạn bè trong danh sách Bạn thân'**
+  String get closeFriendsTagOnly;
+
+  /// No description provided for @privacySection.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quyền riêng tư'**
+  String get privacySection;
+
+  /// No description provided for @activeStatusTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Trạng thái hoạt động'**
+  String get activeStatusTitle;
+
+  /// No description provided for @activeStatusSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khi tắt, bạn bè sẽ không thấy bạn hoạt động và bạn cũng không thấy trạng thái của họ.'**
+  String get activeStatusSubtitle;
+
+  /// No description provided for @chooseWhoCanSeeActive.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn người có thể thấy khi bạn hoạt động'**
+  String get chooseWhoCanSeeActive;
+
+  /// No description provided for @activeStatusPublic.
+  ///
+  /// In vi, this message translates to:
+  /// **'Công khai'**
+  String get activeStatusPublic;
+
+  /// No description provided for @activeStatusPublicDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mọi người trên ứng dụng đều có thể thấy trạng thái hoạt động của bạn.'**
+  String get activeStatusPublicDesc;
+
+  /// No description provided for @activeStatusFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn bè'**
+  String get activeStatusFriends;
+
+  /// No description provided for @activeStatusFriendsDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn bè có thể thấy khi bạn hoạt động. Cả hai chỉ thấy nhau khi đều bật.'**
+  String get activeStatusFriendsDesc;
+
+  /// No description provided for @activeStatusNoOne.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không ai cả'**
+  String get activeStatusNoOne;
+
+  /// No description provided for @activeStatusNoOneDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không ai có thể thấy trạng thái hoạt động của bạn và bạn cũng không thấy của ai.'**
+  String get activeStatusNoOneDesc;
+
+  /// No description provided for @rewindTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Rewind'**
+  String get rewindTitle;
+
+  /// No description provided for @rewindMemories.
+  ///
+  /// In vi, this message translates to:
+  /// **'Kỷ niệm chi tiêu'**
+  String get rewindMemories;
+
+  /// No description provided for @rewindSelectPeriod.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn khoảng thời gian'**
+  String get rewindSelectPeriod;
+
+  /// No description provided for @rewindWeek.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tuần'**
+  String get rewindWeek;
+
+  /// No description provided for @rewindMonth.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tháng'**
+  String get rewindMonth;
+
+  /// No description provided for @rewindQuarter.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quý'**
+  String get rewindQuarter;
+
+  /// No description provided for @rewindYear.
+  ///
+  /// In vi, this message translates to:
+  /// **'Năm'**
+  String get rewindYear;
+
+  /// No description provided for @rewindThisWeek.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tuần này'**
+  String get rewindThisWeek;
+
+  /// No description provided for @rewindThisMonth.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tháng này'**
+  String get rewindThisMonth;
+
+  /// No description provided for @rewindThisQuarter.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quý này'**
+  String get rewindThisQuarter;
+
+  /// No description provided for @rewindThisYear.
+  ///
+  /// In vi, this message translates to:
+  /// **'Năm này'**
+  String get rewindThisYear;
+
+  /// No description provided for @rewindOverviewTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hành trình giai đoạn này'**
+  String get rewindOverviewTitle;
+
+  /// No description provided for @rewindOverviewSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khoảng thời gian vừa qua của bạn thế nào?'**
+  String get rewindOverviewSubtitle;
+
+  /// No description provided for @rewindTotalExpense.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tổng chi tiêu'**
+  String get rewindTotalExpense;
+
+  /// No description provided for @rewindTotalIncome.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tổng thu nhập'**
+  String get rewindTotalIncome;
+
+  /// No description provided for @rewindTotalTransactions.
+  ///
+  /// In vi, this message translates to:
+  /// **'Giao dịch'**
+  String get rewindTotalTransactions;
+
+  /// No description provided for @rewindBalance.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số dư còn lại'**
+  String get rewindBalance;
+
+  /// No description provided for @rewindSpentMore.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã chi nhiều hơn {percent}% so với kỳ trước'**
+  String rewindSpentMore(String percent);
+
+  /// No description provided for @rewindSpentLess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã chi ít hơn {percent}% so với kỳ trước'**
+  String rewindSpentLess(String percent);
+
+  /// No description provided for @rewindSpentEqual.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi tiêu tương đương so với kỳ trước'**
+  String get rewindSpentEqual;
+
+  /// No description provided for @rewindSpentGentleUp.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã chi nhiều hơn một chút so với kỳ trước'**
+  String get rewindSpentGentleUp;
+
+  /// No description provided for @rewindSpentGentleDown.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã tiết kiệm hơn so với kỳ trước'**
+  String get rewindSpentGentleDown;
+
+  /// No description provided for @rewindCategoryTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tiền của bạn đi đâu?'**
+  String get rewindCategoryTitle;
+
+  /// No description provided for @rewindCategorySubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Những danh mục chiếm nhiều chi tiêu nhất'**
+  String get rewindCategorySubtitle;
+
+  /// No description provided for @rewindTopCategory.
+  ///
+  /// In vi, this message translates to:
+  /// **'Danh mục hàng đầu'**
+  String get rewindTopCategory;
+
+  /// No description provided for @rewindStreakTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chuỗi hoạt động của bạn'**
+  String get rewindStreakTitle;
+
+  /// No description provided for @rewindStreakDays.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} ngày liên tiếp'**
+  String rewindStreakDays(int count);
+
+  /// No description provided for @rewindStreakSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã ghi chép chi tiêu đều đặn trong {count} ngày'**
+  String rewindStreakSubtitle(int count);
+
+  /// No description provided for @rewindStreakStarter.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mới bắt đầu thôi, cố gắng duy trì nhé!'**
+  String get rewindStreakStarter;
+
+  /// No description provided for @rewindStreakZero.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bắt đầu chuỗi mới ngay hôm nay!'**
+  String get rewindStreakZero;
+
+  /// No description provided for @rewindTopExpensesTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khoản chi đáng nhớ nhất'**
+  String get rewindTopExpensesTitle;
+
+  /// No description provided for @rewindTopExpensesSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Những khoản chi lớn nhất trong giai đoạn này'**
+  String get rewindTopExpensesSubtitle;
+
+  /// No description provided for @rewindBiggestDayTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngày chi tiêu nhiều nhất'**
+  String get rewindBiggestDayTitle;
+
+  /// No description provided for @rewindBiggestDaySubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngày {date} là ngày bạn chi tiêu nhiều nhất'**
+  String rewindBiggestDaySubtitle(String date);
+
+  /// No description provided for @rewindTransactionsOnDay.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} giao dịch trong ngày này'**
+  String rewindTransactionsOnDay(int count);
+
+  /// No description provided for @rewindDailySpendingDistribution.
+  ///
+  /// In vi, this message translates to:
+  /// **'Phân bổ chi tiêu hằng ngày'**
+  String get rewindDailySpendingDistribution;
+
+  /// No description provided for @rewindMomentsTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khoảnh khắc chi tiêu'**
+  String get rewindMomentsTitle;
+
+  /// No description provided for @rewindMomentsSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tiền bạc không chỉ là những con số. Đây là những khoảnh khắc gắn liền với chi tiêu của bạn.'**
+  String get rewindMomentsSubtitle;
+
+  /// No description provided for @rewindHighlightTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Điểm nhấn của kỳ'**
+  String get rewindHighlightTitle;
+
+  /// No description provided for @rewindHighlightDominantTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Danh mục chiếm ưu thế'**
+  String get rewindHighlightDominantTitle;
+
+  /// No description provided for @rewindHighlightDominantDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'{category} chiếm {percent}% tổng chi tiêu của bạn.'**
+  String rewindHighlightDominantDesc(String category, String percent);
+
+  /// No description provided for @rewindHighlightPeakDayTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngày chi tiêu cao nhất'**
+  String get rewindHighlightPeakDayTitle;
+
+  /// No description provided for @rewindHighlightPeakDayDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vào ngày {date}, bạn đã chi {percent}% tổng chi tiêu của kỳ này.'**
+  String rewindHighlightPeakDayDesc(String date, String percent);
+
+  /// No description provided for @rewindHighlightBiggestExpenseTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khoản chi đáng nhớ'**
+  String get rewindHighlightBiggestExpenseTitle;
+
+  /// No description provided for @rewindHighlightBiggestExpenseDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khoản chi lớn nhất của bạn là dành cho {category}.'**
+  String rewindHighlightBiggestExpenseDesc(String category);
+
+  /// No description provided for @rewindDaysThisWeek.
+  ///
+  /// In vi, this message translates to:
+  /// **'Các ngày trong tuần'**
+  String get rewindDaysThisWeek;
+
+  /// No description provided for @rewindDaysRecentInPeriod.
+  ///
+  /// In vi, this message translates to:
+  /// **'7 ngày gần nhất trong kỳ'**
+  String get rewindDaysRecentInPeriod;
+
+  /// No description provided for @rewindComparisonTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Kỳ này so với kỳ trước'**
+  String get rewindComparisonTitle;
+
+  /// No description provided for @rewindComparisonSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thói quen của bạn đang thay đổi thế nào?'**
+  String get rewindComparisonSubtitle;
+
+  /// No description provided for @rewindSummaryTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đây là hành trình của bạn ✨'**
+  String get rewindSummaryTitle;
+
+  /// No description provided for @rewindSummarySubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Một chương đáng nhớ cùng Meme App'**
+  String get rewindSummarySubtitle;
+
+  /// No description provided for @rewindSaveCard.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lưu ảnh'**
+  String get rewindSaveCard;
+
+  /// No description provided for @rewindShareCard.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chia sẻ'**
+  String get rewindShareCard;
+
+  /// No description provided for @rewindSeeYouNext.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hẹn gặp lại bạn ở Rewind tiếp theo ❤️'**
+  String get rewindSeeYouNext;
+
+  /// No description provided for @rewindEmptyTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có giao dịch nào trong kỳ này'**
+  String get rewindEmptyTitle;
+
+  /// No description provided for @rewindEmptySubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hãy bắt đầu ghi chép chi tiêu để Meme Rewind có thể kể câu chuyện của bạn nhé!'**
+  String get rewindEmptySubtitle;
+
+  /// No description provided for @rewindSaveSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã lưu ảnh vào thư viện!'**
+  String get rewindSaveSuccess;
+
+  /// No description provided for @rewindShareText.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khám phá hành trình chi tiêu của mình trên Meme App! ✨'**
+  String get rewindShareText;
+
+  /// No description provided for @rewindThisPeriod.
+  ///
+  /// In vi, this message translates to:
+  /// **'Kỳ này'**
+  String get rewindThisPeriod;
+
+  /// No description provided for @rewindPreviousPeriod.
+  ///
+  /// In vi, this message translates to:
+  /// **'Kỳ trước'**
+  String get rewindPreviousPeriod;
+
+  /// No description provided for @rewindTransactionCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count, plural, other{{count} giao dịch}}'**
+  String rewindTransactionCount(int count);
+
+  /// No description provided for @rewindLargestExpense.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khoản chi lớn nhất'**
+  String get rewindLargestExpense;
+
+  /// No description provided for @rewindDays.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count, plural, other{{count} ngày}}'**
+  String rewindDays(int count);
+
+  /// No description provided for @rewindActiveDaysInPeriod.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count, plural, other{{count} ngày hoạt động trong {period}}}'**
+  String rewindActiveDaysInPeriod(int count, String period);
+
+  /// No description provided for @groupBadge.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhóm'**
+  String get groupBadge;
+
+  /// No description provided for @groupChat.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhóm chat'**
+  String get groupChat;
+
+  /// No description provided for @groupMembersCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count, plural, other{{count} thành viên}}'**
+  String groupMembersCount(int count);
+
+  /// No description provided for @groupChatOpen.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mở nhóm chat'**
+  String get groupChatOpen;
+
+  /// No description provided for @systemGroupCreated.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã tạo nhóm \"{group}\"'**
+  String systemGroupCreated(String name, String group);
+
+  /// No description provided for @systemGroupMemberAdded.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã thêm {member} vào nhóm'**
+  String systemGroupMemberAdded(String name, String member);
+
+  /// No description provided for @systemGroupMemberLeft.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã rời khỏi nhóm'**
+  String systemGroupMemberLeft(String name);
+
+  /// No description provided for @systemGroupExpenseLogged.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã thêm chi tiêu {amount} cho \"{category}\"'**
+  String systemGroupExpenseLogged(String name, String amount, String category);
+
+  /// No description provided for @postToGroup.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhóm: {name}'**
+  String postToGroup(String name);
+
+  /// No description provided for @groupSpendingVisibleNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thành viên trong nhóm có thể xem số tiền chi tiêu'**
+  String get groupSpendingVisibleNote;
+
+  /// No description provided for @groupAudience.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhóm: {name}'**
+  String groupAudience(String name);
+
+  /// No description provided for @shortDaysStreak.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} Ngày'**
+  String shortDaysStreak(int count);
+
+  /// No description provided for @tabAll.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tất cả'**
+  String get tabAll;
+
+  /// No description provided for @tabUnread.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa đọc'**
+  String get tabUnread;
+
+  /// No description provided for @tabGroups.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhóm'**
+  String get tabGroups;
+
+  /// No description provided for @createStory.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tạo tin'**
+  String get createStory;
+
+  /// No description provided for @whatAreYouThinking.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đang nghĩ gì?'**
+  String get whatAreYouThinking;
+
+  /// No description provided for @activeMinutesAgo.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoạt động {minutes} phút trước'**
+  String activeMinutesAgo(int minutes);
+
+  /// No description provided for @activeHoursAgo.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoạt động {hours} giờ trước'**
+  String activeHoursAgo(int hours);
+
+  /// No description provided for @newMessagesCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} tin nhắn mới'**
+  String newMessagesCount(int count);
+
+  /// No description provided for @shareNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chia sẻ ghi chú...'**
+  String get shareNote;
+
+  /// No description provided for @yourNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ghi chú của bạn'**
+  String get yourNote;
+
+  /// No description provided for @newNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ghi chú mới'**
+  String get newNote;
+
+  /// No description provided for @shareVerb.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chia sẻ'**
+  String get shareVerb;
+
+  /// No description provided for @deleteNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xóa ghi chú'**
+  String get deleteNote;
+
+  /// No description provided for @noteSharedSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã chia sẻ ghi chú'**
+  String get noteSharedSuccess;
+
+  /// No description provided for @noteDeletedSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã xóa ghi chú'**
+  String get noteDeletedSuccess;
+
+  /// No description provided for @sendDirectMessage.
+  ///
+  /// In vi, this message translates to:
+  /// **'Gửi tin nhắn'**
+  String get sendDirectMessage;
+
+  /// No description provided for @youRepliedToTheirNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã phản hồi ghi chú của họ'**
+  String get youRepliedToTheirNote;
+
+  /// No description provided for @userRepliedToYourNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'{name} đã phản hồi ghi chú của bạn'**
+  String userRepliedToYourNote(String name);
+
+  /// No description provided for @sharedWithAudience.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã chia sẻ với {audience}'**
+  String sharedWithAudience(String audience);
+
+  /// No description provided for @audiencePublic.
+  ///
+  /// In vi, this message translates to:
+  /// **'Công khai'**
+  String get audiencePublic;
+
+  /// No description provided for @audienceFriends.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn bè'**
+  String get audienceFriends;
+
+  /// No description provided for @expiresIn24Hours.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hết hạn sau 24 giờ'**
+  String get expiresIn24Hours;
+
+  /// No description provided for @expiresInHours.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hết hạn sau {hours} giờ'**
+  String expiresInHours(int hours);
+
+  /// No description provided for @shareNewNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chia sẻ ghi chú mới'**
+  String get shareNewNote;
+
+  /// No description provided for @cameraThemeLockedNotice.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đạt chuỗi 3 ngày để mở khóa giao diện này!'**
+  String get cameraThemeLockedNotice;
+
+  /// No description provided for @cameraThemeStreakRequirement.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chuỗi 3 ngày'**
+  String get cameraThemeStreakRequirement;
+
+  /// No description provided for @cameraThemeStreakBanner.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đạt chuỗi {days} ngày để mở khóa toàn bộ giao diện máy ảnh (Hiện tại: {current} ngày)'**
+  String cameraThemeStreakBanner(int days, int current);
+
+  /// No description provided for @cameraThemeUnlockedBanner.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn đã mở khóa toàn bộ giao diện máy ảnh với chuỗi {current} ngày! 🔥'**
+  String cameraThemeUnlockedBanner(int current);
+
+  /// No description provided for @streakProgressFraction.
+  ///
+  /// In vi, this message translates to:
+  /// **'{current}/{total} ngày'**
+  String streakProgressFraction(int current, int total);
+
+  /// No description provided for @draftPrefix.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bản nháp: '**
+  String get draftPrefix;
 }
 
 class _AppLocalizationsDelegate

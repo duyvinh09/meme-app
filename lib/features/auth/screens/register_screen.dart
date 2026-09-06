@@ -335,7 +335,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const SizedBox(height: 16),
 
                       if (errorText != null && errorText.trim().isNotEmpty) ...[
                         _AuthErrorBox(text: errorText),
@@ -428,6 +427,7 @@ class _AuthCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(maxWidth: 480),
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
       decoration: BoxDecoration(

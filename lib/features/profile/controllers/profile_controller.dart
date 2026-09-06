@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/local_settings_service.dart';
 import '../../../core/services/cloudinary_service.dart';
+import '../../../core/services/exchange_rate_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -24,6 +25,7 @@ class ProfileController extends ChangeNotifier {
   bool isSaving = false;
 
   String get languageCode => localSettingsService.languageCode;
+  String get rawLanguageCode => localSettingsService.rawLanguageCode;
   String get currency => localSettingsService.currency;
   ThemeMode get themeMode => localSettingsService.themeMode;
 
@@ -76,18 +78,82 @@ class ProfileController extends ChangeNotifier {
     }
   }
 
-  Future<void> setLanguage(String value) async {
+  Future<bool> updateAvatarFrame(String uid, String frameId) async {
+    try {
+      await userRepository.updateUserProfile(uid, {'avatarFrame': frameId});
+      await refreshUser(uid);
+      return true;
+    } catch (e) {
+      debugPrint('updateAvatarFrame error: $e');
+      return false;
+    }
+  }
+
+  Future<void> setLanguage(String value, [String? uid]) async {
     await localSettingsService.setLanguageCode(value);
+    if (uid != null && uid.isNotEmpty) {
+      await userRepository.updateUserProfile(uid, {'language': value});
+    }
     notifyListeners();
   }
 
-  Future<void> setCurrency(String value) async {
+  Future<void> setCurrency(String value, [String? uid]) async {
     await localSettingsService.setCurrency(value);
+    if (uid != null && uid.isNotEmpty) {
+      await userRepository.updateUserProfile(uid, {'currency': value});
+    }
+    notifyListeners();
+
+    if (value.toUpperCase() == 'USD') {
+      await ExchangeRateService.refresh();
+      notifyListeners();
+    }
+  }
+
+  Future<void> setThemeMode(String value, [String? uid]) async {
+    await localSettingsService.setThemeMode(value);
+    if (uid != null && uid.isNotEmpty) {
+      await userRepository.updateUserProfile(uid, {'themeMode': value});
+    }
     notifyListeners();
   }
 
-  Future<void> setThemeMode(String value) async {
-    await localSettingsService.setThemeMode(value);
+  String get cameraTheme => localSettingsService.cameraTheme;
+
+  Future<void> setCameraTheme(String value, [String? uid]) async {
+    await localSettingsService.setCameraTheme(value);
+    if (uid != null && uid.isNotEmpty) {
+      await userRepository.updateUserProfile(uid, {'cameraTheme': value});
+    }
+    notifyListeners();
+  }
+
+  bool get showActiveStatus => localSettingsService.showActiveStatus;
+  String get activeStatusMode => localSettingsService.activeStatusMode;
+
+  Future<void> setShowActiveStatus(bool value, [String? uid]) async {
+    await localSettingsService.setShowActiveStatus(value);
+    if (uid != null && uid.isNotEmpty) {
+      await userRepository.updateUserProfile(uid, {
+        'showActiveStatus': value,
+        if (!value) 'isOnline': false,
+      });
+      await userRepository.updateUserPresence(uid, isOnline: value);
+    }
+    notifyListeners();
+  }
+
+  Future<void> setActiveStatusMode(String mode, [String? uid]) async {
+    await localSettingsService.setActiveStatusMode(mode);
+    if (uid != null && uid.isNotEmpty) {
+      final isOnline = mode != 'none';
+      await userRepository.updateUserProfile(uid, {
+        'showActiveStatus': isOnline,
+        'activeStatusMode': mode,
+        if (!isOnline) 'isOnline': false,
+      });
+      await userRepository.updateUserPresence(uid, isOnline: isOnline);
+    }
     notifyListeners();
   }
 

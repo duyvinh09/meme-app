@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/services/local_settings_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/auth_repository.dart';
 import '../../../data/repositories/user_repository.dart';
@@ -10,10 +12,12 @@ import '../../../data/repositories/user_repository.dart';
 class AuthController extends ChangeNotifier {
   final AuthRepository authRepository;
   final UserRepository userRepository;
+  final LocalSettingsService localSettingsService;
 
   AuthController({
     required this.authRepository,
     required this.userRepository,
+    required this.localSettingsService,
   });
 
   User? user;
@@ -27,6 +31,18 @@ class AuthController extends ChangeNotifier {
 
     _authSub = authRepository.authStateChanges().listen((firebaseUser) {
       user = firebaseUser;
+      if (user != null) {
+        userRepository.updateUserPresence(user!.uid, isOnline: true);
+        NotificationService.instance.syncTokenForUser(user!.uid);
+        localSettingsService.setActiveUser(user!.uid);
+        userRepository.getUserProfile(user!.uid).then((profile) {
+          if (profile != null) {
+            localSettingsService.syncFromUserProfile(profile);
+          }
+        });
+      } else {
+        localSettingsService.setActiveUser(null);
+      }
       notifyListeners();
     });
   }
@@ -43,6 +59,13 @@ class AuthController extends ChangeNotifier {
       );
 
       user = credential.user;
+      if (user != null) {
+        localSettingsService.setActiveUser(user!.uid);
+        final profile = await userRepository.getUserProfile(user!.uid);
+        if (profile != null) {
+          await localSettingsService.syncFromUserProfile(profile);
+        }
+      }
       return true;
     } on FirebaseAuthException catch (e) {
       error = _firebaseErrorMessage(e, fallback: 'Đăng nhập thất bại');
@@ -97,6 +120,10 @@ class AuthController extends ChangeNotifier {
       user = credential.user;
 
       if (user != null) {
+        try {
+          await user!.updateDisplayName(cleanedName);
+        } catch (_) {}
+
         final now = DateTime.now();
 
         await userRepository.createUserProfile(
@@ -113,17 +140,27 @@ class AuthController extends ChangeNotifier {
             bestStreak: 0,
             createdAt: now,
             lastActiveDate: now,
+            isOnline: true,
+            lastSeen: now,
+            chatBubbleTheme: 'default',
+            cameraTheme: 'classic_dark',
           ),
         );
+        localSettingsService.setActiveUser(user!.uid);
       }
 
       return true;
     } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException during register: ${e.code} - ${e.message}');
       error = _firebaseErrorMessage(e, fallback: 'Đăng ký thất bại');
+      return false;
+    } on FirebaseException catch (e) {
+      debugPrint('FirebaseException during register: ${e.code} - ${e.message}');
+      error = _firebaseErrorMessage(e, fallback: 'Lỗi lưu trữ dữ liệu tài khoản');
       return false;
     } catch (e) {
       debugPrint('register error: $e');
-      error = 'Đăng ký thất bại';
+      error = 'Đăng ký thất bại: $e';
       return false;
     } finally {
       isLoading = false;
@@ -133,7 +170,13 @@ class AuthController extends ChangeNotifier {
 
   Future<void> logout() async {
     try {
+      final currentUid = user?.uid;
+      if (currentUid != null) {
+        await userRepository.updateUserPresence(currentUid, isOnline: false);
+        await NotificationService.instance.removeTokenForUser(currentUid);
+      }
       await authRepository.logout();
+      localSettingsService.setActiveUser(null);
       user = null;
       error = null;
       notifyListeners();
@@ -153,6 +196,9 @@ class AuthController extends ChangeNotifier {
     } on FirebaseAuthException catch (e) {
       error = _firebaseErrorMessage(e, fallback: 'Gửi email đặt lại mật khẩu thất bại');
       return false;
+    } on FirebaseException catch (e) {
+      error = _firebaseErrorMessage(e, fallback: 'Gửi email đặt lại mật khẩu thất bại');
+      return false;
     } catch (e) {
       debugPrint('sendResetPassword error: $e');
       error = 'Gửi email đặt lại mật khẩu thất bại';
@@ -164,31 +210,45 @@ class AuthController extends ChangeNotifier {
   }
 
   String _firebaseErrorMessage(
-      FirebaseAuthException e, {
+      dynamic e, {
         required String fallback,
       }) {
-    switch (e.code) {
-      case 'invalid-email':
-        return 'Email không hợp lệ';
-      case 'user-disabled':
-        return 'Tài khoản đã bị vô hiệu hoá';
-      case 'user-not-found':
-        return 'Không tìm thấy tài khoản';
-      case 'wrong-password':
-        return 'Mật khẩu không đúng';
-      case 'invalid-credential':
-        return 'Email hoặc mật khẩu không đúng';
-      case 'email-already-in-use':
-        return 'Email đã được sử dụng';
-      case 'weak-password':
-        return 'Mật khẩu quá yếu';
-      case 'network-request-failed':
-        return 'Lỗi kết nối mạng';
-      case 'too-many-requests':
-        return 'Bạn thử quá nhiều lần, vui lòng thử lại sau';
-      default:
-        return e.message ?? fallback;
+    if (e is FirebaseAuthException) {
+      switch (e.code) {
+        case 'invalid-email':
+          return 'Email không hợp lệ';
+        case 'user-disabled':
+          return 'Tài khoản đã bị vô hiệu hoá';
+        case 'user-not-found':
+          return 'Không tìm thấy tài khoản';
+        case 'wrong-password':
+          return 'Mật khẩu không đúng';
+        case 'invalid-credential':
+          return 'Email hoặc mật khẩu không đúng';
+        case 'email-already-in-use':
+          return 'Email này đã được đăng ký tài khoản';
+        case 'weak-password':
+          return 'Mật khẩu quá yếu (cần tối thiểu 6 ký tự)';
+        case 'operation-not-allowed':
+          return 'Phương thức đăng ký Email/Password chưa được kích hoạt trên Firebase Console';
+        case 'network-request-failed':
+          return 'Lỗi kết nối mạng, vui lòng kiểm tra Internet';
+        case 'too-many-requests':
+          return 'Bạn thao tác quá nhiều lần, vui lòng thử lại sau';
+        default:
+          return e.message ?? fallback;
+      }
+    } else if (e is FirebaseException) {
+      switch (e.code) {
+        case 'permission-denied':
+          return 'Không có quyền truy cập cơ sở dữ liệu (Firestore Rules)';
+        case 'unavailable':
+          return 'Dịch vụ tạm thời không khả dụng, vui lòng thử lại sau';
+        default:
+          return e.message ?? fallback;
+      }
     }
+    return fallback;
   }
 
   @override

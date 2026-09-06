@@ -21,7 +21,12 @@ import 'data/repositories/transaction_repository.dart';
 import 'data/repositories/budget_repository.dart';
 import 'data/repositories/user_category_repository.dart';
 import 'features/profile/controllers/user_category_controller.dart';
+import 'data/repositories/chat_repository.dart';
 import 'features/feed/controllers/feed_controller.dart';
+import 'features/chat/controllers/chat_controller.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'core/services/notification_service.dart';
+import 'core/widgets/in_app_notification_host.dart';
 import 'core/services/exchange_rate_service.dart';
 import 'core/theme/app_scroll_behavior.dart';
 
@@ -31,9 +36,12 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   final localSettings = LocalSettingsService();
   await localSettings.init();
   await ExchangeRateService.init();
+  await NotificationService.instance.init();
 
   runApp(MyApp(localSettings: localSettings));
 }
@@ -46,16 +54,18 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        Provider.value(value: localSettings),
+        ChangeNotifierProvider.value(value: localSettings),
         Provider(create: (_) => AuthRepository()),
         Provider(create: (_) => UserRepository()),
         Provider(create: (_) => TransactionRepository()),
         Provider(create: (_) => BudgetRepository()),
         Provider(create: (_) => UserCategoryRepository()),
+        Provider(create: (_) => ChatRepository()),
         ChangeNotifierProvider(
           create: (context) => AuthController(
             authRepository: context.read<AuthRepository>(),
             userRepository: context.read<UserRepository>(),
+            localSettingsService: context.read<LocalSettingsService>(),
           )..init(),
         ),
         ChangeNotifierProvider(
@@ -84,6 +94,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => BudgetController(
             budgetRepository: context.read<BudgetRepository>(),
+            transactionRepository: context.read<TransactionRepository>(),
           ),
         ),
         ChangeNotifierProvider(
@@ -95,6 +106,12 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (context) => UserCategoryController(
             repository: context.read<UserCategoryRepository>(),
+          ),
+        ),
+        ChangeNotifierProvider(
+          create: (context) => ChatController(
+            chatRepository: context.read<ChatRepository>(),
+            userRepository: context.read<UserRepository>(),
           ),
         ),
       ],
@@ -115,8 +132,22 @@ class MyApp extends StatelessWidget {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
+            navigatorKey: AppRoutes.navigatorKey,
             onGenerateRoute: AppRoutes.onGenerateRoute,
             initialRoute: RouteNames.splash,
+            builder: (context, child) {
+              final media = MediaQuery.of(context);
+              final clampedTextScaler = media.textScaler.clamp(
+                minScaleFactor: 0.85,
+                maxScaleFactor: 1.15,
+              );
+              return InAppNotificationHost(
+                child: MediaQuery(
+                  data: media.copyWith(textScaler: clampedTextScaler),
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              );
+            },
           );
         },
       ),

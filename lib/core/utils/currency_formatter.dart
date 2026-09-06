@@ -94,7 +94,7 @@ class AppCurrencyFormatter {
       return NumberFormat.currency(
         locale: 'en_US',
         symbol: '\$',
-        decimalDigits: displayAmount >= 100 ? 0 : 2,
+        decimalDigits: 2,
       ).format(displayAmount);
     }
 

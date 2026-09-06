@@ -24,4 +24,11 @@ class RouteNames {
   static const feed = '/feed';
 
   static const manageCategories = '/manage-categories';
+  static const appIcon = '/app-icon';
+  static const cameraTheme = '/camera-theme';
+  static const chatConversation = '/chat-conversation';
+  static const groupChatConversation = '/group-chat-conversation';
+  static const chatBubbleTheme = '/chat-bubble-theme';
+  static const chatList = '/chat-list';
+  static const rewind = '/rewind';
 }

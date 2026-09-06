@@ -1,24 +1,68 @@
+import 'dart:convert';
+
 class LocketConfig {
   LocketConfig._();
 
-  static const String email = 'letuanlak@gmail.com';
-  static const String password = '11111111';
+  // Danh sách Pool tài khoản để xoay vòng (Email | Password) lấy từ biến môi trường LOCKET_ACCOUNTS
+  static List<Map<String, String>> get accounts {
+    const raw = String.fromEnvironment('LOCKET_ACCOUNTS', defaultValue: '');
+    if (raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          return decoded
+              .map((item) => Map<String, String>.from(item as Map))
+              .toList();
+        }
+      } catch (_) {
+        // Hỗ trợ định dạng email:password,email:password
+        final list = <Map<String, String>>[];
+        for (final pair in raw.split(',')) {
+          final parts = pair.split(':');
+          if (parts.length == 2) {
+            list.add({'email': parts[0].trim(), 'password': parts[1].trim()});
+          }
+        }
+        if (list.isNotEmpty) return list;
+      }
+    }
+    return const [];
+  }
 
-  static const String firebaseApiKey =
-      'AIzaSyCQngaaXQIfJaH0aS2l7REgIjD7nL431So';
+  static const String firebaseApiKey = String.fromEnvironment(
+    'LOCKET_FIREBASE_API_KEY',
+    defaultValue: '',
+  );
 
-  static const String firebaseGmpId =
-      '1:641029076083:ios:cc8eb46290d69b234fa606';
+  static const String firebaseGmpId = String.fromEnvironment(
+    'LOCKET_FIREBASE_GMP_ID',
+    defaultValue: '',
+  );
 
-  static const String firebaseAppCheck =
-      'eyJlcnJvciI6IlVOS05PV05fRVJST1IifQ==';
+  static const String firebaseAppCheck = String.fromEnvironment(
+    'LOCKET_FIREBASE_APP_CHECK',
+    defaultValue: '',
+  );
 
-  static const String sentryTrace =
-      '56b1e68fadbf4fa487a59dd268a310e3-2d7a4c321fa84857-0';
+  static const String sentryTrace = String.fromEnvironment(
+    'LOCKET_SENTRY_TRACE',
+    defaultValue: '',
+  );
 
-  static const String userAgentAuth =
-      'FirebaseAuth.iOS/10.23.1 com.locket.Locket/1.82.0 iPhone/18.0 hw/iPhone12_1';
+  static const String userAgentAuth = String.fromEnvironment(
+    'LOCKET_USER_AGENT_AUTH',
+    defaultValue:
+        'FirebaseAuth.iOS/10.23.1 com.locket.Locket/2.61.1 iPhone/26.6.1 hw/iPhone14_5 (GTMSUF/1)',
+  );
 
-  static const String userAgentStorage =
-      'com.locket.Locket/2.30.0 iPhone/15.8.6 hw/iPhone9_1 (GTMSUF/1)';
+  static const String userAgentStorage = String.fromEnvironment(
+    'LOCKET_USER_AGENT_STORAGE',
+    defaultValue:
+        'com.locket.Locket/2.61.1 iPhone/26.6.1 hw/iPhone14_5 (GTMSUF/1)',
+  );
+
+  static const String userAgentClient = String.fromEnvironment(
+    'LOCKET_USER_AGENT_CLIENT',
+    defaultValue: 'com.locket.Locket/2.61.1 iPhone/26.6.1 hw/iPhone14_5',
+  );
 }

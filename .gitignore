@@ -47,3 +47,9 @@ app.*.map.json
 # Continuity
 SESSION_HANDOFF.md
 .continuity/
+
+# Environment Variables & Secrets
+.env
+.env*.json
+!.env.example.json
+.env*.local

@@ -67,7 +67,7 @@ class _GroupsScreenState extends State<GroupsScreen> {
                   child: Row(
                     children: [
                       _TopCircleButton(
-                        icon: Icons.arrow_back_ios_new,
+                        icon: Icons.arrow_back_ios_new_rounded,
                         onTap: () => Navigator.pop(context),
                       ),
                       const Spacer(),
@@ -1142,8 +1142,8 @@ class _TopCircleButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
       child: Container(
-        width: 52,
-        height: 52,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.card(context),
@@ -1153,6 +1153,7 @@ class _TopCircleButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
+          size: 20,
           color: AppColors.textPrimary(context),
         ),
       ),

@@ -26,11 +26,16 @@ class TransactionModel {
   final String locationName;
   final bool sharedToFeed;
   final String privacy;
+  final List<String> closeFriendUids;
+  final List<String> taggedUsernames;
   final double? latitude;
   final double? longitude;
 
   final int? categoryIconCodePoint;
   final String? categoryColorHex;
+  final String? groupId;
+  final String? groupName;
+  final List<String> groupMemberIds;
 
   TransactionModel({
     required this.id,
@@ -50,8 +55,13 @@ class TransactionModel {
     required this.locationName,
     required this.sharedToFeed,
     required this.privacy,
+    this.closeFriendUids = const [],
+    this.taggedUsernames = const [],
     this.categoryIconCodePoint,
     this.categoryColorHex,
+    this.groupId,
+    this.groupName,
+    this.groupMemberIds = const [],
     this.latitude,
     this.longitude,
   })  : mediaUrl = mediaUrl ?? imageUrl,
@@ -162,8 +172,22 @@ class TransactionModel {
       locationName: map['locationName']?.toString() ?? '',
       sharedToFeed: map['sharedToFeed'] == true,
       privacy: map['privacy']?.toString() ?? 'private',
+      closeFriendUids: (map['closeFriendUids'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      taggedUsernames: (map['taggedUsernames'] as List<dynamic>?)
+              ?.map((e) => e.toString().toLowerCase())
+              .toList() ??
+          const [],
       categoryIconCodePoint: _parseIntOrNull(map['categoryIconCodePoint']),
       categoryColorHex: map['categoryColorHex']?.toString(),
+      groupId: map['groupId']?.toString(),
+      groupName: map['groupName']?.toString(),
+      groupMemberIds: (map['groupMemberIds'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
       latitude: map['latitude'] is num
           ? (map['latitude'] as num).toDouble()
           : null,
@@ -197,8 +221,13 @@ class TransactionModel {
       'locationName': locationName,
       'sharedToFeed': sharedToFeed,
       'privacy': privacy,
+      'closeFriendUids': closeFriendUids,
+      'taggedUsernames': taggedUsernames,
       'categoryIconCodePoint': categoryIconCodePoint,
       'categoryColorHex': categoryColorHex,
+      'groupId': groupId,
+      'groupName': groupName,
+      'groupMemberIds': groupMemberIds,
       'latitude': latitude,
       'longitude': longitude,
     };

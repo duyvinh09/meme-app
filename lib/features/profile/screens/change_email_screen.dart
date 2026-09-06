@@ -215,28 +215,23 @@ class _RoundBackButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.card(context),
-      shape: CircleBorder(
-        side: BorderSide(
-          color: AppColors.border(context),
-        ),
-      ),
-      elevation: 0,
-      shadowColor: Colors.black.withOpacity(0.08),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: 44,
-          height: 44,
-          child: Center(
-            child: Icon(
-              Icons.arrow_back_ios_new_rounded,
-              size: 18,
-              color: AppColors.textPrimary(context),
-            ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.card(context),
+          border: Border.all(
+            color: AppColors.border(context),
           ),
+        ),
+        child: Icon(
+          Icons.arrow_back_ios_new_rounded,
+          size: 20,
+          color: AppColors.textPrimary(context),
         ),
       ),
     );

@@ -7,10 +7,15 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/extensions/localization_extension.dart';
+import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
+import '../../../core/services/location_service.dart';
+import '../../../core/theme/camera_theme.dart';
+import '../../home/controllers/home_controller.dart';
+import '../../profile/controllers/profile_controller.dart';
 import '../controllers/capture_controller.dart';
 import 'preview_screen.dart';
 
@@ -21,14 +26,18 @@ class CameraScreen extends StatefulWidget {
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
-class _CameraScreenState extends State<CameraScreen> {
+class _CameraScreenState extends State<CameraScreen>
+    with WidgetsBindingObserver {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
   int _cameraIndex = 0;
 
-  ResolutionPreset _currentResolutionPreset = ResolutionPreset.veryHigh;
+  ResolutionPreset _currentResolutionPreset = ResolutionPreset.high;
 
   bool _isCameraReady = false;
+  bool _isInitializingCamera = false;
+  bool _isPermissionDenied = false;
+  bool _hasNoCamera = false;
   bool _isFlashOn = false;
   bool _isCapturing = false;
 
@@ -50,123 +59,389 @@ class _CameraScreenState extends State<CameraScreen> {
   double _baseZoom = 1.0;
 
   static const Duration _maxRecordDuration = Duration(seconds: 5);
-
-  static const Color _cameraBackground = Color(0xFF15171C);
-  static const Color _cameraSurface = Color(0xFF232833);
   static const Color _cameraPreviewFallback = Color(0xFF1C1C1F);
-  static const Color _shutterAccent = Color(0xFF6DFF8A);
+
+  DateTime? _lastCameraCheck;
+  bool _isDisposed = false;
 
   @override
   void initState() {
     super.initState();
-    _setupCameraThenPrepareLocation();
+    WidgetsBinding.instance.addObserver(this);
+    _setupCamera();
+    context.read<CaptureController>().prepareLocation();
   }
 
-  Future<void> _setupCameraThenPrepareLocation() async {
-    await _setupCamera();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (!mounted || _isDisposed) return;
 
-    if (!mounted) return;
-    await context.read<CaptureController>().prepareLocation();
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.hidden) {
+      _disposeCameraController();
+      return;
+    }
+
+    if (state == AppLifecycleState.resumed) {
+      final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
+      if (!isCurrentRoute) return;
+
+      final now = DateTime.now();
+      if (_lastCameraCheck != null &&
+          now.difference(_lastCameraCheck!).inMilliseconds < 1500) {
+        return;
+      }
+      if (!_isCameraReady || _isPermissionDenied || _controller == null) {
+        _setupCamera(isBackgroundRetry: true);
+      }
+
+      final capture = context.read<CaptureController>();
+      if (capture.selectedLocation == null && !capture.isLoadingLocation) {
+        capture.prepareLocation();
+      }
+    }
   }
 
-  void _closeCaptureFlow() {
+  @override
+  void dispose() {
+    _isDisposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    _recordTimer?.cancel();
+    _holdStartTimer?.cancel();
+    final controller = _controller;
+    _controller = null;
+    controller?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _closeCaptureFlow() async {
     if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      RouteNames.mainShell,
-          (route) => false,
+    await _disposeCameraController();
+    if (!mounted) return;
+
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        RouteNames.mainShell,
+        (route) => false,
+      );
+    }
+  }
+
+  Future<void> _handleLocationBadgeTap() async {
+    final serviceEnabled = await LocationService.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      if (!mounted) return;
+      _showEnableGpsDialog();
+      return;
+    }
+
+    final hasPermission = await LocationService.hasLocationPermission();
+    if (!hasPermission) {
+      final loc = await LocationService.getCurrentLocation(
+        requestPermissionIfNeeded: true,
+      );
+      if (loc == null && !hasPermission) {
+        if (!mounted) return;
+        _showEnableLocationPermissionDialog();
+        return;
+      }
+    }
+
+    if (mounted) {
+      await context.read<CaptureController>().prepareLocation();
+    }
+  }
+
+  void _showEnableGpsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+          ),
+          backgroundColor: AppColors.card(context),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.location_off_rounded,
+                color: AppColors.primaryBlue,
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Bật định vị (GPS)',
+                style: AppTextStyles.cardTitle(context),
+              ),
+            ],
+          ),
+          content: Text(
+            'Dịch vụ định vị (GPS) trên điện thoại đang tắt. Vui lòng bật GPS để ứng dụng tự động gắn vị trí vào ảnh chụp.',
+            style: AppTextStyles.body(context),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                'Để sau',
+                style: TextStyle(
+                  color: AppColors.textSecondary(context),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                LocationService.openLocationSettings();
+              },
+              child: const Text('Mở Cài đặt GPS'),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Future<void> _setupCamera() async {
+  void _showEnableLocationPermissionDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+          ),
+          backgroundColor: AppColors.card(context),
+          title: Row(
+            children: [
+              const Icon(
+                Icons.security_rounded,
+                color: AppColors.primaryBlue,
+                size: 24,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Quyền vị trí',
+                style: AppTextStyles.cardTitle(context),
+              ),
+            ],
+          ),
+          content: Text(
+            'Ứng dụng cần quyền vị trí để tự động gắn địa điểm vào giao dịch. Vui lòng cấp quyền trong Cài đặt ứng dụng.',
+            style: AppTextStyles.body(context),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(
+                'Để sau',
+                style: TextStyle(
+                  color: AppColors.textSecondary(context),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                ),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                LocationService.openAppSettings();
+              },
+              child: const Text('Mở Cài đặt ứng dụng'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _openAppSettings() async {
+    try {
+      await LocationService.openAppSettings();
+    } catch (e) {
+      debugPrint('Error opening app settings: $e');
+    }
+  }
+
+  Future<void> _setupCamera({bool isBackgroundRetry = false}) async {
+    if (_isDisposed || !mounted) return;
+    if (_isInitializingCamera) return;
+    _lastCameraCheck = DateTime.now();
+
+    if (!isBackgroundRetry && !_isPermissionDenied) {
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isInitializingCamera = true;
+          _hasNoCamera = false;
+        });
+      }
+    } else {
+      _isInitializingCamera = true;
+    }
+
     try {
       _cameras = await availableCameras();
+      if (_isDisposed || !mounted) return;
 
       if (_cameras.isEmpty) {
-        if (mounted) {
+        if (mounted && !_isDisposed) {
           setState(() {
             _isCameraReady = false;
+            _isPermissionDenied = false;
+            _hasNoCamera = true;
+            _isInitializingCamera = false;
           });
         }
         return;
       }
 
-      await _initController(_cameras[_cameraIndex]);
+      if (_cameraIndex >= _cameras.length) {
+        _cameraIndex = 0;
+      }
+
+      _hasNoCamera = false;
+      await _initController(_cameras[_cameraIndex], isBackgroundRetry: isBackgroundRetry);
+    } on CameraException catch (e) {
+      debugPrint('Camera setup CameraException: ${e.code} - ${e.description}');
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isCameraReady = false;
+          _isPermissionDenied = true;
+          _isInitializingCamera = false;
+        });
+      }
     } catch (e) {
       debugPrint('Camera setup error: $e');
 
-      if (mounted) {
+      if (mounted && !_isDisposed) {
         setState(() {
           _isCameraReady = false;
+          _isPermissionDenied = true;
+          _isInitializingCamera = false;
+        });
+      }
+    } finally {
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isInitializingCamera = false;
         });
       }
     }
   }
 
-  Future<void> _initController(CameraDescription camera) async {
+  Future<void> _initController(CameraDescription camera, {bool isBackgroundRetry = false}) async {
     final oldController = _controller;
+    _controller = null;
 
     if (oldController != null) {
-      await oldController.dispose();
+      try {
+        await oldController.dispose();
+      } catch (e) {
+        debugPrint('Error disposing old controller: $e');
+      }
     }
 
-    if (mounted) {
+    if (_isDisposed || !mounted) return;
+
+    if (mounted && !isBackgroundRetry && !_isDisposed) {
       setState(() {
         _isCameraReady = false;
       });
     }
 
-    final controller = CameraController(
-      camera,
-      _currentResolutionPreset,
-      enableAudio: false,
-      imageFormatGroup: ImageFormatGroup.jpeg,
-    );
+    CameraController? controller;
+    try {
+      controller = CameraController(
+        camera,
+        _currentResolutionPreset,
+        enableAudio: false,
+        imageFormatGroup: ImageFormatGroup.jpeg,
+      );
+      await controller.initialize();
+    } catch (e) {
+      await controller?.dispose();
+      controller = null;
+      try {
+        controller = CameraController(
+          camera,
+          ResolutionPreset.medium,
+          enableAudio: false,
+          imageFormatGroup: ImageFormatGroup.jpeg,
+        );
+        await controller.initialize();
+        _currentResolutionPreset = ResolutionPreset.medium;
+      } catch (e2) {
+        await controller?.dispose();
+        controller = null;
+        debugPrint('Camera init error: $e2');
+      }
+    }
+
+    if (_isDisposed || !mounted) {
+      await controller?.dispose();
+      return;
+    }
+
+    if (controller == null) {
+      if (mounted && !_isDisposed) {
+        setState(() {
+          _isCameraReady = false;
+          _isPermissionDenied = true;
+          _isInitializingCamera = false;
+        });
+      }
+      return;
+    }
 
     _controller = controller;
 
     try {
-      await controller.initialize();
-
       _minZoom = await controller.getMinZoomLevel();
       _maxZoom = await controller.getMaxZoomLevel();
-
-      if (_minZoom < 1.0) _minZoom = 1.0;
-      if (_maxZoom > 4.0) _maxZoom = 4.0;
-
-      _zoomLevel = 1.0;
-      _baseZoom = 1.0;
-      _isFlashOn = false;
-
-      await controller.setZoomLevel(_zoomLevel);
-      await controller.setFlashMode(FlashMode.off);
-
-      if (mounted) {
-        setState(() {
-          _isCameraReady = true;
-        });
-      }
-    } catch (e) {
-      debugPrint('Camera init error: $e');
-
-      if (mounted) {
-        setState(() {
-          _isCameraReady = false;
-        });
-      }
+    } catch (_) {
+      _minZoom = 1.0;
+      _maxZoom = 4.0;
     }
-  }
 
-  Future<void> _switchResolutionPreset(
-      ResolutionPreset preset,
-      ) async {
-    if (_currentResolutionPreset == preset) return;
-    if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
-    if (_cameras.isEmpty) return;
+    if (_minZoom < 1.0) _minZoom = 1.0;
+    if (_maxZoom > 4.0) _maxZoom = 4.0;
 
-    _currentResolutionPreset = preset;
+    _zoomLevel = 1.0;
+    _baseZoom = 1.0;
+    _isFlashOn = false;
 
-    await _initController(_cameras[_cameraIndex]);
+    try {
+      await controller.setZoomLevel(_zoomLevel);
+    } catch (_) {}
+
+    try {
+      await controller.setFlashMode(FlashMode.off);
+    } catch (_) {}
+
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _isCameraReady = true;
+        _isPermissionDenied = false;
+        _isInitializingCamera = false;
+      });
+    }
   }
 
   Future<void> _toggleFlash() async {
@@ -259,20 +534,19 @@ class _CameraScreenState extends State<CameraScreen> {
     if (_cameras.length < 2 ||
         _isCapturing ||
         _isRecordingVideo ||
-        _isStoppingVideo) {
+        _isStoppingVideo ||
+        _isInitializingCamera) {
       return;
     }
 
-    _cameraIndex = _cameraIndex == 0 ? 1 : 0;
+    _cameraIndex = (_cameraIndex + 1) % _cameras.length;
 
     setState(() {
       _isCameraReady = false;
-      _isFlashOn = false;
-      _zoomLevel = 1.0;
-      _baseZoom = 1.0;
+      _isInitializingCamera = true;
+      _isPermissionDenied = false;
     });
 
-    _currentResolutionPreset = ResolutionPreset.veryHigh;
     await _initController(_cameras[_cameraIndex]);
   }
 
@@ -304,10 +578,49 @@ class _CameraScreenState extends State<CameraScreen> {
     return file;
   }
 
+  Future<void> _disposeCameraController() async {
+    final controller = _controller;
+    _controller = null;
+
+    if (mounted) {
+      setState(() {
+        _isCameraReady = false;
+        _isFlashOn = false;
+      });
+    }
+
+    if (controller != null) {
+      try {
+        await controller.dispose();
+      } catch (e) {
+        debugPrint('Error disposing camera controller: $e');
+      }
+    }
+  }
+
+  Future<void> _navigateToPreview(Widget previewScreen) async {
+    await _disposeCameraController();
+    if (!mounted || _isDisposed) return;
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => previewScreen,
+      ),
+    );
+
+    if (!mounted || _isDisposed) return;
+    final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
+    if (!isCurrentRoute) return;
+
+    _setupCamera();
+  }
+
   Future<void> _pickFromGallery() async {
     if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
     try {
+      await _disposeCameraController();
       final picker = ImagePicker();
 
       final file = await picker.pickImage(
@@ -315,25 +628,30 @@ class _CameraScreenState extends State<CameraScreen> {
         imageQuality: 98,
       );
 
-      if (file == null || !mounted) return;
+      if (file == null || !mounted || _isDisposed) {
+        if (mounted && !_isDisposed && (ModalRoute.of(context)?.isCurrent ?? false)) {
+          _setupCamera();
+        }
+        return;
+      }
 
       final squareFile = await _cropImageToSquare(File(file.path));
 
-      if (!mounted) return;
+      if (!mounted || _isDisposed) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PreviewScreen(
-            imageFile: squareFile,
-            videoFile: null,
-            mediaType: 'image',
-            durationMs: null,
-          ),
+      await _navigateToPreview(
+        PreviewScreen(
+          imageFile: squareFile,
+          videoFile: null,
+          mediaType: 'image',
+          durationMs: null,
         ),
       );
     } catch (e) {
       debugPrint('Gallery pick error: $e');
+      if (mounted) {
+        _setupCamera();
+      }
     }
   }
 
@@ -346,12 +664,6 @@ class _CameraScreenState extends State<CameraScreen> {
       return;
     }
 
-    if (_currentResolutionPreset != ResolutionPreset.veryHigh) {
-      await _switchResolutionPreset(ResolutionPreset.veryHigh);
-    }
-
-    if (_controller == null || !_controller!.value.isInitialized) return;
-
     try {
       setState(() {
         _isCapturing = true;
@@ -362,15 +674,12 @@ class _CameraScreenState extends State<CameraScreen> {
 
       if (!mounted) return;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PreviewScreen(
-            imageFile: squareFile,
-            videoFile: null,
-            mediaType: 'image',
-            durationMs: null,
-          ),
+      await _navigateToPreview(
+        PreviewScreen(
+          imageFile: squareFile,
+          videoFile: null,
+          mediaType: 'image',
+          durationMs: null,
         ),
       );
     } catch (e) {
@@ -390,16 +699,6 @@ class _CameraScreenState extends State<CameraScreen> {
         _controller!.value.isRecordingVideo ||
         _isCapturing ||
         _isStoppingVideo) {
-      return;
-    }
-
-    if (_currentResolutionPreset != ResolutionPreset.medium) {
-      await _switchResolutionPreset(ResolutionPreset.medium);
-    }
-
-    if (_controller == null ||
-        !_controller!.value.isInitialized ||
-        _controller!.value.isRecordingVideo) {
       return;
     }
 
@@ -477,23 +776,14 @@ class _CameraScreenState extends State<CameraScreen> {
         _recordProgress = 0.0;
       });
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PreviewScreen(
-            imageFile: null,
-            videoFile: File(file.path),
-            mediaType: 'video',
-            durationMs: durationMs,
-          ),
+      await _navigateToPreview(
+        PreviewScreen(
+          imageFile: null,
+          videoFile: File(file.path),
+          mediaType: 'video',
+          durationMs: durationMs,
         ),
-      ).then((_) async {
-        if (!mounted) return;
-
-        if (_currentResolutionPreset != ResolutionPreset.veryHigh) {
-          await _switchResolutionPreset(ResolutionPreset.veryHigh);
-        }
-      });
+      );
     } catch (e) {
       debugPrint('Stop video error: $e');
 
@@ -515,7 +805,7 @@ class _CameraScreenState extends State<CameraScreen> {
     _holdStartTimer?.cancel();
 
     _holdStartTimer = Timer(
-      const Duration(milliseconds: 180),
+      const Duration(milliseconds: 200),
           () async {
         if (!mounted) return;
         if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
@@ -535,8 +825,8 @@ class _CameraScreenState extends State<CameraScreen> {
       if (startedAt != null) {
         final elapsedMs = DateTime.now().difference(startedAt).inMilliseconds;
 
-        if (elapsedMs < 250) {
-          await Future.delayed(Duration(milliseconds: 250 - elapsedMs));
+        if (elapsedMs < 300) {
+          await Future.delayed(Duration(milliseconds: 300 - elapsedMs));
         }
       }
 
@@ -553,18 +843,15 @@ class _CameraScreenState extends State<CameraScreen> {
     _holdStartTimer?.cancel();
   }
 
-  void _skipToPreview() {
+  Future<void> _skipToPreview() async {
     if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const PreviewScreen(
-          imageFile: null,
-          videoFile: null,
-          mediaType: 'none',
-          durationMs: null,
-        ),
+    await _navigateToPreview(
+      const PreviewScreen(
+        imageFile: null,
+        videoFile: null,
+        mediaType: 'none',
+        durationMs: null,
       ),
     );
   }
@@ -577,19 +864,13 @@ class _CameraScreenState extends State<CameraScreen> {
     return '${_zoomLevel.toStringAsFixed(1)}x';
   }
 
-  @override
-  void dispose() {
-    _holdStartTimer?.cancel();
-    _recordTimer?.cancel();
-    _controller?.dispose();
-    super.dispose();
-  }
-
   Widget _circleGlassButton({
     required Widget child,
     required VoidCallback onTap,
     double size = 58,
     bool square = false,
+    Color? bgColor,
+    Color? borderColor,
   }) {
     return InkWell(
       onTap: onTap,
@@ -602,10 +883,10 @@ class _CameraScreenState extends State<CameraScreen> {
         decoration: BoxDecoration(
           shape: square ? BoxShape.rectangle : BoxShape.circle,
           borderRadius:
-          square ? BorderRadius.circular(AppSizes.radiusMedium) : null,
-          color: Colors.white.withOpacity(0.06),
+              square ? BorderRadius.circular(AppSizes.radiusMedium) : null,
+          color: bgColor ?? Colors.white.withValues(alpha: 0.06),
           border: Border.all(
-            color: Colors.white.withOpacity(0.12),
+            color: borderColor ?? Colors.white.withValues(alpha: 0.12),
             width: 1.2,
           ),
         ),
@@ -699,14 +980,137 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 
-  Widget _buildSquareCameraPreview(double previewSize) {
-    if (!_isCameraReady || _controller == null) {
+  Widget _buildSquareCameraPreview(double previewSize, CameraThemeData theme) {
+    if (!_isCameraReady ||
+        _controller == null ||
+        !_controller!.value.isInitialized) {
+      if (_isPermissionDenied || _hasNoCamera) {
+        final message = _hasNoCamera
+            ? context.l10n.noCameraAvailable
+            : context.l10n.cameraPermissionRequired;
+
+        return Container(
+          width: previewSize,
+          height: previewSize,
+          decoration: BoxDecoration(
+            color: _cameraPreviewFallback,
+            borderRadius: BorderRadius.circular(38),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 72,
+                  height: 72,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 68,
+                        height: 68,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF48484A),
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 34,
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF3B30),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _cameraPreviewFallback,
+                              width: 2.5,
+                            ),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.priority_high_rounded,
+                              color: Colors.white,
+                              size: 15,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                if (!_hasNoCamera) ...[
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: _openAppSettings,
+                    borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 22,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF333336),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.12),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            context.l10n.openSettings,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(
+                            Icons.arrow_outward_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }
+
       return Container(
         width: previewSize,
         height: previewSize,
         decoration: BoxDecoration(
           color: _cameraPreviewFallback,
-          borderRadius: BorderRadius.circular(38),
+          borderRadius: BorderRadius.circular(56),
         ),
         child: const Center(
           child: CircularProgressIndicator(
@@ -730,14 +1134,34 @@ class _CameraScreenState extends State<CameraScreen> {
       );
     }
 
-    return SizedBox(
+    final hasGradientFrame = theme.frameGradient != null;
+
+    return Container(
       width: previewSize,
       height: previewSize,
+      padding: hasGradientFrame ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(56),
+        gradient: hasGradientFrame ? theme.frameGradient : null,
+        border: hasGradientFrame
+            ? null
+            : Border.all(
+                color: theme.frameBorderColor.withValues(alpha: 0.65),
+                width: 2.5,
+              ),
+        boxShadow: [
+          BoxShadow(
+            color: theme.frameBorderColor.withValues(alpha: 0.28),
+            blurRadius: 22,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
       child: Stack(
         fit: StackFit.expand,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(38),
+            borderRadius: BorderRadius.circular(53.5),
             child: GestureDetector(
               onScaleStart: _handleScaleStart,
               onScaleUpdate: _handleScaleUpdate,
@@ -761,6 +1185,8 @@ class _CameraScreenState extends State<CameraScreen> {
                     child: _circleGlassButton(
                       onTap: _toggleFlash,
                       size: 44,
+                      bgColor: theme.glassButtonBg,
+                      borderColor: theme.glassButtonBorder,
                       child: Icon(
                         _isFlashOn
                             ? Icons.flash_on_rounded
@@ -777,6 +1203,8 @@ class _CameraScreenState extends State<CameraScreen> {
                     child: _circleGlassButton(
                       onTap: _toggleZoom,
                       size: 44,
+                      bgColor: theme.glassButtonBg,
+                      borderColor: theme.glassButtonBorder,
                       child: Text(
                         _zoomText,
                         style: const TextStyle(
@@ -793,26 +1221,30 @@ class _CameraScreenState extends State<CameraScreen> {
                     right: 18,
                     bottom: 16,
                     child: Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                        child: Container(
-                          constraints: const BoxConstraints(
-                            maxWidth: 260,
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 13,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.28),
-                            borderRadius: BorderRadius.circular(
-                              AppSizes.radiusPill,
+                      child: GestureDetector(
+                        onTap: _handleLocationBadgeTap,
+                        child: ClipRRect(
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusPill),
+                          child: Container(
+                            constraints: const BoxConstraints(
+                              maxWidth: 260,
                             ),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 13,
+                              vertical: 8,
                             ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              borderRadius: BorderRadius.circular(
+                                AppSizes.radiusPill,
+                              ),
+                              border: Border.all(
+                                color: theme.glassButtonBorder,
+                              ),
+                            ),
+                            child: _buildLocationStatus(),
                           ),
-                          child: _buildLocationStatus(),
                         ),
                       ),
                     ),
@@ -826,15 +1258,21 @@ class _CameraScreenState extends State<CameraScreen> {
     );
   }
 
-  Widget _buildShutterButton() {
+  Widget _buildShutterButton(CameraThemeData theme) {
+    final isEnabled = _isCameraReady && !_isCapturing && !_isStoppingVideo;
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTapDown: (_) => _handleShutterDown(),
-      onTapUp: (_) => _handleShutterUp(),
-      onTapCancel: _handleShutterCancel,
+      onTapDown: isEnabled ? (_) => _handleShutterDown() : null,
+      onTapUp: isEnabled ? (_) => _handleShutterUp() : null,
+      onTapCancel: isEnabled ? _handleShutterCancel : null,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 160),
-        opacity: _isStoppingVideo ? 0.7 : 1,
+        opacity: _isStoppingVideo
+            ? 0.7
+            : _isCameraReady
+                ? 1.0
+                : 0.55,
         child: SizedBox(
           width: 94,
           height: 94,
@@ -845,22 +1283,19 @@ class _CameraScreenState extends State<CameraScreen> {
                 width: 94,
                 height: 94,
                 child: CircularProgressIndicator(
-                  // Chụp ảnh: vòng ngoài xoay.
-                  // Quay video: vòng ngoài chạy theo tiến trình.
-                  // Bình thường: không hiện tiến trình.
                   value: _isCapturing
                       ? null
                       : _isRecordingVideo
-                      ? _recordProgress
-                      : 0,
+                          ? _recordProgress
+                          : 0,
                   strokeWidth: 6,
-                  backgroundColor: Colors.white.withOpacity(0.20),
+                  backgroundColor: _isCameraReady
+                      ? Colors.white.withValues(alpha: 0.20)
+                      : const Color(0xFF3A4D43).withValues(alpha: 0.4),
                   valueColor: AlwaysStoppedAnimation<Color>(
                     _isRecordingVideo
                         ? Colors.redAccent
-                        : _isCapturing
-                        ? _shutterAccent
-                        : _shutterAccent,
+                        : theme.shutterAccent,
                   ),
                 ),
               ),
@@ -872,46 +1307,52 @@ class _CameraScreenState extends State<CameraScreen> {
                 height: _isRecordingVideo ? 62 : 74,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _isRecordingVideo ? Colors.redAccent : Colors.white,
+                  color: _isRecordingVideo
+                      ? Colors.redAccent
+                      : _isCameraReady
+                          ? Colors.white
+                          : const Color(0xFF7A8882),
                   border: Border.all(
-                    color: Colors.white,
+                    color: _isCameraReady
+                        ? Colors.white
+                        : const Color(0xFF5A6661),
                     width: 4,
                   ),
                   boxShadow: [
                     if (_isCapturing || _isRecordingVideo)
                       BoxShadow(
                         color: (_isRecordingVideo
-                            ? Colors.redAccent
-                            : _shutterAccent)
-                            .withOpacity(0.35),
-                        blurRadius: 18,
-                        spreadRadius: 1,
+                                ? Colors.redAccent
+                                : theme.shutterAccent)
+                            .withValues(alpha: 0.45),
+                        blurRadius: 20,
+                        spreadRadius: 2,
                       ),
                   ],
                 ),
                 child: Center(
                   child: _isStoppingVideo
                       ? const SizedBox(
-                    width: 26,
-                    height: 26,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: Colors.white,
-                    ),
-                  )
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.white,
+                          ),
+                        )
                       : _isRecordingVideo
-                      ? const Icon(
-                    Icons.stop_rounded,
-                    color: Colors.white,
-                    size: 32,
-                  )
-                      : _isCapturing
-                      ? Icon(
-                    Icons.camera_alt_rounded,
-                    color: _cameraBackground,
-                    size: 28,
-                  )
-                      : const SizedBox(),
+                          ? const Icon(
+                              Icons.stop_rounded,
+                              color: Colors.white,
+                              size: 32,
+                            )
+                          : _isCapturing
+                              ? Icon(
+                                  Icons.camera_alt_rounded,
+                                  color: theme.backgroundColor,
+                                  size: 28,
+                                )
+                              : const SizedBox(),
                 ),
               ),
             ],
@@ -923,109 +1364,136 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final previewSize = MediaQuery.of(context).size.width - 28;
+    final screenSize = MediaQuery.of(context).size;
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
+    final isShort = screenHeight < 720;
+    final isSmall = screenWidth < 370;
+
+    final maxPreviewHeight = screenHeight - (isShort ? 230 : 270);
+    final previewSize = screenWidth.clamp(220.0, maxPreviewHeight);
+
+    final currentStreak = context.watch<HomeController>().profile?.currentStreak ??
+        context.watch<ProfileController>().user?.currentStreak ??
+        0;
+    final cameraThemeId = context.watch<ProfileController>().cameraTheme;
+    final effectiveThemeId = (currentStreak >= 3) ? cameraThemeId : 'classic_dark';
+    final theme = CameraThemes.fromId(effectiveThemeId);
+
+    final sideButtonSize = isSmall ? 54.0 : 62.0;
+    final sideIconSize = isSmall ? 24.0 : 28.0;
 
     return Scaffold(
-      backgroundColor: _cameraBackground,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: Row(
-                children: [
-                  InkWell(
-                    onTap: _closeCaptureFlow,
-                    borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 22,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          AppSizes.radiusPill,
-                        ),
-                        color: _cameraSurface.withOpacity(0.55),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.08),
-                        ),
-                      ),
-                      child: Text(
-                        context.l10n.cancel,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
+      backgroundColor: theme.backgroundColor,
+      body: Container(
+        decoration: BoxDecoration(
+          color: theme.backgroundColor,
+          gradient: theme.backgroundGradient,
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: EdgeInsets.fromLTRB(isSmall ? 12 : 16, 8, isSmall ? 12 : 16, 0),
+                child: Row(
                   children: [
-                    _buildSquareCameraPreview(previewSize),
-
-                    const SizedBox(height: 18),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 34),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _circleGlassButton(
-                            onTap: _pickFromGallery,
-                            square: true,
-                            size: 62,
-                            child: const Icon(
-                              Icons.photo_library_outlined,
-                              color: Colors.white,
-                              size: 28,
-                            ),
+                    InkWell(
+                      onTap: _closeCaptureFlow,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                      child: Container(
+                        padding: EdgeInsets.all(isSmall ? 10 : 12),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: theme.surfaceColor.withValues(alpha: 0.7),
+                          border: Border.all(
+                            color: theme.glassButtonBorder,
                           ),
-
-                          _buildShutterButton(),
-
-                          _circleGlassButton(
-                            onTap: _switchCamera,
-                            size: 62,
-                            child: const Icon(
-                              Icons.cameraswitch_rounded,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Padding(
-                      padding: const EdgeInsets.only(top: 30),
-                      child: TextButton(
-                        onPressed: _skipToPreview,
-                        child: Text(
-                        context.l10n.skipPhoto,
-                        style: AppTextStyles.bodySecondary(context).copyWith(
-                          color: Colors.white70,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
                         ),
-                      ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: Colors.white,
+                          size: isSmall ? 20 : 24,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
+
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildSquareCameraPreview(previewSize, theme),
+
+                      SizedBox(height: isShort ? 12 : 18),
+
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: isSmall ? 20 : 34),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _circleGlassButton(
+                              onTap: _pickFromGallery,
+                              square: true,
+                              size: sideButtonSize,
+                              bgColor: theme.glassButtonBg,
+                              borderColor: theme.glassButtonBorder,
+                              child: Icon(
+                                Icons.photo_library_outlined,
+                                color: Colors.white,
+                                size: sideIconSize,
+                              ),
+                            ),
+
+                            _buildShutterButton(theme),
+
+                            Opacity(
+                              opacity: (_isCameraReady && _cameras.length >= 2)
+                                  ? 1.0
+                                  : 0.35,
+                              child: _circleGlassButton(
+                                onTap: (_isCameraReady && _cameras.length >= 2)
+                                    ? _switchCamera
+                                    : () {},
+                                size: sideButtonSize,
+                                bgColor: theme.glassButtonBg,
+                                borderColor: theme.glassButtonBorder,
+                                child: Icon(
+                                  Icons.cameraswitch_rounded,
+                                  color: Colors.white,
+                                  size: sideIconSize + 2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Padding(
+                        padding: const EdgeInsets.only(top: 30),
+                        child: TextButton(
+                          onPressed: _skipToPreview,
+                          child: Text(
+                            context.l10n.skipPhoto,
+                            style: AppTextStyles.bodySecondary(context).copyWith(
+                              color: Colors.white70,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

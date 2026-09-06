@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
+import '../../../core/constants/app_icon_registry.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
@@ -403,30 +404,21 @@ class _CategoriesHeader extends StatelessWidget {
       children: [
         InkWell(
           onTap: onBack,
-          borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
+          borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
           child: Container(
-            width: 52,
-            height: 52,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
+              shape: BoxShape.circle,
               color: AppColors.card(context),
-              borderRadius: BorderRadius.circular(AppSizes.radiusLarge),
               border: Border.all(
                 color: AppColors.border(context),
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(
-                    AppColors.isDark(context) ? 0.18 : 0.045,
-                  ),
-                  blurRadius: 14,
-                  offset: const Offset(0, 6),
-                ),
-              ],
             ),
             child: Icon(
               Icons.arrow_back_ios_new_rounded,
               color: AppColors.textPrimary(context),
-              size: 18,
+              size: 20,
             ),
           ),
         ),
@@ -663,10 +655,7 @@ class _AddCategorySheetState extends State<_AddCategorySheet> {
 
     if (edit != null) {
       _draftType = edit.isExpense ? 'expense' : 'income';
-      _pickedIcon = IconData(
-        edit.iconCodePoint,
-        fontFamily: 'MaterialIcons',
-      );
+      _pickedIcon = AppIconRegistry.fromCodePoint(edit.iconCodePoint);
       _pickedColor = _colorFromHex(edit.colorHex);
 
       _snapshotType = edit.isExpense ? 'expense' : 'income';
@@ -1250,10 +1239,7 @@ class _CategoryListPane extends StatelessWidget {
             final index = i ~/ 2;
             final item = items[index];
             final color = _colorFromHex(item.colorHex);
-            final icon = IconData(
-              item.iconCodePoint,
-              fontFamily: 'MaterialIcons',
-            );
+            final icon = AppIconRegistry.fromCodePoint(item.iconCodePoint);
 
             return Container(
               decoration: BoxDecoration(

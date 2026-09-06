@@ -224,27 +224,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get totalExpense => 'Total Expense';
 
   @override
-  String get streak => 'Daily Streak';
+  String get streak => 'Streak';
 
   @override
   String daysStreak(int count) {
-    return '$count days streak';
+    return '$count Days';
   }
 
   @override
-  String get streakLevel1 => 'Excellent';
+  String get streakLevel1 => 'Top Legend 🏆';
 
   @override
-  String get streakLevel2 => 'Great';
+  String get streakLevel2 => 'Fire Master 🔥';
 
   @override
-  String get streakLevel3 => 'Steady';
+  String get streakLevel3 => 'Super Streak ⚡';
 
   @override
-  String get streakLevel4 => 'Getting there';
+  String get streakLevel4 => 'Growing Fast 🌱';
 
   @override
-  String get streakLevel5 => 'Let\'s start';
+  String get streakLevel5 => 'Start Streak ✨';
 
   @override
   String get personalBudget => 'Personal Budget';
@@ -666,7 +666,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get requestPending => 'Friend request already sent';
+  String get requestPending => 'Pending';
 
   @override
   String get friendRequests => 'Friend Requests';
@@ -1503,4 +1503,1031 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get categoryNotFound => 'Category no longer exists';
+
+  @override
+  String get closeFriends => 'Close friends';
+
+  @override
+  String get cameraPermissionRequired => 'Enable camera to use Meme';
+
+  @override
+  String get openSettings => 'Open settings';
+
+  @override
+  String get noCameraAvailable => 'No camera found';
+
+  @override
+  String get dayTab => 'Day';
+
+  @override
+  String get monthTab => 'Month';
+
+  @override
+  String get expenseLabel => 'Expense';
+
+  @override
+  String get incomeLabel => 'Income';
+
+  @override
+  String get appIcon => 'App Icon';
+
+  @override
+  String get appIconSection => 'App Icon';
+
+  @override
+  String get appIconSubtitle =>
+      'Customize Meme launcher icon on your home screen';
+
+  @override
+  String get appIconPickerSubtitle =>
+      'Choose a Meme icon style to display on your phone\'s home screen.';
+
+  @override
+  String get appIconClassic => 'Classic Meme';
+
+  @override
+  String get appIconClassicDesc => 'The original classic and fun icon style';
+
+  @override
+  String get appIconNeon => 'Neon Gold Meme';
+
+  @override
+  String get appIconNeonDesc => 'Warm yellow tone, bold and distinctive';
+
+  @override
+  String get appIconOcean => 'Ocean Blue Meme';
+
+  @override
+  String get appIconOceanDesc => 'Modern blue tone, fresh and vibrant';
+
+  @override
+  String get appIconInUse => 'In Use';
+
+  @override
+  String appIconChangedSuccess(String name) {
+    return 'Changed app icon to \"$name\"';
+  }
+
+  @override
+  String get appIconChangeFailed => 'Cannot change app icon on this device';
+
+  @override
+  String get cameraTheme => 'Camera Theme';
+
+  @override
+  String get cameraThemeSection => 'Camera Theme';
+
+  @override
+  String get cameraThemeSubtitle =>
+      'Customize color style and viewfinder for the camera';
+
+  @override
+  String get cameraThemePickerSubtitle =>
+      'Customize the viewfinder, shutter button colors, and camera interface to match your style.';
+
+  @override
+  String get cameraThemeClassic => 'Classic Meme';
+
+  @override
+  String get cameraThemeClassicDesc =>
+      'Sleek dark interface with classic emerald neon accent';
+
+  @override
+  String get cameraThemeCyber => 'Cyber Neon';
+
+  @override
+  String get cameraThemeCyberDesc =>
+      'Cyberpunk vibe with radiant purple and electric cyan';
+
+  @override
+  String get cameraThemeSunset => 'Sunset Gold';
+
+  @override
+  String get cameraThemeSunsetDesc =>
+      'Warm twilight atmosphere with luxury amber glow';
+
+  @override
+  String get cameraThemeOcean => 'Ocean Breeze';
+
+  @override
+  String get cameraThemeOceanDesc =>
+      'Deep sapphire blue, refreshing and energetic';
+
+  @override
+  String get cameraThemeMatcha => 'Matcha Zen';
+
+  @override
+  String get cameraThemeMatchaDesc =>
+      'Calming matcha green and natural forest tones';
+
+  @override
+  String get cameraThemeAurora => 'Aurora Borealis';
+
+  @override
+  String get cameraThemeAuroraDesc =>
+      'Mystical northern lights with vibrant teal and purple waves';
+
+  @override
+  String get cameraThemeSakura => 'Sakura Pink';
+
+  @override
+  String get cameraThemeSakuraDesc =>
+      'Sweet and youthful pastel pink with blooming floral hues';
+
+  @override
+  String get cameraThemeGalaxy => 'Galaxy Nebula';
+
+  @override
+  String get cameraThemeGalaxyDesc =>
+      'Deep celestial space with ultraviolet, magenta, and electric blue';
+
+  @override
+  String get cameraThemeLava => 'Lava Fire';
+
+  @override
+  String get cameraThemeLavaDesc =>
+      'Fiery magma with blazing crimson and golden flame accents';
+
+  @override
+  String get cameraThemeVaporwave => 'Retro Vaporwave';
+
+  @override
+  String get cameraThemeVaporwaveDesc =>
+      '80s synthwave energy with neon turquoise, hot magenta, and gold';
+
+  @override
+  String cameraThemeChangedSuccess(String name) {
+    return 'Applied theme \"$name\"';
+  }
+
+  @override
+  String get chatBubbleThemeTitle => 'Chat Bubble Theme';
+
+  @override
+  String get chatBubbleSuggestions => 'Suggested';
+
+  @override
+  String get chatBubbleAppliesToAll =>
+      'This bubble style applies to all conversations.';
+
+  @override
+  String get chatBubblePreviewMe =>
+      'Now you can change your chat bubble style and conversations will get a fresh look. So cool!';
+
+  @override
+  String get chatBubblePreviewFriend =>
+      'Looks great! I\'m changing my style now too.';
+
+  @override
+  String get chatBubbleSave => 'Save';
+
+  @override
+  String get chatBubbleCancel => 'Cancel';
+
+  @override
+  String friendsCountTitle(int count) {
+    return 'Friends ($count)';
+  }
+
+  @override
+  String get findNewFriends => 'Find friends';
+
+  @override
+  String get searchInFriends => 'Search in friends...';
+
+  @override
+  String get friendsTabAll => 'All';
+
+  @override
+  String get friendsTabClose => 'Close Friends';
+
+  @override
+  String get friendsTabRequests => 'Requests';
+
+  @override
+  String get sendMessageAction => 'Message';
+
+  @override
+  String get addToCloseFriends => 'Add to close friends';
+
+  @override
+  String get removeFromCloseFriends => 'Remove from close friends';
+
+  @override
+  String addedToCloseFriends(String name) {
+    return 'Added $name to close friends ⭐';
+  }
+
+  @override
+  String removedFromCloseFriends(String name) {
+    return 'Removed $name from close friends';
+  }
+
+  @override
+  String get noMatchingFriends => 'No matching friends found';
+
+  @override
+  String get noCloseFriendsYet => 'No close friends yet';
+
+  @override
+  String get noCloseFriendsSubtitle =>
+      'Tap the star icon next to a friend to add them to close friends';
+
+  @override
+  String get typeMessageHint => 'Message...';
+
+  @override
+  String get emptyConversationPrompt => '✨ Send the first message or reaction!';
+
+  @override
+  String get replyingToSelf => 'Replying to yourself';
+
+  @override
+  String replyingToUser(String name) {
+    return 'Replying to $name';
+  }
+
+  @override
+  String replyingToPost(String name) {
+    return 'Replying to $name\'s post';
+  }
+
+  @override
+  String get youRepliedToYourself => 'You replied to yourself';
+
+  @override
+  String youRepliedToUser(String name) {
+    return 'You replied to $name';
+  }
+
+  @override
+  String userRepliedToYou(String name) {
+    return '$name replied to you';
+  }
+
+  @override
+  String userRepliedToThemself(String name) {
+    return '$name replied to themself';
+  }
+
+  @override
+  String get activeNow => 'Active now';
+
+  @override
+  String activeAgo(String time) {
+    return 'Active $time ago';
+  }
+
+  @override
+  String get offlineStatus => 'Offline';
+
+  @override
+  String get feedMessageHint => 'Message...';
+
+  @override
+  String get sendReactionTitle => 'React';
+
+  @override
+  String get postActivityTitle => 'Activity';
+
+  @override
+  String get noPostActivityYet => 'No activity yet!';
+
+  @override
+  String get postViewedStatus => 'Viewed!';
+
+  @override
+  String get oneNewPost => '1 new post!';
+
+  @override
+  String newPostsCount(int count) {
+    return '$count new posts!';
+  }
+
+  @override
+  String get closeFriendBadge => 'Close Friend';
+
+  @override
+  String get viewSentRequests => 'View sent requests';
+
+  @override
+  String get sentRequestsTitle => 'Sent Requests';
+
+  @override
+  String sentRequestsCount(int count) {
+    return 'Sent $count requests';
+  }
+
+  @override
+  String get noSentRequestsYet => 'No sent requests yet!';
+
+  @override
+  String get sortDefault => 'Default';
+
+  @override
+  String get sortNewestFirst => 'Newest first';
+
+  @override
+  String get sortOldestFirst => 'Oldest first';
+
+  @override
+  String get sortBy => 'Sort by';
+
+  @override
+  String get cancelRequest => 'Cancel';
+
+  @override
+  String get requestCancelled => 'Friend request cancelled';
+
+  @override
+  String get noFriendRequestsYet => 'No friend requests yet!';
+
+  @override
+  String get reply => 'Reply';
+
+  @override
+  String get copy => 'Copy';
+
+  @override
+  String get copiedToClipboard => 'Message copied';
+
+  @override
+  String get unsend => 'Unsend';
+
+  @override
+  String get unsendConfirm => 'Recall message?';
+
+  @override
+  String get unsendConfirmDesc =>
+      'This message will be recalled for everyone in this chat.';
+
+  @override
+  String get deleteForMe => 'Delete for me';
+
+  @override
+  String get deleteForMeConfirm => 'Delete message for me?';
+
+  @override
+  String get deleteForMeConfirmDesc =>
+      'This message will only be deleted on your side. Others will still see it.';
+
+  @override
+  String get report => 'Report';
+
+  @override
+  String get reportMessage => 'Report message';
+
+  @override
+  String get reportMessageDesc => 'Why do you want to report this message?';
+
+  @override
+  String get reportSpam => 'Spam or harassment';
+
+  @override
+  String get reportInappropriate => 'Inappropriate content';
+
+  @override
+  String get reportViolence => 'Hate speech or violence';
+
+  @override
+  String get reportOther => 'Other reason';
+
+  @override
+  String get reportSuccess => 'Thank you. Your report has been submitted.';
+
+  @override
+  String get selectReaction => 'Select reaction';
+
+  @override
+  String get streakMaintaining => 'Maintaining';
+
+  @override
+  String get bestStreakLabel => 'Personal Best';
+
+  @override
+  String get avatarCollection => 'Collection';
+
+  @override
+  String framesCount(int unlocked, int total) {
+    return '$unlocked/$total Frames';
+  }
+
+  @override
+  String get dailyMemeStreak => 'Daily Meme Streak';
+
+  @override
+  String get unlockedStatus => 'Unlocked';
+
+  @override
+  String unlockedBadgeCount(int unlocked, int total) {
+    return '$unlocked/$total Unlocked';
+  }
+
+  @override
+  String get hasPostedStreakMotivation =>
+      'You posted today. Keep this wonderful momentum going!';
+
+  @override
+  String get notPostedStreakMotivation =>
+      'Not posted today. Share a moment to maintain your streak!';
+
+  @override
+  String get avatarFrameCollectionTitle => 'Avatar Frame Collection';
+
+  @override
+  String get currentEquipped => 'Equipped';
+
+  @override
+  String get nextMilestone => 'Next Milestone';
+
+  @override
+  String daysLeftToUnlock(int count, String frameName) {
+    return '$count days left to unlock $frameName';
+  }
+
+  @override
+  String get allFramesUnlocked => 'All avatar frames unlocked';
+
+  @override
+  String get allFramesUnlockedDesc =>
+      'You have conquered all the highest streak milestones!';
+
+  @override
+  String needStreakToUnlock(int days, String frameName) {
+    return 'Reach a $days-day streak to unlock $frameName frame!';
+  }
+
+  @override
+  String get today => 'Today';
+
+  @override
+  String get yesterday => 'Yesterday';
+
+  @override
+  String get generalOverview => 'Overview';
+
+  @override
+  String get appearanceAndThemes => 'Appearance & Theme';
+
+  @override
+  String get systemPreferences => 'System Preferences';
+
+  @override
+  String get accountAndSupport => 'Account & Support';
+
+  @override
+  String get selectThemeMode => 'Select Display Theme';
+
+  @override
+  String get selectLanguage => 'Select Language';
+
+  @override
+  String get selectCurrency => 'Select Currency';
+
+  @override
+  String get themeModeLabel => 'Theme Mode';
+
+  @override
+  String get vietnameseDong => 'Vietnamese Dong';
+
+  @override
+  String get usDollar => 'US Dollar';
+
+  @override
+  String get vndFull => 'VND (₫ • Vietnamese Dong)';
+
+  @override
+  String get usdFull => 'USD (\$ • US Dollar)';
+
+  @override
+  String get systemDefault => 'System Default';
+
+  @override
+  String get systemDefaultLanguage => 'System Default (Auto)';
+
+  @override
+  String get conversationsTitle => 'Conversations';
+
+  @override
+  String get noConversationsYet => 'No conversations yet';
+
+  @override
+  String get startChattingWithFriends =>
+      'Message your friends to start chatting';
+
+  @override
+  String get newMessage => 'New Message';
+
+  @override
+  String get searchConversations => 'Search conversations...';
+
+  @override
+  String get markAllAsRead => 'Mark all as read';
+
+  @override
+  String get startConversation => 'Start a conversation';
+
+  @override
+  String youReactedToMessage(String emoji) {
+    return 'You reacted $emoji to message';
+  }
+
+  @override
+  String friendReactedToMessage(String name, String emoji) {
+    return '$name reacted $emoji to message';
+  }
+
+  @override
+  String repliedToPostSnippet(String text) {
+    return 'Replied to post: $text';
+  }
+
+  @override
+  String get isTyping => 'Typing...';
+
+  @override
+  String youPrefix(String text) {
+    return 'You: $text';
+  }
+
+  @override
+  String taggedYouInPost(String name) {
+    return '$name mentioned you in a post';
+  }
+
+  @override
+  String get tagFriends => 'Tag friends';
+
+  @override
+  String get startTypingToTag => 'Type @ to tag friends';
+
+  @override
+  String get viewTaggedProfile => 'View profile';
+
+  @override
+  String get messageFriend => 'Message';
+
+  @override
+  String streakDayCount(int count) {
+    return '$count days';
+  }
+
+  @override
+  String get friendRequestSent => 'Request Sent';
+
+  @override
+  String get messageRecalled => 'Message recalled';
+
+  @override
+  String get recallTimeExpired =>
+      'The 15-minute window to recall this message has expired';
+
+  @override
+  String get privateCannotTagFriends => 'Cannot tag friends in private mode';
+
+  @override
+  String get closeFriendsTagOnly =>
+      'Can only tag friends in your Close Friends list';
+
+  @override
+  String get privacySection => 'Privacy';
+
+  @override
+  String get activeStatusTitle => 'Active Status';
+
+  @override
+  String get activeStatusSubtitle =>
+      'When off, friends cannot see when you are active and you will not see their active status either.';
+
+  @override
+  String get chooseWhoCanSeeActive => 'Choose who can see when you\'re active';
+
+  @override
+  String get activeStatusPublic => 'Public';
+
+  @override
+  String get activeStatusPublicDesc =>
+      'Anyone on the app can see your activity status.';
+
+  @override
+  String get activeStatusFriends => 'Friends';
+
+  @override
+  String get activeStatusFriendsDesc =>
+      'Friends can see your activity status. You\'ll see each other\'s activity status only if both of you set it to active.';
+
+  @override
+  String get activeStatusNoOne => 'No one';
+
+  @override
+  String get activeStatusNoOneDesc =>
+      'No one can see your activity status, and you cannot see the activity status of friends.';
+
+  @override
+  String get rewindTitle => 'Meme Rewind';
+
+  @override
+  String get rewindMemories => 'Spending Memories';
+
+  @override
+  String get rewindSelectPeriod => 'Select Period';
+
+  @override
+  String get rewindWeek => 'Week';
+
+  @override
+  String get rewindMonth => 'Month';
+
+  @override
+  String get rewindQuarter => 'Quarter';
+
+  @override
+  String get rewindYear => 'Year';
+
+  @override
+  String get rewindThisWeek => 'This Week';
+
+  @override
+  String get rewindThisMonth => 'This Month';
+
+  @override
+  String get rewindThisQuarter => 'This Quarter';
+
+  @override
+  String get rewindThisYear => 'This Year';
+
+  @override
+  String get rewindOverviewTitle => 'This Period\'s Journey';
+
+  @override
+  String get rewindOverviewSubtitle => 'How did this time go for you?';
+
+  @override
+  String get rewindTotalExpense => 'Total Spending';
+
+  @override
+  String get rewindTotalIncome => 'Total Income';
+
+  @override
+  String get rewindTotalTransactions => 'Transactions';
+
+  @override
+  String get rewindBalance => 'Remaining Balance';
+
+  @override
+  String rewindSpentMore(String percent) {
+    return 'You spent $percent% more than last period';
+  }
+
+  @override
+  String rewindSpentLess(String percent) {
+    return 'You spent $percent% less than last period';
+  }
+
+  @override
+  String get rewindSpentEqual => 'Spending was similar to last period';
+
+  @override
+  String get rewindSpentGentleUp =>
+      'You spent a little more than the previous period';
+
+  @override
+  String get rewindSpentGentleDown =>
+      'You were more economical than the previous period';
+
+  @override
+  String get rewindCategoryTitle => 'Where did your money go?';
+
+  @override
+  String get rewindCategorySubtitle =>
+      'Categories that took most of your spending';
+
+  @override
+  String get rewindTopCategory => 'Top Category';
+
+  @override
+  String get rewindStreakTitle => 'Your Active Streak';
+
+  @override
+  String rewindStreakDays(int count) {
+    return '$count days in a row';
+  }
+
+  @override
+  String rewindStreakSubtitle(int count) {
+    return 'You recorded spending consistently for $count days';
+  }
+
+  @override
+  String get rewindStreakStarter => 'Just getting started, keep it up!';
+
+  @override
+  String get rewindStreakZero => 'Start a new streak today!';
+
+  @override
+  String get rewindTopExpensesTitle => 'Most Memorable Expenses';
+
+  @override
+  String get rewindTopExpensesSubtitle =>
+      'Top largest spendings in this period';
+
+  @override
+  String get rewindBiggestDayTitle => 'Highest Spending Day';
+
+  @override
+  String rewindBiggestDaySubtitle(String date) {
+    return '$date was your highest spending day';
+  }
+
+  @override
+  String rewindTransactionsOnDay(int count) {
+    return '$count transactions on this day';
+  }
+
+  @override
+  String get rewindDailySpendingDistribution => 'Daily spending distribution';
+
+  @override
+  String get rewindMomentsTitle => 'Spending Moments';
+
+  @override
+  String get rewindMomentsSubtitle =>
+      'Money is more than just numbers. These are the moments behind your spending.';
+
+  @override
+  String get rewindHighlightTitle => 'Your Period Highlight';
+
+  @override
+  String get rewindHighlightDominantTitle => 'Dominant Category';
+
+  @override
+  String rewindHighlightDominantDesc(String category, String percent) {
+    return '$category accounted for $percent% of your total spending.';
+  }
+
+  @override
+  String get rewindHighlightPeakDayTitle => 'Peak Spending Day';
+
+  @override
+  String rewindHighlightPeakDayDesc(String date, String percent) {
+    return 'On $date, you spent $percent% of your total spending for this period.';
+  }
+
+  @override
+  String get rewindHighlightBiggestExpenseTitle => 'Memorable Expense';
+
+  @override
+  String rewindHighlightBiggestExpenseDesc(String category) {
+    return 'Your largest expense was on $category.';
+  }
+
+  @override
+  String get rewindDaysThisWeek => 'Days this week';
+
+  @override
+  String get rewindDaysRecentInPeriod => 'Recent 7 days in period';
+
+  @override
+  String get rewindComparisonTitle => 'This Period vs Previous';
+
+  @override
+  String get rewindComparisonSubtitle => 'How are your habits evolving?';
+
+  @override
+  String get rewindSummaryTitle => 'This is your journey ✨';
+
+  @override
+  String get rewindSummarySubtitle => 'A memorable chapter with Meme App';
+
+  @override
+  String get rewindSaveCard => 'Save Image';
+
+  @override
+  String get rewindShareCard => 'Share';
+
+  @override
+  String get rewindSeeYouNext => 'See you in the next Rewind ❤️';
+
+  @override
+  String get rewindEmptyTitle => 'No transactions in this period yet';
+
+  @override
+  String get rewindEmptySubtitle =>
+      'Start logging your spendings so Meme Rewind can tell your story!';
+
+  @override
+  String get rewindSaveSuccess => 'Saved image to gallery!';
+
+  @override
+  String get rewindShareText => 'Check out my spending journey on Meme App! ✨';
+
+  @override
+  String get rewindThisPeriod => 'This period';
+
+  @override
+  String get rewindPreviousPeriod => 'Previous period';
+
+  @override
+  String rewindTransactionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count transactions',
+      one: '1 transaction',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rewindLargestExpense => 'Largest Expense';
+
+  @override
+  String rewindDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '1 day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rewindActiveDaysInPeriod(int count, String period) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count active days in $period',
+      one: '1 active day in $period',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupBadge => 'Group';
+
+  @override
+  String get groupChat => 'Group Chat';
+
+  @override
+  String groupMembersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupChatOpen => 'Group Chat';
+
+  @override
+  String systemGroupCreated(String name, String group) {
+    return '$name created group \"$group\"';
+  }
+
+  @override
+  String systemGroupMemberAdded(String name, String member) {
+    return '$name added $member to the group';
+  }
+
+  @override
+  String systemGroupMemberLeft(String name) {
+    return '$name left the group';
+  }
+
+  @override
+  String systemGroupExpenseLogged(String name, String amount, String category) {
+    return '$name shared spending of $amount for \"$category\"';
+  }
+
+  @override
+  String postToGroup(String name) {
+    return 'Group: $name';
+  }
+
+  @override
+  String get groupSpendingVisibleNote =>
+      'Group members can view spending amount';
+
+  @override
+  String groupAudience(String name) {
+    return 'Group: $name';
+  }
+
+  @override
+  String shortDaysStreak(int count) {
+    return '$count Days';
+  }
+
+  @override
+  String get tabAll => 'All';
+
+  @override
+  String get tabUnread => 'Unread';
+
+  @override
+  String get tabGroups => 'Groups';
+
+  @override
+  String get createStory => 'Add story';
+
+  @override
+  String get whatAreYouThinking => 'What\'s on your mind?';
+
+  @override
+  String activeMinutesAgo(int minutes) {
+    return 'Active ${minutes}m ago';
+  }
+
+  @override
+  String activeHoursAgo(int hours) {
+    return 'Active ${hours}h ago';
+  }
+
+  @override
+  String newMessagesCount(int count) {
+    return '$count new messages';
+  }
+
+  @override
+  String get shareNote => 'Share a note...';
+
+  @override
+  String get yourNote => 'Your note';
+
+  @override
+  String get newNote => 'New note';
+
+  @override
+  String get shareVerb => 'Share';
+
+  @override
+  String get deleteNote => 'Delete note';
+
+  @override
+  String get noteSharedSuccess => 'Note shared';
+
+  @override
+  String get noteDeletedSuccess => 'Note deleted';
+
+  @override
+  String get sendDirectMessage => 'Send message';
+
+  @override
+  String get youRepliedToTheirNote => 'You replied to their note';
+
+  @override
+  String userRepliedToYourNote(String name) {
+    return '$name replied to your note';
+  }
+
+  @override
+  String sharedWithAudience(String audience) {
+    return 'Shared with $audience';
+  }
+
+  @override
+  String get audiencePublic => 'Public';
+
+  @override
+  String get audienceFriends => 'Friends';
+
+  @override
+  String get expiresIn24Hours => 'Expires in 24 hours';
+
+  @override
+  String expiresInHours(int hours) {
+    return 'Expires in $hours hours';
+  }
+
+  @override
+  String get shareNewNote => 'Share a new note';
+
+  @override
+  String get cameraThemeLockedNotice =>
+      'Reach a 3-day streak to unlock this camera theme!';
+
+  @override
+  String get cameraThemeStreakRequirement => '3-day streak';
+
+  @override
+  String cameraThemeStreakBanner(int days, int current) {
+    return 'Reach a $days-day streak to unlock all camera themes (Current: $current days)';
+  }
+
+  @override
+  String cameraThemeUnlockedBanner(int current) {
+    return 'You have unlocked all camera themes with a $current-day streak! 🔥';
+  }
+
+  @override
+  String streakProgressFraction(int current, int total) {
+    return '$current/$total days';
+  }
+
+  @override
+  String get draftPrefix => 'Draft: ';
 }

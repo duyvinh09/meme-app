@@ -16,8 +16,11 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../stats/controllers/stats_controller.dart';
 import '../../stats/screens/category_detail_screen.dart';
 import '../../../data/models/transaction_model.dart';
+import '../../../data/models/budget_model.dart';
+import '../services/budget_cycle_helper.dart';
 
 class BudgetHistoryScreen extends StatefulWidget {
+  final BudgetModel? budget;
   final String budgetName;
   final String? budgetNameEn;
   final double limitAmount;
@@ -26,6 +29,7 @@ class BudgetHistoryScreen extends StatefulWidget {
 
   const BudgetHistoryScreen({
     super.key,
+    this.budget,
     required this.budgetName,
     this.budgetNameEn,
     required this.limitAmount,
@@ -86,55 +90,64 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
     return AppIconRegistry.fromCodePoint(codePoint);
   }
 
-  List<_BudgetPeriodData> _buildMonthlyPeriods(
-      List<TransactionModel> transactions,
-      ) {
+  List<_BudgetPeriodData> _buildPeriods(
+    List<TransactionModel> transactions,
+  ) {
     final now = DateTime.now();
+    final b = widget.budget ??
+        BudgetModel(
+          id: '',
+          userId: '',
+          name: widget.budgetName,
+          nameEn: widget.budgetNameEn,
+          iconCodePoint: widget.iconCodePoint,
+          colorHex: widget.colorHex,
+          limitAmount: widget.limitAmount,
+          spentAmount: 0,
+          isDefault: false,
+          createdAt: DateTime.now(),
+          period: 'monthly',
+          budgetType: 'category',
+        );
 
-    return List.generate(selectedPeriodCount, (index) {
-      final monthDate = DateTime(
-        now.year,
-        now.month - (selectedPeriodCount - 1 - index),
-      );
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
 
-      final total = transactions
-          .where((tx) {
-        return tx.type == 'expense' &&
-            tx.category == widget.budgetName &&
-            tx.createdAt.year == monthDate.year &&
-            tx.createdAt.month == monthDate.month;
-      })
-          .fold<double>(
-        0,
-            (sum, tx) => sum + tx.amount,
-      );
+    final historyCycles = BudgetCycleHelper.getHistoricalCycles(
+      b,
+      transactions,
+      count: selectedPeriodCount,
+      refDate: now,
+      isEnglish: isEn,
+    );
 
-      final isCurrent =
-          monthDate.year == now.year && monthDate.month == now.month;
-
-      final isOverLimit =
-          widget.limitAmount > 0 && total > widget.limitAmount;
-
-      final percent = widget.limitAmount <= 0
-          ? 0.0
-          : (total / widget.limitAmount).clamp(0.0, 1.0).toDouble();
+    return historyCycles.asMap().entries.map((entry) {
+      final idx = entry.key;
+      final cycle = entry.value;
+      final isCurrent = idx == historyCycles.length - 1;
 
       return _BudgetPeriodData(
-        date: monthDate,
-        total: total,
+        date: cycle.startDate,
+        endDate: cycle.endDate,
+        total: cycle.spentAmount,
         isCurrent: isCurrent,
-        isOverLimit: isOverLimit,
-        percent: percent,
+        isOverLimit: cycle.isOverLimit,
+        percent: cycle.percent,
+        label: cycle.label,
+        shortLabel: cycle.shortLabel,
       );
-    });
+    }).toList();
   }
 
   String _monthLabel(DateTime date) {
-    return context.l10n.monthYear(date.month, date.year);
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    return isEn
+        ? 'Month ${date.month}/${date.year}'
+        : 'Tháng ${date.month}/${date.year}';
   }
 
   String _shortMonthLabel(DateTime date) {
-    return context.l10n.shortMonth(date.month);
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    return isEn ? 'M${date.month}' : 'T${date.month}';
   }
 
   String _compactMoney(double value) {
@@ -190,10 +203,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
     final stats = context.watch<StatsController>();
     final l10n = context.l10n;
 
-    // final periods = _buildMonthlyPeriods(
-    //   stats.transactions.whereType<TransactionModel>().toList(),
-    // );
-    final periods = _buildMonthlyPeriods(stats.transactions);
+    final periods = _buildPeriods(stats.transactions);
 
     if (stats.isLoading) {
       return Scaffold(
@@ -211,6 +221,32 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
         amountVnd: value,
         currency: currency,
       );
+    }
+
+    String periodLimitText(String? period, double limitAmount) {
+      final String periodName;
+      switch (period) {
+        case 'daily':
+          periodName = l10n.daily;
+          break;
+        case 'weekly':
+          periodName = l10n.weekly;
+          break;
+        case 'biweekly':
+          periodName = l10n.biweekly;
+          break;
+        case 'yearly':
+          periodName = l10n.yearly;
+          break;
+        case 'custom':
+          periodName = l10n.custom;
+          break;
+        case 'monthly':
+        default:
+          periodName = l10n.monthly;
+          break;
+      }
+      return '${money(limitAmount)} / $periodName';
     }
 
     final average = _average(periods);
@@ -242,7 +278,10 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
                 widget.budgetName,
                 budgetNameEn: widget.budgetNameEn,
               ),
-              limitText: '${money(widget.limitAmount)} / ${l10n.monthly}',
+              limitText: periodLimitText(
+                widget.budget?.period ?? 'monthly',
+                widget.limitAmount,
+              ),
               icon: icon,
               color: color,
               averageText: money(average),
@@ -279,25 +318,48 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
               limitAmount: widget.limitAmount,
               money: money,
               monthLabel: _monthLabel,
-              onPeriodTap: (periodDate) {
-                final list = stats.transactions
-                    .where(
-                      (tx) =>
-                          tx.type == 'expense' &&
-                          tx.category == widget.budgetName &&
-                          tx.createdAt.year == periodDate.year &&
-                          tx.createdAt.month == periodDate.month,
-                    )
-                    .toList()
+              onPeriodTap: (item) {
+                final b = widget.budget ??
+                    BudgetModel(
+                      id: '',
+                      userId: '',
+                      name: widget.budgetName,
+                      nameEn: widget.budgetNameEn,
+                      iconCodePoint: widget.iconCodePoint,
+                      colorHex: widget.colorHex,
+                      limitAmount: widget.limitAmount,
+                      spentAmount: 0,
+                      isDefault: false,
+                      createdAt: DateTime.now(),
+                      period: 'monthly',
+                      budgetType: 'category',
+                    );
+
+                final list = stats.transactions.where((tx) {
+                  if (tx.type != 'expense') return false;
+                  if (!BudgetCycleHelper.matchesCategory(b, tx.category)) {
+                    return false;
+                  }
+                  if (item.endDate != null) {
+                    return !tx.createdAt.isBefore(item.date) &&
+                        !tx.createdAt.isAfter(item.endDate!);
+                  }
+                  return tx.createdAt.year == item.date.year &&
+                      tx.createdAt.month == item.date.month;
+                }).toList()
                   ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
                 Navigator.push(
                   context,
                   MaterialPageRoute<void>(
                     builder: (_) => CategoryDetailScreen(
-                      category: widget.budgetName,
+                      category: BudgetNameLocalizer.display(
+                        context,
+                        widget.budgetName,
+                        budgetNameEn: widget.budgetNameEn,
+                      ),
                       type: 'expense',
-                      periodTitle: _monthLabel(periodDate),
+                      periodTitle: item.label ?? _monthLabel(item.date),
                       transactions: list,
                     ),
                   ),
@@ -329,10 +391,10 @@ class _HistoryHeader extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: InkWell(
             onTap: onBack,
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
             child: Container(
-              width: 58,
-              height: 58,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.card(context),
@@ -341,9 +403,9 @@ class _HistoryHeader extends StatelessWidget {
                 ),
               ),
               child: Icon(
-                Icons.chevron_left_rounded,
+                Icons.arrow_back_ios_new_rounded,
                 color: AppColors.textPrimary(context),
-                size: 36,
+                size: 20,
               ),
             ),
           ),
@@ -738,10 +800,12 @@ class _BudgetChartCard extends StatelessWidget {
                           return const SizedBox.shrink();
                         }
 
+                        final item = periods[index];
+                        final label = item.shortLabel ?? monthLabel(item.date);
                         return Padding(
                           padding: const EdgeInsets.only(top: 8),
                           child: Text(
-                            monthLabel(periods[index].date),
+                            label,
                             style: AppTextStyles.caption(context).copyWith(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -870,7 +934,7 @@ class _PeriodDetailCard extends StatelessWidget {
   final double limitAmount;
   final String Function(double value) money;
   final String Function(DateTime date) monthLabel;
-  final void Function(DateTime periodDate) onPeriodTap;
+  final void Function(_BudgetPeriodData item) onPeriodTap;
 
   const _PeriodDetailCard({
     required this.periods,
@@ -908,7 +972,7 @@ class _PeriodDetailCard extends StatelessWidget {
               limitAmount: limitAmount,
               money: money,
               monthLabel: monthLabel,
-              onTap: () => onPeriodTap(item.date),
+              onTap: () => onPeriodTap(item),
             );
           }),
         ],
@@ -1028,7 +1092,7 @@ class _PeriodDetailItem extends StatelessWidget {
                         ],
 
                         Text(
-                          monthLabel(item.date),
+                          item.label ?? monthLabel(item.date),
                           maxLines: 1,
                           softWrap: false,
                           style: AppTextStyles.cardTitle(context).copyWith(
@@ -1171,16 +1235,22 @@ class _PeriodDetailItem extends StatelessWidget {
 
 class _BudgetPeriodData {
   final DateTime date;
+  final DateTime? endDate;
   final double total;
   final bool isCurrent;
   final bool isOverLimit;
   final double percent;
+  final String? label;
+  final String? shortLabel;
 
   const _BudgetPeriodData({
     required this.date,
+    this.endDate,
     required this.total,
     required this.isCurrent,
     required this.isOverLimit,
     required this.percent,
+    this.label,
+    this.shortLabel,
   });
 }

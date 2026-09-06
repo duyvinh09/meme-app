@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/rendering.dart';
 
@@ -28,13 +29,26 @@ import '../../features/profile/screens/friends_screen.dart';
 import '../../features/profile/screens/groups_screen.dart';
 import '../../features/profile/screens/manage_categories_screen.dart';
 import '../../features/profile/controllers/user_category_controller.dart';
+import '../../features/profile/screens/app_icon_picker_screen.dart';
+import '../../features/profile/screens/camera_theme_picker_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
-import '../services/location_service.dart';
+import '../../features/chat/screens/chat_conversation_screen.dart';
+import '../../features/chat/screens/group_chat_conversation_screen.dart';
+import '../../features/chat/screens/chat_bubble_theme_screen.dart';
+import '../../features/chat/screens/chat_list_screen.dart';
+import '../../features/chat/controllers/chat_controller.dart';
+import '../../features/rewind/screens/rewind_screen.dart';
+import '../../data/models/user_model.dart';
+import '../../data/models/transaction_model.dart';
+import '../../data/repositories/user_repository.dart';
 import 'route_names.dart';
 
 class AppRoutes {
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
       case RouteNames.splash:
@@ -58,8 +72,14 @@ class AppRoutes {
         );
 
       case RouteNames.mainShell:
+        final args = settings.arguments as Map<String, dynamic>?;
+        final initialIndex = args?['initialIndex'] as int? ?? 0;
+        final targetPostId = args?['targetPostId'] as String?;
         return MaterialPageRoute(
-          builder: (_) => const MainShell(),
+          builder: (_) => MainShell(
+            initialIndex: initialIndex,
+            initialTargetPostId: targetPostId,
+          ),
         );
 
       case RouteNames.addTransaction:
@@ -129,6 +149,69 @@ class AppRoutes {
           builder: (_) => const ManageCategoriesScreen(),
         );
 
+      case RouteNames.appIcon:
+        return MaterialPageRoute(
+          builder: (_) => const AppIconPickerScreen(),
+        );
+
+      case RouteNames.cameraTheme:
+        return MaterialPageRoute(
+          builder: (_) => const CameraThemePickerScreen(),
+        );
+
+      case RouteNames.chatConversation:
+        final args = settings.arguments;
+        if (args is Map<String, dynamic>) {
+          final friend = args['friend'] as UserModel;
+          final initialPostReply = args['initialPostReply'] as TransactionModel?;
+          return MaterialPageRoute(
+            builder: (_) => ChatConversationScreen(
+              friend: friend,
+              initialPostReply: initialPostReply,
+            ),
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('Invalid chat arguments')),
+          ),
+        );
+
+      case RouteNames.groupChatConversation:
+        final args = settings.arguments;
+        if (args is Map<String, dynamic>) {
+          return MaterialPageRoute(
+            builder: (_) => GroupChatConversationScreen(
+              groupId: args['groupId'] as String,
+              groupName: args['groupName'] as String,
+              groupColor: args['groupColor'] as String?,
+              memberUids: (args['memberUids'] as List<dynamic>?)
+                  ?.map((e) => e.toString())
+                  .toList(),
+            ),
+          );
+        }
+        return MaterialPageRoute(
+          builder: (_) => const Scaffold(
+            body: Center(child: Text('Invalid group chat arguments')),
+          ),
+        );
+
+      case RouteNames.chatBubbleTheme:
+        return MaterialPageRoute(
+          builder: (_) => const ChatBubbleThemeScreen(),
+        );
+
+      case RouteNames.chatList:
+        return MaterialPageRoute(
+          builder: (_) => const ChatListScreen(),
+        );
+
+      case RouteNames.rewind:
+        return MaterialPageRoute(
+          builder: (_) => const RewindScreen(),
+        );
+
       default:
         return MaterialPageRoute(
           builder: (_) => const Scaffold(
@@ -157,56 +240,91 @@ class SplashGate extends StatelessWidget {
 }
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final int initialIndex;
+  final String? initialTargetPostId;
+
+  const MainShell({
+    super.key,
+    this.initialIndex = 0,
+    this.initialTargetPostId,
+  });
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<MainShell> {
-  int index = 0;
+class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
+  late int index;
   bool isRefreshingFeed = false;
 
-  bool showNavbar = true;
   bool showCaptureFab = true;
 
-  bool _askedLocationPermissionOnOpen = false;
-
   Timer? _captureFabTimer;
-  Timer? _navbarTimer;
-
-  final List<Widget> pages = const [
-    HomeScreen(),
-    StatsScreen(),
-    FeedScreen(),
-    BudgetScreen(),
-    ProfileScreen(),
-  ];
+  Timer? _presenceHeartbeatTimer;
 
   @override
   void initState() {
     super.initState();
+    index = widget.initialIndex;
+    showCaptureFab = index == 0;
+    WidgetsBinding.instance.addObserver(this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
+      if (widget.initialTargetPostId != null && widget.initialTargetPostId!.isNotEmpty) {
+        context.read<FeedController>().setTargetPostId(widget.initialTargetPostId);
+      }
+
       final uid = context.read<AuthController>().user?.uid;
       if (uid != null) {
         context.read<UserCategoryController>().load(uid);
+        context.read<ChatController>().initIncomingMessageListener(uid);
+        _updatePresence(true);
+        _startPresenceHeartbeat();
       }
 
-      _showCaptureFabTemporarily();
-      _requestLocationPermissionOnFirstOpen();
+      if (index == 0) {
+        _showCaptureFabNow();
+      }
     });
   }
 
-  Future<void> _requestLocationPermissionOnFirstOpen() async {
-    if (_askedLocationPermissionOnOpen) return;
-
-    _askedLocationPermissionOnOpen = true;
-
-    await LocationService.requestLocationPermissionOnFirstOpen();
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _updatePresence(true);
+      _startPresenceHeartbeat();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.hidden ||
+        state == AppLifecycleState.detached) {
+      _stopPresenceHeartbeat();
+      _updatePresence(false);
+    }
   }
+
+  void _updatePresence(bool isOnline) {
+    final uid = context.read<AuthController>().user?.uid;
+    if (uid != null) {
+      context.read<UserRepository>().updateUserPresence(uid, isOnline: isOnline);
+    }
+  }
+
+  void _startPresenceHeartbeat() {
+    _presenceHeartbeatTimer?.cancel();
+    _presenceHeartbeatTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (!mounted) return;
+      _updatePresence(true);
+    });
+  }
+
+  void _stopPresenceHeartbeat() {
+    _presenceHeartbeatTimer?.cancel();
+    _presenceHeartbeatTimer = null;
+  }
+
+
 
   Future<void> _reloadFeed(BuildContext context) async {
     final uid = context.read<AuthController>().user?.uid;
@@ -246,7 +364,6 @@ class _MainShellState extends State<MainShell> {
       setState(() {
         index = value;
         showCaptureFab = false;
-        showNavbar = true;
       });
 
       _captureFabTimer?.cancel();
@@ -254,89 +371,42 @@ class _MainShellState extends State<MainShell> {
     }
 
     if (index != value) {
-      _navbarTimer?.cancel();
       setState(() {
         index = value;
         showCaptureFab = value == 0;
-        showNavbar = true;
       });
       if (value == 0) {
-        _showCaptureFabTemporarily();
+        _showCaptureFabNow();
       } else {
         _captureFabTimer?.cancel();
       }
     }
   }
 
-  void _showCaptureFabTemporarily() {
-    if (index != 0) return;
-
+  void _showCaptureFabNow() {
     _captureFabTimer?.cancel();
-
-    if (!showCaptureFab) {
+    if (!showCaptureFab && mounted) {
       setState(() {
         showCaptureFab = true;
       });
     }
-
-    _captureFabTimer = Timer(const Duration(milliseconds: 2500), () {
-      if (!mounted) return;
-
-      if (index == 0) {
-        setState(() {
-          showCaptureFab = false;
-        });
-      }
-    });
   }
 
-  bool get _shouldAutoHideNavbar {
-    return index != 2;
-  }
-
-  void _hideNavbarWhileScrolling() {
-    if (!_shouldAutoHideNavbar) return;
-
-    _navbarTimer?.cancel();
-
-    if (!showNavbar) {
-      return;
+  void _hideCaptureFabNow() {
+    _captureFabTimer?.cancel();
+    if (showCaptureFab && mounted) {
+      setState(() {
+        showCaptureFab = false;
+      });
     }
-
-    setState(() {
-      showNavbar = false;
-    });
-  }
-
-  void _showNavbarNow() {
-    _navbarTimer?.cancel();
-
-    if (showNavbar) {
-      return;
-    }
-
-    setState(() {
-      showNavbar = true;
-    });
-  }
-
-  void _showNavbarAfterScrollStops() {
-    if (!_shouldAutoHideNavbar) {
-      _showNavbarNow();
-      return;
-    }
-
-    _navbarTimer?.cancel();
-    _navbarTimer = Timer(const Duration(milliseconds: 80), () {
-      if (!mounted) return;
-      _showNavbarNow();
-    });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopPresenceHeartbeat();
+    _updatePresence(false);
     _captureFabTimer?.cancel();
-    _navbarTimer?.cancel();
     super.dispose();
   }
 
@@ -349,46 +419,31 @@ class _MainShellState extends State<MainShell> {
           Positioned.fill(
             child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
-                if (index == 2) {
-                  if (!showNavbar) {
-                    _showNavbarNow();
-                  }
-
-                  return false;
-                }
-
-                if (notification.depth != 0) {
+                if (index != 0 || notification.depth != 0) {
                   return false;
                 }
 
                 if (notification is UserScrollNotification) {
                   final direction = notification.direction;
-                  if (direction == ScrollDirection.idle) {
-                    _showNavbarAfterScrollStops();
-
-                    if (index == 0) {
-                      _showCaptureFabTemporarily();
-                    }
-                  } else {
-                    _hideNavbarWhileScrolling();
-
-                    if (index == 0) {
-                      _showCaptureFabTemporarily();
-                    }
-                  }
-                }
-                if (notification is ScrollEndNotification) {
-                  _showNavbarAfterScrollStops();
-
-                  if (index == 0) {
-                    _showCaptureFabTemporarily();
+                  if (direction == ScrollDirection.reverse) {
+                    // Scrolling DOWN: Slide down & hide FAB group
+                    _hideCaptureFabNow();
+                  } else if (direction == ScrollDirection.forward) {
+                    // Scrolling UP: Slide up & restore FAB group immediately
+                    _showCaptureFabNow();
                   }
                 }
                 return false;
               },
               child: IndexedStack(
                 index: index,
-                children: pages,
+                children: [
+                  const HomeScreen(),
+                  const StatsScreen(),
+                  FeedScreen(isActive: index == 2),
+                  const BudgetScreen(),
+                  const ProfileScreen(),
+                ],
               ),
             ),
           ),
@@ -396,67 +451,113 @@ class _MainShellState extends State<MainShell> {
             left: AppSizes.pagePadding,
             right: AppSizes.pagePadding,
             bottom: 24,
-            child: IgnorePointer(
-              ignoring: !showNavbar,
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
-                opacity: showNavbar ? 1 : 0,
+            child: _FloatingGlassNavbar(
+              currentIndex: index,
+              isRefreshingFeed: isRefreshingFeed,
+              onTap: (value) => _onNavTap(context, value),
+            ),
+          ),
+          if (index == 0)
+            Positioned(
+              right: 20,
+              bottom: 104,
+              child: IgnorePointer(
+                ignoring: !showCaptureFab,
                 child: AnimatedSlide(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOut,
-                  offset: showNavbar ? Offset.zero : const Offset(0, 0.35),
-                  child: _FloatingGlassNavbar(
-                    currentIndex: index,
-                    isRefreshingFeed: isRefreshingFeed,
-                    onTap: (value) => _onNavTap(context, value),
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOutCubic,
+                  offset: showCaptureFab ? Offset.zero : const Offset(0, 0.40),
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOutCubic,
+                    opacity: showCaptureFab ? 1.0 : 0.0,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // 1. TOP: CHAT / NHẮN TIN BUTTON
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pushNamed(context, RouteNames.chatList);
+                          },
+                          child: Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.isDark(context)
+                                  ? const Color(0xFF262938)
+                                  : Colors.white,
+                              border: Border.all(
+                                color: AppColors.isDark(context)
+                                    ? Colors.white.withValues(alpha: 0.16)
+                                    : AppColors.primaryBlue.withValues(alpha: 0.20),
+                                width: 2,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(
+                                    alpha: AppColors.isDark(context) ? 0.28 : 0.10,
+                                  ),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              Icons.chat_bubble_rounded,
+                              color: AppColors.isDark(context)
+                                  ? Colors.white
+                                  : AppColors.primaryBlue,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // 2. BOTTOM: CAMERA BUTTON
+                        GestureDetector(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            Navigator.pushNamed(context, RouteNames.addTransaction);
+                          },
+                          child: Container(
+                            width: AppSizes.captureFabSize,
+                            height: AppSizes.captureFabSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: AppColors.primaryBlue,
+                              border: Border.all(
+                                color: Colors.white.withValues(
+                                  alpha: AppColors.isDark(context) ? 0.14 : 0.90,
+                                ),
+                                width: 3,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primaryBlue.withValues(alpha: 0.35),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.add_a_photo_rounded,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
         ],
       ),
-      floatingActionButton: index == 0
-          ? IgnorePointer(
-        ignoring: !showCaptureFab,
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOut,
-          opacity: showCaptureFab ? 1 : 0,
-          child: AnimatedScale(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            scale: showCaptureFab ? 1 : 0.85,
-            child: GestureDetector(
-              onTap: () {
-                Navigator.pushNamed(context, RouteNames.addTransaction);
-              },
-              child: Container(
-                width: AppSizes.captureFabSize,
-                height: AppSizes.captureFabSize,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primaryBlue,
-                  border: Border.all(
-                    color: Colors.white.withOpacity(
-                      AppColors.isDark(context) ? 0.14 : 0.90,
-                    ),
-                    width: 3,
-                  ),
-                ),
-                child: const Icon(
-                  Icons.add_a_photo_rounded,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-            ),
-          ),
-        ),
-      )
-          : null,
-      floatingActionButtonLocation: const _RaisedFabLocation(),
     );
   }
 }
@@ -478,8 +579,8 @@ class _FloatingGlassNavbar extends StatelessWidget {
 
     final selectedColor = AppColors.primaryBlue;
     final unselectedColor = isDark
-        ? Colors.white.withOpacity(0.82)
-        : Colors.black.withOpacity(0.62);
+        ? Colors.white.withValues(alpha: 0.82)
+        : Colors.black.withValues(alpha: 0.62);
 
     final l10n = context.l10n;
     final items = <_NavBarItemData>[
@@ -529,7 +630,7 @@ class _FloatingGlassNavbar extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(isDark ? 0.24 : 0.10),
+                color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.10),
                 blurRadius: 24,
                 offset: const Offset(0, 10),
               ),
@@ -556,9 +657,9 @@ class _FloatingGlassNavbar extends StatelessWidget {
                           height: selected ? 78 : 56,
                           decoration: BoxDecoration(
                             color: selected
-                                ? selectedColor.withOpacity(
-                              isDark ? 0.18 : 0.14,
-                            )
+                                ? selectedColor.withValues(
+                                    alpha: isDark ? 0.18 : 0.14,
+                                  )
                                 : Colors.transparent,
                             borderRadius: BorderRadius.circular(
                               AppSizes.radiusLarge,
@@ -704,25 +805,5 @@ class _SpinningFeedIconState extends State<_SpinningFeedIcon>
         color: widget.color,
       ),
     );
-  }
-}
-
-class _RaisedFabLocation extends FloatingActionButtonLocation {
-  const _RaisedFabLocation();
-
-  @override
-  Offset getOffset(ScaffoldPrelayoutGeometry scaffoldGeometry) {
-    final fabSize = scaffoldGeometry.floatingActionButtonSize;
-    final scaffoldSize = scaffoldGeometry.scaffoldSize;
-    final minInsets = scaffoldGeometry.minInsets;
-
-    const double rightMargin = 20;
-    const double bottomMargin = 112;
-
-    final double dx = scaffoldSize.width - fabSize.width - rightMargin;
-    final double dy =
-        scaffoldSize.height - fabSize.height - bottomMargin - minInsets.bottom;
-
-    return Offset(dx, dy);
   }
 }

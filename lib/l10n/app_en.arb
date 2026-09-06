@@ -106,8 +106,8 @@
   "currentBalance": "Current Balance",
   "totalIncome": "Total Income",
   "totalExpense": "Total Expense",
-  "streak": "Daily Streak",
-  "daysStreak": "{count} days streak",
+  "streak": "Streak",
+  "daysStreak": "{count} Days",
   "@daysStreak": {
     "placeholders": {
       "count": {
@@ -115,11 +115,11 @@
       }
     }
   },
-  "streakLevel1": "Excellent",
-  "streakLevel2": "Great",
-  "streakLevel3": "Steady",
-  "streakLevel4": "Getting there",
-  "streakLevel5": "Let's start",
+  "streakLevel1": "Top Legend 🏆",
+  "streakLevel2": "Fire Master 🔥",
+  "streakLevel3": "Super Streak ⚡",
+  "streakLevel4": "Growing Fast 🌱",
+  "streakLevel5": "Start Streak ✨",
   "personalBudget": "Personal Budget",
   "budgetTitle": "Personal Budget",
   "budgetSubtitle": "Create themes and set money goals",
@@ -375,7 +375,7 @@
       }
     }
   },
-  "requestPending": "Friend request already sent",
+  "requestPending": "Pending",
   "friendRequests": "Friend Requests",
   "friendRequestsReceivedTab": "Received",
   "friendRequestsSentTab": "Sent",
@@ -589,6 +589,7 @@
   "gift": "Gift",
   "entertainment": "Entertainment",
   "private": "Private",
+  "closeFriends": "Close friends",
   "everyone": "Everyone",
   "maxAmountDigits": "Max 10 digits",
   "addDetails": "Add details",
@@ -919,5 +920,698 @@
   "editCustomCategory": "Edit category",
   "categoryUpdated": "Category updated",
   "categoryUpdateFailed": "Could not update category",
-  "categoryNotFound": "Category no longer exists"
+  "categoryNotFound": "Category no longer exists",
+  "cameraPermissionRequired": "Enable camera to use Meme",
+  "openSettings": "Open settings",
+  "noCameraAvailable": "No camera found",
+  "dayTab": "Day",
+  "monthTab": "Month",
+  "expenseLabel": "Expense",
+  "incomeLabel": "Income",
+  "appIcon": "App Icon",
+  "appIconSection": "App Icon",
+  "appIconSubtitle": "Customize Meme launcher icon on your home screen",
+  "appIconPickerSubtitle": "Choose a Meme icon style to display on your phone's home screen.",
+  "appIconClassic": "Classic Meme",
+  "appIconClassicDesc": "The original classic and fun icon style",
+  "appIconNeon": "Neon Gold Meme",
+  "appIconNeonDesc": "Warm yellow tone, bold and distinctive",
+  "appIconOcean": "Ocean Blue Meme",
+  "appIconOceanDesc": "Modern blue tone, fresh and vibrant",
+  "appIconInUse": "In Use",
+  "appIconChangedSuccess": "Changed app icon to \"{name}\"",
+  "@appIconChangedSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "appIconChangeFailed": "Cannot change app icon on this device",
+  "cameraTheme": "Camera Theme",
+  "cameraThemeSection": "Camera Theme",
+  "cameraThemeSubtitle": "Customize color style and viewfinder for the camera",
+  "cameraThemePickerSubtitle": "Customize the viewfinder, shutter button colors, and camera interface to match your style.",
+  "cameraThemeClassic": "Classic Meme",
+  "cameraThemeClassicDesc": "Sleek dark interface with classic emerald neon accent",
+  "cameraThemeCyber": "Cyber Neon",
+  "cameraThemeCyberDesc": "Cyberpunk vibe with radiant purple and electric cyan",
+  "cameraThemeSunset": "Sunset Gold",
+  "cameraThemeSunsetDesc": "Warm twilight atmosphere with luxury amber glow",
+  "cameraThemeOcean": "Ocean Breeze",
+  "cameraThemeOceanDesc": "Deep sapphire blue, refreshing and energetic",
+  "cameraThemeMatcha": "Matcha Zen",
+  "cameraThemeMatchaDesc": "Calming matcha green and natural forest tones",
+  "cameraThemeAurora": "Aurora Borealis",
+  "cameraThemeAuroraDesc": "Mystical northern lights with vibrant teal and purple waves",
+  "cameraThemeSakura": "Sakura Pink",
+  "cameraThemeSakuraDesc": "Sweet and youthful pastel pink with blooming floral hues",
+  "cameraThemeGalaxy": "Galaxy Nebula",
+  "cameraThemeGalaxyDesc": "Deep celestial space with ultraviolet, magenta, and electric blue",
+  "cameraThemeLava": "Lava Fire",
+  "cameraThemeLavaDesc": "Fiery magma with blazing crimson and golden flame accents",
+  "cameraThemeVaporwave": "Retro Vaporwave",
+  "cameraThemeVaporwaveDesc": "80s synthwave energy with neon turquoise, hot magenta, and gold",
+  "cameraThemeChangedSuccess": "Applied theme \"{name}\"",
+  "@cameraThemeChangedSuccess": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "chatBubbleThemeTitle": "Chat Bubble Theme",
+  "chatBubbleSuggestions": "Suggested",
+  "chatBubbleAppliesToAll": "This bubble style applies to all conversations.",
+  "chatBubblePreviewMe": "Now you can change your chat bubble style and conversations will get a fresh look. So cool!",
+  "chatBubblePreviewFriend": "Looks great! I'm changing my style now too.",
+  "chatBubbleSave": "Save",
+  "chatBubbleCancel": "Cancel",
+  "friendsCountTitle": "Friends ({count})",
+  "@friendsCountTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "findNewFriends": "Find friends",
+  "searchInFriends": "Search in friends...",
+  "friendsTabAll": "All",
+  "friendsTabClose": "Close Friends",
+  "friendsTabRequests": "Requests",
+  "sendMessageAction": "Message",
+  "addToCloseFriends": "Add to close friends",
+  "removeFromCloseFriends": "Remove from close friends",
+  "addedToCloseFriends": "Added {name} to close friends ⭐",
+  "@addedToCloseFriends": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removedFromCloseFriends": "Removed {name} from close friends",
+  "@removedFromCloseFriends": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noMatchingFriends": "No matching friends found",
+  "noCloseFriendsYet": "No close friends yet",
+  "noCloseFriendsSubtitle": "Tap the star icon next to a friend to add them to close friends",
+  "typeMessageHint": "Message...",
+  "emptyConversationPrompt": "✨ Send the first message or reaction!",
+  "replyingToSelf": "Replying to yourself",
+  "replyingToUser": "Replying to {name}",
+  "@replyingToUser": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "replyingToPost": "Replying to {name}'s post",
+  "@replyingToPost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "youRepliedToYourself": "You replied to yourself",
+  "youRepliedToUser": "You replied to {name}",
+  "@youRepliedToUser": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "userRepliedToYou": "{name} replied to you",
+  "@userRepliedToYou": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "userRepliedToThemself": "{name} replied to themself",
+  "@userRepliedToThemself": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "activeNow": "Active now",
+  "activeAgo": "Active {time} ago",
+  "@activeAgo": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "offlineStatus": "Offline",
+  "feedMessageHint": "Message...",
+  "sendReactionTitle": "React",
+  "postActivityTitle": "Activity",
+  "noPostActivityYet": "No activity yet!",
+  "postViewedStatus": "Viewed!",
+  "oneNewPost": "1 new post!",
+  "newPostsCount": "{count} new posts!",
+  "@newPostsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "closeFriendBadge": "Close Friend",
+  "viewSentRequests": "View sent requests",
+  "sentRequestsTitle": "Sent Requests",
+  "sentRequestsCount": "Sent {count} requests",
+  "@sentRequestsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noSentRequestsYet": "No sent requests yet!",
+  "sortDefault": "Default",
+  "sortNewestFirst": "Newest first",
+  "sortOldestFirst": "Oldest first",
+  "sortBy": "Sort by",
+  "cancelRequest": "Cancel",
+  "requestCancelled": "Friend request cancelled",
+  "noFriendRequestsYet": "No friend requests yet!",
+  "reply": "Reply",
+  "copy": "Copy",
+  "copiedToClipboard": "Message copied",
+  "unsend": "Unsend",
+  "unsendConfirm": "Recall message?",
+  "unsendConfirmDesc": "This message will be recalled for everyone in this chat.",
+  "deleteForMe": "Delete for me",
+  "deleteForMeConfirm": "Delete message for me?",
+  "deleteForMeConfirmDesc": "This message will only be deleted on your side. Others will still see it.",
+  "report": "Report",
+  "reportMessage": "Report message",
+  "reportMessageDesc": "Why do you want to report this message?",
+  "reportSpam": "Spam or harassment",
+  "reportInappropriate": "Inappropriate content",
+  "reportViolence": "Hate speech or violence",
+  "reportOther": "Other reason",
+  "reportSuccess": "Thank you. Your report has been submitted.",
+  "selectReaction": "Select reaction",
+  "streakMaintaining": "Maintaining",
+  "bestStreakLabel": "Personal Best",
+  "avatarCollection": "Collection",
+  "framesCount": "{unlocked}/{total} Frames",
+  "@framesCount": {
+    "placeholders": {
+      "unlocked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "dailyMemeStreak": "Daily Meme Streak",
+  "unlockedStatus": "Unlocked",
+  "unlockedBadgeCount": "{unlocked}/{total} Unlocked",
+  "@unlockedBadgeCount": {
+    "placeholders": {
+      "unlocked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "hasPostedStreakMotivation": "You posted today. Keep this wonderful momentum going!",
+  "notPostedStreakMotivation": "Not posted today. Share a moment to maintain your streak!",
+  "avatarFrameCollectionTitle": "Avatar Frame Collection",
+  "currentEquipped": "Equipped",
+  "nextMilestone": "Next Milestone",
+  "daysLeftToUnlock": "{count} days left to unlock {frameName}",
+  "@daysLeftToUnlock": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "frameName": {
+        "type": "String"
+      }
+    }
+  },
+  "allFramesUnlocked": "All avatar frames unlocked",
+  "allFramesUnlockedDesc": "You have conquered all the highest streak milestones!",
+  "needStreakToUnlock": "Reach a {days}-day streak to unlock {frameName} frame!",
+  "@needStreakToUnlock": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "frameName": {
+        "type": "String"
+      }
+    }
+  },
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "generalOverview": "Overview",
+  "appearanceAndThemes": "Appearance & Theme",
+  "systemPreferences": "System Preferences",
+  "accountAndSupport": "Account & Support",
+  "selectThemeMode": "Select Display Theme",
+  "selectLanguage": "Select Language",
+  "selectCurrency": "Select Currency",
+  "themeModeLabel": "Theme Mode",
+  "vietnameseDong": "Vietnamese Dong",
+  "usDollar": "US Dollar",
+  "vndFull": "VND (₫ • Vietnamese Dong)",
+  "usdFull": "USD ($ • US Dollar)",
+  "systemDefault": "System Default",
+  "systemDefaultLanguage": "System Default (Auto)",
+  "conversationsTitle": "Conversations",
+  "noConversationsYet": "No conversations yet",
+  "startChattingWithFriends": "Message your friends to start chatting",
+  "newMessage": "New Message",
+  "searchConversations": "Search conversations...",
+  "markAllAsRead": "Mark all as read",
+  "startConversation": "Start a conversation",
+  "youReactedToMessage": "You reacted {emoji} to message",
+  "@youReactedToMessage": {
+    "placeholders": {
+      "emoji": {
+        "type": "String"
+      }
+    }
+  },
+  "friendReactedToMessage": "{name} reacted {emoji} to message",
+  "@friendReactedToMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "emoji": {
+        "type": "String"
+      }
+    }
+  },
+  "repliedToPostSnippet": "Replied to post: {text}",
+  "@repliedToPostSnippet": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "isTyping": "Typing...",
+  "youPrefix": "You: {text}",
+  "@youPrefix": {
+    "placeholders": {
+      "text": {
+        "type": "String"
+      }
+    }
+  },
+  "taggedYouInPost": "{name} mentioned you in a post",
+  "@taggedYouInPost": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tagFriends": "Tag friends",
+  "startTypingToTag": "Type @ to tag friends",
+  "viewTaggedProfile": "View profile",
+  "messageFriend": "Message",
+  "streakDayCount": "{count} days",
+  "@streakDayCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "friendRequestSent": "Request Sent",
+  "messageRecalled": "Message recalled",
+  "recallTimeExpired": "The 15-minute window to recall this message has expired",
+  "privateCannotTagFriends": "Cannot tag friends in private mode",
+  "closeFriendsTagOnly": "Can only tag friends in your Close Friends list",
+  "privacySection": "Privacy",
+  "activeStatusTitle": "Active Status",
+  "activeStatusSubtitle": "When off, friends cannot see when you are active and you will not see their active status either.",
+  "chooseWhoCanSeeActive": "Choose who can see when you're active",
+  "activeStatusPublic": "Public",
+  "activeStatusPublicDesc": "Anyone on the app can see your activity status.",
+  "activeStatusFriends": "Friends",
+  "activeStatusFriendsDesc": "Friends can see your activity status. You'll see each other's activity status only if both of you set it to active.",
+  "activeStatusNoOne": "No one",
+  "activeStatusNoOneDesc": "No one can see your activity status, and you cannot see the activity status of friends.",
+  "rewindTitle": "Meme Rewind",
+  "rewindMemories": "Spending Memories",
+  "rewindSelectPeriod": "Select Period",
+  "rewindWeek": "Week",
+  "rewindMonth": "Month",
+  "rewindQuarter": "Quarter",
+  "rewindYear": "Year",
+  "rewindThisWeek": "This Week",
+  "rewindThisMonth": "This Month",
+  "rewindThisQuarter": "This Quarter",
+  "rewindThisYear": "This Year",
+  "rewindOverviewTitle": "This Period's Journey",
+  "rewindOverviewSubtitle": "How did this time go for you?",
+  "rewindTotalExpense": "Total Spending",
+  "rewindTotalIncome": "Total Income",
+  "rewindTotalTransactions": "Transactions",
+  "rewindBalance": "Remaining Balance",
+  "rewindSpentMore": "You spent {percent}% more than last period",
+  "@rewindSpentMore": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindSpentLess": "You spent {percent}% less than last period",
+  "@rewindSpentLess": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindSpentEqual": "Spending was similar to last period",
+  "rewindSpentGentleUp": "You spent a little more than the previous period",
+  "rewindSpentGentleDown": "You were more economical than the previous period",
+  "rewindCategoryTitle": "Where did your money go?",
+  "rewindCategorySubtitle": "Categories that took most of your spending",
+  "rewindTopCategory": "Top Category",
+  "rewindStreakTitle": "Your Active Streak",
+  "rewindStreakDays": "{count} days in a row",
+  "@rewindStreakDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindStreakSubtitle": "You recorded spending consistently for {count} days",
+  "@rewindStreakSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindStreakStarter": "Just getting started, keep it up!",
+  "rewindStreakZero": "Start a new streak today!",
+  "rewindTopExpensesTitle": "Most Memorable Expenses",
+  "rewindTopExpensesSubtitle": "Top largest spendings in this period",
+  "rewindBiggestDayTitle": "Highest Spending Day",
+  "rewindBiggestDaySubtitle": "{date} was your highest spending day",
+  "@rewindBiggestDaySubtitle": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindTransactionsOnDay": "{count} transactions on this day",
+  "@rewindTransactionsOnDay": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindDailySpendingDistribution": "Daily spending distribution",
+  "rewindMomentsTitle": "Spending Moments",
+  "rewindMomentsSubtitle": "Money is more than just numbers. These are the moments behind your spending.",
+  "rewindHighlightTitle": "Your Period Highlight",
+  "rewindHighlightDominantTitle": "Dominant Category",
+  "rewindHighlightDominantDesc": "{category} accounted for {percent}% of your total spending.",
+  "@rewindHighlightDominantDesc": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindHighlightPeakDayTitle": "Peak Spending Day",
+  "rewindHighlightPeakDayDesc": "On {date}, you spent {percent}% of your total spending for this period.",
+  "@rewindHighlightPeakDayDesc": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      },
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindHighlightBiggestExpenseTitle": "Memorable Expense",
+  "rewindHighlightBiggestExpenseDesc": "Your largest expense was on {category}.",
+  "@rewindHighlightBiggestExpenseDesc": {
+    "placeholders": {
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "rewindDaysThisWeek": "Days this week",
+  "rewindDaysRecentInPeriod": "Recent 7 days in period",
+  "rewindComparisonTitle": "This Period vs Previous",
+  "rewindComparisonSubtitle": "How are your habits evolving?",
+  "rewindSummaryTitle": "This is your journey ✨",
+  "rewindSummarySubtitle": "A memorable chapter with Meme App",
+  "rewindSaveCard": "Save Image",
+  "rewindShareCard": "Share",
+  "rewindSeeYouNext": "See you in the next Rewind ❤️",
+  "rewindEmptyTitle": "No transactions in this period yet",
+  "rewindEmptySubtitle": "Start logging your spendings so Meme Rewind can tell your story!",
+  "rewindSaveSuccess": "Saved image to gallery!",
+  "rewindShareText": "Check out my spending journey on Meme App! ✨",
+  "rewindThisPeriod": "This period",
+  "rewindPreviousPeriod": "Previous period",
+  "rewindTransactionCount": "{count, plural, =1{1 transaction} other{{count} transactions}}",
+  "@rewindTransactionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindLargestExpense": "Largest Expense",
+  "rewindDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "@rewindDays": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "rewindActiveDaysInPeriod": "{count, plural, =1{1 active day in {period}} other{{count} active days in {period}}}",
+  "@rewindActiveDaysInPeriod": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "groupBadge": "Group",
+  "groupChat": "Group Chat",
+  "groupMembersCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "@groupMembersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupChatOpen": "Group Chat",
+  "systemGroupCreated": "{name} created group \"{group}\"",
+  "@systemGroupCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "systemGroupMemberAdded": "{name} added {member} to the group",
+  "@systemGroupMemberAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "member": {
+        "type": "String"
+      }
+    }
+  },
+  "systemGroupMemberLeft": "{name} left the group",
+  "@systemGroupMemberLeft": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "systemGroupExpenseLogged": "{name} shared spending of {amount} for \"{category}\"",
+  "@systemGroupExpenseLogged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "amount": {
+        "type": "String"
+      },
+      "category": {
+        "type": "String"
+      }
+    }
+  },
+  "postToGroup": "Group: {name}",
+  "@postToGroup": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "groupSpendingVisibleNote": "Group members can view spending amount",
+  "groupAudience": "Group: {name}",
+  "@groupAudience": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shortDaysStreak": "{count} Days",
+  "@shortDaysStreak": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tabAll": "All",
+  "tabUnread": "Unread",
+  "tabGroups": "Groups",
+  "createStory": "Add story",
+  "whatAreYouThinking": "What's on your mind?",
+  "activeNow": "Active now",
+  "activeMinutesAgo": "Active {minutes}m ago",
+  "@activeMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "activeHoursAgo": "Active {hours}h ago",
+  "@activeHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "newMessagesCount": "{count} new messages",
+  "@newMessagesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "shareNote": "Share a note...",
+  "yourNote": "Your note",
+  "newNote": "New note",
+  "shareVerb": "Share",
+  "deleteNote": "Delete note",
+  "noteSharedSuccess": "Note shared",
+  "noteDeletedSuccess": "Note deleted",
+  "sendDirectMessage": "Send message",
+  "youRepliedToTheirNote": "You replied to their note",
+  "userRepliedToYourNote": "{name} replied to your note",
+  "@userRepliedToYourNote": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedWithAudience": "Shared with {audience}",
+  "@sharedWithAudience": {
+    "placeholders": {
+      "audience": {
+        "type": "String"
+      }
+    }
+  },
+  "audiencePublic": "Public",
+  "audienceFriends": "Friends",
+  "expiresIn24Hours": "Expires in 24 hours",
+  "expiresInHours": "Expires in {hours} hours",
+  "@expiresInHours": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "shareNewNote": "Share a new note",
+  "cameraThemeLockedNotice": "Reach a 3-day streak to unlock this camera theme!",
+  "cameraThemeStreakRequirement": "3-day streak",
+  "cameraThemeStreakBanner": "Reach a {days}-day streak to unlock all camera themes (Current: {current} days)",
+  "@cameraThemeStreakBanner": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      },
+      "current": {
+        "type": "int"
+      }
+    }
+  },
+  "cameraThemeUnlockedBanner": "You have unlocked all camera themes with a {current}-day streak! 🔥",
+  "@cameraThemeUnlockedBanner": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      }
+    }
+  },
+  "streakProgressFraction": "{current}/{total} days",
+  "@streakProgressFraction": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "draftPrefix": "Draft: "
 }

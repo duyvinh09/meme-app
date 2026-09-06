@@ -13,6 +13,9 @@ class BudgetModel {
   final DateTime createdAt;
   final String period;
   final String budgetType;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final String? categoryKey;
 
   const BudgetModel({
     required this.id,
@@ -27,6 +30,9 @@ class BudgetModel {
     required this.createdAt,
     required this.period,
     required this.budgetType,
+    this.startDate,
+    this.endDate,
+    this.categoryKey,
   });
 
   String get category => name;
@@ -46,7 +52,50 @@ class BudgetModel {
     return limitAmount - spentAmount;
   }
 
+  BudgetModel copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    String? nameEn,
+    int? iconCodePoint,
+    String? colorHex,
+    double? limitAmount,
+    double? spentAmount,
+    bool? isDefault,
+    DateTime? createdAt,
+    String? period,
+    String? budgetType,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? categoryKey,
+  }) {
+    return BudgetModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      nameEn: nameEn ?? this.nameEn,
+      iconCodePoint: iconCodePoint ?? this.iconCodePoint,
+      colorHex: colorHex ?? this.colorHex,
+      limitAmount: limitAmount ?? this.limitAmount,
+      spentAmount: spentAmount ?? this.spentAmount,
+      isDefault: isDefault ?? this.isDefault,
+      createdAt: createdAt ?? this.createdAt,
+      period: period ?? this.period,
+      budgetType: budgetType ?? this.budgetType,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      categoryKey: categoryKey ?? this.categoryKey,
+    );
+  }
+
   factory BudgetModel.fromMap(String id, Map<String, dynamic> map) {
+    DateTime? parseDate(dynamic value) {
+      if (value == null) return null;
+      if (value is Timestamp) return value.toDate();
+      if (value is String) return DateTime.tryParse(value);
+      return null;
+    }
+
     return BudgetModel(
       id: id,
       userId: (map['userId'] ?? '').toString(),
@@ -63,11 +112,12 @@ class BudgetModel {
           ? (map['spentAmount'] as num).toDouble()
           : 0,
       isDefault: map['isDefault'] == true,
-      createdAt: map['createdAt'] is Timestamp
-          ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+      createdAt: parseDate(map['createdAt']) ?? DateTime.now(),
       period: map['period']?.toString() ?? 'monthly',
       budgetType: map['budgetType']?.toString() ?? 'total',
+      startDate: parseDate(map['startDate']),
+      endDate: parseDate(map['endDate']),
+      categoryKey: map['categoryKey']?.toString(),
     );
   }
 
@@ -85,6 +135,9 @@ class BudgetModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'period': period,
       'budgetType': budgetType,
+      if (startDate != null) 'startDate': Timestamp.fromDate(startDate!),
+      if (endDate != null) 'endDate': Timestamp.fromDate(endDate!),
+      if (categoryKey != null) 'categoryKey': categoryKey,
     };
   }
 }

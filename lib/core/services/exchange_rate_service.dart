@@ -9,7 +9,7 @@ class ExchangeRateService {
   static const String _rateKey = 'usd_to_vnd_rate';
   static const String _updatedAtKey = 'usd_to_vnd_updated_at';
 
-  static const double fallbackUsdToVndRate = 25000;
+  static const double fallbackUsdToVndRate = 26000;
 
   static double _cachedUsdToVndRate = fallbackUsdToVndRate;
   static DateTime? _cachedUpdatedAt;

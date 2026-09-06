@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_icon_registry.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/utils/budget_name_localizer.dart';
 
@@ -77,10 +78,7 @@ class TransactionMomentImage extends StatelessWidget {
     }
 
     if (categoryIconCodePoint != null && categoryIconCodePoint! > 0) {
-      return IconData(
-        categoryIconCodePoint!,
-        fontFamily: 'MaterialIcons',
-      );
+      return AppIconRegistry.fromCodePoint(categoryIconCodePoint!);
     }
 
     return _defaultCategoryMeta[category]?['icon'] as IconData? ??

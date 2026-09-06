@@ -10,6 +10,7 @@ import '../../../core/widgets/async_filled_button.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../widgets/avatar_with_frame.dart';
 
 class AddFriendScreen extends StatefulWidget {
   final String? myUid;
@@ -456,36 +457,10 @@ class _FoundUserCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.max,
         children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
-              border: Border.all(
-                color: borderColor,
-                width: 1.2,
-              ),
-            ),
-            child: ClipOval(
-              child: avatarUrl.isNotEmpty
-                  ? Image.network(
-                avatarUrl,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) {
-                  return Icon(
-                    Icons.person_rounded,
-                    size: 26,
-                    color: textSecondary,
-                  );
-                },
-              )
-                  : Icon(
-                Icons.person_rounded,
-                size: 26,
-                color: textSecondary,
-              ),
-            ),
+          AvatarWithFrame(
+            avatarUrl: avatarUrl,
+            frameId: user.avatarFrame,
+            size: 58,
           ),
 
           const SizedBox(width: 12),

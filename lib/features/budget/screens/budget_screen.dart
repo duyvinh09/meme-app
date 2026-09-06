@@ -15,6 +15,7 @@ import '../../../core/extensions/localization_extension.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../controllers/budget_controller.dart';
+import '../services/budget_cycle_helper.dart';
 import 'budget_history_screen.dart';
 
 class BudgetScreen extends StatefulWidget {
@@ -278,6 +279,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
     required String currentColorHex,
     required String currentPeriod,
     required String currentBudgetType,
+    DateTime? currentStartDate,
+    DateTime? currentEndDate,
+    String? currentCategoryKey,
   }) async {
     final l10n = context.l10n;
     final currency = context.read<ProfileController>().currency;
@@ -644,6 +648,9 @@ class _BudgetScreenState extends State<BudgetScreen> {
             '#${selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
         period: selectedPeriod,
         budgetType: selectedBudgetType,
+        startDate: currentStartDate,
+        endDate: currentEndDate,
+        categoryKey: currentCategoryKey,
         inputLocaleIsEnglish:
             Localizations.localeOf(context).languageCode == 'en',
       );
@@ -768,7 +775,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     ),
                     percent: itemPercent,
                     isOverLimit: item.limitAmount > 0 && item.spentAmount > item.limitAmount,
-                    periodText: l10n.monthly,
+                    periodText: _periodLabel(context, item.period),
                   );
                 }).toList(),
               ),
@@ -837,11 +844,17 @@ class _BudgetScreenState extends State<BudgetScreen> {
                       amountVnd: item.spentAmount,
                       currency: currency,
                     ),
+                    cycleSubtitle: BudgetCycleHelper.formatCycleSubtitle(
+                      item,
+                      isEnglish:
+                          Localizations.localeOf(context).languageCode == 'en',
+                    ),
                     onAnalyze: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (_) => BudgetHistoryScreen(
+                            budget: item,
                             budgetName: item.name,
                             budgetNameEn: item.nameEn,
                             limitAmount: item.limitAmount,
@@ -854,24 +867,27 @@ class _BudgetScreenState extends State<BudgetScreen> {
                     onEdit: uid == null
                         ? null
                         : () => _showEditBudgetDialog(
-                      context: context,
-                      uid: uid,
-                      budgetId: item.id,
-                      currentName: displayName,
-                      currentLimitAmountVnd: item.limitAmount,
-                    currentIconCodePoint: item.iconCodePoint,
-                    currentColorHex: item.colorHex,
-                    currentPeriod: item.period,
-                    currentBudgetType: item.budgetType,
-                    ),
+                              context: context,
+                              uid: uid,
+                              budgetId: item.id,
+                              currentName: displayName,
+                              currentLimitAmountVnd: item.limitAmount,
+                              currentIconCodePoint: item.iconCodePoint,
+                              currentColorHex: item.colorHex,
+                              currentPeriod: item.period,
+                              currentBudgetType: item.budgetType,
+                              currentStartDate: item.startDate,
+                              currentEndDate: item.endDate,
+                              currentCategoryKey: item.categoryKey,
+                            ),
                     onDelete: uid == null
                         ? null
                         : () => _confirmDeleteBudget(
-                      context: context,
-                      uid: uid,
-                      budgetId: item.id,
-                      budgetName: displayName,
-                    ),
+                              context: context,
+                              uid: uid,
+                              budgetId: item.id,
+                              budgetName: displayName,
+                            ),
                   );
                 }),
               ],
@@ -1478,10 +1494,13 @@ class _BudgetItemCard extends StatelessWidget {
     required this.remainingText,
     required this.limitText,
     required this.spentText,
+    this.cycleSubtitle,
     required this.onDelete,
     required this.onAnalyze,
     required this.onEdit,
   });
+
+  final String? cycleSubtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -1557,6 +1576,19 @@ class _BudgetItemCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    if (cycleSubtitle != null && cycleSubtitle!.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        cycleSubtitle!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption(context).copyWith(
+                          color: AppColors.textSecondary(context),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

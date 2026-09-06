@@ -11,10 +11,6 @@ Future<void> main(List<String> args) async {
   final service = LocketUploadService();
 
   try {
-    print('Đang đăng nhập Locket...');
-    final session = await service.login();
-    print('Đăng nhập thành công: ${session.displayName ?? session.localId}');
-
     print('Đang upload file...');
     final result = await service.uploadPath(args.first);
 

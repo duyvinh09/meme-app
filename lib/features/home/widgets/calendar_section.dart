@@ -221,6 +221,7 @@ class _CalendarSectionState extends State<CalendarSection> {
                   hasData: hasData,
                   hasImage: hasImage,
                   imageTransactions: imageTxs,
+                  totalCount: txs.length,
                   isToday: isToday,
                   onTap: hasData
                       ? () {
@@ -306,6 +307,7 @@ class _CalendarStickerCell extends StatelessWidget {
   final bool hasData;
   final bool hasImage;
   final List<TransactionModel> imageTransactions;
+  final int totalCount;
   final bool isToday;
   final VoidCallback? onTap;
 
@@ -316,6 +318,7 @@ class _CalendarStickerCell extends StatelessWidget {
     required this.hasData,
     required this.hasImage,
     required this.imageTransactions,
+    required this.totalCount,
     required this.isToday,
     required this.onTap,
   });
@@ -330,7 +333,7 @@ class _CalendarStickerCell extends StatelessWidget {
 
     final dayColor = isToday
         ? AppColors.primaryBlue
-        : AppColors.textPrimary(context).withOpacity(isDark ? 0.72 : 0.84);
+        : AppColors.textPrimary(context).withValues(alpha: isDark ? 0.72 : 0.84);
 
     Widget topWidget;
 
@@ -354,12 +357,61 @@ class _CalendarStickerCell extends StatelessWidget {
     } else if (isFuture) {
       topWidget = _SolidCircleMarker(
         color: isDark
-            ? Colors.white.withOpacity(0.24)
+            ? Colors.white.withValues(alpha: 0.24)
             : const Color(0xFFD8D3DD),
       );
     } else {
       topWidget = const _EmptyDayMarker();
     }
+
+    final showCountBadge = hasData && totalCount > 2;
+
+    final displayedTopWidget = showCountBadge
+        ? Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              topWidget,
+              Positioned(
+                top: 1,
+                right: 2,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  constraints: const BoxConstraints(
+                    minWidth: 15,
+                    minHeight: 15,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF388AF6),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFF141722) : Colors.white,
+                      width: 1.3,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.22),
+                        blurRadius: 3,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      totalCount > 99 ? '99+' : '$totalCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 9.0,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        : topWidget;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -378,11 +430,11 @@ class _CalendarStickerCell extends StatelessWidget {
                 height: topHeight,
                 child: Center(
                   child: OverflowBox(
-                    maxWidth: 68,
-                    maxHeight: 54,
+                    maxWidth: 72,
+                    maxHeight: 56,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: topWidget,
+                      child: displayedTopWidget,
                     ),
                   ),
                 ),

@@ -1,7 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
+import '../../core/utils/currency_formatter.dart';
 import '../datasources/remote/user_remote_datasource.dart';
 import '../models/user_model.dart';
+import 'chat_repository.dart';
 
 /// Connection state shown when searching a username on Add Friend.
 enum AddFriendConnectionState {
@@ -62,14 +65,51 @@ class UserRepository {
     });
   }
 
-  Future<bool> isUsernameTaken(String username) async {
-    final snapshot = await _db
-        .collection('users')
-        .where('username', isEqualTo: username.trim().toLowerCase())
-        .limit(1)
-        .get();
+  Future<bool> isFriendWith(String myUid, String targetUid) async {
+    if (myUid.isEmpty || targetUid.isEmpty || myUid == targetUid) return false;
+    try {
+      final doc = await _db
+          .collection('users')
+          .doc(myUid)
+          .collection('friends')
+          .doc(targetUid)
+          .get();
+      return doc.exists;
+    } catch (e) {
+      debugPrint('isFriendWith check error: $e');
+      return false;
+    }
+  }
 
-    return snapshot.docs.isNotEmpty;
+  Future<bool> hasSentFriendRequestTo(String myUid, String targetUid) async {
+    if (myUid.isEmpty || targetUid.isEmpty || myUid == targetUid) return false;
+    try {
+      final doc = await _db
+          .collection('users')
+          .doc(myUid)
+          .collection('sent_friend_requests')
+          .doc(targetUid)
+          .get();
+      return doc.exists;
+    } catch (e) {
+      debugPrint('hasSentFriendRequestTo check error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> isUsernameTaken(String username) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .where('username', isEqualTo: username.trim().toLowerCase())
+          .limit(1)
+          .get();
+
+      return snapshot.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('isUsernameTaken check error: $e');
+      return false;
+    }
   }
 
   Future<UserModel?> findUserByUsername(String username) async {
@@ -390,6 +430,28 @@ class UserRepository {
     return AddFriendConnectionState.canSend;
   }
 
+  Future<void> updateUserPresence(String uid, {required bool isOnline}) async {
+    if (uid.isEmpty) return;
+    try {
+      if (isOnline) {
+        final profile = await getUserProfile(uid);
+        if (profile != null && !profile.showActiveStatus) {
+          await _db.collection('users').doc(uid).update({
+            'isOnline': false,
+            'lastSeen': FieldValue.serverTimestamp(),
+          });
+          return;
+        }
+      }
+      await _db.collection('users').doc(uid).update({
+        'isOnline': isOnline,
+        'lastSeen': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Error updating user presence: $e');
+    }
+  }
+
   Stream<List<Map<String, dynamic>>> streamFriends(String uid) {
     return _db
         .collection('users')
@@ -404,28 +466,45 @@ class UserRepository {
           final data = doc.data();
           final friendUid = (data['uid'] ?? '').toString();
           final savedUsername = (data['username'] ?? '').toString();
+          final savedName = (data['name'] ?? '').toString();
+          final savedAvatarUrl = (data['avatarUrl'] ?? '').toString();
+          final savedAvatarFrame = (data['avatarFrame'] ?? 'plain').toString();
 
           final profile = await getUserProfile(friendUid);
+
           final isDeleted = profile?.isDeleted == true;
+          if (isDeleted) {
+            return null;
+          }
+
+          final isOnline = profile?.isCurrentlyOnline ?? false;
+          final showActiveStatus = profile?.showActiveStatus ?? true;
 
           return {
             'uid': friendUid,
-            'username': isDeleted
-                ? 'deleted_user'
-                : profile?.username.isNotEmpty == true
+            'username': profile?.username.isNotEmpty == true
                 ? profile!.username
-                : savedUsername,
-            'name': isDeleted
-                ? 'Tài khoản đã xoá'
-                : profile?.name ?? 'Người dùng',
-            'avatarUrl': isDeleted ? '' : profile?.avatarUrl ?? '',
-            'isDeleted': isDeleted,
+                : (savedUsername.isNotEmpty ? savedUsername : friendUid),
+            'name': profile?.name.isNotEmpty == true
+                ? profile!.name
+                : (savedName.isNotEmpty ? savedName : 'Người dùng'),
+            'avatarUrl': profile?.avatarUrl ?? savedAvatarUrl,
+            'avatarFrame': profile?.avatarFrame ?? savedAvatarFrame,
+            'isCloseFriend': data['isCloseFriend'] == true,
+            'isDeleted': false,
+            'isOnline': isOnline,
+            'showActiveStatus': showActiveStatus,
+            'userNote': profile?.userNote,
+            'userNoteCreatedAt': profile?.userNoteCreatedAt,
+            'hasActiveNote': profile?.hasActiveNote ?? false,
             'addedAt': data['addedAt'],
           };
         }),
       );
 
-      items.sort((a, b) {
+      final validItems = items.whereType<Map<String, dynamic>>().toList();
+
+      validItems.sort((a, b) {
         final aTime = a['addedAt'];
         final bTime = b['addedAt'];
 
@@ -436,8 +515,53 @@ class UserRepository {
         return (bTime as Timestamp).compareTo(aTime as Timestamp);
       });
 
-      return items;
+      return validItems;
     });
+  }
+
+  Future<void> updateUserNote(String uid, String noteText) async {
+    if (uid.isEmpty) return;
+    final trimmed = noteText.trim();
+    if (trimmed.isEmpty) {
+      await deleteUserNote(uid);
+      return;
+    }
+    await _db.collection('users').doc(uid).update({
+      'userNote': trimmed,
+      'userNoteCreatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> deleteUserNote(String uid) async {
+    if (uid.isEmpty) return;
+    await _db.collection('users').doc(uid).update({
+      'userNote': FieldValue.delete(),
+      'userNoteCreatedAt': FieldValue.delete(),
+    });
+  }
+
+  Future<void> toggleCloseFriend({
+    required String myUid,
+    required String friendUid,
+    required bool isCloseFriend,
+  }) async {
+    await _db
+        .collection('users')
+        .doc(myUid)
+        .collection('friends')
+        .doc(friendUid)
+        .set({
+      'isCloseFriend': isCloseFriend,
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateUserChatBubbleTheme({
+    required String uid,
+    required String themeId,
+  }) async {
+    await _db.collection('users').doc(uid).set({
+      'chatBubbleTheme': themeId,
+    }, SetOptions(merge: true));
   }
 
   Future<void> _createFriendConnection({
@@ -460,15 +584,21 @@ class UserRepository {
 
     batch.set(aFriendRef, {
       'uid': userB.uid,
+      'name': userB.name,
       'username': userB.username,
+      'avatarUrl': userB.avatarUrl,
+      'avatarFrame': userB.avatarFrame,
       'addedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
 
     batch.set(bFriendRef, {
       'uid': userA.uid,
+      'name': userA.name,
       'username': userA.username,
+      'avatarUrl': userA.avatarUrl,
+      'avatarFrame': userA.avatarFrame,
       'addedAt': FieldValue.serverTimestamp(),
-    });
+    }, SetOptions(merge: true));
 
     final aReceivedFromB = _db
         .collection('users')
@@ -597,7 +727,64 @@ class UserRepository {
       batch.delete(ref);
     }
 
+    final addedMembers = newMemberIds.difference(oldMemberIds);
+    final updater = await getUserProfile(myUid);
+    final updaterName = (updater?.name.isNotEmpty == true)
+        ? updater!.name
+        : (updater?.username.isNotEmpty == true ? '@${updater!.username}' : 'Thành viên');
+
+    for (final uid in addedMembers) {
+      final notifDoc = _db.collection('users').doc(uid).collection('notifications').doc();
+      batch.set(notifDoc, {
+        'id': notifDoc.id,
+        'type': 'group_invite',
+        'title': 'Nhóm chi tiêu',
+        'body': '$updaterName đã thêm bạn vào nhóm "$trimmedName"',
+        'groupId': groupId,
+        'groupName': trimmedName,
+        'senderUid': myUid,
+        'senderName': updaterName,
+        'senderAvatar': updater?.avatarUrl ?? '',
+        'senderAvatarFrame': updater?.avatarFrame ?? 'plain',
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    }
+
     await batch.commit();
+
+    try {
+      await ChatRepository().updateGroupChatMetadata(
+        groupId: groupId,
+        groupName: trimmedName,
+        groupColor: colorHex,
+        participants: newMemberIds.toList(),
+      );
+
+      for (final addedUid in addedMembers) {
+        final memberProfile = await getUserProfile(addedUid);
+        final memberName = memberProfile?.name.isNotEmpty == true
+            ? memberProfile!.name
+            : (memberProfile?.username.isNotEmpty == true ? '@${memberProfile!.username}' : 'Thành viên');
+        await ChatRepository().sendGroupSystemMessage(
+          groupId: groupId,
+          systemText: '$updaterName đã thêm $memberName vào nhóm',
+          actorUid: myUid,
+        );
+      }
+
+      for (final removedUid in removedMembers) {
+        final memberProfile = await getUserProfile(removedUid);
+        final memberName = memberProfile?.name.isNotEmpty == true
+            ? memberProfile!.name
+            : (memberProfile?.username.isNotEmpty == true ? '@${memberProfile!.username}' : 'Thành viên');
+        await ChatRepository().sendGroupSystemMessage(
+          groupId: groupId,
+          systemText: '$updaterName đã xoá $memberName khỏi nhóm',
+          actorUid: myUid,
+        );
+      }
+    } catch (_) {}
   }
 
   Future<void> leaveGroup({
@@ -658,6 +845,24 @@ class UserRepository {
     batch.delete(myGroupRef);
 
     await batch.commit();
+
+    try {
+      final leaver = await getUserProfile(myUid);
+      final leaverName = leaver?.name.isNotEmpty == true
+          ? leaver!.name
+          : (leaver?.username.isNotEmpty == true ? '@${leaver!.username}' : 'Thành viên');
+
+      await ChatRepository().sendGroupSystemMessage(
+        groupId: groupId,
+        systemText: '$leaverName đã rời khỏi nhóm',
+        actorUid: myUid,
+      );
+
+      await ChatRepository().updateGroupChatMetadata(
+        groupId: groupId,
+        participants: remainingMembers,
+      );
+    } catch (_) {}
   }
 
   Future<void> deleteGroup({
@@ -759,7 +964,57 @@ class UserRepository {
       batch.set(ref, groupData);
     }
 
+    final creator = await getUserProfile(uid);
+    final creatorName = (creator?.name.isNotEmpty == true)
+        ? creator!.name
+        : (creator?.username.isNotEmpty == true ? '@${creator!.username}' : 'Thành viên');
+
+    for (final memberUid in memberIds) {
+      if (memberUid == uid) continue;
+      final notifDoc = _db.collection('users').doc(memberUid).collection('notifications').doc();
+      batch.set(notifDoc, {
+        'id': notifDoc.id,
+        'type': 'group_invite',
+        'title': 'Nhóm chi tiêu',
+        'body': '$creatorName đã thêm bạn vào nhóm "$trimmedName"',
+        'groupId': doc.id,
+        'groupName': trimmedName,
+        'senderUid': uid,
+        'senderName': creatorName,
+        'senderAvatar': creator?.avatarUrl ?? '',
+        'senderAvatarFrame': creator?.avatarFrame ?? 'plain',
+        'createdAt': FieldValue.serverTimestamp(),
+        'isRead': false,
+      });
+    }
+
     await batch.commit();
+
+    try {
+      final initialSystemMessage = '$creatorName đã tạo nhóm "$trimmedName"';
+      await ChatRepository().createGroupChat(
+        groupId: doc.id,
+        groupName: trimmedName,
+        groupColor: colorHex,
+        ownerUid: uid,
+        memberUids: uniqueMemberIds,
+        initialSystemMessage: initialSystemMessage,
+      );
+    } catch (_) {}
+  }
+
+  Future<List<Map<String, dynamic>>> fetchUserGroups(String uid) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(uid)
+          .collection('groups')
+          .orderBy('createdAt', descending: true)
+          .get();
+      return snapshot.docs.map((e) => e.data()).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> addGroupContribution({
@@ -767,6 +1022,7 @@ class UserRepository {
     required String actorUid,
     required String memberUid,
     required double amount,
+    bool sendSystemMessage = true,
   }) async {
     final actorGroupRef = _db
         .collection('users')
@@ -830,20 +1086,66 @@ class UserRepository {
     }
 
     await batch.commit();
+
+    if (sendSystemMessage) {
+      try {
+        final actor = await getUserProfile(actorUid);
+        final member = actorUid == memberUid ? actor : await getUserProfile(memberUid);
+        final actorName = actor?.name.isNotEmpty == true
+            ? actor!.name
+            : (actor?.username.isNotEmpty == true ? '@${actor!.username}' : 'Thành viên');
+        final memberName = member?.name.isNotEmpty == true
+            ? member!.name
+            : (member?.username.isNotEmpty == true ? '@${member!.username}' : 'Thành viên');
+        final moneyStr = AppCurrencyFormatter.formatFromVnd(
+          amountVnd: amount,
+          currency: 'VND',
+        );
+
+        final systemText = actorUid == memberUid
+            ? '$actorName đã đóng góp $moneyStr vào quỹ nhóm'
+            : '$actorName đã đóng góp $moneyStr cho $memberName trong nhóm';
+
+        await ChatRepository().sendGroupSystemMessage(
+          groupId: groupId,
+          systemText: systemText,
+          actorUid: actorUid,
+        );
+      } catch (_) {}
+    }
   }
 
   Stream<List<String>> streamFriendIds(String uid) {
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('friends')
-        .snapshots()
-        .map(
-          (snapshot) => snapshot.docs
-          .map((doc) => (doc.data()['uid'] ?? '').toString())
+    return streamFriends(uid).map(
+      (friends) => friends
+          .map((f) => (f['uid'] ?? '').toString())
           .where((id) => id.isNotEmpty)
           .toList(),
     );
+  }
+
+  Stream<List<String>> streamCloseFriendIds(String uid) {
+    return streamFriends(uid).map(
+      (friends) => friends
+          .where((f) => f['isCloseFriend'] == true)
+          .map((f) => (f['uid'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toList(),
+    );
+  }
+
+  Future<List<String>> getCloseFriendUids(String uid) async {
+    final snapshot = await _db
+        .collection('users')
+        .doc(uid)
+        .collection('friends')
+        .where('isCloseFriend', isEqualTo: true)
+        .get();
+
+    return snapshot.docs
+        .map((doc) => (doc.data()['uid'] ?? doc.id).toString())
+        .where((id) => id.isNotEmpty)
+        .toList();
   }
 
   Future<void> markUserAsDeleted(String uid) async {

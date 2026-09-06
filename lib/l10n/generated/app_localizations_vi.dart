@@ -666,7 +666,7 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get requestPending => 'Yêu cầu kết bạn đã được gửi trước đó';
+  String get requestPending => 'Đang chờ';
 
   @override
   String get friendRequests => 'Lời mời kết bạn';
@@ -1503,4 +1503,1033 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get categoryNotFound => 'Danh mục không còn tồn tại';
+
+  @override
+  String get closeFriends => 'Bạn thân';
+
+  @override
+  String get cameraPermissionRequired => 'Bật máy ảnh để sử dụng Meme';
+
+  @override
+  String get openSettings => 'Mở cài đặt';
+
+  @override
+  String get noCameraAvailable => 'Không tìm thấy máy ảnh';
+
+  @override
+  String get dayTab => 'Ngày';
+
+  @override
+  String get monthTab => 'Tháng';
+
+  @override
+  String get expenseLabel => 'Chi tiêu';
+
+  @override
+  String get incomeLabel => 'Thu nhập';
+
+  @override
+  String get appIcon => 'Biểu tượng ứng dụng';
+
+  @override
+  String get appIconSection => 'Biểu tượng ứng dụng';
+
+  @override
+  String get appIconSubtitle => 'Tùy chỉnh biểu tượng Meme trên màn hình chính';
+
+  @override
+  String get appIconPickerSubtitle =>
+      'Chọn kiểu biểu tượng Meme để hiển thị trên màn hình chính của bạn.';
+
+  @override
+  String get appIconClassic => 'Meme Cổ Điển';
+
+  @override
+  String get appIconClassicDesc =>
+      'Phong cách biểu tượng gốc quen thuộc và vui nhộn';
+
+  @override
+  String get appIconNeon => 'Meme Vàng Neon';
+
+  @override
+  String get appIconNeonDesc => 'Tông vàng ấm áp, nổi bật và đậm cá tính';
+
+  @override
+  String get appIconOcean => 'Meme Xanh Đại Dương';
+
+  @override
+  String get appIconOceanDesc =>
+      'Tông xanh dương hiện đại, tươi mát và năng động';
+
+  @override
+  String get appIconInUse => 'Đang dùng';
+
+  @override
+  String appIconChangedSuccess(String name) {
+    return 'Đã đổi biểu tượng ứng dụng thành \"$name\"';
+  }
+
+  @override
+  String get appIconChangeFailed =>
+      'Không thể đổi biểu tượng trên thiết bị này';
+
+  @override
+  String get cameraTheme => 'Giao diện máy ảnh';
+
+  @override
+  String get cameraThemeSection => 'Giao diện máy ảnh';
+
+  @override
+  String get cameraThemeSubtitle =>
+      'Tùy biến phong cách màu sắc và kính ngắm cho máy ảnh';
+
+  @override
+  String get cameraThemePickerSubtitle =>
+      'Tùy chỉnh kính ngắm, màu nút chụp và giao diện máy ảnh theo phong cách của bạn.';
+
+  @override
+  String get cameraThemeClassic => 'Meme Cổ Điển';
+
+  @override
+  String get cameraThemeClassicDesc =>
+      'Giao diện tối tinh tế với điểm nhấn xanh ngọc lục bảo neon';
+
+  @override
+  String get cameraThemeCyber => 'Cyber Neon';
+
+  @override
+  String get cameraThemeCyberDesc =>
+      'Phong cách cyberpunk với sắc tím rực rỡ và xanh điện tử';
+
+  @override
+  String get cameraThemeSunset => 'Hoàng Hôn Vàng';
+
+  @override
+  String get cameraThemeSunsetDesc =>
+      'Không gian hoàng hôn ấm áp với ánh hổ phách sang trọng';
+
+  @override
+  String get cameraThemeOcean => 'Gió Biển';
+
+  @override
+  String get cameraThemeOceanDesc =>
+      'Xanh sapphire sâu thẳm, tươi mát và tràn đầy năng lượng';
+
+  @override
+  String get cameraThemeMatcha => 'Matcha Thiền';
+
+  @override
+  String get cameraThemeMatchaDesc =>
+      'Sắc xanh matcha thanh tịnh cùng tông rừng tự nhiên';
+
+  @override
+  String get cameraThemeAurora => 'Bắc Cực Quang';
+
+  @override
+  String get cameraThemeAuroraDesc =>
+      'Ánh sáng phương bắc huyền ảo với làn sóng xanh mòng két và tím';
+
+  @override
+  String get cameraThemeSakura => 'Hoa Anh Đào';
+
+  @override
+  String get cameraThemeSakuraDesc =>
+      'Sắc hồng pastel ngọt ngào và trẻ trung như hoa anh đào nở';
+
+  @override
+  String get cameraThemeGalaxy => 'Tinh Vân Thiên Hà';
+
+  @override
+  String get cameraThemeGalaxyDesc =>
+      'Không gian vũ trụ huyền bí với tím cực tím, hồng magenta và xanh điện';
+
+  @override
+  String get cameraThemeLava => 'Dòng Nham Thạch';
+
+  @override
+  String get cameraThemeLavaDesc =>
+      'Dòng magma rực lửa với đỏ thẫm và ngọn lửa vàng bốc cháy';
+
+  @override
+  String get cameraThemeVaporwave => 'Retro Vaporwave';
+
+  @override
+  String get cameraThemeVaporwaveDesc =>
+      'Năng lượng synthwave thập niên 80 với xanh ngọc, hồng rực và ánh vàng';
+
+  @override
+  String cameraThemeChangedSuccess(String name) {
+    return 'Đã áp dụng chủ đề \"$name\"';
+  }
+
+  @override
+  String get chatBubbleThemeTitle => 'Giao diện bong bóng chat';
+
+  @override
+  String get chatBubbleSuggestions => 'Gợi ý';
+
+  @override
+  String get chatBubbleAppliesToAll =>
+      'Kiểu bong bóng này áp dụng cho tất cả cuộc trò chuyện.';
+
+  @override
+  String get chatBubblePreviewMe =>
+      'Bây giờ bạn có thể đổi kiểu bong bóng chat để cuộc trò chuyện trông mới mẻ hơn. Thật tuyệt!';
+
+  @override
+  String get chatBubblePreviewFriend =>
+      'Trông đẹp đấy! Mình cũng đổi kiểu ngay đây.';
+
+  @override
+  String get chatBubbleSave => 'Lưu';
+
+  @override
+  String get chatBubbleCancel => 'Hủy';
+
+  @override
+  String friendsCountTitle(int count) {
+    return 'Bạn bè ($count)';
+  }
+
+  @override
+  String get findNewFriends => 'Tìm bạn bè';
+
+  @override
+  String get searchInFriends => 'Tìm trong bạn bè...';
+
+  @override
+  String get friendsTabAll => 'Tất cả';
+
+  @override
+  String get friendsTabClose => 'Bạn thân';
+
+  @override
+  String get friendsTabRequests => 'Lời mời';
+
+  @override
+  String get sendMessageAction => 'Nhắn tin';
+
+  @override
+  String get addToCloseFriends => 'Thêm vào bạn thân';
+
+  @override
+  String get removeFromCloseFriends => 'Xóa khỏi bạn thân';
+
+  @override
+  String addedToCloseFriends(String name) {
+    return 'Đã thêm $name vào bạn thân ⭐';
+  }
+
+  @override
+  String removedFromCloseFriends(String name) {
+    return 'Đã xóa $name khỏi bạn thân';
+  }
+
+  @override
+  String get noMatchingFriends => 'Không tìm thấy bạn bè phù hợp';
+
+  @override
+  String get noCloseFriendsYet => 'Chưa có bạn thân nào';
+
+  @override
+  String get noCloseFriendsSubtitle =>
+      'Chạm vào biểu tượng ngôi sao bên cạnh bạn bè để thêm họ vào bạn thân';
+
+  @override
+  String get typeMessageHint => 'Tin nhắn...';
+
+  @override
+  String get emptyConversationPrompt =>
+      '✨ Gửi tin nhắn hoặc thả cảm xúc đầu tiên!';
+
+  @override
+  String get replyingToSelf => 'Đang trả lời chính bạn';
+
+  @override
+  String replyingToUser(String name) {
+    return 'Đang trả lời $name';
+  }
+
+  @override
+  String replyingToPost(String name) {
+    return 'Đang trả lời bài viết của $name';
+  }
+
+  @override
+  String get youRepliedToYourself => 'Bạn đã trả lời chính mình';
+
+  @override
+  String youRepliedToUser(String name) {
+    return 'Bạn đã trả lời $name';
+  }
+
+  @override
+  String userRepliedToYou(String name) {
+    return '$name đã trả lời bạn';
+  }
+
+  @override
+  String userRepliedToThemself(String name) {
+    return '$name đã trả lời chính họ';
+  }
+
+  @override
+  String get activeNow => 'Đang hoạt động';
+
+  @override
+  String activeAgo(String time) {
+    return 'Hoạt động $time trước';
+  }
+
+  @override
+  String get offlineStatus => 'Ngoại tuyến';
+
+  @override
+  String get feedMessageHint => 'Tin nhắn...';
+
+  @override
+  String get sendReactionTitle => 'Thả cảm xúc';
+
+  @override
+  String get postActivityTitle => 'Hoạt động';
+
+  @override
+  String get noPostActivityYet => 'Chưa có hoạt động nào!';
+
+  @override
+  String get postViewedStatus => 'Đã xem!';
+
+  @override
+  String get oneNewPost => '1 bài viết mới!';
+
+  @override
+  String newPostsCount(int count) {
+    return '$count bài viết mới!';
+  }
+
+  @override
+  String get closeFriendBadge => 'Bạn thân';
+
+  @override
+  String get viewSentRequests => 'Xem lời mời đã gửi';
+
+  @override
+  String get sentRequestsTitle => 'Lời mời đã gửi';
+
+  @override
+  String sentRequestsCount(int count) {
+    return 'Đã gửi $count lời mời';
+  }
+
+  @override
+  String get noSentRequestsYet => 'Chưa có lời mời nào đã gửi!';
+
+  @override
+  String get sortDefault => 'Mặc định';
+
+  @override
+  String get sortNewestFirst => 'Mới nhất trước';
+
+  @override
+  String get sortOldestFirst => 'Cũ nhất trước';
+
+  @override
+  String get sortBy => 'Sắp xếp theo';
+
+  @override
+  String get cancelRequest => 'Hủy';
+
+  @override
+  String get requestCancelled => 'Đã hủy lời mời kết bạn';
+
+  @override
+  String get noFriendRequestsYet => 'Chưa có lời mời kết bạn nào!';
+
+  @override
+  String get reply => 'Trả lời';
+
+  @override
+  String get copy => 'Sao chép';
+
+  @override
+  String get copiedToClipboard => 'Đã sao chép tin nhắn';
+
+  @override
+  String get unsend => 'Thu hồi';
+
+  @override
+  String get unsendConfirm => 'Thu hồi tin nhắn?';
+
+  @override
+  String get unsendConfirmDesc =>
+      'Tin nhắn này sẽ được thu hồi đối với tất cả mọi người trong đoạn chat.';
+
+  @override
+  String get deleteForMe => 'Xóa ở phía tôi';
+
+  @override
+  String get deleteForMeConfirm => 'Xóa tin nhắn ở phía bạn?';
+
+  @override
+  String get deleteForMeConfirmDesc =>
+      'Tin nhắn này chỉ bị xóa ở phía bạn. Những người khác vẫn sẽ nhìn thấy.';
+
+  @override
+  String get report => 'Báo cáo';
+
+  @override
+  String get reportMessage => 'Báo cáo tin nhắn';
+
+  @override
+  String get reportMessageDesc => 'Tại sao bạn muốn báo cáo tin nhắn này?';
+
+  @override
+  String get reportSpam => 'Spam hoặc làm phiền';
+
+  @override
+  String get reportInappropriate => 'Nội dung không phù hợp';
+
+  @override
+  String get reportViolence => 'Ngôn từ thù ghét hoặc bạo lực';
+
+  @override
+  String get reportOther => 'Lý do khác';
+
+  @override
+  String get reportSuccess => 'Cảm ơn bạn. Báo cáo của bạn đã được gửi.';
+
+  @override
+  String get selectReaction => 'Chọn cảm xúc';
+
+  @override
+  String get streakMaintaining => 'Đang duy trì';
+
+  @override
+  String get bestStreakLabel => 'Kỷ lục cá nhân';
+
+  @override
+  String get avatarCollection => 'Bộ sưu tập';
+
+  @override
+  String framesCount(int unlocked, int total) {
+    return '$unlocked/$total Khung';
+  }
+
+  @override
+  String get dailyMemeStreak => 'Chuỗi Meme Hằng Ngày';
+
+  @override
+  String get unlockedStatus => 'Đã mở khóa';
+
+  @override
+  String unlockedBadgeCount(int unlocked, int total) {
+    return '$unlocked/$total Đã mở';
+  }
+
+  @override
+  String get hasPostedStreakMotivation =>
+      'Bạn đã đăng bài hôm nay. Hãy tiếp tục duy trì phong độ tuyệt vời này!';
+
+  @override
+  String get notPostedStreakMotivation =>
+      'Hôm nay bạn chưa đăng bài. Hãy chia sẻ một khoảnh khắc để giữ chuỗi nhé!';
+
+  @override
+  String get avatarFrameCollectionTitle => 'Bộ sưu tập Khung đại diện';
+
+  @override
+  String get currentEquipped => 'Đang sử dụng';
+
+  @override
+  String get nextMilestone => 'Cột mốc tiếp theo';
+
+  @override
+  String daysLeftToUnlock(int count, String frameName) {
+    return 'Còn $count ngày để mở khóa $frameName';
+  }
+
+  @override
+  String get allFramesUnlocked => 'Đã mở khóa toàn bộ khung avatar';
+
+  @override
+  String get allFramesUnlockedDesc =>
+      'Bạn đã chinh phục tất cả các cột mốc chuỗi cao nhất!';
+
+  @override
+  String needStreakToUnlock(int days, String frameName) {
+    return 'Đạt chuỗi $days ngày để mở khóa khung $frameName!';
+  }
+
+  @override
+  String get today => 'Hôm nay';
+
+  @override
+  String get yesterday => 'Hôm qua';
+
+  @override
+  String get generalOverview => 'Tổng quan';
+
+  @override
+  String get appearanceAndThemes => 'Giao diện & Chủ đề';
+
+  @override
+  String get systemPreferences => 'Tùy chọn hệ thống';
+
+  @override
+  String get accountAndSupport => 'Tài khoản & Hỗ trợ';
+
+  @override
+  String get selectThemeMode => 'Chọn chế độ hiển thị';
+
+  @override
+  String get selectLanguage => 'Chọn ngôn ngữ';
+
+  @override
+  String get selectCurrency => 'Chọn đơn vị tiền tệ';
+
+  @override
+  String get themeModeLabel => 'Chế độ giao diện';
+
+  @override
+  String get vietnameseDong => 'Đồng Việt Nam';
+
+  @override
+  String get usDollar => 'Đô la Mỹ';
+
+  @override
+  String get vndFull => 'VND (₫ • Đồng Việt Nam)';
+
+  @override
+  String get usdFull => 'USD (\$ • Đô la Mỹ)';
+
+  @override
+  String get systemDefault => 'Mặc định hệ thống';
+
+  @override
+  String get systemDefaultLanguage => 'Mặc định hệ thống (Tự động)';
+
+  @override
+  String get conversationsTitle => 'Cuộc trò chuyện';
+
+  @override
+  String get noConversationsYet => 'Chưa có cuộc trò chuyện nào';
+
+  @override
+  String get startChattingWithFriends =>
+      'Nhắn tin cho bạn bè để bắt đầu trò chuyện';
+
+  @override
+  String get newMessage => 'Tin nhắn mới';
+
+  @override
+  String get searchConversations => 'Tìm cuộc trò chuyện...';
+
+  @override
+  String get markAllAsRead => 'Đánh dấu tất cả đã đọc';
+
+  @override
+  String get startConversation => 'Bắt đầu cuộc trò chuyện';
+
+  @override
+  String youReactedToMessage(String emoji) {
+    return 'Bạn đã thả cảm xúc $emoji vào tin nhắn';
+  }
+
+  @override
+  String friendReactedToMessage(String name, String emoji) {
+    return '$name đã thả cảm xúc $emoji vào tin nhắn';
+  }
+
+  @override
+  String repliedToPostSnippet(String text) {
+    return 'Đã trả lời bài viết: $text';
+  }
+
+  @override
+  String get isTyping => 'Đang soạn tin...';
+
+  @override
+  String youPrefix(String text) {
+    return 'Bạn: $text';
+  }
+
+  @override
+  String taggedYouInPost(String name) {
+    return '$name đã nhắc đến bạn trong một bài viết';
+  }
+
+  @override
+  String get tagFriends => 'Gắn thẻ bạn bè';
+
+  @override
+  String get startTypingToTag => 'Gõ @ để gắn thẻ bạn bè';
+
+  @override
+  String get viewTaggedProfile => 'Xem trang cá nhân';
+
+  @override
+  String get messageFriend => 'Nhắn tin';
+
+  @override
+  String streakDayCount(int count) {
+    return '$count ngày';
+  }
+
+  @override
+  String get friendRequestSent => 'Đã gửi lời mời';
+
+  @override
+  String get messageRecalled => 'Tin nhắn đã bị thu hồi';
+
+  @override
+  String get recallTimeExpired =>
+      'Đã quá thời hạn 15 phút để thu hồi tin nhắn này';
+
+  @override
+  String get privateCannotTagFriends => 'Chế độ riêng tư không gắn thẻ bạn bè';
+
+  @override
+  String get closeFriendsTagOnly =>
+      'Chỉ gắn thẻ được bạn bè trong danh sách Bạn thân';
+
+  @override
+  String get privacySection => 'Quyền riêng tư';
+
+  @override
+  String get activeStatusTitle => 'Trạng thái hoạt động';
+
+  @override
+  String get activeStatusSubtitle =>
+      'Khi tắt, bạn bè sẽ không thấy bạn hoạt động và bạn cũng không thấy trạng thái của họ.';
+
+  @override
+  String get chooseWhoCanSeeActive =>
+      'Chọn người có thể thấy khi bạn hoạt động';
+
+  @override
+  String get activeStatusPublic => 'Công khai';
+
+  @override
+  String get activeStatusPublicDesc =>
+      'Mọi người trên ứng dụng đều có thể thấy trạng thái hoạt động của bạn.';
+
+  @override
+  String get activeStatusFriends => 'Bạn bè';
+
+  @override
+  String get activeStatusFriendsDesc =>
+      'Bạn bè có thể thấy khi bạn hoạt động. Cả hai chỉ thấy nhau khi đều bật.';
+
+  @override
+  String get activeStatusNoOne => 'Không ai cả';
+
+  @override
+  String get activeStatusNoOneDesc =>
+      'Không ai có thể thấy trạng thái hoạt động của bạn và bạn cũng không thấy của ai.';
+
+  @override
+  String get rewindTitle => 'Meme Rewind';
+
+  @override
+  String get rewindMemories => 'Kỷ niệm chi tiêu';
+
+  @override
+  String get rewindSelectPeriod => 'Chọn khoảng thời gian';
+
+  @override
+  String get rewindWeek => 'Tuần';
+
+  @override
+  String get rewindMonth => 'Tháng';
+
+  @override
+  String get rewindQuarter => 'Quý';
+
+  @override
+  String get rewindYear => 'Năm';
+
+  @override
+  String get rewindThisWeek => 'Tuần này';
+
+  @override
+  String get rewindThisMonth => 'Tháng này';
+
+  @override
+  String get rewindThisQuarter => 'Quý này';
+
+  @override
+  String get rewindThisYear => 'Năm này';
+
+  @override
+  String get rewindOverviewTitle => 'Hành trình giai đoạn này';
+
+  @override
+  String get rewindOverviewSubtitle =>
+      'Khoảng thời gian vừa qua của bạn thế nào?';
+
+  @override
+  String get rewindTotalExpense => 'Tổng chi tiêu';
+
+  @override
+  String get rewindTotalIncome => 'Tổng thu nhập';
+
+  @override
+  String get rewindTotalTransactions => 'Giao dịch';
+
+  @override
+  String get rewindBalance => 'Số dư còn lại';
+
+  @override
+  String rewindSpentMore(String percent) {
+    return 'Bạn đã chi nhiều hơn $percent% so với kỳ trước';
+  }
+
+  @override
+  String rewindSpentLess(String percent) {
+    return 'Bạn đã chi ít hơn $percent% so với kỳ trước';
+  }
+
+  @override
+  String get rewindSpentEqual => 'Chi tiêu tương đương so với kỳ trước';
+
+  @override
+  String get rewindSpentGentleUp =>
+      'Bạn đã chi nhiều hơn một chút so với kỳ trước';
+
+  @override
+  String get rewindSpentGentleDown => 'Bạn đã tiết kiệm hơn so với kỳ trước';
+
+  @override
+  String get rewindCategoryTitle => 'Tiền của bạn đi đâu?';
+
+  @override
+  String get rewindCategorySubtitle =>
+      'Những danh mục chiếm nhiều chi tiêu nhất';
+
+  @override
+  String get rewindTopCategory => 'Danh mục hàng đầu';
+
+  @override
+  String get rewindStreakTitle => 'Chuỗi hoạt động của bạn';
+
+  @override
+  String rewindStreakDays(int count) {
+    return '$count ngày liên tiếp';
+  }
+
+  @override
+  String rewindStreakSubtitle(int count) {
+    return 'Bạn đã ghi chép chi tiêu đều đặn trong $count ngày';
+  }
+
+  @override
+  String get rewindStreakStarter => 'Mới bắt đầu thôi, cố gắng duy trì nhé!';
+
+  @override
+  String get rewindStreakZero => 'Bắt đầu chuỗi mới ngay hôm nay!';
+
+  @override
+  String get rewindTopExpensesTitle => 'Khoản chi đáng nhớ nhất';
+
+  @override
+  String get rewindTopExpensesSubtitle =>
+      'Những khoản chi lớn nhất trong giai đoạn này';
+
+  @override
+  String get rewindBiggestDayTitle => 'Ngày chi tiêu nhiều nhất';
+
+  @override
+  String rewindBiggestDaySubtitle(String date) {
+    return 'Ngày $date là ngày bạn chi tiêu nhiều nhất';
+  }
+
+  @override
+  String rewindTransactionsOnDay(int count) {
+    return '$count giao dịch trong ngày này';
+  }
+
+  @override
+  String get rewindDailySpendingDistribution => 'Phân bổ chi tiêu hằng ngày';
+
+  @override
+  String get rewindMomentsTitle => 'Khoảnh khắc chi tiêu';
+
+  @override
+  String get rewindMomentsSubtitle =>
+      'Tiền bạc không chỉ là những con số. Đây là những khoảnh khắc gắn liền với chi tiêu của bạn.';
+
+  @override
+  String get rewindHighlightTitle => 'Điểm nhấn của kỳ';
+
+  @override
+  String get rewindHighlightDominantTitle => 'Danh mục chiếm ưu thế';
+
+  @override
+  String rewindHighlightDominantDesc(String category, String percent) {
+    return '$category chiếm $percent% tổng chi tiêu của bạn.';
+  }
+
+  @override
+  String get rewindHighlightPeakDayTitle => 'Ngày chi tiêu cao nhất';
+
+  @override
+  String rewindHighlightPeakDayDesc(String date, String percent) {
+    return 'Vào ngày $date, bạn đã chi $percent% tổng chi tiêu của kỳ này.';
+  }
+
+  @override
+  String get rewindHighlightBiggestExpenseTitle => 'Khoản chi đáng nhớ';
+
+  @override
+  String rewindHighlightBiggestExpenseDesc(String category) {
+    return 'Khoản chi lớn nhất của bạn là dành cho $category.';
+  }
+
+  @override
+  String get rewindDaysThisWeek => 'Các ngày trong tuần';
+
+  @override
+  String get rewindDaysRecentInPeriod => '7 ngày gần nhất trong kỳ';
+
+  @override
+  String get rewindComparisonTitle => 'Kỳ này so với kỳ trước';
+
+  @override
+  String get rewindComparisonSubtitle =>
+      'Thói quen của bạn đang thay đổi thế nào?';
+
+  @override
+  String get rewindSummaryTitle => 'Đây là hành trình của bạn ✨';
+
+  @override
+  String get rewindSummarySubtitle => 'Một chương đáng nhớ cùng Meme App';
+
+  @override
+  String get rewindSaveCard => 'Lưu ảnh';
+
+  @override
+  String get rewindShareCard => 'Chia sẻ';
+
+  @override
+  String get rewindSeeYouNext => 'Hẹn gặp lại bạn ở Rewind tiếp theo ❤️';
+
+  @override
+  String get rewindEmptyTitle => 'Chưa có giao dịch nào trong kỳ này';
+
+  @override
+  String get rewindEmptySubtitle =>
+      'Hãy bắt đầu ghi chép chi tiêu để Meme Rewind có thể kể câu chuyện của bạn nhé!';
+
+  @override
+  String get rewindSaveSuccess => 'Đã lưu ảnh vào thư viện!';
+
+  @override
+  String get rewindShareText =>
+      'Khám phá hành trình chi tiêu của mình trên Meme App! ✨';
+
+  @override
+  String get rewindThisPeriod => 'Kỳ này';
+
+  @override
+  String get rewindPreviousPeriod => 'Kỳ trước';
+
+  @override
+  String rewindTransactionCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count giao dịch',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get rewindLargestExpense => 'Khoản chi lớn nhất';
+
+  @override
+  String rewindDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ngày',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String rewindActiveDaysInPeriod(int count, String period) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ngày hoạt động trong $period',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupBadge => 'Nhóm';
+
+  @override
+  String get groupChat => 'Nhóm chat';
+
+  @override
+  String groupMembersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count thành viên',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get groupChatOpen => 'Mở nhóm chat';
+
+  @override
+  String systemGroupCreated(String name, String group) {
+    return '$name đã tạo nhóm \"$group\"';
+  }
+
+  @override
+  String systemGroupMemberAdded(String name, String member) {
+    return '$name đã thêm $member vào nhóm';
+  }
+
+  @override
+  String systemGroupMemberLeft(String name) {
+    return '$name đã rời khỏi nhóm';
+  }
+
+  @override
+  String systemGroupExpenseLogged(String name, String amount, String category) {
+    return '$name đã thêm chi tiêu $amount cho \"$category\"';
+  }
+
+  @override
+  String postToGroup(String name) {
+    return 'Nhóm: $name';
+  }
+
+  @override
+  String get groupSpendingVisibleNote =>
+      'Thành viên trong nhóm có thể xem số tiền chi tiêu';
+
+  @override
+  String groupAudience(String name) {
+    return 'Nhóm: $name';
+  }
+
+  @override
+  String shortDaysStreak(int count) {
+    return '$count Ngày';
+  }
+
+  @override
+  String get tabAll => 'Tất cả';
+
+  @override
+  String get tabUnread => 'Chưa đọc';
+
+  @override
+  String get tabGroups => 'Nhóm';
+
+  @override
+  String get createStory => 'Tạo tin';
+
+  @override
+  String get whatAreYouThinking => 'Bạn đang nghĩ gì?';
+
+  @override
+  String activeMinutesAgo(int minutes) {
+    return 'Hoạt động $minutes phút trước';
+  }
+
+  @override
+  String activeHoursAgo(int hours) {
+    return 'Hoạt động $hours giờ trước';
+  }
+
+  @override
+  String newMessagesCount(int count) {
+    return '$count tin nhắn mới';
+  }
+
+  @override
+  String get shareNote => 'Chia sẻ ghi chú...';
+
+  @override
+  String get yourNote => 'Ghi chú của bạn';
+
+  @override
+  String get newNote => 'Ghi chú mới';
+
+  @override
+  String get shareVerb => 'Chia sẻ';
+
+  @override
+  String get deleteNote => 'Xóa ghi chú';
+
+  @override
+  String get noteSharedSuccess => 'Đã chia sẻ ghi chú';
+
+  @override
+  String get noteDeletedSuccess => 'Đã xóa ghi chú';
+
+  @override
+  String get sendDirectMessage => 'Gửi tin nhắn';
+
+  @override
+  String get youRepliedToTheirNote => 'Bạn đã phản hồi ghi chú của họ';
+
+  @override
+  String userRepliedToYourNote(String name) {
+    return '$name đã phản hồi ghi chú của bạn';
+  }
+
+  @override
+  String sharedWithAudience(String audience) {
+    return 'Đã chia sẻ với $audience';
+  }
+
+  @override
+  String get audiencePublic => 'Công khai';
+
+  @override
+  String get audienceFriends => 'Bạn bè';
+
+  @override
+  String get expiresIn24Hours => 'Hết hạn sau 24 giờ';
+
+  @override
+  String expiresInHours(int hours) {
+    return 'Hết hạn sau $hours giờ';
+  }
+
+  @override
+  String get shareNewNote => 'Chia sẻ ghi chú mới';
+
+  @override
+  String get cameraThemeLockedNotice =>
+      'Đạt chuỗi 3 ngày để mở khóa giao diện này!';
+
+  @override
+  String get cameraThemeStreakRequirement => 'Chuỗi 3 ngày';
+
+  @override
+  String cameraThemeStreakBanner(int days, int current) {
+    return 'Đạt chuỗi $days ngày để mở khóa toàn bộ giao diện máy ảnh (Hiện tại: $current ngày)';
+  }
+
+  @override
+  String cameraThemeUnlockedBanner(int current) {
+    return 'Bạn đã mở khóa toàn bộ giao diện máy ảnh với chuỗi $current ngày! 🔥';
+  }
+
+  @override
+  String streakProgressFraction(int current, int total) {
+    return '$current/$total ngày';
+  }
+
+  @override
+  String get draftPrefix => 'Bản nháp: ';
 }
