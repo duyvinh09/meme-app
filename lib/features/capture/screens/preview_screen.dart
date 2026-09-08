@@ -162,11 +162,22 @@ class _PreviewScreenState extends State<PreviewScreen> {
     },
   };
 
+  bool get isContribution {
+    return widget.isGroupContribution ||
+        (privacy == 'group' &&
+            (category == 'Quỹ nhóm' ||
+                category == 'Group Fund' ||
+                category == context.l10n.groupFundCategory ||
+                type == 'income'));
+  }
+
   Color get accentColor {
+    if (isContribution) return AppColors.income;
     return type == 'expense' ? AppColors.expense : AppColors.income;
   }
 
   Color get submitColor {
+    if (isContribution) return AppColors.income;
     return type == 'expense' ? AppColors.expense : AppColors.income;
   }
 
@@ -724,11 +735,11 @@ class _PreviewScreenState extends State<PreviewScreen> {
       final shareText = StringBuffer()
         ..writeln('Meme')
         ..writeln()
-        ..writeln(context.l10n.shareType(type == 'expense' ? context.l10n.expense : context.l10n.income))
+        ..writeln(context.l10n.shareType(isContribution ? context.l10n.groupFundDeposit : (type == 'expense' ? context.l10n.expense : context.l10n.income)))
         ..writeln(context.l10n.shareCategory(_localizedCategoryLabel(category)));
 
       if (amountController.text.trim().isNotEmpty) {
-        shareText.writeln(context.l10n.shareAmount('${type == 'expense' ? '-' : '+'}$amountText'));
+        shareText.writeln(context.l10n.shareAmount('${(isContribution ? '+' : (type == 'expense' ? '-' : '+'))}$amountText'));
       }
 
       final captionText = captionController.text.trim();
@@ -798,7 +809,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
     // Kiểm tra số dư quỹ nhóm nếu đang ở tab Chi tiêu cho nhóm (không phải nạp quỹ)
     if (privacy == 'group' &&
         type == 'expense' &&
-        !widget.isGroupContribution &&
+        !isContribution &&
         _selectedGroupId != null &&
         _selectedGroupId!.isNotEmpty) {
       final remainingBalance = _currentGroupRemainingBalance;
@@ -838,12 +849,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
         '#${selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
 
     final location = capture.selectedLocation;
-
-    final isContribution = widget.isGroupContribution ||
-        (privacy == 'group' &&
-            (type == 'income' ||
-                category == 'Quỹ nhóm' ||
-                category == context.l10n.groupFundCategory));
 
     final effectiveType = isContribution ? 'expense' : type;
 
@@ -1149,8 +1154,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Widget _typeSwitch() {
-    final isExpense = type == 'expense';
-    final activeColor = isExpense ? AppColors.expense : AppColors.income;
+    final isExpense = !isContribution && type == 'expense';
+    final activeColor = isContribution
+        ? AppColors.income
+        : (isExpense ? AppColors.expense : AppColors.income);
 
     if (widget.lockType) {
       return Container(
@@ -1174,16 +1181,18 @@ class _PreviewScreenState extends State<PreviewScreen> {
                 color: activeColor,
               ),
               child: Icon(
-                isExpense
-                    ? Icons.arrow_outward_rounded
-                    : Icons.arrow_downward_rounded,
+                isContribution
+                    ? Icons.arrow_downward_rounded
+                    : (isExpense
+                        ? Icons.arrow_outward_rounded
+                        : Icons.arrow_downward_rounded),
                 color: Colors.white,
                 size: 20,
               ),
             ),
             const SizedBox(width: 10),
             Text(
-              widget.isGroupContribution
+              isContribution
                   ? context.l10n.groupFundDeposit
                   : (isExpense ? context.l10n.expense : context.l10n.income),
               style: TextStyle(
@@ -1418,7 +1427,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     accentColor: accentColor,
                     amountController: amountController,
                     captionController: captionController,
-                    amountPrefix: type == 'expense' ? '-' : '+',
+                    amountPrefix: isContribution ? '+' : (type == 'expense' ? '-' : '+'),
                     currency: currency,
                     onAmountChanged: _onAmountChanged,
                     onMaxDigitsExceeded: _showMaxDigitsWarning,
@@ -1426,7 +1435,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     privacy: privacy,
                     closeFriendUids: _closeFriendUids,
                     groupMemberIds: _selectedGroupMemberIds,
-                    groupRemainingBalance: (privacy == 'group' && type == 'expense' && !widget.isGroupContribution)
+                    groupRemainingBalance: (privacy == 'group' && type == 'expense' && !isContribution)
                         ? _currentGroupRemainingBalance
                         : null,
                   ),
