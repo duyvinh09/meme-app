@@ -23,11 +23,12 @@ class HomeController extends ChangeNotifier {
   StreamSubscription<List<TransactionModel>>? _txSub;
 
   double get totalIncome => transactions
-      .where((e) => e.type == 'income')
+      .where((e) => e.type == 'income' && !e.isGroupContribution)
       .fold(0, (sum, e) => sum + e.amount);
 
   double get totalExpense => transactions
-      .where((e) => e.type == 'expense')
+      .where((e) =>
+          (e.type == 'expense' && !e.isGroupExpense) || e.isGroupContribution)
       .fold(0, (sum, e) => sum + e.amount);
 
   double get balance => totalIncome - totalExpense;

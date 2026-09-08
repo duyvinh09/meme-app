@@ -1613,5 +1613,78 @@
       }
     }
   },
-  "draftPrefix": "Bản nháp: "
+  "draftPrefix": "Bản nháp: ",
+  "browseTransactionsTitle": "Duyệt giao dịch",
+  "browseTransactionsSearchHint": "Ghi chú, danh mục, tài khoản, số tiền...",
+  "timeFilterLabel": "Thời gian",
+  "timeFilterAll": "Tất cả",
+  "timeFilterToday": "Hôm nay",
+  "timeFilterLast7Days": "7 ngày qua",
+  "timeFilterThisMonth": "Tháng này",
+  "timeFilterLastMonth": "Tháng trước",
+  "timeFilterThisYear": "Năm nay",
+  "typeFilterAll": "Tất cả",
+  "typeFilterExpense": "Chi tiêu",
+  "typeFilterIncome": "Thu nhập",
+  "allCategories": "Danh mục",
+  "noTransactionsFound": "Không tìm thấy giao dịch nào",
+  "groupFinancialOverview": "Tài chính & Quỹ nhóm",
+  "groupFundBalanceAndProgress": "Số dư quỹ thực tế & tiến độ",
+  "groupFundRemaining": "Số dư quỹ còn lại",
+  "groupFundSurplus": "Còn dư",
+  "groupFundDeficit": "Thâm hụt",
+  "groupTotalContributed": "Đã góp",
+  "groupTotalSpent": "Đã chi",
+  "groupGoal": "Mục tiêu",
+  "groupGoalProgress": "Tiến độ mục tiêu quỹ",
+  "groupExpenseHistory": "Lịch sử chi tiêu nhóm",
+  "groupNoExpensesYet": "Chưa có khoản chi tiêu nào",
+  "groupNoExpensesDesc": "Các chi tiêu chia sẻ vào nhóm sẽ được hiển thị tại đây",
+  "groupExpenseExceedsBalance": "Số tiền chi tiêu vượt quá số dư quỹ nhóm hiện có ({balance})",
+  "@groupExpenseExceedsBalance": {
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      }
+    }
+  },
+  "groupFundDeposit": "Nạp quỹ nhóm",
+  "groupDepositSuccess": "Đã nạp tiền vào quỹ nhóm",
+  "groupBalanceShort": "Dư: {amount}",
+  "@groupBalanceShort": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupSpentShort": "Đã chi: {amount}",
+  "@groupSpentShort": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "member": "Thành viên",
+  "groupFundCategory": "Quỹ nhóm",
+  "momentDetails": "Chi tiết khoảnh khắc",
+  "notFriendsGroupPostNotice": "Bạn và người đăng bài chưa là bạn bè nên không thể xem bài viết trên Bảng tin. Dưới đây là chi tiết khoảnh khắc được chia sẻ trong nhóm:",
+  "groupExpense": "Chi tiêu nhóm",
+  "spentReason": "Mục đích: {reason}",
+  "@spentReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "spentBy": "Người chi: {name}",
+  "@spentBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

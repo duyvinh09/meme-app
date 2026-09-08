@@ -47,7 +47,7 @@ String _localizedTransactionCategory(BuildContext context, String category) {
   }
 }
 
-class TransactionMapPanel extends StatelessWidget {
+class TransactionMapPanel extends StatefulWidget {
   final List<TransactionModel> transactions;
 
   const TransactionMapPanel({
@@ -55,8 +55,44 @@ class TransactionMapPanel extends StatelessWidget {
     required this.transactions,
   });
 
+  @override
+  State<TransactionMapPanel> createState() => _TransactionMapPanelState();
+}
+
+class _TransactionMapPanelState extends State<TransactionMapPanel> {
+  late final MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+  }
+
+  @override
+  void didUpdateWidget(covariant TransactionMapPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_hasTransactionsChanged(oldWidget.transactions, widget.transactions)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _fitAllMarkers();
+        }
+      });
+    }
+  }
+
+  bool _hasTransactionsChanged(
+    List<TransactionModel> a,
+    List<TransactionModel> b,
+  ) {
+    if (a.length != b.length) return true;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return true;
+    }
+    return false;
+  }
+
   List<TransactionModel> get locatedTransactions {
-    final items = transactions.where((tx) {
+    final items = widget.transactions.where((tx) {
       return tx.latitude != null && tx.longitude != null;
     }).toList();
 
@@ -65,8 +101,8 @@ class TransactionMapPanel extends StatelessWidget {
   }
 
   List<_LocationGroup> _groupTransactionsByLocation(
-      List<TransactionModel> items,
-      ) {
+    List<TransactionModel> items,
+  ) {
     final groups = <String, List<TransactionModel>>{};
 
     for (final tx in items) {
@@ -98,6 +134,31 @@ class TransactionMapPanel extends StatelessWidget {
   String _locationKey(double lat, double lng) {
     // 4 chữ số giúp gom các giao dịch gần nhau trong cùng một địa điểm.
     return '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)}';
+  }
+
+  List<LatLng> _getPoints(List<_LocationGroup> groups) {
+    return groups.map((g) => LatLng(g.latitude, g.longitude)).toList();
+  }
+
+  void _fitAllMarkers() {
+    final items = locatedTransactions;
+    if (items.isEmpty) return;
+    final groups = _groupTransactionsByLocation(items);
+    final points = _getPoints(groups);
+    if (points.isEmpty) return;
+
+    if (points.length == 1) {
+      _mapController.move(points.first, 14.0);
+    } else {
+      final bounds = LatLngBounds.fromPoints(points);
+      _mapController.fitCamera(
+        CameraFit.bounds(
+          bounds: bounds,
+          padding: const EdgeInsets.fromLTRB(45, 45, 45, 100),
+          maxZoom: 15.0,
+        ),
+      );
+    }
   }
 
   @override
@@ -149,7 +210,16 @@ class TransactionMapPanel extends StatelessWidget {
     }
 
     final groups = _groupTransactionsByLocation(items);
-    final center = LatLng(groups.first.latitude, groups.first.longitude);
+    final points = _getPoints(groups);
+    final center = points.first;
+
+    final initialCameraFit = points.length > 1
+        ? CameraFit.bounds(
+            bounds: LatLngBounds.fromPoints(points),
+            padding: const EdgeInsets.fromLTRB(45, 45, 45, 100),
+            maxZoom: 15.0,
+          )
+        : null;
 
     return Container(
       height: 430,
@@ -164,9 +234,11 @@ class TransactionMapPanel extends StatelessWidget {
       child: Stack(
         children: [
           FlutterMap(
+            mapController: _mapController,
             options: MapOptions(
+              initialCameraFit: initialCameraFit,
               initialCenter: center,
-              initialZoom: 13,
+              initialZoom: 14.0,
               minZoom: 3,
               maxZoom: 18,
             ),
@@ -194,11 +266,11 @@ class TransactionMapPanel extends StatelessWidget {
                       },
                       child: group.count == 1
                           ? _MapMomentMarker(
-                        transaction: group.transactions.first,
-                      )
+                              transaction: group.transactions.first,
+                            )
                           : _MapMomentClusterMarker(
-                        group: group,
-                      ),
+                              group: group,
+                            ),
                     ),
                   );
                 }).toList(),
@@ -206,38 +278,68 @@ class TransactionMapPanel extends StatelessWidget {
             ],
           ),
 
+          // Bottom Summary Pill (tapping it fits all markers!)
           Positioned(
             left: 14,
             right: 14,
             bottom: 24,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.50),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _fitAllMarkers,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.location_on_outlined,
-                    color: Colors.white,
-                    size: 24,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      context.l10n.mapSummary(items.length, groups.length),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.20),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                ],
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          context.l10n.mapSummary(items.length, groups.length),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      if (groups.length > 1) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.center_focus_strong_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
@@ -278,7 +380,7 @@ class TransactionMapPanel extends StatelessWidget {
                         height: 46,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: AppColors.primaryBlue.withOpacity(0.14),
+                          color: AppColors.primaryBlue.withValues(alpha: 0.14),
                         ),
                         child: const Icon(
                           Icons.location_on_rounded,
@@ -454,7 +556,7 @@ class _MapMomentMarker extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.22),
+                color: Colors.black.withValues(alpha: 0.22),
                 blurRadius: 10,
                 offset: const Offset(0, 5),
               ),
@@ -532,7 +634,7 @@ class _MapMomentClusterMarker extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.20),
+                  color: Colors.black.withValues(alpha: 0.20),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),
@@ -618,7 +720,7 @@ class _ClusterPhotoFrame extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.22),
+            color: Colors.black.withValues(alpha: 0.22),
             blurRadius: 9,
             offset: const Offset(0, 4),
           ),

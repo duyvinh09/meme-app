@@ -34,6 +34,14 @@ class PreviewScreen extends StatefulWidget {
   final File? videoFile;
   final String mediaType;
   final int? durationMs;
+  final String? initialType;
+  final String? initialPrivacy;
+  final String? initialGroupId;
+  final String? initialGroupName;
+  final List<String>? initialGroupMemberIds;
+  final bool lockType;
+  final bool lockPrivacy;
+  final bool isGroupContribution;
 
   const PreviewScreen({
     super.key,
@@ -41,6 +49,14 @@ class PreviewScreen extends StatefulWidget {
     this.videoFile,
     this.mediaType = 'image',
     this.durationMs,
+    this.initialType,
+    this.initialPrivacy,
+    this.initialGroupId,
+    this.initialGroupName,
+    this.initialGroupMemberIds,
+    this.lockType = false,
+    this.lockPrivacy = false,
+    this.isGroupContribution = false,
   });
 
   @override
@@ -67,6 +83,25 @@ class _PreviewScreenState extends State<PreviewScreen> {
   List<String> _selectedGroupMemberIds = [];
   List<Map<String, dynamic>> _userGroups = [];
   bool _loadedGroups = false;
+
+  Map<String, dynamic>? get _currentSelectedGroupData {
+    if (_selectedGroupId == null || _selectedGroupId!.isEmpty) return null;
+    try {
+      return _userGroups.firstWhere(
+        (g) => (g['id'] ?? g['groupId']) == _selectedGroupId,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  double get _currentGroupRemainingBalance {
+    final data = _currentSelectedGroupData;
+    if (data == null) return 0.0;
+    final current = (data['currentAmount'] as num?)?.toDouble() ?? 0.0;
+    final spent = (data['spentAmount'] as num?)?.toDouble() ?? 0.0;
+    return current - spent;
+  }
 
   bool categoryOpen = false;
   bool privacyOpen = false;
@@ -120,6 +155,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
     'Khác': {
       'icon': Icons.more_horiz_rounded,
       'color': Color(0xFFAAAAAA),
+    },
+    'Quỹ nhóm': {
+      'icon': Icons.savings_rounded,
+      'color': Color(0xFF10B981),
     },
   };
 
@@ -190,6 +229,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
       case 'Khác':
       case 'Other':
         return 'Khác';
+      case 'Quỹ nhóm':
+      case 'Group Fund':
+        return 'Quỹ nhóm';
       default:
         if (label == l10n.food) return 'Ăn uống';
         if (label == l10n.shopping) return 'Mua sắm';
@@ -199,6 +241,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
         if (label == l10n.salary) return 'Lương';
         if (label == l10n.gift) return 'Quà tặng';
         if (label == l10n.other) return 'Khác';
+        if (label == l10n.groupFundCategory) return 'Quỹ nhóm';
         return label;
     }
   }
@@ -222,6 +265,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
         return l10n.gift;
       case 'Khác':
         return l10n.other;
+      case 'Quỹ nhóm':
+      case 'Group Fund':
+        return l10n.groupFundCategory;
       default:
         return BudgetNameLocalizer.display(context, categoryValue);
     }
@@ -230,6 +276,24 @@ class _PreviewScreenState extends State<PreviewScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialType != null) {
+      type = widget.initialType!;
+    }
+    if (widget.initialPrivacy != null) {
+      privacy = widget.initialPrivacy!;
+    }
+    if (widget.initialGroupId != null) {
+      _selectedGroupId = widget.initialGroupId;
+    }
+    if (widget.initialGroupName != null) {
+      _selectedGroupName = widget.initialGroupName;
+    }
+    if (widget.initialGroupMemberIds != null) {
+      _selectedGroupMemberIds = widget.initialGroupMemberIds!;
+    }
+    if (widget.isGroupContribution) {
+      category = 'Quỹ nhóm';
+    }
     _prepareVideoIfNeeded();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final uid = context.read<AuthController>().user?.uid;
@@ -369,19 +433,27 @@ class _PreviewScreenState extends State<PreviewScreen> {
       out.add(trimmed);
     }
 
-    // 1. Prioritize user created budgets at top (excluding pure overall total budgets)
-    for (final budget in budgetController(context).budgets) {
-      if (!BudgetCycleHelper.isTotalBudgetName(budget.name)) {
-        addRaw(budget.name);
+    final isGroupMode = privacy == 'group';
+
+    // When in group mode, hide personal budgets and custom categories
+    if (!isGroupMode) {
+      // 1. Prioritize user created budgets at top (excluding pure overall total budgets)
+      for (final budget in budgetController(context).budgets) {
+        if (!BudgetCycleHelper.isTotalBudgetName(budget.name)) {
+          addRaw(budget.name);
+        }
+      }
+
+      // 2. User custom categories
+      for (final uc in userCategoryController(context).categoriesForExpense()) {
+        addRaw(uc.name);
       }
     }
 
-    // 2. User custom categories
-    for (final uc in userCategoryController(context).categoriesForExpense()) {
-      addRaw(uc.name);
-    }
-
     // 3. Default expense categories
+    if (isGroupMode || widget.isGroupContribution) {
+      addRaw(l10n.groupFundCategory);
+    }
     for (final label in [
       l10n.food,
       l10n.shopping,
@@ -419,6 +491,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
       out.add(trimmed);
     }
 
+    final isGroupMode = privacy == 'group';
+
+    if (isGroupMode || widget.isGroupContribution) {
+      addRaw('Quỹ nhóm');
+    }
+
     for (final label in [
       l10n.salary,
       l10n.gift,
@@ -427,8 +505,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
       addRaw(label);
     }
 
-    for (final uc in userCategoryController(context).categoriesForIncome()) {
-      addRaw(uc.name);
+    if (!isGroupMode) {
+      for (final uc in userCategoryController(context).categoriesForIncome()) {
+        addRaw(uc.name);
+      }
     }
 
     return out;
@@ -567,7 +647,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Future<bool> _confirmIfBudgetWillExceed() async {
-    if (type != 'expense') return true;
+    if (type != 'expense' || privacy == 'group') return true;
 
     final budgetCtrl = context.read<BudgetController>();
     final budget = budgetCtrl.findApplicableBudgetForExpense(category: category) ??
@@ -637,7 +717,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
           ? context.l10n.private
           : (privacy == 'close_friends'
               ? context.l10n.closeFriends
-              : context.l10n.everyone);
+              : (privacy == 'group'
+                  ? (_selectedGroupName ?? context.l10n.groupBadge)
+                  : context.l10n.everyone));
 
       final shareText = StringBuffer()
         ..writeln('Meme')
@@ -713,8 +795,25 @@ class _PreviewScreenState extends State<PreviewScreen> {
       return;
     }
 
+    // Kiểm tra số dư quỹ nhóm nếu đang ở tab Chi tiêu cho nhóm (không phải nạp quỹ)
+    if (privacy == 'group' &&
+        type == 'expense' &&
+        !widget.isGroupContribution &&
+        _selectedGroupId != null &&
+        _selectedGroupId!.isNotEmpty) {
+      final remainingBalance = _currentGroupRemainingBalance;
+      if (amountValue > remainingBalance) {
+        final balText = _formatMoney(remainingBalance);
+        AppToast.show(
+          context,
+          context.l10n.groupExpenseExceedsBalance(balText),
+        );
+        return;
+      }
+    }
+
     final shouldContinue = await _confirmIfBudgetWillExceed();
-    if (!shouldContinue) return;
+    if (!shouldContinue || !mounted) return;
 
     final capture = context.read<CaptureController>();
     final uid = context.read<AuthController>().user?.uid;
@@ -740,11 +839,19 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
     final location = capture.selectedLocation;
 
+    final isContribution = widget.isGroupContribution ||
+        (privacy == 'group' &&
+            (type == 'income' ||
+                category == 'Quỹ nhóm' ||
+                category == context.l10n.groupFundCategory));
+
+    final effectiveType = isContribution ? 'expense' : type;
+
     final ok = await capture.saveTransaction(
       userId: uid,
       amount: amountValue,
-      type: type,
-      category: _toCanonicalCategory(category),
+      type: effectiveType,
+      category: isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category),
       caption: captionController.text.trim(),
       note: '',
       sharedToFeed: privacy != 'private',
@@ -758,6 +865,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       locationName: location?.locationName ?? '',
       latitude: location?.latitude,
       longitude: location?.longitude,
+      isGroupContribution: isContribution,
     );
 
     if (!mounted) return;
@@ -767,7 +875,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       final budget = budgetCtrl.findApplicableBudgetForExpense(category: category) ??
           budgetCtrl.findBudgetByName(category);
 
-      if (budget != null && type == 'expense') {
+      if (budget != null && type == 'expense' && privacy != 'group') {
         final nextSpent = budget.spentAmount + amountValue;
 
         if (budget.limitAmount > 0 && nextSpent > budget.limitAmount) {
@@ -1044,6 +1152,57 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final isExpense = type == 'expense';
     final activeColor = isExpense ? AppColors.expense : AppColors.income;
 
+    if (widget.lockType) {
+      return Container(
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        decoration: BoxDecoration(
+          color: _darkSwitch,
+          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+          border: Border.all(
+            color: activeColor.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: activeColor,
+              ),
+              child: Icon(
+                isExpense
+                    ? Icons.arrow_outward_rounded
+                    : Icons.arrow_downward_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Text(
+              widget.isGroupContribution
+                  ? context.l10n.groupFundDeposit
+                  : (isExpense ? context.l10n.expense : context.l10n.income),
+              style: TextStyle(
+                color: activeColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(width: 6),
+            Icon(
+              Icons.lock_rounded,
+              color: activeColor.withValues(alpha: 0.7),
+              size: 14,
+            ),
+          ],
+        ),
+      );
+    }
+
     void switchToExpense() {
       if (type == 'expense') return;
 
@@ -1266,6 +1425,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     myUid: context.read<AuthController>().user?.uid ?? '',
                     privacy: privacy,
                     closeFriendUids: _closeFriendUids,
+                    groupMemberIds: _selectedGroupMemberIds,
+                    groupRemainingBalance: (privacy == 'group' && type == 'expense' && !widget.isGroupContribution)
+                        ? _currentGroupRemainingBalance
+                        : null,
                   ),
                 ),
               ),
@@ -1422,6 +1585,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 label: privacyLabel,
                                 isOpen: privacyOpen,
                                 onTap: () {
+                                  if (widget.lockPrivacy) return;
                                   setState(() {
                                     privacyOpen = !privacyOpen;
 
@@ -1690,6 +1854,8 @@ class _InputOverlayCard extends StatefulWidget {
   final String myUid;
   final String privacy;
   final List<String> closeFriendUids;
+  final List<String> groupMemberIds;
+  final double? groupRemainingBalance;
 
   const _InputOverlayCard({
     required this.accentColor,
@@ -1702,6 +1868,8 @@ class _InputOverlayCard extends StatefulWidget {
     required this.myUid,
     this.privacy = 'friends',
     this.closeFriendUids = const [],
+    this.groupMemberIds = const [],
+    this.groupRemainingBalance,
   });
 
   @override
@@ -1715,12 +1883,20 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
   void initState() {
     super.initState();
     widget.captionController.addListener(_checkMentionQuery);
+    widget.amountController.addListener(_onAmountChangedInternal);
   }
 
   @override
   void dispose() {
     widget.captionController.removeListener(_checkMentionQuery);
+    widget.amountController.removeListener(_onAmountChangedInternal);
     super.dispose();
+  }
+
+  void _onAmountChangedInternal() {
+    if (mounted && widget.groupRemainingBalance != null) {
+      setState(() {});
+    }
   }
 
   void _checkMentionQuery() {
@@ -1794,6 +1970,7 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
             onSelect: _selectMentionFriend,
             privacy: widget.privacy,
             closeFriendUids: widget.closeFriendUids,
+            groupMemberIds: widget.groupMemberIds,
           ),
 
         if (_activeMentionQuery != null && widget.myUid.isNotEmpty)
@@ -1896,6 +2073,70 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                 ),
               ),
 
+              if (widget.groupRemainingBalance != null) ...[
+                const SizedBox(height: 6),
+                Builder(
+                  builder: (context) {
+                    final rawAmount = widget.currency == 'USD'
+                        ? widget.amountController.text.replaceAll(RegExp(r'[^0-9.]'), '')
+                        : widget.amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+                    final inputAmount = double.tryParse(rawAmount) ?? 0;
+                    final enteredVnd = AppCurrencyFormatter.toVnd(
+                      inputAmount: inputAmount,
+                      currency: widget.currency,
+                    );
+                    final balance = widget.groupRemainingBalance!;
+                    final isExceeded = enteredVnd > balance;
+                    final formattedBalance = AppCurrencyFormatter.formatFromVnd(
+                      amountVnd: balance,
+                      currency: widget.currency,
+                    );
+
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isExceeded
+                            ? const Color(0x40FF4B4B)
+                            : Colors.black.withValues(alpha: 0.28),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isExceeded
+                              ? const Color(0xFFFF5252).withValues(alpha: 0.8)
+                              : Colors.white.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            isExceeded ? Icons.warning_amber_rounded : Icons.account_balance_wallet_outlined,
+                            size: 13,
+                            color: isExceeded ? const Color(0xFFFF6B6B) : Colors.white70,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              isExceeded
+                                  ? context.l10n.groupExpenseExceedsBalance(formattedBalance)
+                                  : '${context.l10n.groupFundRemaining}: $formattedBalance',
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isExceeded ? const Color(0xFFFF6B6B) : Colors.white.withValues(alpha: 0.85),
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+
               const SizedBox(height: 10),
 
               Container(
@@ -1985,6 +2226,7 @@ class _FriendMentionSuggestionsCard extends StatelessWidget {
   final ValueChanged<String> onSelect;
   final String privacy;
   final List<String> closeFriendUids;
+  final List<String> groupMemberIds;
 
   const _FriendMentionSuggestionsCard({
     required this.myUid,
@@ -1992,6 +2234,7 @@ class _FriendMentionSuggestionsCard extends StatelessWidget {
     required this.onSelect,
     this.privacy = 'friends',
     this.closeFriendUids = const [],
+    this.groupMemberIds = const [],
   });
 
   @override
@@ -2086,15 +2329,22 @@ class _FriendMentionSuggestionsCard extends StatelessWidget {
 
                       final friends = snapshot.data ?? [];
                       final filtered = friends.where((f) {
-                        // In private mode, no friend tagging
+                        // 1. Chế độ Riêng tư: Không gắn thẻ bạn bè
                         if (privacy == 'private') {
                           return false;
                         }
 
                         final friendUid = (f['uid'] ?? '').toString();
-                        // If posting to close friends, only allow tagging friends in closeFriendUids
+
+                        // 2. Chế độ Bạn thân: Chỉ cho phép gắn thẻ bạn bè trong danh sách CloseFriends
                         if (privacy == 'close_friends' &&
                             !closeFriendUids.contains(friendUid)) {
+                          return false;
+                        }
+
+                        // 3. Chế độ Nhóm quỹ: Chỉ cho phép gắn thẻ giao thoa Members(Group) ∩ Friends(A)
+                        if (privacy == 'group' &&
+                            !groupMemberIds.contains(friendUid)) {
                           return false;
                         }
 
@@ -2114,6 +2364,10 @@ class _FriendMentionSuggestionsCard extends StatelessWidget {
                               : 'Chế độ riêng tư không gắn thẻ bạn bè';
                         } else if (privacy == 'close_friends' && query.isEmpty) {
                           emptyMessage = context.l10n.closeFriendsTagOnly;
+                        } else if (privacy == 'group' && query.isEmpty) {
+                          emptyMessage = isEn
+                              ? 'Only group members who are your friends can be tagged'
+                              : 'Chỉ gắn thẻ thành viên nhóm là bạn bè';
                         } else {
                           emptyMessage = context.l10n.noMatchingFriends;
                         }

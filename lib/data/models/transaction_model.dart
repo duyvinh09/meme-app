@@ -36,12 +36,14 @@ class TransactionModel {
   final String? groupId;
   final String? groupName;
   final List<String> groupMemberIds;
+  final bool isGroupExpense;
+  final bool isGroupContribution;
 
   TransactionModel({
     required this.id,
     required this.userId,
     required this.amount,
-    required this.type,
+    required String type,
     required this.category,
     required this.caption,
     required this.note,
@@ -64,8 +66,31 @@ class TransactionModel {
     this.groupMemberIds = const [],
     this.latitude,
     this.longitude,
+    bool? isGroupExpense,
+    bool? isGroupContribution,
   })  : mediaUrl = mediaUrl ?? imageUrl,
-        thumbnailUrl = thumbnailUrl ?? imageUrl;
+        thumbnailUrl = thumbnailUrl ?? imageUrl,
+        isGroupContribution = isGroupContribution ??
+            ((privacy == 'group' && (type == 'income' || category == 'Quỹ nhóm' || category == 'Group Fund')) ||
+                category == 'Quỹ nhóm' ||
+                category == 'Group Fund'),
+        isGroupExpense = isGroupExpense ??
+            (privacy == 'group' &&
+                type == 'expense' &&
+                !(isGroupContribution ??
+                    ((privacy == 'group' && (type == 'income' || category == 'Quỹ nhóm' || category == 'Group Fund')) ||
+                        category == 'Quỹ nhóm' ||
+                        category == 'Group Fund')) &&
+                category != 'Quỹ nhóm' &&
+                category != 'Group Fund'),
+        type = ((isGroupContribution ??
+                    ((privacy == 'group' && (type == 'income' || category == 'Quỹ nhóm' || category == 'Group Fund')) ||
+                        category == 'Quỹ nhóm' ||
+                        category == 'Group Fund')) ||
+                category == 'Quỹ nhóm' ||
+                category == 'Group Fund')
+            ? 'expense'
+            : type;
 
   bool get isVideo => mediaType == 'video';
   bool get isImage => mediaType == 'image';
@@ -154,11 +179,30 @@ class TransactionModel {
     final videoUrl = map['videoUrl']?.toString() ??
         (mediaType == 'video' ? mediaUrl : '');
 
+    final rawIsContribution = map['isGroupContribution'] == true ||
+        (map['privacy'] == 'group' &&
+            (map['type'] == 'income' ||
+                map['category'] == 'Quỹ nhóm' ||
+                map['category'] == 'Group Fund')) ||
+        (map['category']?.toString() == 'Quỹ nhóm' ||
+            map['category']?.toString() == 'Group Fund');
+
+    final rawIsExpense = (map['isGroupExpense'] == true ||
+            (map['privacy'] == 'group' &&
+                map['type'] == 'expense' &&
+                !rawIsContribution)) &&
+        !rawIsContribution &&
+        map['category']?.toString() != 'Quỹ nhóm' &&
+        map['category']?.toString() != 'Group Fund';
+
+    final rawType = map['type']?.toString() ?? 'expense';
+    final effectiveType = rawIsContribution ? 'expense' : rawType;
+
     return TransactionModel(
       id: map['id']?.toString() ?? '',
       userId: map['userId']?.toString() ?? '',
       amount: _parseDouble(map['amount']),
-      type: map['type']?.toString() ?? 'expense',
+      type: effectiveType,
       category: map['category']?.toString() ?? '',
       caption: map['caption']?.toString() ?? '',
       note: map['note']?.toString() ?? '',
@@ -194,6 +238,8 @@ class TransactionModel {
       longitude: map['longitude'] is num
           ? (map['longitude'] as num).toDouble()
           : null,
+      isGroupExpense: rawIsExpense,
+      isGroupContribution: rawIsContribution,
     );
   }
 
@@ -230,6 +276,8 @@ class TransactionModel {
       'groupMemberIds': groupMemberIds,
       'latitude': latitude,
       'longitude': longitude,
+      'isGroupExpense': isGroupExpense,
+      'isGroupContribution': isGroupContribution,
     };
   }
 }

@@ -10,6 +10,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/routes/route_names.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
@@ -72,16 +73,21 @@ class DayDetailScreen extends StatelessWidget {
       body: SafeArea(
         child: dayTransactions.isEmpty
             ? _EmptyDayView(
-          selectedDateText: _formatHeaderDate(context, selectedDate),
-        )
-            : Padding(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
-          child: Column(
-            children: [
-              _HeaderBar(
-                title: _formatHeaderDate(context, selectedDate),
+                selectedDateText: _formatHeaderDate(context, selectedDate),
                 onClose: () => Navigator.pop(context),
-              ),
+                onCamera: () =>
+                    Navigator.pushNamed(context, RouteNames.addTransaction),
+              )
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+                child: Column(
+                  children: [
+                    _HeaderBar(
+                      title: _formatHeaderDate(context, selectedDate),
+                      onClose: () => Navigator.pop(context),
+                      onCamera: () =>
+                          Navigator.pushNamed(context, RouteNames.addTransaction),
+                    ),
 
               const SizedBox(height: 12),
 
@@ -151,10 +157,12 @@ class DayDetailScreen extends StatelessWidget {
 class _HeaderBar extends StatelessWidget {
   final String title;
   final VoidCallback onClose;
+  final VoidCallback? onCamera;
 
   const _HeaderBar({
     required this.title,
     required this.onClose,
+    this.onCamera,
   });
 
   @override
@@ -187,12 +195,35 @@ class _HeaderBar extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: AppTextStyles.sectionTitle(context).copyWith(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w900,
             ),
           ),
         ),
-        const SizedBox(width: 52),
+        const SizedBox(width: 8),
+        if (onCamera != null)
+          InkWell(
+            onTap: onCamera,
+            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: AppColors.subtleOverlay(context),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppColors.glassBorder(context),
+                ),
+              ),
+              child: Icon(
+                Icons.camera_alt_rounded,
+                color: AppColors.textPrimary(context),
+                size: 26,
+              ),
+            ),
+          )
+        else
+          const SizedBox(width: 52),
       ],
     );
   }
@@ -288,54 +319,116 @@ class _SummaryPill extends StatelessWidget {
 
 class _EmptyDayView extends StatelessWidget {
   final String selectedDateText;
+  final VoidCallback? onClose;
+  final VoidCallback? onCamera;
 
   const _EmptyDayView({
     required this.selectedDateText,
+    this.onClose,
+    this.onCamera,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 74,
-              height: 74,
-              decoration: BoxDecoration(
-                color: AppColors.subtleOverlay(context),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: AppColors.glassBorder(context),
-                ),
-              ),
-              child: Icon(
-                Icons.calendar_month_outlined,
-                color: AppColors.textSecondary(context),
-                size: 34,
+    return Column(
+      children: [
+        if (onClose != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 0),
+            child: _HeaderBar(
+              title: selectedDateText,
+              onClose: onClose!,
+              onCamera: onCamera,
+            ),
+          ),
+        Expanded(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 74,
+                    height: 74,
+                    decoration: BoxDecoration(
+                      color: AppColors.subtleOverlay(context),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: AppColors.glassBorder(context),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.calendar_month_outlined,
+                      color: AppColors.textSecondary(context),
+                      size: 34,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    selectedDateText,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.pageTitle(context).copyWith(
+                      fontSize: 22,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    context.l10n.dayDetailEmpty,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodySecondary(context).copyWith(
+                      fontSize: 15,
+                    ),
+                  ),
+                  if (onCamera != null) ...[
+                    const SizedBox(height: 24),
+                    InkWell(
+                      onTap: onCamera,
+                      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 22,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.primaryBlue,
+                          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primaryBlue.withValues(alpha: 0.35),
+                              blurRadius: 14,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.camera_alt_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Chụp ảnh',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
-            const SizedBox(height: 18),
-            Text(
-              selectedDateText,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.pageTitle(context).copyWith(
-                fontSize: 24,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              context.l10n.dayDetailEmpty,
-              textAlign: TextAlign.center,
-              style: AppTextStyles.bodySecondary(context).copyWith(
-                fontSize: 15,
-              ),
-            ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }

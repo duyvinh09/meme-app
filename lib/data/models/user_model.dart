@@ -20,6 +20,7 @@ class UserModel {
   final String chatBubbleTheme;
   final String cameraTheme;
   final bool showActiveStatus;
+  final String activeStatusMode;
   final String? userNote;
   final DateTime? userNoteCreatedAt;
 
@@ -43,6 +44,7 @@ class UserModel {
     this.chatBubbleTheme = 'default',
     this.cameraTheme = 'classic_dark',
     this.showActiveStatus = true,
+    this.activeStatusMode = 'friends',
     this.userNote,
     this.userNoteCreatedAt,
   });
@@ -57,10 +59,41 @@ class UserModel {
   bool get isCurrentlyOnline {
     if (isDeleted) return false;
     if (!showActiveStatus) return false;
+    if (activeStatusMode == 'none') return false;
     if (!isOnline) return false;
     final now = DateTime.now();
     final seen = lastSeen ?? lastActiveDate;
     return now.difference(seen).inMinutes < 3;
+  }
+
+  /// Kiểm tra xem người xem có được phép thấy trạng thái hoạt động (online / lần hoạt động gần nhất) của user này không:
+  /// - Nếu user bị xoá -> false
+  /// - Nếu user tắt trạng thái hoạt động -> false
+  /// - Nếu user để chế độ 'none' -> false
+  /// - Nếu user để 'public' -> true (ai cũng thấy)
+  /// - Nếu user để 'friends' -> chỉ thấy nếu hai người là bạn bè (isFriend == true)
+  bool isPresenceVisibleTo({required bool isFriend}) {
+    if (isDeleted) return false;
+    if (!showActiveStatus) return false;
+    if (activeStatusMode == 'none') return false;
+    if (activeStatusMode == 'public') return true;
+    if (activeStatusMode == 'friends') return isFriend;
+    return false;
+  }
+
+  /// Kiểm tra xem người xem có được phép thấy trạng thái online (đang hoạt động / chấm xanh) của user này không:
+  /// Phải đang online thực tế (isCurrentlyOnline) VÀ có quyền xem trạng thái (isPresenceVisibleTo).
+  bool isOnlineVisibleTo({required bool isFriend}) {
+    return isCurrentlyOnline && isPresenceVisibleTo(isFriend: isFriend);
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is DateTime) return value;
+    if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   factory UserModel.fromMap(Map<String, dynamic> map) {
@@ -75,18 +108,19 @@ class UserModel {
       themeMode: map['themeMode'] ?? 'system',
       currentStreak: map['currentStreak'] ?? 0,
       bestStreak: map['bestStreak'] ?? 0,
-      createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      lastActiveDate:
-          (map['lastActiveDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
+      lastActiveDate: _parseDateTime(map['lastActiveDate']) ?? DateTime.now(),
       avatarFrame: map['avatarFrame'] ?? 'plain',
       isDeleted: map['isDeleted'] == true,
       isOnline: map['isOnline'] == true,
-      lastSeen: (map['lastSeen'] as Timestamp?)?.toDate(),
+      lastSeen: _parseDateTime(map['lastSeen']),
       chatBubbleTheme: map['chatBubbleTheme'] ?? 'default',
       cameraTheme: map['cameraTheme'] ?? 'classic_dark',
       showActiveStatus: map['showActiveStatus'] != false,
+      activeStatusMode: (map['activeStatusMode'] as String?) ??
+          (map['showActiveStatus'] == false ? 'none' : 'friends'),
       userNote: map['userNote'] as String?,
-      userNoteCreatedAt: (map['userNoteCreatedAt'] as Timestamp?)?.toDate(),
+      userNoteCreatedAt: _parseDateTime(map['userNoteCreatedAt']),
     );
   }
 
@@ -108,6 +142,7 @@ class UserModel {
       'isDeleted': isDeleted,
       'isOnline': isOnline,
       'showActiveStatus': showActiveStatus,
+      'activeStatusMode': activeStatusMode,
       if (lastSeen != null) 'lastSeen': Timestamp.fromDate(lastSeen!),
       if (chatBubbleTheme.isNotEmpty) 'chatBubbleTheme': chatBubbleTheme,
       if (cameraTheme.isNotEmpty) 'cameraTheme': cameraTheme,
@@ -137,6 +172,7 @@ class UserModel {
     String? chatBubbleTheme,
     String? cameraTheme,
     bool? showActiveStatus,
+    String? activeStatusMode,
     String? userNote,
     DateTime? userNoteCreatedAt,
   }) {
@@ -160,6 +196,7 @@ class UserModel {
       chatBubbleTheme: chatBubbleTheme ?? this.chatBubbleTheme,
       cameraTheme: cameraTheme ?? this.cameraTheme,
       showActiveStatus: showActiveStatus ?? this.showActiveStatus,
+      activeStatusMode: activeStatusMode ?? this.activeStatusMode,
       userNote: userNote ?? this.userNote,
       userNoteCreatedAt: userNoteCreatedAt ?? this.userNoteCreatedAt,
     );

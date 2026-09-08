@@ -1613,5 +1613,78 @@
       }
     }
   },
-  "draftPrefix": "Draft: "
+  "draftPrefix": "Draft: ",
+  "browseTransactionsTitle": "Browse Transactions",
+  "browseTransactionsSearchHint": "Notes, categories, accounts, amount...",
+  "timeFilterLabel": "Time",
+  "timeFilterAll": "All",
+  "timeFilterToday": "Today",
+  "timeFilterLast7Days": "Last 7 days",
+  "timeFilterThisMonth": "This month",
+  "timeFilterLastMonth": "Last month",
+  "timeFilterThisYear": "This year",
+  "typeFilterAll": "All",
+  "typeFilterExpense": "Expenses",
+  "typeFilterIncome": "Income",
+  "allCategories": "Categories",
+  "noTransactionsFound": "No transactions found",
+  "groupFinancialOverview": "Group Fund & Finance",
+  "groupFundBalanceAndProgress": "Actual balance & progress",
+  "groupFundRemaining": "Remaining fund balance",
+  "groupFundSurplus": "Surplus",
+  "groupFundDeficit": "Deficit",
+  "groupTotalContributed": "Contributed",
+  "groupTotalSpent": "Spent",
+  "groupGoal": "Goal",
+  "groupGoalProgress": "Fund goal progress",
+  "groupExpenseHistory": "Group expense history",
+  "groupNoExpensesYet": "No group expenses yet",
+  "groupNoExpensesDesc": "Shared group expenses will appear here",
+  "groupExpenseExceedsBalance": "Expense exceeds current group fund balance ({balance})",
+  "@groupExpenseExceedsBalance": {
+    "placeholders": {
+      "balance": {
+        "type": "String"
+      }
+    }
+  },
+  "groupFundDeposit": "Deposit to group fund",
+  "groupDepositSuccess": "Deposited to group fund",
+  "groupBalanceShort": "Bal: {amount}",
+  "@groupBalanceShort": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupSpentShort": "Spent: {amount}",
+  "@groupSpentShort": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "member": "Member",
+  "groupFundCategory": "Group Fund",
+  "momentDetails": "Moment Details",
+  "notFriendsGroupPostNotice": "You and the author are not friends, so you cannot view this post on the Feed. Here are the moment details shared in the group:",
+  "groupExpense": "Group expense",
+  "spentReason": "Purpose: {reason}",
+  "@spentReason": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "spentBy": "Spent by: {name}",
+  "@spentBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -4472,6 +4472,234 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Bản nháp: '**
   String get draftPrefix;
+
+  /// No description provided for @browseTransactionsTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Duyệt giao dịch'**
+  String get browseTransactionsTitle;
+
+  /// No description provided for @browseTransactionsSearchHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ghi chú, danh mục, tài khoản, số tiền...'**
+  String get browseTransactionsSearchHint;
+
+  /// No description provided for @timeFilterLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thời gian'**
+  String get timeFilterLabel;
+
+  /// No description provided for @timeFilterAll.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tất cả'**
+  String get timeFilterAll;
+
+  /// No description provided for @timeFilterToday.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hôm nay'**
+  String get timeFilterToday;
+
+  /// No description provided for @timeFilterLast7Days.
+  ///
+  /// In vi, this message translates to:
+  /// **'7 ngày qua'**
+  String get timeFilterLast7Days;
+
+  /// No description provided for @timeFilterThisMonth.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tháng này'**
+  String get timeFilterThisMonth;
+
+  /// No description provided for @timeFilterLastMonth.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tháng trước'**
+  String get timeFilterLastMonth;
+
+  /// No description provided for @timeFilterThisYear.
+  ///
+  /// In vi, this message translates to:
+  /// **'Năm nay'**
+  String get timeFilterThisYear;
+
+  /// No description provided for @typeFilterAll.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tất cả'**
+  String get typeFilterAll;
+
+  /// No description provided for @typeFilterExpense.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi tiêu'**
+  String get typeFilterExpense;
+
+  /// No description provided for @typeFilterIncome.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thu nhập'**
+  String get typeFilterIncome;
+
+  /// No description provided for @allCategories.
+  ///
+  /// In vi, this message translates to:
+  /// **'Danh mục'**
+  String get allCategories;
+
+  /// No description provided for @noTransactionsFound.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không tìm thấy giao dịch nào'**
+  String get noTransactionsFound;
+
+  /// No description provided for @groupFinancialOverview.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tài chính & Quỹ nhóm'**
+  String get groupFinancialOverview;
+
+  /// No description provided for @groupFundBalanceAndProgress.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số dư quỹ thực tế & tiến độ'**
+  String get groupFundBalanceAndProgress;
+
+  /// No description provided for @groupFundRemaining.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số dư quỹ còn lại'**
+  String get groupFundRemaining;
+
+  /// No description provided for @groupFundSurplus.
+  ///
+  /// In vi, this message translates to:
+  /// **'Còn dư'**
+  String get groupFundSurplus;
+
+  /// No description provided for @groupFundDeficit.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thâm hụt'**
+  String get groupFundDeficit;
+
+  /// No description provided for @groupTotalContributed.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã góp'**
+  String get groupTotalContributed;
+
+  /// No description provided for @groupTotalSpent.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã chi'**
+  String get groupTotalSpent;
+
+  /// No description provided for @groupGoal.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mục tiêu'**
+  String get groupGoal;
+
+  /// No description provided for @groupGoalProgress.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tiến độ mục tiêu quỹ'**
+  String get groupGoalProgress;
+
+  /// No description provided for @groupExpenseHistory.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lịch sử chi tiêu nhóm'**
+  String get groupExpenseHistory;
+
+  /// No description provided for @groupNoExpensesYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có khoản chi tiêu nào'**
+  String get groupNoExpensesYet;
+
+  /// No description provided for @groupNoExpensesDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Các chi tiêu chia sẻ vào nhóm sẽ được hiển thị tại đây'**
+  String get groupNoExpensesDesc;
+
+  /// No description provided for @groupExpenseExceedsBalance.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số tiền chi tiêu vượt quá số dư quỹ nhóm hiện có ({balance})'**
+  String groupExpenseExceedsBalance(String balance);
+
+  /// No description provided for @groupFundDeposit.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nạp quỹ nhóm'**
+  String get groupFundDeposit;
+
+  /// No description provided for @groupDepositSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã nạp tiền vào quỹ nhóm'**
+  String get groupDepositSuccess;
+
+  /// No description provided for @groupBalanceShort.
+  ///
+  /// In vi, this message translates to:
+  /// **'Dư: {amount}'**
+  String groupBalanceShort(String amount);
+
+  /// No description provided for @groupSpentShort.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã chi: {amount}'**
+  String groupSpentShort(String amount);
+
+  /// No description provided for @member.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thành viên'**
+  String get member;
+
+  /// No description provided for @groupFundCategory.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quỹ nhóm'**
+  String get groupFundCategory;
+
+  /// No description provided for @momentDetails.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi tiết khoảnh khắc'**
+  String get momentDetails;
+
+  /// No description provided for @notFriendsGroupPostNotice.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn và người đăng bài chưa là bạn bè nên không thể xem bài viết trên Bảng tin. Dưới đây là chi tiết khoảnh khắc được chia sẻ trong nhóm:'**
+  String get notFriendsGroupPostNotice;
+
+  /// No description provided for @groupExpense.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi tiêu nhóm'**
+  String get groupExpense;
+
+  /// No description provided for @spentReason.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mục đích: {reason}'**
+  String spentReason(String reason);
+
+  /// No description provided for @spentBy.
+  ///
+  /// In vi, this message translates to:
+  /// **'Người chi: {name}'**
+  String spentBy(String name);
 }
 
 class _AppLocalizationsDelegate

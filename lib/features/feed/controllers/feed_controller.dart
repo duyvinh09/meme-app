@@ -19,6 +19,12 @@ class FeedController extends ChangeNotifier {
   bool isLoading = false;
   String? errorMessage;
   String? targetPostId;
+  int scrollToTopTrigger = 0;
+
+  void triggerScrollToTop() {
+    scrollToTopTrigger++;
+    notifyListeners();
+  }
 
   Future<void> setTargetPostId(String? postId) async {
     targetPostId = postId;
@@ -109,7 +115,11 @@ class FeedController extends ChangeNotifier {
         userIds: allIds,
       );
 
-      feedTransactions = data;
+      final Map<String, TransactionModel> dedupMap = {};
+      for (final tx in data) {
+        dedupMap[tx.id] = tx;
+      }
+      feedTransactions = dedupMap.values.toList();
       isLoading = false;
       errorMessage = null;
       notifyListeners();
@@ -135,7 +145,7 @@ class FeedController extends ChangeNotifier {
         (transaction.sharedToFeed == true &&
             (transaction.privacy == 'friends' ||
                 transaction.privacy == 'close_friends' ||
-                transaction.privacy == 'everyone'));
+                transaction.privacy == 'group'));
 
     if (!shouldShow) return;
 

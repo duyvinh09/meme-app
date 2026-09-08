@@ -44,12 +44,20 @@ class StatsController extends ChangeNotifier {
     );
   }
 
+  bool _isPersonalExpense(TransactionModel e) {
+    return (e.type == 'expense' && !e.isGroupExpense) || e.isGroupContribution;
+  }
+
+  bool _isPersonalIncome(TransactionModel e) {
+    return e.type == 'income' && !e.isGroupContribution;
+  }
+
   double get monthlyIncome {
     final now = DateTime.now();
 
     return transactions
         .where((e) {
-      return e.type == 'income' &&
+      return _isPersonalIncome(e) &&
           e.createdAt.month == now.month &&
           e.createdAt.year == now.year;
     })
@@ -64,7 +72,7 @@ class StatsController extends ChangeNotifier {
 
     return transactions
         .where((e) {
-      return e.type == 'expense' &&
+      return _isPersonalExpense(e) &&
           e.createdAt.month == now.month &&
           e.createdAt.year == now.year;
     })
@@ -77,8 +85,11 @@ class StatsController extends ChangeNotifier {
   Map<String, double> get expenseByCategory {
     final result = <String, double>{};
 
-    for (final tx in transactions.where((e) => e.type == 'expense')) {
-      result[tx.category] = (result[tx.category] ?? 0) + tx.amount;
+    for (final tx in transactions.where(_isPersonalExpense)) {
+      final cat = tx.isGroupContribution
+          ? (tx.category.isNotEmpty ? tx.category : 'Quỹ nhóm')
+          : tx.category;
+      result[cat] = (result[cat] ?? 0) + tx.amount;
     }
 
     return result;
@@ -87,7 +98,7 @@ class StatsController extends ChangeNotifier {
   Map<String, double> get incomeByCategory {
     final result = <String, double>{};
 
-    for (final tx in transactions.where((e) => e.type == 'income')) {
+    for (final tx in transactions.where(_isPersonalIncome)) {
       result[tx.category] = (result[tx.category] ?? 0) + tx.amount;
     }
 
@@ -96,7 +107,7 @@ class StatsController extends ChangeNotifier {
 
   double get totalIncome {
     return transactions
-        .where((e) => e.type == 'income')
+        .where(_isPersonalIncome)
         .fold<double>(
       0,
           (sum, e) => sum + e.amount,
@@ -105,7 +116,7 @@ class StatsController extends ChangeNotifier {
 
   double get totalExpense {
     return transactions
-        .where((e) => e.type == 'expense')
+        .where(_isPersonalExpense)
         .fold<double>(
       0,
           (sum, e) => sum + e.amount,

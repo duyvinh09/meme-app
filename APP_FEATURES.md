@@ -32,8 +32,10 @@
   - Gửi email đặt lại mật khẩu bảo mật về hòm thư người dùng.
 - **Quản lý Hồ sơ & Bảo mật tài khoản**:
   - Đổi Tên hiển thị, Username, Tiểu sử (User Note/Status).
-  - Đổi Email đăng nhập tài khoản.
-  - Trạng thái hoạt động thời gian thực (Online / Offline status, Last seen).
+  - **Trạng thái hoạt động thời gian thực (Active Status / Online Presence)**:
+    - Bật/tắt trạng thái hoạt động linh hoạt trong Cài đặt riêng tư.
+    - Hiển thị chấm xanh thời gian thực khi đang online (danh sách chat, hội thoại, danh sách bạn bè).
+    - **Chế độ công khai khi tìm kiếm (Public Presence on Search)**: Khi bật trạng thái hoạt động, nếu người khác tìm kiếm bạn bè qua Username mà đúng lúc bạn đang online, người đó sẽ thấy chấm xanh báo hiệu bạn đang hoạt động ngay trên kết quả tìm kiếm.
   - Cập nhật và thu hồi token thiết bị (FCM Device Tokens).
 - **Đăng xuất & Xóa tài khoản vĩnh viễn (Account Deletion)**:
   - Đăng xuất an toàn, xóa token push trên thiết bị.
@@ -56,13 +58,26 @@
 - **Đính kèm Vị trí Địa lý (GPS Location Geocoding)**:
   - Tự động lấy tọa độ GPS chính xác khi ghi nhận giao dịch.
   - Tự động dịch ngược tọa độ sang địa chỉ/tên địa điểm hiển thị trực quan.
-- **Gắn thẻ bạn bè (Tag Friends)**:
-  - Gắn thẻ bạn bè cùng tham gia buổi ăn uống, chi tiêu.
+- **Gắn thẻ bạn bè (Tag Friends / Mention in Caption)**:
+  - Gắn thẻ bạn bè cùng tham gia buổi ăn uống, chi tiêu bằng cú pháp `@username` trong chú thích.
+  - **Bộ lọc gợi ý Tag thông minh theo quyền riêng tư**:
+    - *Mọi người (Friends)*: Chỉ tải danh sách `Friends(A)`.
+    - *Bạn thân (Close Friends)*: Chỉ tải danh sách `CloseFriends(A)`.
+    - *Nhóm quỹ (Group)*: Chỉ tải danh sách giao thoa giữa nhóm và bạn bè: `Members(Group) ∩ Friends(A)` (tránh hoàn toàn việc tag người lạ trong nhóm).
+    - *Riêng tư (Only Me)*: Không gắn thẻ bạn bè, không gửi thông báo.
+  - **Tương tác khi bấm vào @B (người được tag trên bài viết)**:
+    - *B (Người được tag)*: Nhận thông báo nhắc đến, bấm vào @B hiển thị badge **Bạn (chính mình)**.
+    - *A (Chủ bài) hoặc D (Người xem đã kết bạn với B)*: Bấm vào @B hiển thị nút **Nhắn tin** để trò chuyện trực tiếp.
+    - *C (Người xem chưa kết bạn với B)*: Bấm vào @B hiển thị nút **Thêm bạn bè** (hoặc trạng thái đã gửi lời mời).
 - **Thiết lập Quyền riêng tư Giao dịch (Privacy Control)**:
-  - `private` (Chỉ mình tôi): Lưu sổ thu chi cá nhân, không hiển thị lên Feed.
-  - `friends` (Bạn bè): Chia sẻ khoảnh khắc cho toàn bộ danh sách bạn bè.
-  - `close_friends` (Bạn thân): Chỉ chia sẻ cho những người được đánh dấu bạn thân.
-  - `group` (Nhóm): Chia sẻ vào một nhóm bạn cụ thể.
+  - `friends` (Mặc định hiển thị là **"Mọi người"** - Everyone): Chia sẻ khoảnh khắc cho **toàn bộ những người trong danh sách bạn bè** (những người đã kết bạn 2 chiều với bạn; không phải public ra người lạ ngoài mạng xã hội).
+  - `close_friends` (**Bạn thân** - Close Friends): Thu hẹp phạm vi, chỉ những người bạn được đánh dấu ngôi sao "Bạn thân" (⭐) mới xem được.
+  - `group` (**Nhóm** - Group): Chia sẻ vào một nhóm bạn cụ thể — toàn bộ thành viên trong nhóm đó đều có thể xem bài viết trên feed hoặc trong mục chi tiêu nhóm.
+  - `private` (**Chỉ mình tôi** - Only Me): Lưu sổ thu chi cá nhân, chỉ tác giả xem được, không hiển thị lên Feed.
+- **Lịch Giao dịch & Bộ sưu tập Khoảnh khắc (Transaction Calendar & Day Moments)**:
+  - Lịch tháng trực quan hiển thị nhãn dán ảnh (sticker thumbnail) của các giao dịch chi tiêu theo từng ngày.
+  - Chạm vào ngày bất kỳ để mở bảng chi tiết ảnh và danh sách giao dịch trong ngày (`DayDetailScreen`).
+  - **Tích hợp nút Camera tiện lợi**: Ngay trên bảng xem ảnh của ngày (`DayDetailScreen`) và trình xem chi tiết khoảnh khắc (`MomentViewerScreen`), hiển thị nút Camera trực quan ở góc trên thanh công cụ để người dùng có thể bấm chụp ảnh / quay video chi tiêu mới ngay lập tức mà không cần quay lại màn hình chính.
 - **Hạ tầng Tải lên Đa phương tiện Tối ưu**:
   - Hỗ trợ upload ảnh/video qua Locket API Service đa tài khoản xoay vòng.
   - Tích hợp Cloudinary Media Storage dự phòng.
@@ -79,8 +94,8 @@
   - Hiệu ứng Emoji bay lơ lửng toàn màn hình (Flying Reaction Animator) khi có người thả cảm xúc.
   - Thanh Post Activity Bar hiển thị avatar của những bạn bè đã tương tác gần nhất.
 - **Theo dõi Lượt xem (Post Views Tracker)**:
-  - Tự động ghi nhận lượt xem khi người dùng lướt qua bài đăng.
-  - Sheet chi tiết danh sách bạn bè đã xem bài viết kèm mốc thời gian.
+  - Tự động ghi nhận lượt xem khi người dùng đang ở tab Bảng tin và lướt qua bài đăng (chỉ ghi nhận khi người dùng thực sự mở tab Feed, không kích hoạt ngầm khi ở tab khác).
+  - Sheet chi tiết hoạt động bài viết (Post Activity Sheet) hiển thị danh sách người đã xem hoặc đã thả cảm xúc kèm mốc thời gian (bao gồm bạn bè xem bài cá nhân và thành viên nhóm xem bài nhóm).
 - **Banner Thông báo Bài đăng mới (New Post Floating Banner)**:
   - Tự động xuất hiện nút nổi khi bạn bè vừa đăng khoảnh khắc mới để người dùng bấm cuộn lên đầu xem ngay.
 
@@ -97,7 +112,10 @@
   - **Xóa tin nhắn phía tôi (Delete for me)**.
   - **Chỉ báo đang nhập tin (Real-time Typing Indicator)**.
   - **Lưu bản nháp tin nhắn tự động (Chat Drafts)**: Không bị mất nội dung đang soạn khi chuyển màn hình.
-  - **Đánh dấu Đã đọc / Chưa đọc (Read Receipts & Unread Badges)**.
+  - **Kiểm soát Trạng thái Hoạt động theo Quyền riêng tư (Active Status Presence)**:
+  - Tùy chọn hiển thị trạng thái online: **Công khai (Public)**, **Bạn bè (Friends)**, hoặc **Tắt (None)**.
+  - Khi ở chế độ **Bạn bè**, chỉ những người đang là bạn bè 2 chiều (và cả hai phía đều bật trạng thái hoạt động) mới nhìn thấy chấm xanh online và thời gian hoạt động của nhau trong danh sách chat và cuộc hội thoại.
+  - Người lạ khi tìm kiếm (Search), gửi lời mời kết bạn (Friend Requests), hoặc người đã bị hủy kết bạn (Unfriended) sẽ **không** thấy chấm xanh online nếu người dùng để chế độ Bạn bè. Trạng thái online chỉ hiển thị cho người lạ khi người dùng chủ động chọn chế độ Công khai.
 - **Tùy biến Chủ đề Bong bóng Chat (Chat Bubble Themes)**:
   - Nhiều bộ theme bong bóng chat độc đáo: Default, Sunset, Ocean, Cyberpunk, Lavender, Mint, Neon, Matcha, v.v.
   - Bộ vẽ trang trí bong bóng riêng biệt (Custom Painters).
@@ -167,10 +185,12 @@
 
 - **Tìm kiếm & Kết bạn (Add Friends)**:
   - Tìm kiếm người dùng khác thông qua Username chính xác.
+  - Hiển thị chấm xanh trạng thái hoạt động trực tiếp trên kết quả tìm kiếm nếu người đó đang online và bật trạng thái hoạt động công khai.
   - Gửi lời mời kết bạn tức thì.
 - **Quản lý Lời mời Kết bạn (Friend Requests)**:
-  - Tab danh sách lời mời đã nhận và lời mời đã gửi.
-  - Chấp nhận hoặc từ chối kết bạn với cập nhật quan hệ 2 chiều an toàn.
+  - Tab danh sách **Lời mời đã nhận** và **Lời mời đã gửi**.
+  - Hiển thị chấm xanh online thời gian thực và khung Avatar của người gửi/người nhận ở cả 2 tab (khi người đó đang online và bật trạng thái hoạt động công khai).
+  - Chấp nhận, từ chối hoặc hủy lời mời đã gửi với cập nhật dữ liệu an toàn.
 - **Danh sách Bạn bè & Bạn thân (Close Friends)**:
   - Xem danh sách toàn bộ bạn bè.
   - Đánh dấu / Hủy đánh dấu "Bạn thân" (Close Friend) để kiểm soát quyền xem bài đăng riêng tư.

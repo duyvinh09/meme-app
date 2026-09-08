@@ -82,6 +82,11 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   }
 
   Color _chipColorFromTransaction(TransactionModel tx) {
+    if (tx.isGroupContribution ||
+        (tx.privacy == 'group' &&
+            (tx.category == 'Quỹ nhóm' || tx.category == 'Group Fund'))) {
+      return AppColors.income;
+    }
     final savedHex = tx.categoryColorHex?.toString();
 
     if (savedHex != null && savedHex.trim().isNotEmpty) {
@@ -91,6 +96,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
     switch (tx.category) {
       case 'Ăn uống':
       case 'Food':
+        return AppColors.income;
       case 'Lương':
       case 'Salary':
         return AppColors.income;
@@ -120,7 +126,12 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
       currency: currency,
     );
 
-    return '${tx.type == 'expense' ? '-' : '+'}$amountText';
+    final isGroupDeposit = tx.isGroupContribution ||
+        (tx.privacy == 'group' &&
+            (tx.category == 'Quỹ nhóm' || tx.category == 'Group Fund'));
+    final isExpense = tx.type == 'expense' && !isGroupDeposit;
+
+    return '${isExpense ? '-' : '+'}$amountText';
   }
 
   String _formatUploadTime(DateTime date) {
@@ -361,7 +372,6 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                     backgroundColor: glassColor,
                     borderColor: glassBorder,
                     iconColor: primaryText,
-                    isWide: true,
                   ),
                   const Spacer(),
                   _TopGlassButton(
@@ -424,10 +434,8 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                 itemBuilder: (context, index) {
                   final item = widget.transactions[index];
 
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Column(
-                      children: [
+                  return Column(
+                    children: [
                         const SizedBox(height: 4),
                         Expanded(
                           child: Column(
@@ -491,8 +499,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                           ),
                         ),
                       ],
-                    ),
-                  );
+                    );
                 },
               ),
             ),
@@ -647,75 +654,79 @@ class _MomentMediaCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (transaction.caption.trim().isNotEmpty) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.34),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.14),
-                        width: 1,
+                  Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
                       ),
-                    ),
-                    child: Text(
-                      transaction.caption.trim(),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700,
-                        height: 1.1,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.38),
+                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.16),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        transaction.caption.trim(),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w700,
+                          height: 1.15,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 9),
                 ],
 
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        chipColor.withOpacity(0.36),
-                        chipColor.withOpacity(0.18),
-                        Colors.black.withOpacity(0.34),
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 22,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          chipColor.withValues(alpha: 0.36),
+                          chipColor.withValues(alpha: 0.18),
+                          Colors.black.withValues(alpha: 0.34),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: chipColor.withValues(alpha: 0.45),
+                        width: 1.1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: chipColor.withValues(alpha: 0.18),
+                          blurRadius: 18,
+                          offset: const Offset(0, 8),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(28),
-                    border: Border.all(
-                      color: chipColor.withOpacity(0.45),
-                      width: 1.1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: chipColor.withOpacity(0.18),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
+                    child: Text(
+                      amountText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        height: 1.05,
                       ),
-                    ],
-                  ),
-                  child: Text(
-                    amountText,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w900,
-                      height: 1.05,
                     ),
                   ),
                 ),
@@ -845,7 +856,6 @@ class _TopGlassButton extends StatelessWidget {
   final Color backgroundColor;
   final Color borderColor;
   final Color iconColor;
-  final bool isWide;
 
   const _TopGlassButton({
     required this.icon,
@@ -853,25 +863,19 @@ class _TopGlassButton extends StatelessWidget {
     required this.backgroundColor,
     required this.borderColor,
     required this.iconColor,
-    this.isWide = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+      borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
       child: Container(
-        width: isWide ? null : 56,
-        height: 56,
-        padding: isWide
-            ? const EdgeInsets.symmetric(horizontal: 20)
-            : EdgeInsets.zero,
+        width: 48,
+        height: 48,
         decoration: BoxDecoration(
           color: backgroundColor,
-          shape: isWide ? BoxShape.rectangle : BoxShape.circle,
-          borderRadius:
-          isWide ? BorderRadius.circular(AppSizes.radiusPill) : null,
+          shape: BoxShape.circle,
           border: Border.all(
             color: borderColor,
           ),
@@ -879,7 +883,7 @@ class _TopGlassButton extends StatelessWidget {
         child: Icon(
           icon,
           color: iconColor,
-          size: isWide ? 26 : 30,
+          size: 20,
         ),
       ),
     );

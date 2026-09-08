@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
@@ -79,6 +80,19 @@ class UserRepository {
       debugPrint('isFriendWith check error: $e');
       return false;
     }
+  }
+
+  Stream<bool> streamIsFriend(String myUid, String targetUid) {
+    if (myUid.isEmpty || targetUid.isEmpty || myUid == targetUid) {
+      return Stream.value(false);
+    }
+    return _db
+        .collection('users')
+        .doc(myUid)
+        .collection('friends')
+        .doc(targetUid)
+        .snapshots()
+        .map((doc) => doc.exists);
   }
 
   Future<bool> hasSentFriendRequestTo(String myUid, String targetUid) async {
@@ -394,6 +408,21 @@ class UserRepository {
     await batch.commit();
   }
 
+  Future<bool> areFriends(String uidA, String uidB) async {
+    if (uidA == uidB) return true;
+    try {
+      final friendDoc = await _db
+          .collection('users')
+          .doc(uidA)
+          .collection('friends')
+          .doc(uidB)
+          .get();
+      return friendDoc.exists;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<AddFriendConnectionState> getAddFriendConnectionState({
     required String myUid,
     required String targetUid,
@@ -430,6 +459,12 @@ class UserRepository {
     return AddFriendConnectionState.canSend;
   }
 
+  Future<AddFriendConnectionState> checkConnectionState(
+    String myUid,
+    String targetUid,
+  ) =>
+      getAddFriendConnectionState(myUid: myUid, targetUid: targetUid);
+
   Future<void> updateUserPresence(String uid, {required bool isOnline}) async {
     if (uid.isEmpty) return;
     try {
@@ -453,34 +488,129 @@ class UserRepository {
   }
 
   Stream<List<Map<String, dynamic>>> streamFriends(String uid) {
+    if (uid.trim().isEmpty) return Stream.value([]);
     return _db
         .collection('users')
         .doc(uid)
         .collection('friends')
         .snapshots()
         .asyncMap((snapshot) async {
-      final docs = snapshot.docs;
+      try {
+        final docs = snapshot.docs;
 
-      final items = await Future.wait(
-        docs.map((doc) async {
-          final data = doc.data();
-          final friendUid = (data['uid'] ?? '').toString();
-          final savedUsername = (data['username'] ?? '').toString();
-          final savedName = (data['name'] ?? '').toString();
-          final savedAvatarUrl = (data['avatarUrl'] ?? '').toString();
-          final savedAvatarFrame = (data['avatarFrame'] ?? 'plain').toString();
+        final items = await Future.wait(
+          docs.map((doc) async {
+            try {
+              final data = doc.data();
+              final rawUid = (data['uid'] ?? '').toString().trim();
+              final friendUid = rawUid.isNotEmpty ? rawUid : doc.id;
+              if (friendUid.isEmpty) return null;
 
-          final profile = await getUserProfile(friendUid);
+              final savedUsername = (data['username'] ?? '').toString();
+              final savedName = (data['name'] ?? '').toString();
+              final savedAvatarUrl = (data['avatarUrl'] ?? '').toString();
+              final savedAvatarFrame = (data['avatarFrame'] ?? 'plain').toString();
 
-          final isDeleted = profile?.isDeleted == true;
-          if (isDeleted) {
-            return null;
-          }
+              final profile = await getUserProfile(friendUid);
+
+              final isDeleted = profile?.isDeleted == true;
+              if (isDeleted) {
+                return null;
+              }
+
+              final isOnline = profile?.isCurrentlyOnline ?? false;
+              final showActiveStatus = profile?.showActiveStatus ?? true;
+
+              return {
+                'uid': friendUid,
+                'username': profile?.username.isNotEmpty == true
+                    ? profile!.username
+                    : (savedUsername.isNotEmpty ? savedUsername : friendUid),
+                'name': profile?.name.isNotEmpty == true
+                    ? profile!.name
+                    : (savedName.isNotEmpty ? savedName : 'Người dùng'),
+                'avatarUrl': profile?.avatarUrl ?? savedAvatarUrl,
+                'avatarFrame': profile?.avatarFrame ?? savedAvatarFrame,
+                'isCloseFriend': data['isCloseFriend'] == true,
+                'isDeleted': false,
+                'isOnline': isOnline,
+                'showActiveStatus': showActiveStatus,
+                'userNote': profile?.userNote,
+                'userNoteCreatedAt': profile?.userNoteCreatedAt,
+                'hasActiveNote': profile?.hasActiveNote ?? false,
+                'addedAt': data['addedAt'],
+              };
+            } catch (e) {
+              debugPrint('Error processing friend item: $e');
+              return null;
+            }
+          }),
+        );
+
+        final validItems = items.whereType<Map<String, dynamic>>().toList();
+
+        validItems.sort((a, b) {
+          final aTime = a['addedAt'];
+          final bTime = b['addedAt'];
+
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+
+          DateTime? aDt = aTime is Timestamp
+              ? aTime.toDate()
+              : (aTime is DateTime ? aTime : null);
+          DateTime? bDt = bTime is Timestamp
+              ? bTime.toDate()
+              : (bTime is DateTime ? bTime : null);
+
+          if (aDt == null && bDt == null) return 0;
+          if (aDt == null) return 1;
+          if (bDt == null) return -1;
+
+          return bDt.compareTo(aDt);
+        });
+
+        return validItems;
+      } catch (e) {
+        debugPrint('Error in streamFriends asyncMap: $e');
+        return [];
+      }
+    });
+  }
+
+  /// Lắng nghe danh sách bạn bè kết hợp với trạng thái realtime (online/offline/note) của từng bạn bè.
+  /// Bất cứ khi nào bạn bè mở app, tắt app, hoặc cập nhật ghi chú, stream sẽ emit ngay lập tức.
+  Stream<List<Map<String, dynamic>>> streamActiveFriendsRealtime(String uid) {
+    if (uid.trim().isEmpty) return Stream.value([]);
+
+    late StreamController<List<Map<String, dynamic>>> controller;
+    StreamSubscription? friendsSub;
+    final Map<String, StreamSubscription> userSubs = {};
+    final Map<String, Map<String, dynamic>> friendsData = {};
+    final Map<String, UserModel?> latestProfiles = {};
+
+    void emitLatest() {
+      if (controller.isClosed) return;
+      try {
+        final List<Map<String, dynamic>> items = [];
+        for (final entry in friendsData.entries) {
+          final friendUid = entry.key;
+          final friendDoc = entry.value;
+          final profile = latestProfiles[friendUid];
+
+          if (profile?.isDeleted == true) continue;
+
+          final savedUsername = (friendDoc['username'] ?? '').toString();
+          final savedName = (friendDoc['name'] ?? '').toString();
+          final savedAvatarUrl = (friendDoc['avatarUrl'] ?? '').toString();
+          final savedAvatarFrame =
+              (friendDoc['avatarFrame'] ?? 'plain').toString();
 
           final isOnline = profile?.isCurrentlyOnline ?? false;
           final showActiveStatus = profile?.showActiveStatus ?? true;
 
-          return {
+          items.add({
             'uid': friendUid,
             'username': profile?.username.isNotEmpty == true
                 ? profile!.username
@@ -488,35 +618,109 @@ class UserRepository {
             'name': profile?.name.isNotEmpty == true
                 ? profile!.name
                 : (savedName.isNotEmpty ? savedName : 'Người dùng'),
+            'email': profile?.email ?? (friendDoc['email'] ?? ''),
             'avatarUrl': profile?.avatarUrl ?? savedAvatarUrl,
             'avatarFrame': profile?.avatarFrame ?? savedAvatarFrame,
-            'isCloseFriend': data['isCloseFriend'] == true,
+            'isCloseFriend': friendDoc['isCloseFriend'] == true,
             'isDeleted': false,
             'isOnline': isOnline,
             'showActiveStatus': showActiveStatus,
+            'activeStatusMode': profile?.activeStatusMode ?? 'friends',
+            'lastSeen': profile?.lastSeen,
+            'lastActiveDate': profile?.lastActiveDate,
             'userNote': profile?.userNote,
             'userNoteCreatedAt': profile?.userNoteCreatedAt,
             'hasActiveNote': profile?.hasActiveNote ?? false,
-            'addedAt': data['addedAt'],
-          };
-        }),
-      );
+            'addedAt': friendDoc['addedAt'],
+            'chatBubbleTheme': profile?.chatBubbleTheme ?? 'default',
+            'themeMode': profile?.themeMode ?? 'system',
+          });
+        }
 
-      final validItems = items.whereType<Map<String, dynamic>>().toList();
+        items.sort((a, b) {
+          final aTime = a['addedAt'];
+          final bTime = b['addedAt'];
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          DateTime? aDt = aTime is Timestamp
+              ? aTime.toDate()
+              : (aTime is DateTime ? aTime : null);
+          DateTime? bDt = bTime is Timestamp
+              ? bTime.toDate()
+              : (bTime is DateTime ? bTime : null);
+          if (aDt == null && bDt == null) return 0;
+          if (aDt == null) return 1;
+          if (bDt == null) return -1;
+          return bDt.compareTo(aDt);
+        });
 
-      validItems.sort((a, b) {
-        final aTime = a['addedAt'];
-        final bTime = b['addedAt'];
+        if (!controller.isClosed) {
+          controller.add(items);
+        }
+      } catch (e) {
+        debugPrint('Error emitting in streamActiveFriendsRealtime: $e');
+      }
+    }
 
-        if (aTime == null && bTime == null) return 0;
-        if (aTime == null) return 1;
-        if (bTime == null) return -1;
+    controller = StreamController<List<Map<String, dynamic>>>(
+      onListen: () {
+        friendsSub = _db
+            .collection('users')
+            .doc(uid)
+            .collection('friends')
+            .snapshots()
+            .listen((snapshot) {
+          final currentUids = <String>{};
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            final rawUid = (data['uid'] ?? '').toString().trim();
+            final friendUid = rawUid.isNotEmpty ? rawUid : doc.id;
+            if (friendUid.isEmpty) continue;
 
-        return (bTime as Timestamp).compareTo(aTime as Timestamp);
-      });
+            currentUids.add(friendUid);
+            friendsData[friendUid] = data;
 
-      return validItems;
-    });
+            if (!userSubs.containsKey(friendUid)) {
+              userSubs[friendUid] =
+                  _remote.streamUserProfile(friendUid).listen((profile) {
+                latestProfiles[friendUid] = profile;
+                emitLatest();
+              }, onError: (e) {
+                debugPrint('Error in streamUserProfile for $friendUid: $e');
+              });
+            }
+          }
+
+          // Cancel subscriptions for removed friends
+          final removedUids =
+              userSubs.keys.where((fUid) => !currentUids.contains(fUid)).toList();
+          for (final fUid in removedUids) {
+            userSubs[fUid]?.cancel();
+            userSubs.remove(fUid);
+            friendsData.remove(fUid);
+            latestProfiles.remove(fUid);
+          }
+
+          emitLatest();
+        }, onError: (e) {
+          debugPrint('Error in streamActiveFriendsRealtime friendsSub: $e');
+          if (!controller.isClosed) controller.addError(e);
+        });
+      },
+      onCancel: () {
+        friendsSub?.cancel();
+        friendsSub = null;
+        for (final sub in userSubs.values) {
+          sub.cancel();
+        }
+        userSubs.clear();
+        friendsData.clear();
+        latestProfiles.clear();
+      },
+    );
+
+    return controller.stream;
   }
 
   Future<void> updateUserNote(String uid, String noteText) async {
@@ -1113,6 +1317,61 @@ class UserRepository {
         );
       } catch (_) {}
     }
+  }
+
+  /// Ghi nhận khoản chi tiêu từ quỹ nhóm khi thành viên tạo giao dịch nhóm
+  Future<void> addGroupExpense({
+    required String groupId,
+    required String actorUid,
+    required String memberUid,
+    required double amount,
+  }) async {
+    final actorGroupRef = _db
+        .collection('users')
+        .doc(actorUid)
+        .collection('groups')
+        .doc(groupId);
+
+    final snapshot = await actorGroupRef.get();
+    if (!snapshot.exists) return;
+
+    final data = snapshot.data() ?? {};
+    final memberIds =
+        (data['memberIds'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+    final oldSpentMap = Map<String, dynamic>.from(
+      data['memberSpent'] ?? {},
+    );
+
+    final currentMemberSpent = oldSpentMap[memberUid] is num
+        ? (oldSpentMap[memberUid] as num).toDouble()
+        : 0.0;
+
+    oldSpentMap[memberUid] = currentMemberSpent + amount;
+
+    final currentSpent = data['spentAmount'] is num
+        ? (data['spentAmount'] as num).toDouble()
+        : 0.0;
+
+    final updatedData = {
+      ...data,
+      'spentAmount': currentSpent + amount,
+      'memberSpent': oldSpentMap,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    final batch = _db.batch();
+    for (final uid in memberIds) {
+      final ref = _db
+          .collection('users')
+          .doc(uid)
+          .collection('groups')
+          .doc(groupId);
+
+      batch.set(ref, updatedData, SetOptions(merge: true));
+    }
+
+    await batch.commit();
   }
 
   Stream<List<String>> streamFriendIds(String uid) {

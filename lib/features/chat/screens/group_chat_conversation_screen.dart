@@ -7,14 +7,20 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/localization_extension.dart';
+import '../../../core/routes/route_names.dart';
 import '../../../core/services/local_settings_service.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../core/utils/currency_formatter.dart';
+import '../../../core/utils/budget_name_localizer.dart';
 import '../../../data/models/chat_bubble_theme.dart';
 import '../../../data/models/chat_message_model.dart';
+import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/chat_repository.dart';
+import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../feed/controllers/feed_controller.dart';
 import '../../profile/screens/group_detail_screen.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/chat_controller.dart';
@@ -27,6 +33,8 @@ class GroupChatConversationScreen extends StatefulWidget {
   final String groupName;
   final String? groupColor;
   final List<String>? memberUids;
+  final TransactionModel? initialPostReply;
+  final UserModel? initialPostAuthor;
 
   const GroupChatConversationScreen({
     super.key,
@@ -34,7 +42,230 @@ class GroupChatConversationScreen extends StatefulWidget {
     required this.groupName,
     this.groupColor,
     this.memberUids,
+    this.initialPostReply,
+    this.initialPostAuthor,
   });
+
+  static String localizeGroupSystemText(BuildContext context, String rawText) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    var cleanText = rawText.trim();
+    if (cleanText.isEmpty) return rawText;
+
+    // Strip leading sender prefix like "duy vinh: " if present in lastMessage
+    final colonIdx = cleanText.indexOf(': ');
+    if (colonIdx != -1 && colonIdx < 30) {
+      final candidatePrefix = cleanText.substring(0, colonIdx).trim();
+      final afterPrefix = cleanText.substring(colonIdx + 2).trim();
+      if (afterPrefix.contains('đã thêm chi tiêu') ||
+          afterPrefix.contains('đã chi tiêu') ||
+          afterPrefix.contains('thêm chi tiêu') ||
+          afterPrefix.contains('đã nạp') ||
+          afterPrefix.contains('đã đóng góp') ||
+          afterPrefix.contains('added expense') ||
+          afterPrefix.contains('shared spending') ||
+          afterPrefix.contains('deposited') ||
+          afterPrefix.contains('contributed')) {
+        if (afterPrefix.startsWith(candidatePrefix)) {
+          cleanText = afterPrefix;
+        } else if (afterPrefix.startsWith('đã ') ||
+            afterPrefix.startsWith('added ') ||
+            afterPrefix.startsWith('deposited ') ||
+            afterPrefix.startsWith('contributed ')) {
+          cleanText = '$candidatePrefix $afterPrefix';
+        } else {
+          cleanText = afterPrefix;
+        }
+      }
+    }
+
+    if (isEn) {
+      // 1. Group fund contribution
+      final fundMatch1 = RegExp(
+        r'''^(.+?)\s+(?:đã đóng góp|đã nạp|nạp)\s+(.+?)\s+vào quỹ nhóm(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (fundMatch1 != null) {
+        return '${fundMatch1.group(1)} deposited ${fundMatch1.group(2)} to group fund';
+      }
+
+      final fundMatch2 = RegExp(
+        r'''^(.+?)\s+(?:đã đóng góp|đã nạp|nạp)\s+(.+?)\s+cho\s+(.+?)\s+trong nhóm(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (fundMatch2 != null) {
+        return '${fundMatch2.group(1)} contributed ${fundMatch2.group(2)} for ${fundMatch2.group(3)} in group';
+      }
+
+      final fundMatchAmountOnly = RegExp(
+        r'''^(.+?)\s+(?:đã đóng góp|đã nạp|nạp)\s+([0-9.,\s\u00a0\u202f]+[₫\$kK]?|[0-9.,]+)(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (fundMatchAmountOnly != null) {
+        return '${fundMatchAmountOnly.group(1)} deposited ${fundMatchAmountOnly.group(2)} to group fund';
+      }
+
+      // 2. Expense logged
+      final expMatch = RegExp(
+        r'''^(.+?)\s+(?:đã thêm chi tiêu|đã chi tiêu|thêm chi tiêu)\s+(.+?)\s+cho\s+["'‘“]?([^"'’”]+?)["'’”]?(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (expMatch != null) {
+        final name = expMatch.group(1)!.trim();
+        final amount = expMatch.group(2)!.trim();
+        final rawCat = expMatch.group(3)!.trim();
+        final cat = BudgetNameLocalizer.display(context, rawCat);
+        return '$name added expense of $amount for "$cat"';
+      }
+
+      final expMatchAmountOnly = RegExp(
+        r'''^(.+?)\s+(?:đã thêm chi tiêu|đã chi tiêu|thêm chi tiêu)\s+([0-9.,\s\u00a0\u202f]+[₫\$kK]?|[0-9.,]+)(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (expMatchAmountOnly != null) {
+        final name = expMatchAmountOnly.group(1)!.trim();
+        final amount = expMatchAmountOnly.group(2)!.trim();
+        return '$name added an expense of $amount';
+      }
+
+      final expMatchCatOnly = RegExp(
+        r'''^(.+?)\s+(?:đã thêm chi tiêu|đã chi tiêu|thêm chi tiêu)\s+cho\s+["'‘“]?([^"'’”]+?)["'’”]?(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (expMatchCatOnly != null) {
+        final name = expMatchCatOnly.group(1)!.trim();
+        final rawCat = expMatchCatOnly.group(2)!.trim();
+        final cat = BudgetNameLocalizer.display(context, rawCat);
+        return '$name added an expense for "$cat"';
+      }
+
+      final expMatchMinimal = RegExp(
+        r'''^(.+?)\s+(?:đã thêm chi tiêu|đã chi tiêu|thêm chi tiêu)(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (expMatchMinimal != null) {
+        final name = expMatchMinimal.group(1)!.trim();
+        return '$name added an expense';
+      }
+
+      // 3. Member added
+      final addMatch = RegExp(
+        r'^(.+?)\s+đã thêm\s+(.+?)\s+vào nhóm$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (addMatch != null) {
+        return '${addMatch.group(1)} added ${addMatch.group(2)} to the group';
+      }
+
+      // 4. Member removed
+      final removeMatch = RegExp(
+        r'^(.+?)\s+đã xoá\s+(.+?)\s+khỏi nhóm$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (removeMatch != null) {
+        return '${removeMatch.group(1)} removed ${removeMatch.group(2)} from the group';
+      }
+
+      // 5. Member left
+      final leftMatch = RegExp(
+        r'^(.+?)\s+đã rời khỏi nhóm$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (leftMatch != null) {
+        return '${leftMatch.group(1)} left the group';
+      }
+
+      // 6. Group created
+      final createMatch = RegExp(
+        r'''^(.+?)\s+đã tạo nhóm\s+["'‘“]?(.*?)["'’"]?$''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (createMatch != null) {
+        return '${createMatch.group(1)} created group "${createMatch.group(2)}"';
+      }
+      if (cleanText == 'Nhóm chi tiêu đã được tạo' || cleanText == 'Nhóm đã được tạo') {
+        return 'Group was created';
+      }
+    } else {
+      // If language is Vietnamese, translate any English logs if stored in English
+      final fundEn1 = RegExp(
+        r'^(.+?)\s+(?:contributed|deposited)\s+(.+?)\s+(?:to|into) group fund$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (fundEn1 != null) {
+        return '${fundEn1.group(1)} đã nạp ${fundEn1.group(2)} vào quỹ nhóm';
+      }
+      final fundEn2 = RegExp(
+        r'^(.+?)\s+(?:contributed|deposited)\s+(.+?)\s+for\s+(.+?)\s+in group$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (fundEn2 != null) {
+        return '${fundEn2.group(1)} đã đóng góp ${fundEn2.group(2)} cho ${fundEn2.group(3)} trong nhóm';
+      }
+
+      final expEn = RegExp(
+        r'''^(.+?)\s+(?:added expense of|shared spending of)\s+(.+?)\s+for\s+["'‘“]?([^"'’”]+?)["'’”]?(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (expEn != null) {
+        final cat = BudgetNameLocalizer.display(context, expEn.group(3)!);
+        return '${expEn.group(1)} đã thêm chi tiêu ${expEn.group(2)} cho "$cat"';
+      }
+
+      final expEnAmountOnly = RegExp(
+        r'''^(.+?)\s+(?:added an expense of|added expense of)\s+([0-9.,\s\u00a0\u202f]+[₫\$kK]?|[0-9.,]+)(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (expEnAmountOnly != null) {
+        return '${expEnAmountOnly.group(1)} đã thêm chi tiêu ${expEnAmountOnly.group(2)}';
+      }
+
+      final expEnMinimal = RegExp(
+        r'''^(.+?)\s+(?:added an expense|added expense)(?:\s*$)''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (expEnMinimal != null) {
+        return '${expEnMinimal.group(1)} đã thêm chi tiêu';
+      }
+
+      final addEn = RegExp(
+        r'^(.+?)\s+added\s+(.+?)\s+to (?:the )?group$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (addEn != null) {
+        return '${addEn.group(1)} đã thêm ${addEn.group(2)} vào nhóm';
+      }
+
+      final removeEn = RegExp(
+        r'^(.+?)\s+removed\s+(.+?)\s+from (?:the )?group$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (removeEn != null) {
+        return '${removeEn.group(1)} đã xoá ${removeEn.group(2)} khỏi nhóm';
+      }
+
+      final leftEn = RegExp(
+        r'^(.+?)\s+left the group$',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (leftEn != null) {
+        return '${leftEn.group(1)} đã rời khỏi nhóm';
+      }
+
+      final createEn = RegExp(
+        r'''^(.+?)\s+created group\s+["'‘“]?(.*?)["'’"]?$''',
+        caseSensitive: false,
+      ).firstMatch(cleanText);
+      if (createEn != null) {
+        return '${createEn.group(1)} đã tạo nhóm "${createEn.group(2)}"';
+      }
+      if (cleanText.toLowerCase() == 'group was created' ||
+          cleanText.toLowerCase() == 'group expense was created') {
+        return 'Nhóm chi tiêu đã được tạo';
+      }
+    }
+
+    return rawText;
+  }
 
   @override
   State<GroupChatConversationScreen> createState() =>
@@ -51,6 +282,8 @@ class _GroupChatConversationScreenState
   final UserRepository _userRepo = UserRepository();
 
   ChatMessageModel? _replyingToMessage;
+  TransactionModel? _currentPostReply;
+  UserModel? _currentPostAuthor;
   bool _showEmojiGrid = false;
   bool _hasText = false;
   bool _isSending = false;
@@ -67,6 +300,9 @@ class _GroupChatConversationScreenState
 
   final Map<String, String> _senderBubbleThemeCache = {};
   final Map<String, UserModel> _memberCache = {};
+  final TransactionRepository _txRepo = TransactionRepository();
+  final Map<String, TransactionModel?> _resolvedExpensePosts = {};
+  final Set<String> _resolvingExpenseIds = {};
 
   static const List<String> emojiList = [
     '🤣', '🥺', '😱', '🔥', '❤️', '👏', '😍', '🎉',
@@ -79,6 +315,22 @@ class _GroupChatConversationScreenState
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _currentPostReply = widget.initialPostReply;
+    if (widget.initialPostReply != null) {
+      if (widget.initialPostAuthor != null) {
+        _currentPostAuthor = widget.initialPostAuthor;
+        _memberCache[widget.initialPostAuthor!.uid] = widget.initialPostAuthor!;
+      } else {
+        _userRepo.getUserProfile(widget.initialPostReply!.userId).then((author) {
+          if (author != null && mounted) {
+            setState(() {
+              _currentPostAuthor = author;
+              _memberCache[author.uid] = author;
+            });
+          }
+        });
+      }
+    }
 
     // Load unsent draft if available
     final draft = context.read<LocalSettingsService>().getDraft('group_${widget.groupId}');
@@ -92,6 +344,7 @@ class _GroupChatConversationScreenState
 
     _textController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
+    _textFocusNode.addListener(_onFocusChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -166,6 +419,13 @@ class _GroupChatConversationScreenState
     }
   }
 
+  void _onFocusChanged() {
+    if (!_textFocusNode.hasFocus) {
+      final myUid = context.read<AuthController>().user?.uid;
+      _stopTypingHeartbeat(myUid);
+    }
+  }
+
   void _onTextChanged() {
     final rawText = _textController.text;
     final text = rawText.trim();
@@ -206,9 +466,9 @@ class _GroupChatConversationScreenState
       _sendTypingHeartbeat(myUid, true);
     }
 
-    // Reset idle timer: if user stops typing for 2.5s, auto-stop typing
+    // Reset idle timer: if user pauses typing for 6s, auto-stop typing
     _typingIdleTimer?.cancel();
-    _typingIdleTimer = Timer(const Duration(milliseconds: 2500), () {
+    _typingIdleTimer = Timer(const Duration(seconds: 6), () {
       if (mounted && _isCurrentlyTypingSent) {
         _isCurrentlyTypingSent = false;
         _sendTypingHeartbeat(myUid, false);
@@ -402,6 +662,7 @@ class _GroupChatConversationScreenState
 
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
+    _textFocusNode.removeListener(_onFocusChanged);
     _textController.dispose();
     _scrollController.dispose();
     _textFocusNode.dispose();
@@ -415,6 +676,17 @@ class _GroupChatConversationScreenState
       return Color(int.parse('FF$cleaned', radix: 16));
     }
     return const Color(0xFF79AFFF);
+  }
+
+  void _fetchMemberIfNeeded(String uid) {
+    if (uid.isEmpty || _memberCache.containsKey(uid)) return;
+    _userRepo.getUserProfile(uid).then((p) {
+      if (p != null && mounted) {
+        setState(() {
+          _memberCache[uid] = p;
+        });
+      }
+    });
   }
 
   Future<void> _sendMessage() async {
@@ -432,12 +704,16 @@ class _GroupChatConversationScreenState
     });
 
     final replyMsg = _replyingToMessage;
+    final postReply = _currentPostReply;
+    final postAuthor = _currentPostAuthor;
     _stopTypingHeartbeat(myUser.uid);
     _textController.clear();
     context.read<LocalSettingsService>().clearDraft('group_${widget.groupId}');
     _hasText = false;
     setState(() {
       _replyingToMessage = null;
+      _currentPostReply = null;
+      _currentPostAuthor = null;
     });
 
     final myUid = myUser.uid;
@@ -450,17 +726,49 @@ class _GroupChatConversationScreenState
     final senderAvatar = userProfile?.avatarUrl ?? '';
     final bubbleThemeId = localSettings.chatBubbleTheme;
 
+    String? postAuthorName;
+    String? postAuthorAvatar;
+    String? postAuthorFrame;
+    String? postOwnerId;
+
+    if (postReply != null) {
+      postOwnerId = postReply.userId;
+      UserModel? author = postAuthor ?? _memberCache[postReply.userId];
+      if (author == null) {
+        author = await userRepo.getUserProfile(postReply.userId);
+        if (author != null) {
+          _memberCache[postReply.userId] = author;
+        }
+      }
+      if (author != null) {
+        postAuthorName = author.name.trim().isNotEmpty
+            ? author.name.trim()
+            : (author.username.trim().isNotEmpty ? author.username.trim() : 'Thành viên');
+        postAuthorAvatar = author.avatarUrl;
+        postAuthorFrame = author.avatarFrame;
+      }
+    }
+
     final success = await _chatRepo.sendGroupMessage(
       groupId: widget.groupId,
       senderId: myUid,
       senderName: senderName,
       senderAvatar: senderAvatar,
       text: text,
+      type: postReply != null ? 'post_reply' : 'text',
       bubbleTheme: bubbleThemeId,
       replyToMessageId: replyMsg?.id,
       replyToText: replyMsg?.text,
       replyToSenderName: replyMsg?.senderName ??
           (replyMsg?.senderId == myUid ? 'Bạn' : 'Thành viên'),
+      postId: postReply?.id,
+      postImageUrl: postReply?.displayImageUrl,
+      postCaption: postReply?.caption,
+      postCreatedAt: postReply?.createdAt,
+      postAuthorName: postAuthorName,
+      postAuthorAvatar: postAuthorAvatar,
+      postAuthorFrame: postAuthorFrame,
+      postOwnerId: postOwnerId,
     );
 
     if (mounted) {
@@ -486,10 +794,13 @@ class _GroupChatConversationScreenState
           .get();
 
       if (doc.exists && doc.data() != null && mounted) {
+        final data = Map<String, dynamic>.from(doc.data()!);
+        data['id'] = widget.groupId;
+        data['groupId'] = widget.groupId;
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => GroupDetailScreen(groupData: doc.data()!),
+            builder: (_) => GroupDetailScreen(groupData: data),
           ),
         );
       }
@@ -501,6 +812,7 @@ class _GroupChatConversationScreenState
       case MessageMenuAction.reply:
         setState(() {
           _replyingToMessage = msg;
+          _currentPostReply = null;
         });
         _textFocusNode.requestFocus();
         break;
@@ -1039,6 +1351,7 @@ class _GroupChatConversationScreenState
                                         onSwipeToReply: (message) {
                                           setState(() {
                                             _replyingToMessage = message;
+                                            _currentPostReply = null;
                                           });
                                           _textFocusNode.requestFocus();
                                         },
@@ -1048,6 +1361,9 @@ class _GroupChatConversationScreenState
                                             _fetchSenderThemeIfNeeded,
                                         senderBubbleThemeCache:
                                             _senderBubbleThemeCache,
+                                        onTapPost: (postId) => _navigateToPost(postId),
+                                        memberCache: _memberCache,
+                                        fetchMemberIfNeeded: _fetchMemberIfNeeded,
                                       ),
                                       // Seen member avatars row (Messenger Group Seen Receipts)
                                       if (seenUids != null && seenUids.isNotEmpty)
@@ -1259,6 +1575,7 @@ class _GroupChatConversationScreenState
 
             // Replying banner
             if (_replyingToMessage != null) _buildReplyBanner(context, isDark),
+            if (_currentPostReply != null) _buildPostReplyBanner(context, isDark),
 
             // Input Bar
             _buildInputBar(context, isDark),
@@ -1494,7 +1811,9 @@ class _GroupChatConversationScreenState
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'Chào mừng mọi người đến với nhóm! Hãy bắt đầu cuộc trò chuyện ngay bây giờ.',
+              Localizations.localeOf(context).languageCode == 'en'
+                  ? 'Welcome to the group! Start the conversation now.'
+                  : 'Chào mừng mọi người đến với nhóm! Hãy bắt đầu cuộc trò chuyện ngay bây giờ.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
@@ -1507,98 +1826,958 @@ class _GroupChatConversationScreenState
     );
   }
 
+  void _resolveHistoricalExpensePost(ChatMessageModel msg) {
+    if (msg.postId != null && msg.postId!.isNotEmpty) return;
+    if (_resolvingExpenseIds.contains(msg.id)) return;
+    _resolvingExpenseIds.add(msg.id);
+
+    _txRepo
+        .findGroupExpenseTransaction(
+      groupId: widget.groupId,
+      messageTime: msg.createdAt,
+      actorUid: msg.senderId != 'system' ? msg.senderId : null,
+    )
+        .then((tx) {
+      if (mounted && tx != null) {
+        setState(() {
+          _resolvedExpensePosts[msg.id] = tx;
+        });
+      }
+    });
+  }
+
+  void _navigateToPost(String postId) {
+    HapticFeedback.lightImpact();
+    context.read<FeedController>().setTargetPostId(postId);
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      RouteNames.mainShell,
+      (route) => false,
+      arguments: {
+        'initialIndex': 2,
+        'targetPostId': postId,
+      },
+    );
+  }
+
+  Future<void> _handleSystemPostTap(String postId, ChatMessageModel msg) async {
+    HapticFeedback.lightImpact();
+    final myUid = context.read<AuthController>().user?.uid;
+    if (myUid == null) return;
+
+    TransactionModel? tx = _resolvedExpensePosts[msg.id];
+    if (tx == null) {
+      tx = await _txRepo.fetchTransactionById(postId, groupId: widget.groupId);
+      if (tx != null && mounted) {
+        setState(() {
+          _resolvedExpensePosts[msg.id] = tx;
+        });
+      }
+    }
+
+    String? authorUid = (msg.senderId != 'system' && msg.senderId.isNotEmpty)
+        ? msg.senderId
+        : tx?.userId;
+
+    if (authorUid == null || authorUid.isEmpty) {
+      if (tx != null && tx.userId.isNotEmpty) {
+        authorUid = tx.userId;
+      }
+    }
+
+    final isMe = (authorUid == myUid);
+    bool isFriend = isMe;
+    if (!isFriend && authorUid != null && authorUid.isNotEmpty) {
+      isFriend = await _userRepo.areFriends(myUid, authorUid);
+    }
+
+    if (!mounted) return;
+
+    if (isFriend) {
+      _navigateToPost(postId);
+    } else {
+      _showMomentDetailModal(
+        postId: postId,
+        msg: msg,
+        tx: tx,
+        authorUid: authorUid,
+      );
+    }
+  }
+
+  void _showMomentDetailModal({
+    required String postId,
+    required ChatMessageModel msg,
+    TransactionModel? tx,
+    String? authorUid,
+  }) async {
+    UserModel? author;
+    if (authorUid != null && authorUid.isNotEmpty) {
+      author = _memberCache[authorUid];
+      if (author == null) {
+        author = await _userRepo.getUserProfile(authorUid);
+        if (author != null && mounted) {
+          _memberCache[authorUid] = author;
+        }
+      }
+    }
+
+    if (!mounted) return;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final l10n = context.l10n;
+
+    final authorName = author?.name.isNotEmpty == true
+        ? author!.name
+        : (author?.username.isNotEmpty == true
+            ? '@${author!.username}'
+            : (msg.postAuthorName ?? l10n.member));
+    final authorUsername = author?.username.isNotEmpty == true
+        ? '@${author!.username}'
+        : '';
+    final authorAvatar = author?.avatarUrl ?? msg.postAuthorAvatar ?? '';
+    final authorFrame = author?.avatarFrame ?? msg.postAuthorFrame;
+
+    final imageUrl = (tx?.imageUrl.isNotEmpty == true ? tx!.imageUrl : null) ??
+        (msg.postImageUrl?.isNotEmpty == true ? msg.postImageUrl : null) ??
+        (tx?.thumbnailUrl.isNotEmpty == true ? tx!.thumbnailUrl : null) ??
+        (tx?.mediaUrl.isNotEmpty == true ? tx!.mediaUrl : null);
+
+    final caption = tx?.caption.isNotEmpty == true
+        ? tx!.caption
+        : (msg.postCaption?.isNotEmpty == true ? msg.postCaption : tx?.note);
+
+    final postTime = tx?.createdAt ?? msg.postCreatedAt ?? msg.createdAt;
+    final timeStr = _formatFeedTime(context, postTime);
+
+    final rawTextLower = msg.text.toLowerCase();
+    final isFund = rawTextLower.contains('đóng góp') ||
+        rawTextLower.contains('nạp') ||
+        rawTextLower.contains('quỹ nhóm') ||
+        rawTextLower.contains('contributed') ||
+        rawTextLower.contains('deposited') ||
+        rawTextLower.contains('group fund') ||
+        (tx?.isGroupContribution == true);
+
+    final double amount = tx?.amount ?? 0;
+    final amountFormatted = amount > 0
+        ? AppCurrencyFormatter.formatFromVnd(amountVnd: amount, currency: 'VND')
+        : '';
+
+    final typeColor = isFund ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+    final typeLabel = isFund
+        ? (isEn ? 'Group Fund Deposit' : 'Nạp quỹ nhóm')
+        : (isEn ? 'Group Expense' : 'Chi tiêu nhóm');
+    final typeIcon = isFund ? Icons.savings_rounded : Icons.receipt_long_rounded;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.88,
+              ),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF181D26) : Colors.white,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Drag Handle
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4.5,
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white24 : Colors.black12,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Header Row
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: typeColor.withValues(alpha: 0.14),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              typeIcon,
+                              size: 18,
+                              color: typeColor,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              l10n.momentDetails,
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(sheetCtx),
+                            icon: const Icon(Icons.close_rounded),
+                            color: isDark ? Colors.white60 : Colors.black54,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Notice Banner: You are not friends with the author
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.12 : 0.08),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.28 : 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.info_outline_rounded,
+                              size: 18,
+                              color: Color(0xFF3B82F6),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                l10n.notFriendsGroupPostNotice,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  color: isDark ? const Color(0xFF93C5FD) : const Color(0xFF1D4ED8),
+                                  height: 1.35,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Author Info Row
+                      Row(
+                        children: [
+                          if (authorAvatar.isNotEmpty)
+                            AvatarWithFrame(
+                              avatarUrl: authorAvatar,
+                              frameId: authorFrame,
+                              size: 38,
+                            )
+                          else
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFF374151),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _getInitials(authorName),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  authorName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                                if (authorUsername.isNotEmpty)
+                                  Text(
+                                    authorUsername,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark ? Colors.white54 : Colors.black54,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              timeStr,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white70 : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Image Card
+                      if (imageUrl != null && imageUrl.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: AspectRatio(
+                            aspectRatio: 1.12,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: isDark ? const Color(0xFF252D3D) : const Color(0xFFF3F4F6),
+                                    child: const Center(
+                                      child: Icon(Icons.broken_image_rounded, color: Colors.grey, size: 40),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  top: 10,
+                                  left: 10,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.65),
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(typeIcon, color: typeColor, size: 13),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          typeLabel,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11.5,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+
+                      // Transaction Info Strip: Amount & Category
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: typeColor.withValues(alpha: isDark ? 0.12 : 0.08),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: typeColor.withValues(alpha: isDark ? 0.28 : 0.18),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  typeLabel,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: typeColor,
+                                  ),
+                                ),
+                                if (tx != null && tx.category.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    BudgetNameLocalizer.display(context, tx.category),
+                                    style: TextStyle(
+                                      fontSize: 13.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (amountFormatted.isNotEmpty)
+                              Text(
+                                '${isFund ? '+' : '-'}$amountFormatted',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w900,
+                                  color: typeColor,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+
+                      // Caption
+                      if (caption != null && caption.trim().isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: isDark ? const Color(0xFF222834) : const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Text(
+                            caption.trim(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.white.withValues(alpha: 0.9) : Colors.black87,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 18),
+
+                      // Action Button (Send friend request or Close)
+                      if (authorUid != null && authorUid.isNotEmpty)
+                        _buildMomentAddFriendButton(
+                          authorUid: authorUid,
+                          author: author,
+                          isDark: isDark,
+                          l10n: l10n,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getInitials(String name) {
+    final trimmed = name.trim();
+    if (trimmed.isEmpty) return 'U';
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
+    }
+    return trimmed.substring(0, trimmed.length >= 2 ? 2 : 1).toUpperCase();
+  }
+
+  String _formatFeedTime(BuildContext context, DateTime createdAt) {
+    final now = DateTime.now();
+    final diff = now.difference(createdAt);
+
+    if (diff.inSeconds < 60) {
+      return context.l10n.justNow;
+    }
+
+    if (diff.inMinutes < 60) {
+      return context.l10n.minutesAgo(diff.inMinutes);
+    }
+
+    if (diff.inHours < 24) {
+      return context.l10n.hoursAgo(diff.inHours);
+    }
+
+    if (diff.inDays <= 7) {
+      return context.l10n.daysAgo(diff.inDays);
+    }
+
+    final isVi = Localizations.localeOf(context).languageCode == 'vi';
+    if (now.year == createdAt.year) {
+      return isVi
+          ? '${createdAt.day} thg ${createdAt.month}'
+          : DateFormat('d MMM', 'en').format(createdAt);
+    }
+    return isVi
+        ? '${createdAt.day} thg ${createdAt.month}, ${createdAt.year}'
+        : DateFormat('d MMM, y', 'en').format(createdAt);
+  }
+
+  Widget _buildMomentAddFriendButton({
+    required String authorUid,
+    UserModel? author,
+    required bool isDark,
+    required dynamic l10n,
+  }) {
+    final myUid = context.read<AuthController>().user?.uid;
+    if (myUid == null || myUid == authorUid) return const SizedBox.shrink();
+
+    return FutureBuilder<AddFriendConnectionState>(
+      future: _userRepo.checkConnectionState(myUid, authorUid),
+      builder: (context, snapshot) {
+        final state = snapshot.data ?? AddFriendConnectionState.canSend;
+
+        if (state == AddFriendConnectionState.alreadyFriends) {
+          return const SizedBox.shrink();
+        }
+
+        if (state == AddFriendConnectionState.pendingSent) {
+          return Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.done_rounded, size: 16, color: isDark ? Colors.white70 : Colors.black54),
+                const SizedBox(width: 6),
+                Text(
+                  l10n.friendRequestSent,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ElevatedButton.icon(
+          onPressed: () async {
+            HapticFeedback.lightImpact();
+            try {
+              final target = author ?? await _userRepo.getUserProfile(authorUid);
+              if (target != null) {
+                await _userRepo.sendFriendRequest(
+                  myUid: myUid,
+                  targetUser: target,
+                );
+                if (context.mounted) {
+                  AppToast.show(context, l10n.friendRequestSent);
+                }
+              }
+            } catch (_) {}
+          },
+          icon: const Icon(Icons.person_add_rounded, size: 18),
+          label: Text(
+            l10n.addFriend,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryBlue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 0,
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildSystemMessagePill(ChatMessageModel msg, bool isDark) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
     final timeStr = DateFormat('HH:mm').format(msg.createdAt);
-    final text = msg.text;
+    final text = GroupChatConversationScreen.localizeGroupSystemText(context, msg.text);
+    final rawTextLower = msg.text.toLowerCase();
 
     Color badgeColor;
     Color iconColor;
     IconData iconData;
     String categoryLabel;
 
-    if (text.contains('đóng góp') || text.contains('quỹ nhóm')) {
+    final isFund = rawTextLower.contains('đóng góp') ||
+        rawTextLower.contains('nạp') ||
+        rawTextLower.contains('quỹ nhóm') ||
+        rawTextLower.contains('contributed') ||
+        rawTextLower.contains('deposited') ||
+        rawTextLower.contains('group fund');
+    final isExpense = rawTextLower.contains('chi tiêu') ||
+        rawTextLower.contains('đã tiêu') ||
+        rawTextLower.contains('expense') ||
+        rawTextLower.contains('spending');
+    final isMemberAdd = (rawTextLower.contains('thêm') && rawTextLower.contains('nhóm')) ||
+        (rawTextLower.contains('added') && rawTextLower.contains('group'));
+    final isMemberRemove = rawTextLower.contains('xoá') ||
+        rawTextLower.contains('rời khỏi nhóm') ||
+        rawTextLower.contains('rời nhóm') ||
+        rawTextLower.contains('removed') ||
+        rawTextLower.contains('left the group');
+    final isCreated = rawTextLower.contains('tạo nhóm') ||
+        rawTextLower.contains('được tạo') ||
+        rawTextLower.contains('created group');
+
+    if (isFund) {
       badgeColor = const Color(0xFF10B981);
       iconColor = const Color(0xFF10B981);
       iconData = Icons.savings_rounded;
-      categoryLabel = 'Quỹ nhóm';
-    } else if (text.contains('chi tiêu') || text.contains('đã tiêu')) {
+      categoryLabel = isEn ? 'Group Fund' : 'Quỹ nhóm';
+    } else if (isExpense) {
       badgeColor = const Color(0xFFF59E0B);
       iconColor = const Color(0xFFF59E0B);
       iconData = Icons.receipt_long_rounded;
-      categoryLabel = 'Chi tiêu';
-    } else if (text.contains('thêm') && text.contains('nhóm')) {
+      categoryLabel = isEn ? 'Expense' : 'Chi tiêu';
+    } else if (isMemberAdd) {
       badgeColor = const Color(0xFF3B82F6);
       iconColor = const Color(0xFF3B82F6);
       iconData = Icons.person_add_rounded;
-      categoryLabel = 'Thành viên';
-    } else if (text.contains('xoá') || text.contains('rời nhóm')) {
+      categoryLabel = isEn ? 'Member' : 'Thành viên';
+    } else if (isMemberRemove) {
       badgeColor = const Color(0xFFEF4444);
       iconColor = const Color(0xFFEF4444);
       iconData = Icons.person_remove_rounded;
-      categoryLabel = 'Thành viên';
-    } else if (text.contains('tạo nhóm') || text.contains('được tạo')) {
+      categoryLabel = isEn ? 'Member' : 'Thành viên';
+    } else if (isCreated) {
       badgeColor = const Color(0xFF8B5CF6);
       iconColor = const Color(0xFF8B5CF6);
       iconData = Icons.celebration_rounded;
-      categoryLabel = 'Khởi tạo';
+      categoryLabel = isEn ? 'Created' : 'Khởi tạo';
     } else {
       badgeColor = isDark ? Colors.white60 : Colors.black54;
       iconColor = isDark ? Colors.white70 : Colors.black87;
       iconData = Icons.notifications_active_outlined;
-      categoryLabel = 'Hệ thống';
+      categoryLabel = isEn ? 'System' : 'Hệ thống';
     }
+
+    String? targetPostId = msg.postId;
+    String? postImageUrl = msg.postImageUrl;
+    String? postCaption = msg.postCaption;
+
+    if (isExpense || isFund) {
+      if (targetPostId == null || targetPostId.isEmpty) {
+        final resolved = _resolvedExpensePosts[msg.id];
+        if (resolved != null) {
+          targetPostId = resolved.id;
+          postImageUrl = resolved.imageUrl.isNotEmpty
+              ? resolved.imageUrl
+              : (resolved.thumbnailUrl.isNotEmpty
+                  ? resolved.thumbnailUrl
+                  : resolved.mediaUrl);
+          postCaption = resolved.caption.isNotEmpty ? resolved.caption : resolved.note;
+        } else {
+          _resolveHistoricalExpensePost(msg);
+        }
+      }
+    }
+
+    final hasTargetPost = targetPostId != null && targetPostId.isNotEmpty;
+    final hasPostImage = postImageUrl != null && postImageUrl.isNotEmpty;
+
+    final pillWidget = Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: hasTargetPost ? () => _handleSystemPostTap(targetPostId!, msg) : null,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: isDark ? 0.12 : 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: badgeColor.withValues(alpha: isDark ? 0.25 : 0.18),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  iconData,
+                  size: 14,
+                  color: iconColor,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: RichText(
+                  textAlign: TextAlign.center,
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '$categoryLabel: ',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: iconColor,
+                        ),
+                      ),
+                      TextSpan(
+                        text: '$text • $timeStr',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white70 : Colors.black87,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (hasTargetPost) ...[
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 10,
+                  color: iconColor.withValues(alpha: 0.8),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if ((!isExpense && !isFund) || !hasTargetPost) {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+          child: pillWidget,
+        ),
+      );
+    }
+
+    final cardAccentColor = isFund ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+    final cardBadgeIcon = isFund ? Icons.savings_rounded : Icons.receipt_long_rounded;
+    final cardBadgeText = isFund
+        ? (isEn ? 'Group Fund' : 'Nạp quỹ nhóm')
+        : (isEn ? 'Group Expense' : 'Chi tiêu nhóm');
 
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: badgeColor.withValues(alpha: isDark ? 0.12 : 0.08),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: badgeColor.withValues(alpha: isDark ? 0.25 : 0.18),
-            width: 1,
-          ),
-        ),
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.16),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                iconData,
-                size: 14,
-                color: iconColor,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: RichText(
-                textAlign: TextAlign.center,
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: '$categoryLabel: ',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: iconColor,
-                      ),
-                    ),
-                    TextSpan(
-                      text: '$text • $timeStr',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                        height: 1.3,
-                      ),
+            pillWidget,
+            const SizedBox(height: 6),
+            GestureDetector(
+              onTap: () => _handleSystemPostTap(targetPostId!, msg),
+              child: Container(
+                width: 250,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E2430) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: cardAccentColor.withValues(alpha: isDark ? 0.35 : 0.25),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (hasPostImage)
+                        Stack(
+                          children: [
+                            AspectRatio(
+                              aspectRatio: 1.15,
+                              child: Image.network(
+                                postImageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: isDark
+                                      ? const Color(0xFF252D3D)
+                                      : const Color(0xFFF3F4F6),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.broken_image_rounded,
+                                      color: Colors.grey,
+                                      size: 32,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned.fill(
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0.35),
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.65),
+                                    ],
+                                    stops: const [0.0, 0.45, 1.0],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.65),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      cardBadgeIcon,
+                                      color: cardAccentColor,
+                                      size: 11,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      cardBadgeText,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            if (postCaption != null && postCaption.trim().isNotEmpty)
+                              Positioned(
+                                left: 10,
+                                right: 10,
+                                bottom: 8,
+                                child: Text(
+                                  postCaption.trim(),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    shadows: [
+                                      Shadow(
+                                        color: Colors.black,
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF181D26)
+                              : (isFund ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.visibility_rounded,
+                                  size: 14,
+                                  color: isDark
+                                      ? (isFund ? const Color(0xFF34D399) : const Color(0xFFFBBF24))
+                                      : (isFund ? const Color(0xFF059669) : const Color(0xFFD97706)),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isEn ? 'View moment' : 'Xem khoảnh khắc',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: isDark
+                                        ? (isFund ? const Color(0xFF34D399) : const Color(0xFFFBBF24))
+                                        : (isFund ? const Color(0xFF059669) : const Color(0xFFD97706)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              size: 11,
+                              color: isDark
+                                  ? (isFund ? const Color(0xFF34D399) : const Color(0xFFFBBF24))
+                                  : (isFund ? const Color(0xFF059669) : const Color(0xFFD97706)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1638,7 +2817,9 @@ class _GroupChatConversationScreenState
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Đang trả lời ${replyMsg.senderName ?? 'Thành viên'}',
+                  Localizations.localeOf(context).languageCode == 'en'
+                      ? 'Replying to ${replyMsg.senderName ?? 'Member'}'
+                      : 'Đang trả lời ${replyMsg.senderName ?? 'Thành viên'}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -1647,7 +2828,11 @@ class _GroupChatConversationScreenState
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  replyMsg.text.isNotEmpty ? replyMsg.text : 'Tin nhắn',
+                  replyMsg.text.isNotEmpty
+                      ? replyMsg.text
+                      : (Localizations.localeOf(context).languageCode == 'en'
+                          ? 'Message'
+                          : 'Tin nhắn'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -1675,7 +2860,97 @@ class _GroupChatConversationScreenState
     );
   }
 
+  Widget _buildPostReplyBanner(BuildContext context, bool isDark) {
+    final post = _currentPostReply!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E212B) : const Color(0xFFEFF6FF),
+        border: Border(
+          top: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.10)
+                : const Color(0xFFBFDBFE),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (post.displayImageUrl.isNotEmpty)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                post.displayImageUrl,
+                width: 44,
+                height: 44,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox(),
+              ),
+            ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.reply_rounded,
+                      size: 15,
+                      color: Color(0xFF0084FF),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      Localizations.localeOf(context).languageCode == 'en'
+                          ? 'Replying to post'
+                          : 'Đang trả lời bài viết',
+                      style: const TextStyle(
+                        color: Color(0xFF0084FF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  post.caption.isNotEmpty ? post.caption : 'Khoảnh khắc',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : Colors.black.withValues(alpha: 0.08),
+              ),
+              child: Icon(
+                Icons.close_rounded,
+                size: 16,
+                color: isDark ? Colors.white70 : Colors.black87,
+              ),
+            ),
+            onPressed: () => setState(() => _currentPostReply = null),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputBar(BuildContext context, bool isDark) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
@@ -1729,7 +3004,7 @@ class _GroupChatConversationScreenState
                   color: AppColors.textPrimary(context),
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Nhập tin nhắn nhóm...',
+                  hintText: isEn ? 'Type a group message...' : 'Nhập tin nhắn nhóm...',
                   hintStyle: TextStyle(
                     fontSize: 14.5,
                     color: AppColors.textSecondary(context).withValues(alpha: 0.7),
@@ -1823,6 +3098,9 @@ class _GroupChatMessageBubble extends StatefulWidget {
   final ValueChanged<String> onTapReplySnippet;
   final void Function(String senderId) fetchSenderThemeIfNeeded;
   final Map<String, String> senderBubbleThemeCache;
+  final ValueChanged<String>? onTapPost;
+  final Map<String, UserModel>? memberCache;
+  final ValueChanged<String>? fetchMemberIfNeeded;
 
   const _GroupChatMessageBubble({
     super.key,
@@ -1841,6 +3119,9 @@ class _GroupChatMessageBubble extends StatefulWidget {
     required this.onTapReplySnippet,
     required this.fetchSenderThemeIfNeeded,
     required this.senderBubbleThemeCache,
+    this.onTapPost,
+    this.memberCache,
+    this.fetchMemberIfNeeded,
   });
 
   @override
@@ -1991,10 +3272,41 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
     return trimmed.substring(0, trimmed.length >= 2 ? 2 : 1).toUpperCase();
   }
 
-  Widget _buildFriendAvatar() {
+  String _formatFeedTime(BuildContext context, DateTime createdAt) {
+    final now = DateTime.now();
+    final diff = now.difference(createdAt);
+
+    if (diff.inSeconds < 60) {
+      return context.l10n.justNow;
+    }
+
+    if (diff.inMinutes < 60) {
+      return context.l10n.minutesAgo(diff.inMinutes);
+    }
+
+    if (diff.inHours < 24) {
+      return context.l10n.hoursAgo(diff.inHours);
+    }
+
+    if (diff.inDays <= 7) {
+      return context.l10n.daysAgo(diff.inDays);
+    }
+
+    final isVi = Localizations.localeOf(context).languageCode == 'vi';
+    if (now.year == createdAt.year) {
+      return isVi
+          ? '${createdAt.day} thg ${createdAt.month}'
+          : DateFormat('d MMM', 'en').format(createdAt);
+    }
+    return isVi
+        ? '${createdAt.day} thg ${createdAt.month}, ${createdAt.year}'
+        : DateFormat('d MMM, y', 'en').format(createdAt);
+  }
+
+  Widget _buildFriendAvatar({bool forceShow = false}) {
     if (widget.isMe) return const SizedBox.shrink();
 
-    final shouldShow = widget.isLastInGroup;
+    final shouldShow = forceShow || widget.isLastInGroup;
     if (shouldShow) {
       return Padding(
         padding: const EdgeInsets.only(right: 8),
@@ -2216,9 +3528,314 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
       widget.fetchSenderThemeIfNeeded(widget.message.senderId);
     }
 
+    final hasPost = widget.message.postImageUrl != null &&
+        widget.message.postImageUrl!.isNotEmpty;
     final isPureEmojiMessage = _isPureEmoji(widget.message.text);
 
-    if (isPureEmojiMessage || widget.message.type == 'reaction') {
+    if (hasPost) {
+      final screenWidth = MediaQuery.of(context).size.width;
+      final cardSize = (screenWidth * 0.74).clamp(220.0, 290.0);
+      final postTimeAgo = _formatFeedTime(
+        context,
+        widget.message.postCreatedAt ?? widget.message.createdAt,
+      );
+
+      UserModel? cachedOwner;
+      if (widget.message.postOwnerId != null &&
+          widget.message.postOwnerId!.isNotEmpty &&
+          widget.memberCache != null) {
+        cachedOwner = widget.memberCache![widget.message.postOwnerId!];
+      }
+
+      final authorName = widget.message.postAuthorName?.trim().isNotEmpty == true
+          ? widget.message.postAuthorName!.trim()
+          : (cachedOwner?.name.trim().isNotEmpty == true
+              ? cachedOwner!.name.trim()
+              : (cachedOwner?.username.trim().isNotEmpty == true
+                  ? cachedOwner!.username.trim()
+                  : (widget.friend.name.trim().isNotEmpty
+                      ? widget.friend.name.trim()
+                      : widget.friend.username.trim())));
+
+      final authorAvatar = widget.message.postAuthorAvatar ??
+          cachedOwner?.avatarUrl ??
+          widget.friend.avatarUrl;
+
+      final authorFrame = widget.message.postAuthorFrame ??
+          cachedOwner?.avatarFrame ??
+          widget.friend.avatarFrame;
+
+      if (widget.message.postOwnerId != null &&
+          widget.message.postOwnerId!.isNotEmpty &&
+          cachedOwner == null &&
+          widget.fetchMemberIfNeeded != null) {
+        widget.fetchMemberIfNeeded!(widget.message.postOwnerId!);
+      }
+
+      content = Column(
+        crossAxisAlignment:
+            widget.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!widget.isMe && widget.isFirstInGroup)
+            Padding(
+              padding: const EdgeInsets.only(left: 36, bottom: 3),
+              child: Text(
+                widget.friend.name.isNotEmpty
+                    ? widget.friend.name
+                    : widget.friend.username,
+                style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryBlue,
+                ),
+              ),
+            ),
+          _buildQuotedReplyHeader(),
+
+          // Full Rounded Post Preview Card (tap to view post)
+          GestureDetector(
+            onTap: () {
+              if (widget.message.postId != null &&
+                  widget.message.postId!.isNotEmpty &&
+                  widget.onTapPost != null) {
+                widget.onTapPost!(widget.message.postId!);
+              }
+            },
+            child: Container(
+              margin: EdgeInsets.only(
+                left: widget.isMe ? 0 : 36,
+              ),
+              width: cardSize,
+              height: cardSize,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.16),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      widget.message.postImageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Container(color: const Color(0xFF1E2430)),
+                    ),
+
+                    // Subtle dark gradient from top and bottom for readability
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.45),
+                              Colors.transparent,
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.70),
+                            ],
+                            stops: const [0.0, 0.28, 0.65, 1.0],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Post author info & time
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      right: 10,
+                      child: Row(
+                        children: [
+                          if (authorAvatar.isNotEmpty)
+                            AvatarWithFrame(
+                              avatarUrl: authorAvatar,
+                              frameId: authorFrame,
+                              size: 24,
+                            )
+                          else
+                            Container(
+                              width: 24,
+                              height: 24,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFF374151),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _getInitials(authorName),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 7),
+                          Expanded(
+                            child: Text(
+                              authorName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                shadows: [
+                                  Shadow(color: Colors.black54, blurRadius: 4),
+                                ],
+                              ),
+                            ),
+                          ),
+                          if (postTimeAgo.isNotEmpty)
+                            Text(
+                              postTimeAgo,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.85),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                shadows: const [
+                                  Shadow(color: Colors.black54, blurRadius: 4),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    // Post caption badge pinned at bottom
+                    if (widget.message.postCaption != null &&
+                        widget.message.postCaption!.isNotEmpty)
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.50),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.20),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              widget.message.postCaption!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          // Standalone message bubble below the post card
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              _buildFriendAvatar(forceShow: true),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  if (_isPureEmoji(widget.message.text) || widget.message.type == 'reaction') ...[
+                    GestureDetector(
+                      onDoubleTap: widget.onDoubleTap,
+                      onLongPress: _openActionMenu,
+                      child: Text(
+                        widget.message.text,
+                        style: const TextStyle(fontSize: 42),
+                      ),
+                    ),
+                  ] else ...[
+                    GestureDetector(
+                      onTap: () => setState(() => _showDetails = !_showDetails),
+                      onDoubleTap: widget.onDoubleTap,
+                      onLongPress: _openActionMenu,
+                      child: (widget.isMe || !currentTheme.isDefault)
+                          ? ChatBubbleDecoratedBox(
+                              theme: currentTheme,
+                              isMe: widget.isMe,
+                              customBorderRadius: BorderRadius.circular(20),
+                              child: Text(
+                                widget.message.text,
+                                style: TextStyle(
+                                  color: currentTheme.textColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              decoration: BoxDecoration(
+                                color: widget.isDark
+                                    ? const Color(0xFF242526)
+                                    : const Color(0xFFE4E6EB),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                widget.message.text,
+                                style: TextStyle(
+                                  color: widget.isDark
+                                      ? Colors.white
+                                      : const Color(0xFF050505),
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ],
+                  if (widget.message.reactions.isNotEmpty)
+                    Positioned(
+                      bottom: -10,
+                      right: widget.isMe ? 6 : null,
+                      left: widget.isMe ? null : 6,
+                      child: GestureDetector(
+                        onTap: _openActionMenu,
+                        child: _buildReactionsBadge(),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+          if (widget.message.reactions.isNotEmpty) const SizedBox(height: 6),
+          _buildStatusLine(context),
+        ],
+      );
+    } else if (isPureEmojiMessage || widget.message.type == 'reaction') {
       content = Column(
         crossAxisAlignment:
             widget.isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,

@@ -47,6 +47,8 @@ class TransactionRepository {
     String? categoryColorHex,
     double? latitude,
     double? longitude,
+    bool? isGroupExpense,
+    bool? isGroupContribution,
   }) async {
     final id = _uuid.v4();
 
@@ -126,11 +128,25 @@ class TransactionRepository {
       groupMemberIds: groupMemberIds,
       latitude: latitude,
       longitude: longitude,
+      isGroupExpense: isGroupExpense,
+      isGroupContribution: isGroupContribution,
     );
 
     await _remote.addTransaction(transaction);
 
-    if (type == 'expense') {
+    if (transaction.groupId != null && transaction.groupId!.isNotEmpty) {
+      try {
+        await _db
+            .collection('groups')
+            .doc(transaction.groupId)
+            .collection('transactions')
+            .doc(transaction.id)
+            .set(transaction.toMap(), SetOptions(merge: true));
+      } catch (_) {}
+    }
+
+    // Chi tieu tu quy nhom khong phai la chi tieu ca nhan nen khong tru vao budget ca nhan
+    if (type == 'expense' && !transaction.isGroupExpense) {
       await _budgetRepository.addSpentAmount(
         uid: userId,
         budgetName: category,
@@ -215,8 +231,27 @@ class TransactionRepository {
     await _remote.deleteTransaction(userId, transactionId);
   }
 
-  Future<TransactionModel?> fetchTransactionById(String transactionId) async {
+  Future<TransactionModel?> fetchTransactionById(
+    String transactionId, {
+    String? groupId,
+  }) async {
     try {
+      if (groupId != null && groupId.isNotEmpty) {
+        final groupDoc = await _db
+            .collection('groups')
+            .doc(groupId)
+            .collection('transactions')
+            .doc(transactionId)
+            .get();
+        if (groupDoc.exists && groupDoc.data() != null) {
+          final data = groupDoc.data()!;
+          return TransactionModel.fromMap({
+            ...data,
+            'id': data['id'] ?? groupDoc.id,
+          });
+        }
+      }
+
       final snapshot = await _db
           .collectionGroup('transactions')
           .where('id', isEqualTo: transactionId)
@@ -235,13 +270,74 @@ class TransactionRepository {
     }
   }
 
+  /// Finds a group expense transaction matching the group and message timestamp.
+  /// Useful for backfilling or displaying posts for historical system log messages.
+  Future<TransactionModel?> findGroupExpenseTransaction({
+    required String groupId,
+    required DateTime messageTime,
+    String? actorUid,
+  }) async {
+    try {
+      // 1. Try querying from groups/{groupId}/transactions subcollection first
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs = [];
+      try {
+        final groupSnap = await _db
+            .collection('groups')
+            .doc(groupId)
+            .collection('transactions')
+            .get();
+        docs.addAll(groupSnap.docs);
+      } catch (_) {}
+
+      // 2. If empty, fallback to collectionGroup
+      if (docs.isEmpty) {
+        try {
+          final snapshot = await _db
+              .collectionGroup('transactions')
+              .where('groupId', isEqualTo: groupId)
+              .get();
+          docs.addAll(snapshot.docs);
+        } catch (_) {}
+      }
+
+      TransactionModel? bestMatch;
+      Duration? minDiff;
+
+      for (final doc in docs) {
+        try {
+          final data = doc.data();
+          final tx = TransactionModel.fromMap({
+            ...data,
+            'id': data['id'] ?? doc.id,
+          });
+
+          if (actorUid != null && actorUid.isNotEmpty && actorUid != 'system') {
+            if (tx.userId != actorUid) continue;
+          }
+
+          final diff = (tx.createdAt.difference(messageTime)).abs();
+          if (diff <= const Duration(hours: 1)) {
+            if (minDiff == null || diff < minDiff) {
+              minDiff = diff;
+              bestMatch = tx;
+            }
+          }
+        } catch (_) {}
+      }
+
+      return bestMatch;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<List<TransactionModel>> fetchFeedPosts({
     required String viewerUid,
     required List<String> userIds,
   }) async {
     if (userIds.isEmpty) return [];
 
-    final List<TransactionModel> all = [];
+    final Map<String, TransactionModel> uniqueMap = {};
 
     for (int i = 0; i < userIds.length; i += 10) {
       final batchIds = userIds.skip(i).take(10).toList();
@@ -251,28 +347,30 @@ class TransactionRepository {
           .where('userId', whereIn: batchIds)
           .get();
 
-      final items = <TransactionModel>[];
-
       for (final doc in snapshot.docs) {
         try {
           final data = doc.data();
+          final txId = (data['id'] ?? doc.id).toString();
+
+          // Tránh lặp bài do giao dịch nhóm được lưu ở cả users/ và groups/
+          if (uniqueMap.containsKey(txId)) continue;
 
           final tx = TransactionModel.fromMap({
             ...data,
-            'id': data['id'] ?? doc.id,
+            'id': txId,
           });
 
           if (tx.userId == viewerUid) {
-            items.add(tx);
+            uniqueMap[tx.id] = tx;
             continue;
           }
 
           if (tx.sharedToFeed == true) {
-            if (tx.privacy == 'friends' || tx.privacy == 'everyone') {
-              items.add(tx);
+            if (tx.privacy == 'friends') {
+              uniqueMap[tx.id] = tx;
             } else if (tx.privacy == 'close_friends') {
               if (tx.closeFriendUids.contains(viewerUid)) {
-                items.add(tx);
+                uniqueMap[tx.id] = tx;
               } else {
                 final authorFriendDoc = await _db
                     .collection('users')
@@ -283,12 +381,12 @@ class TransactionRepository {
 
                 if (authorFriendDoc.exists &&
                     authorFriendDoc.data()?['isCloseFriend'] == true) {
-                  items.add(tx);
+                  uniqueMap[tx.id] = tx;
                 }
               }
             } else if (tx.privacy == 'group') {
               if (tx.groupMemberIds.contains(viewerUid)) {
-                items.add(tx);
+                uniqueMap[tx.id] = tx;
               } else if (tx.groupId != null && tx.groupId!.isNotEmpty) {
                 final userGroupDoc = await _db
                     .collection('users')
@@ -297,7 +395,7 @@ class TransactionRepository {
                     .doc(tx.groupId)
                     .get();
                 if (userGroupDoc.exists) {
-                  items.add(tx);
+                  uniqueMap[tx.id] = tx;
                 }
               }
             }
@@ -306,10 +404,9 @@ class TransactionRepository {
           continue;
         }
       }
-
-      all.addAll(items);
     }
 
+    final all = uniqueMap.values.toList();
     all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return all;
   }
@@ -317,7 +414,7 @@ class TransactionRepository {
   Future<List<TransactionModel>> fetchFriendsFeed(List<String> friendIds) async {
     if (friendIds.isEmpty) return [];
 
-    final List<TransactionModel> all = [];
+    final Map<String, TransactionModel> uniqueMap = {};
 
     for (int i = 0; i < friendIds.length; i += 10) {
       final batchIds = friendIds.skip(i).take(10).toList();
@@ -332,21 +429,81 @@ class TransactionRepository {
       for (final doc in snapshot.docs) {
         try {
           final data = doc.data();
+          final txId = (data['id'] ?? doc.id).toString();
 
-          all.add(
-            TransactionModel.fromMap({
-              ...data,
-              'id': data['id'] ?? doc.id,
-            }),
-          );
+          if (uniqueMap.containsKey(txId)) continue;
+
+          final tx = TransactionModel.fromMap({
+            ...data,
+            'id': txId,
+          });
+
+          uniqueMap[tx.id] = tx;
         } catch (_) {
           continue;
         }
       }
     }
 
+    final all = uniqueMap.values.toList();
     all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return all;
+  }
+
+  /// Lắng nghe theo thời gian thực danh sách tất cả giao dịch chi tiêu của nhóm
+  Stream<List<TransactionModel>> streamGroupTransactions(String groupId) {
+    if (groupId.isEmpty) return Stream.value([]);
+    return _db
+        .collection('groups')
+        .doc(groupId)
+        .collection('transactions')
+        .snapshots()
+        .asyncMap((groupSnap) async {
+      final Map<String, TransactionModel> map = {};
+
+      for (final doc in groupSnap.docs) {
+        try {
+          final data = doc.data();
+          final tx = TransactionModel.fromMap({
+            ...data,
+            'id': data['id'] ?? doc.id,
+          });
+          map[tx.id] = tx;
+        } catch (_) {}
+      }
+
+      // Query thêm từ collectionGroup để backfill các transaction lịch sử cũ (nếu có)
+      try {
+        final cgSnap = await _db
+            .collectionGroup('transactions')
+            .where('groupId', isEqualTo: groupId)
+            .get();
+        for (final doc in cgSnap.docs) {
+          try {
+            final data = doc.data();
+            final tx = TransactionModel.fromMap({
+              ...data,
+              'id': data['id'] ?? doc.id,
+            });
+            if (!map.containsKey(tx.id)) {
+              map[tx.id] = tx;
+              // Đồng bộ ngầm vào subcollection của nhóm để các lần sau tải nhanh hơn
+              _db
+                  .collection('groups')
+                  .doc(groupId)
+                  .collection('transactions')
+                  .doc(tx.id)
+                  .set(tx.toMap(), SetOptions(merge: true))
+                  .catchError((_) {});
+            }
+          } catch (_) {}
+        }
+      } catch (_) {}
+
+      final list = map.values.toList();
+      list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return list;
+    });
   }
 
   void dispose() {

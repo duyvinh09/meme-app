@@ -20,7 +20,26 @@ import '../controllers/capture_controller.dart';
 import 'preview_screen.dart';
 
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key});
+  final String? initialType;
+  final String? initialPrivacy;
+  final String? initialGroupId;
+  final String? initialGroupName;
+  final List<String>? initialGroupMemberIds;
+  final bool lockType;
+  final bool lockPrivacy;
+  final bool isGroupContribution;
+
+  const CameraScreen({
+    super.key,
+    this.initialType,
+    this.initialPrivacy,
+    this.initialGroupId,
+    this.initialGroupName,
+    this.initialGroupMemberIds,
+    this.lockType = false,
+    this.lockPrivacy = false,
+    this.isGroupContribution = false,
+  });
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -598,6 +617,28 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
+  Widget _buildPreviewScreen({
+    File? imageFile,
+    File? videoFile,
+    required String mediaType,
+    int? durationMs,
+  }) {
+    return PreviewScreen(
+      imageFile: imageFile,
+      videoFile: videoFile,
+      mediaType: mediaType,
+      durationMs: durationMs,
+      initialType: widget.initialType,
+      initialPrivacy: widget.initialPrivacy,
+      initialGroupId: widget.initialGroupId,
+      initialGroupName: widget.initialGroupName,
+      initialGroupMemberIds: widget.initialGroupMemberIds,
+      lockType: widget.lockType,
+      lockPrivacy: widget.lockPrivacy,
+      isGroupContribution: widget.isGroupContribution,
+    );
+  }
+
   Future<void> _navigateToPreview(Widget previewScreen) async {
     await _disposeCameraController();
     if (!mounted || _isDisposed) return;
@@ -640,7 +681,7 @@ class _CameraScreenState extends State<CameraScreen>
       if (!mounted || _isDisposed) return;
 
       await _navigateToPreview(
-        PreviewScreen(
+        _buildPreviewScreen(
           imageFile: squareFile,
           videoFile: null,
           mediaType: 'image',
@@ -675,7 +716,7 @@ class _CameraScreenState extends State<CameraScreen>
       if (!mounted) return;
 
       await _navigateToPreview(
-        PreviewScreen(
+        _buildPreviewScreen(
           imageFile: squareFile,
           videoFile: null,
           mediaType: 'image',
@@ -777,7 +818,7 @@ class _CameraScreenState extends State<CameraScreen>
       });
 
       await _navigateToPreview(
-        PreviewScreen(
+        _buildPreviewScreen(
           imageFile: null,
           videoFile: File(file.path),
           mediaType: 'video',

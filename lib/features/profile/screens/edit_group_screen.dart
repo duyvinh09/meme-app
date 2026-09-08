@@ -60,6 +60,31 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
   bool isLoadingMembers = true;
 
   List<Map<String, dynamic>> currentMemberProfiles = [];
+  Stream<List<Map<String, dynamic>>>? _friendsStream;
+
+  final TextEditingController searchController = TextEditingController();
+  String searchKeyword = '';
+
+  static String _removeVietnameseDiacritics(String str) {
+    const withDia =
+        'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ';
+    const withoutDia =
+        'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydD';
+    var result = str;
+    for (int i = 0; i < withDia.length; i++) {
+      result = result.replaceAll(withDia[i], withoutDia[i]);
+    }
+    return result.toLowerCase();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final myUid = context.read<AuthController>().user?.uid;
+    if (myUid != null && _friendsStream == null) {
+      _friendsStream = context.read<UserRepository>().streamFriends(myUid);
+    }
+  }
 
   @override
   void initState() {
@@ -105,6 +130,7 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     goalController.removeListener(_scheduleRebuildForDirty);
     nameController.dispose();
     goalController.dispose();
+    searchController.dispose();
     super.dispose();
   }
 
@@ -203,32 +229,41 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     final repo = context.read<UserRepository>();
 
     final ids = (widget.groupData['memberIds'] as List?)
-        ?.map((e) => e.toString())
+        ?.map((e) => e.toString().trim())
         .where((id) => id.isNotEmpty)
         .toList() ??
         [];
 
-    final result = <Map<String, dynamic>>[];
-
-    for (final uid in ids) {
-      final user = await repo.getUserProfile(uid);
-
-      if (user != null) {
-        result.add({
-          'uid': user.uid,
-          'name': user.name,
-          'username': user.username,
-          'email': user.email,
-          'avatarUrl': user.avatarUrl,
+    final results = await Future.wait(
+      ids.map((uid) async {
+        try {
+          final user = await repo.getUserProfile(uid);
+          if (user != null) {
+            return {
+              'uid': user.uid,
+              'name': user.name,
+              'username': user.username,
+              'email': user.email,
+              'avatarUrl': user.avatarUrl,
+              'isCurrentMember': true,
+            };
+          }
+        } catch (_) {}
+        return {
+          'uid': uid,
+          'name': 'Thành viên',
+          'username': '',
+          'email': '',
+          'avatarUrl': '',
           'isCurrentMember': true,
-        });
-      }
-    }
+        };
+      }),
+    );
 
     if (!mounted) return;
 
     setState(() {
-      currentMemberProfiles = result;
+      currentMemberProfiles = results;
       isLoadingMembers = false;
     });
   }
@@ -651,7 +686,8 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
             const SizedBox(height: 18),
 
             StreamBuilder<List<Map<String, dynamic>>>(
-              stream: context.read<UserRepository>().streamFriends(myUid),
+              stream: _friendsStream ??
+                  context.read<UserRepository>().streamFriends(myUid),
               builder: (context, snapshot) {
                 final friends = snapshot.data ?? [];
 
@@ -659,6 +695,22 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                   currentMembers: currentMemberProfiles,
                   friends: friends,
                 );
+
+                final filteredItems = mergedItems.where((item) {
+                  if (searchKeyword.trim().isEmpty) return true;
+                  final name = (item['name'] ?? '').toString().toLowerCase();
+                  final username =
+                      (item['username'] ?? '').toString().toLowerCase();
+                  final keyword = searchKeyword.trim().toLowerCase();
+                  final cleanKeyword = _removeVietnameseDiacritics(keyword);
+                  final cleanName = _removeVietnameseDiacritics(name);
+                  final cleanUsername = _removeVietnameseDiacritics(username);
+
+                  return name.contains(keyword) ||
+                      username.contains(keyword) ||
+                      cleanName.contains(cleanKeyword) ||
+                      cleanUsername.contains(cleanKeyword);
+                }).toList();
 
                 if (isLoadingMembers) {
                   return _SectionCard(
@@ -674,9 +726,23 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        context.l10n.groupMembers,
-                        style: AppTextStyles.sectionTitle(context),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              context.l10n.groupMembers,
+                              style: AppTextStyles.sectionTitle(context),
+                            ),
+                          ),
+                          Text(
+                            context.l10n.selectedCount(selectedMemberIds.length),
+                            style: TextStyle(
+                              color: selectedColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -688,13 +754,42 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
                       ),
                       const SizedBox(height: 14),
 
+                      _SearchMemberBox(
+                        controller: searchController,
+                        color: selectedColor,
+                        onChanged: (val) {
+                          setState(() {
+                            searchKeyword = val;
+                          });
+                        },
+                        onClear: () {
+                          setState(() {
+                            searchController.clear();
+                            searchKeyword = '';
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 14),
+
                       if (mergedItems.isEmpty)
                         Text(
                           context.l10n.noMembersOrFriends,
                           style: AppTextStyles.bodySecondary(context),
                         )
+                      else if (filteredItems.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: Text(
+                              context.l10n.noUsersFound,
+                              style: AppTextStyles.bodySecondary(context).copyWith(
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                        )
                       else
-                        ...mergedItems.map((item) {
+                        ...filteredItems.map((item) {
                           final uid = (item['uid'] ?? '').toString();
                           final name = (item['name'] ?? context.l10n.user).toString();
                           final username = (item['username'] ?? '').toString();
@@ -1070,6 +1165,79 @@ class _TopCircleButton extends StatelessWidget {
           color: AppColors.textPrimary(context),
           size: 20,
         ),
+      ),
+    );
+  }
+}
+
+class _SearchMemberBox extends StatelessWidget {
+  final TextEditingController controller;
+  final Color color;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  const _SearchMemberBox({
+    required this.controller,
+    required this.color,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: AppColors.surface(context),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppColors.innerBorder(context),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.search_rounded,
+            color: AppColors.textSecondary(context),
+            size: 22,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: controller,
+              onChanged: onChanged,
+              cursorColor: color,
+              style: AppTextStyles.body(context).copyWith(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              decoration: InputDecoration(
+                hintText: context.l10n.friendsSearchHint,
+                hintStyle: AppTextStyles.bodySecondary(context).copyWith(
+                  color: AppColors.textSecondary(context).withValues(alpha: 0.7),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                border: InputBorder.none,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ),
+          if (controller.text.isNotEmpty)
+            GestureDetector(
+              onTap: onClear,
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Icon(
+                  Icons.cancel_rounded,
+                  color: AppColors.textSecondary(context),
+                  size: 20,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

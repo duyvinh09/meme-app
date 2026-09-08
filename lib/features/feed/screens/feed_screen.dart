@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
@@ -50,6 +51,7 @@ class _FeedScreenState extends State<FeedScreen> {
   int _currentPageIndex = 0;
   String? _topPostId;
   int _newPostsCount = 0;
+  int _lastScrollToTopTrigger = 0;
 
   final PageController _pageController = PageController();
   final GlobalKey<ReactionFlyingOverlayState> _flyingOverlayKey =
@@ -74,9 +76,25 @@ class _FeedScreenState extends State<FeedScreen> {
         });
       }
     }
+    if (!oldWidget.isActive && widget.isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !widget.isActive) return;
+        final feedCtrl = context.read<FeedController>();
+        final txs = feedCtrl.feedTransactions;
+        if (_currentPageIndex >= 0 && _currentPageIndex < txs.length) {
+          final activeTx = txs[_currentPageIndex];
+          _recordViewIfNeeded(activeTx);
+          final myUid = context.read<AuthController>().user?.uid;
+          if (myUid != null) {
+            _updateActivePostReactionSubscription(activeTx, myUid);
+          }
+        }
+      });
+    }
   }
 
   void _recordViewIfNeeded(TransactionModel tx) {
+    if (!widget.isActive) return;
     final authUser = context.read<AuthController>().user;
     final myUid = authUser?.uid;
 
@@ -287,13 +305,29 @@ class _FeedScreenState extends State<FeedScreen> {
                       });
                     }
 
+                    if (feed.scrollToTopTrigger != _lastScrollToTopTrigger) {
+                      _lastScrollToTopTrigger = feed.scrollToTopTrigger;
+                      _currentPageIndex = 0;
+                      _newPostsCount = 0;
+                      selectedUserId = 'all';
+                      _isFilterMenuOpen = false;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && _pageController.hasClients) {
+                          _pageController.jumpToPage(0);
+                        }
+                      });
+                      if (feed.feedTransactions.isNotEmpty) {
+                        _topPostId = feed.feedTransactions.first.id;
+                      }
+                    }
+
                     final filteredTransactions = _filterTransactions(
                       allTransactions: feed.feedTransactions,
                       myUid: myUid,
                       selectedUserId: selectedUserId,
                     );
 
-                    if (feed.isLoading) {
+                    if (feed.isLoading && feed.feedTransactions.isEmpty) {
                       return const Center(
                         child: CircularProgressIndicator(),
                       );
@@ -435,10 +469,11 @@ class _FeedScreenState extends State<FeedScreen> {
                       }
                     }
 
-                    if (currentTransaction != null &&
+                    if (widget.isActive &&
+                        currentTransaction != null &&
                         _subscribedPostId != currentTransaction.id) {
                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                        if (mounted) {
+                        if (mounted && widget.isActive) {
                           _recordViewIfNeeded(currentTransaction);
                           _updateActivePostReactionSubscription(currentTransaction, myUid);
                         }
@@ -467,7 +502,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                         : null;
                                   }
                                 });
-                                if (index >= 0 && index < filteredTransactions.length) {
+                                if (widget.isActive && index >= 0 && index < filteredTransactions.length) {
                                   final activeTx = filteredTransactions[index];
                                   _recordViewIfNeeded(activeTx);
                                   _updateActivePostReactionSubscription(activeTx, myUid);
@@ -500,6 +535,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                     curve: Curves.easeOutCubic,
                                   );
                                   setState(() {
+                                    _currentPageIndex = 0;
                                     _newPostsCount = 0;
                                     _topPostId = filteredTransactions.isNotEmpty
                                         ? filteredTransactions.first.id
@@ -538,12 +574,41 @@ class _FeedScreenState extends State<FeedScreen> {
                                                   _isFilterMenuOpen = false;
                                                 });
                                               }
+
+                                              final isGroupPost = (currentTransaction.privacy == 'group') ||
+                                                  (currentTransaction.groupId != null &&
+                                                      currentTransaction.groupId!.trim().isNotEmpty);
+
                                               UserModel? targetUser = friendProfiles
                                                   .where((u) => u.uid == currentTransaction.userId)
                                                   .firstOrNull;
                                               targetUser ??= await context
                                                   .read<UserRepository>()
                                                   .getUserProfile(currentTransaction.userId);
+
+                                              if (isGroupPost &&
+                                                  currentTransaction.groupId != null &&
+                                                  currentTransaction.groupId!.trim().isNotEmpty) {
+                                                final gId = currentTransaction.groupId!.trim();
+                                                final gName = currentTransaction.groupName?.trim().isNotEmpty == true
+                                                    ? currentTransaction.groupName!.trim()
+                                                    : 'Nhóm';
+                                                if (context.mounted) {
+                                                  Navigator.pushNamed(
+                                                    context,
+                                                    RouteNames.groupChatConversation,
+                                                    arguments: {
+                                                      'groupId': gId,
+                                                      'groupName': gName,
+                                                      'memberUids': currentTransaction.groupMemberIds,
+                                                      'initialPostReply': currentTransaction,
+                                                      'initialPostAuthor': targetUser,
+                                                    },
+                                                  );
+                                                }
+                                                return;
+                                              }
+
                                               if (targetUser != null && context.mounted) {
                                                 Navigator.pushNamed(
                                                   context,
@@ -700,15 +765,21 @@ class _FeedScreenState extends State<FeedScreen> {
     required String myUid,
     required String selectedUserId,
   }) {
+    final Map<String, TransactionModel> dedup = {};
+    for (final tx in allTransactions) {
+      dedup[tx.id] = tx;
+    }
+    final list = dedup.values.toList();
+
     if (selectedUserId == 'all') {
-      return allTransactions;
+      return list;
     }
 
     if (selectedUserId == 'me') {
-      return allTransactions.where((e) => e.userId == myUid).toList();
+      return list.where((e) => e.userId == myUid).toList();
     }
 
-    return allTransactions.where((e) => e.userId == selectedUserId).toList();
+    return list.where((e) => e.userId == selectedUserId).toList();
   }
 }
 
@@ -1074,9 +1145,6 @@ class _FeedPostPage extends StatelessWidget {
                       palette: palette,
                       isPrivate: transaction.privacy == 'private',
                       isOwner: isOwner,
-                      groupName: transaction.privacy == 'group'
-                          ? (transaction.groupName ?? 'Nhóm')
-                          : null,
                     ),
                     if (hasNote) ...[
                       SizedBox(height: itemGap * 0.6),
@@ -1099,18 +1167,31 @@ class _FeedPostPage extends StatelessWidget {
                       SizedBox(height: itemGap * 0.6),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Text(
-                          '${transaction.type == 'expense' ? '-' : '+'}$amountText • $localizedCategory',
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: transaction.type == 'expense'
+                        child: Builder(
+                          builder: (context) {
+                            final isGroupDeposit = transaction.isGroupContribution ||
+                                (transaction.privacy == 'group' &&
+                                    (transaction.category == 'Quỹ nhóm' ||
+                                        transaction.category == 'Group Fund'));
+
+                            final isExpense = transaction.type == 'expense' && !isGroupDeposit;
+                            final prefix = isExpense ? '-' : '+';
+                            final amountColor = isExpense
                                 ? AppColors.expense
-                                : AppColors.income,
-                            fontWeight: FontWeight.w800,
-                            fontSize: isShort ? 14 : 15,
-                          ),
+                                : AppColors.income;
+
+                            return Text(
+                              '$prefix$amountText • $localizedCategory',
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: amountColor,
+                                fontWeight: FontWeight.w800,
+                                fontSize: isShort ? 14 : 15,
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ],
@@ -1573,6 +1654,10 @@ class _MainSquarePost extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final captionText = transaction.caption.trim();
+    final isGroupPost = transaction.privacy == 'group';
+    final groupName = (transaction.groupName?.trim().isNotEmpty == true)
+        ? transaction.groupName!.trim()
+        : (isGroupPost ? 'Nhóm' : null);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(56),
@@ -1607,15 +1692,65 @@ class _MainSquarePost extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
+                    Colors.black.withValues(alpha: 0.16),
                     Colors.transparent,
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.10),
-                    Colors.black.withOpacity(0.34),
+                    Colors.black.withValues(alpha: 0.10),
+                    Colors.black.withValues(alpha: 0.34),
                   ],
                 ),
               ),
             ),
           ),
+
+          // Badge nhóm nằm trên ảnh ở góc trên tay trái
+          if (isGroupPost && groupName != null)
+            Positioned(
+              top: 18,
+              left: 20,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.46),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.groups_2_rounded,
+                      size: 14,
+                      color: AppColors.primaryBlue,
+                    ),
+                    const SizedBox(width: 5),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 150),
+                      child: Text(
+                        groupName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           if (captionText.isNotEmpty)
             Positioned(
@@ -1673,6 +1808,9 @@ class _MainSquarePost extends StatelessWidget {
     final spans = <InlineSpan>[];
     int lastIndex = 0;
 
+    final myUid = context.read<AuthController>().user?.uid;
+    final isAuthor = myUid != null && transaction.userId == myUid;
+
     for (final match in matches) {
       if (match.start > lastIndex) {
         spans.add(TextSpan(
@@ -1690,13 +1828,16 @@ class _MainSquarePost extends StatelessWidget {
       final cleanUsername = mentionToken.substring(1).toLowerCase();
 
       // Check if this mention is active:
-      // - If post is private: NEVER active (plain normal text).
-      // - If transaction has taggedUsernames: active ONLY if cleanUsername is in taggedUsernames.
-      // - Legacy fallback for older transactions: active if friends post.
-      final isMentionActive = transaction.privacy != 'private' &&
-          (transaction.taggedUsernames.isNotEmpty
-              ? transaction.taggedUsernames.contains(cleanUsername)
-              : (transaction.privacy == 'friends'));
+      // 1. If viewer is the AUTHOR of the post (A): ALWAYS active (cyan & clickable) so A can interact / message the tagged person.
+      // 2. For other viewers:
+      //    - If post is private: NEVER active for other viewers.
+      //    - If post has explicit taggedUsernames list: active if cleanUsername is in taggedUsernames.
+      //    - If older post without taggedUsernames: active if shared to feed (friends, close_friends, group).
+      final isMentionActive = isAuthor ||
+          (transaction.privacy != 'private' &&
+              (transaction.taggedUsernames.isNotEmpty
+                  ? transaction.taggedUsernames.contains(cleanUsername)
+                  : true));
 
       if (isMentionActive) {
         spans.add(
@@ -1853,10 +1994,19 @@ class _MentionedUserProfileSheetState
         _isActionBusy = false;
         if (result == 'auto_accepted') {
           _isFriend = true;
-        } else {
+        } else if (result == null || result == 'Đã gửi lời mời trước đó') {
           _requestSent = true;
         }
       });
+
+      if (result != null && result != 'auto_accepted' && result != 'Đã gửi lời mời trước đó') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: AppDurations.snackBar,
+            content: Text(result),
+          ),
+        );
+      }
     }
   }
 
@@ -2235,7 +2385,6 @@ class _UploaderInfo extends StatelessWidget {
   final _FeedPalette palette;
   final bool isPrivate;
   final bool isOwner;
-  final String? groupName;
 
   const _UploaderInfo({
     required this.user,
@@ -2243,7 +2392,6 @@ class _UploaderInfo extends StatelessWidget {
     required this.palette,
     required this.isPrivate,
     required this.isOwner,
-    this.groupName,
   });
 
   @override
@@ -2275,35 +2423,6 @@ class _UploaderInfo extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
-        if (groupName != null && groupName!.isNotEmpty) ...[
-          const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue.withOpacity(0.18),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.groups_2_rounded,
-                  size: 13,
-                  color: AppColors.primaryBlue,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  groupName!,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryBlue,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
         const SizedBox(width: 10),
         Text(
           timeText,

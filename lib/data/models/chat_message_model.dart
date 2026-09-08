@@ -25,6 +25,10 @@ class ChatMessageModel {
   final String? senderAvatar;
   final String? groupId;
   final List<String> readBy;
+  final String? postAuthorName;
+  final String? postAuthorAvatar;
+  final String? postAuthorFrame;
+  final String? postOwnerId;
 
   const ChatMessageModel({
     required this.id,
@@ -51,6 +55,10 @@ class ChatMessageModel {
     this.senderAvatar,
     this.groupId,
     this.readBy = const [],
+    this.postAuthorName,
+    this.postAuthorAvatar,
+    this.postAuthorFrame,
+    this.postOwnerId,
   });
 
   bool get isSystem => type == 'system';
@@ -118,6 +126,10 @@ class ChatMessageModel {
       senderAvatar: data['senderAvatar'],
       groupId: data['groupId'],
       readBy: parseReadBy(data['readBy']),
+      postAuthorName: data['postAuthorName'],
+      postAuthorAvatar: data['postAuthorAvatar'],
+      postAuthorFrame: data['postAuthorFrame'],
+      postOwnerId: data['postOwnerId'],
     );
   }
 
@@ -147,6 +159,10 @@ class ChatMessageModel {
       if (senderAvatar != null) 'senderAvatar': senderAvatar,
       if (groupId != null) 'groupId': groupId,
       if (readBy.isNotEmpty) 'readBy': readBy,
+      if (postAuthorName != null) 'postAuthorName': postAuthorName,
+      if (postAuthorAvatar != null) 'postAuthorAvatar': postAuthorAvatar,
+      if (postAuthorFrame != null) 'postAuthorFrame': postAuthorFrame,
+      if (postOwnerId != null) 'postOwnerId': postOwnerId,
     };
   }
 
@@ -175,6 +191,10 @@ class ChatMessageModel {
     String? senderAvatar,
     String? groupId,
     List<String>? readBy,
+    String? postAuthorName,
+    String? postAuthorAvatar,
+    String? postAuthorFrame,
+    String? postOwnerId,
   }) {
     return ChatMessageModel(
       id: id ?? this.id,
@@ -201,6 +221,10 @@ class ChatMessageModel {
       senderAvatar: senderAvatar ?? this.senderAvatar,
       groupId: groupId ?? this.groupId,
       readBy: readBy ?? this.readBy,
+      postAuthorName: postAuthorName ?? this.postAuthorName,
+      postAuthorAvatar: postAuthorAvatar ?? this.postAuthorAvatar,
+      postAuthorFrame: postAuthorFrame ?? this.postAuthorFrame,
+      postOwnerId: postOwnerId ?? this.postOwnerId,
     );
   }
 }

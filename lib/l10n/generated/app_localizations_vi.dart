@@ -2532,4 +2532,131 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get draftPrefix => 'Bản nháp: ';
+
+  @override
+  String get browseTransactionsTitle => 'Duyệt giao dịch';
+
+  @override
+  String get browseTransactionsSearchHint =>
+      'Ghi chú, danh mục, tài khoản, số tiền...';
+
+  @override
+  String get timeFilterLabel => 'Thời gian';
+
+  @override
+  String get timeFilterAll => 'Tất cả';
+
+  @override
+  String get timeFilterToday => 'Hôm nay';
+
+  @override
+  String get timeFilterLast7Days => '7 ngày qua';
+
+  @override
+  String get timeFilterThisMonth => 'Tháng này';
+
+  @override
+  String get timeFilterLastMonth => 'Tháng trước';
+
+  @override
+  String get timeFilterThisYear => 'Năm nay';
+
+  @override
+  String get typeFilterAll => 'Tất cả';
+
+  @override
+  String get typeFilterExpense => 'Chi tiêu';
+
+  @override
+  String get typeFilterIncome => 'Thu nhập';
+
+  @override
+  String get allCategories => 'Danh mục';
+
+  @override
+  String get noTransactionsFound => 'Không tìm thấy giao dịch nào';
+
+  @override
+  String get groupFinancialOverview => 'Tài chính & Quỹ nhóm';
+
+  @override
+  String get groupFundBalanceAndProgress => 'Số dư quỹ thực tế & tiến độ';
+
+  @override
+  String get groupFundRemaining => 'Số dư quỹ còn lại';
+
+  @override
+  String get groupFundSurplus => 'Còn dư';
+
+  @override
+  String get groupFundDeficit => 'Thâm hụt';
+
+  @override
+  String get groupTotalContributed => 'Đã góp';
+
+  @override
+  String get groupTotalSpent => 'Đã chi';
+
+  @override
+  String get groupGoal => 'Mục tiêu';
+
+  @override
+  String get groupGoalProgress => 'Tiến độ mục tiêu quỹ';
+
+  @override
+  String get groupExpenseHistory => 'Lịch sử chi tiêu nhóm';
+
+  @override
+  String get groupNoExpensesYet => 'Chưa có khoản chi tiêu nào';
+
+  @override
+  String get groupNoExpensesDesc =>
+      'Các chi tiêu chia sẻ vào nhóm sẽ được hiển thị tại đây';
+
+  @override
+  String groupExpenseExceedsBalance(String balance) {
+    return 'Số tiền chi tiêu vượt quá số dư quỹ nhóm hiện có ($balance)';
+  }
+
+  @override
+  String get groupFundDeposit => 'Nạp quỹ nhóm';
+
+  @override
+  String get groupDepositSuccess => 'Đã nạp tiền vào quỹ nhóm';
+
+  @override
+  String groupBalanceShort(String amount) {
+    return 'Dư: $amount';
+  }
+
+  @override
+  String groupSpentShort(String amount) {
+    return 'Đã chi: $amount';
+  }
+
+  @override
+  String get member => 'Thành viên';
+
+  @override
+  String get groupFundCategory => 'Quỹ nhóm';
+
+  @override
+  String get momentDetails => 'Chi tiết khoảnh khắc';
+
+  @override
+  String get notFriendsGroupPostNotice =>
+      'Bạn và người đăng bài chưa là bạn bè nên không thể xem bài viết trên Bảng tin. Dưới đây là chi tiết khoảnh khắc được chia sẻ trong nhóm:';
+
+  @override
+  String get groupExpense => 'Chi tiêu nhóm';
+
+  @override
+  String spentReason(String reason) {
+    return 'Mục đích: $reason';
+  }
+
+  @override
+  String spentBy(String name) {
+    return 'Người chi: $name';
+  }
 }

@@ -54,6 +54,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
   bool _showFloatingDate = false;
   String _floatingDateText = '';
   Timer? _floatingDateHideTimer;
+  Timer? _presenceTimer;
   final GlobalKey _listStackKey = GlobalKey();
   final Map<String, GlobalKey> _itemKeys = {};
 
@@ -82,6 +83,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
 
     _textController.addListener(_onTextChanged);
     _scrollController.addListener(_onScroll);
+    _textFocusNode.addListener(_onFocusChanged);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final myUid = context.read<AuthController>().user?.uid;
@@ -93,6 +95,10 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
         );
         _loadCloseFriendStatus(myUid);
       }
+    });
+
+    _presenceTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
     });
   }
 
@@ -198,6 +204,13 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     }
   }
 
+  void _onFocusChanged() {
+    if (!_textFocusNode.hasFocus) {
+      final myUid = context.read<AuthController>().user?.uid;
+      _stopTypingHeartbeat(myUid);
+    }
+  }
+
   void _onTextChanged() {
     final rawText = _textController.text;
     final text = rawText.trim();
@@ -236,8 +249,9 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
       _sendTypingHeartbeat(myUid, true);
     }
 
+    // Reset idle timer: if user pauses typing for 6s, auto-stop typing
     _typingIdleTimer?.cancel();
-    _typingIdleTimer = Timer(const Duration(milliseconds: 2500), () {
+    _typingIdleTimer = Timer(const Duration(seconds: 6), () {
       if (mounted && _isCurrentlyTypingSent) {
         _isCurrentlyTypingSent = false;
         _sendTypingHeartbeat(myUid, false);
@@ -311,6 +325,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _presenceTimer?.cancel();
     final myUid = context.read<AuthController>().user?.uid;
     _stopTypingHeartbeat(myUid);
     _floatingDateHideTimer?.cancel();
@@ -325,6 +340,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
 
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
+    _textFocusNode.removeListener(_onFocusChanged);
     _textController.dispose();
     _scrollController.dispose();
     _textFocusNode.dispose();
@@ -832,18 +848,26 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     final bgColor = isDark ? Colors.black : const Color(0xFFF9FAFB);
     final headerColor = isDark ? Colors.black : Colors.white;
 
+    final userRepo = context.read<UserRepository>();
     final myShowActiveStatus = context.watch<LocalSettingsService>().showActiveStatus;
 
-    return StreamBuilder<UserModel?>(
-      stream: context.read<UserRepository>().streamUserProfile(widget.friend.uid),
-      initialData: widget.friend,
-      builder: (context, friendSnapshot) {
-        final liveFriend = friendSnapshot.data ?? widget.friend;
-        final canShowPresence = myShowActiveStatus && liveFriend.showActiveStatus;
-        final isOnline = canShowPresence && liveFriend.isCurrentlyOnline;
-        final statusText = canShowPresence
-            ? _formatPresenceStatus(liveFriend, context.l10n)
-            : '';
+    return StreamBuilder<bool>(
+      stream: userRepo.streamIsFriend(myUid, widget.friend.uid),
+      initialData: true,
+      builder: (context, friendCheckSnapshot) {
+        final isFriend = friendCheckSnapshot.data ?? false;
+
+        return StreamBuilder<UserModel?>(
+          stream: userRepo.streamUserProfile(widget.friend.uid),
+          initialData: widget.friend,
+          builder: (context, friendSnapshot) {
+            final liveFriend = friendSnapshot.data ?? widget.friend;
+            final canShowPresence = liveFriend.isPresenceVisibleTo(isFriend: isFriend) &&
+                (liveFriend.activeStatusMode == 'public' || myShowActiveStatus);
+            final isOnline = canShowPresence && liveFriend.isCurrentlyOnline;
+            final statusText = canShowPresence
+                ? _formatPresenceStatus(liveFriend, context.l10n)
+                : '';
 
         return Scaffold(
           backgroundColor: bgColor,
@@ -1682,6 +1706,8 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
         ),
       ),
     );
+          },
+        );
       },
     );
   }

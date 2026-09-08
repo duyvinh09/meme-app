@@ -30,12 +30,14 @@ class BudgetNameLocalizer {
         case 'Shopping':
           return l10n.shopping;
         case 'Đi lại':
+        case 'Di chuyển':
         case 'Transport':
           return l10n.transport;
         case 'Giải trí':
         case 'Entertainment':
           return l10n.entertainment;
         case 'Học tập':
+        case 'Giáo dục':
         case 'Education':
           return l10n.education;
         case 'Lương':
@@ -47,6 +49,9 @@ class BudgetNameLocalizer {
         case 'Khác':
         case 'Other':
           return l10n.other;
+        case 'Quỹ nhóm':
+        case 'Group Fund':
+          return l10n.groupFundCategory;
       }
 
       BudgetController? budgetControllerNonEn;
@@ -88,12 +93,14 @@ class BudgetNameLocalizer {
       case 'Shopping':
         return l10n.shopping;
       case 'Đi lại':
+      case 'Di chuyển':
       case 'Transport':
         return l10n.transport;
       case 'Giải trí':
       case 'Entertainment':
         return l10n.entertainment;
       case 'Học tập':
+      case 'Giáo dục':
       case 'Education':
         return l10n.education;
       case 'Lương':
@@ -105,6 +112,9 @@ class BudgetNameLocalizer {
       case 'Khác':
       case 'Other':
         return l10n.other;
+      case 'Quỹ nhóm':
+      case 'Group Fund':
+        return l10n.groupFundCategory;
     }
 
     final translatedFromArg = budgetNameEn?.trim();

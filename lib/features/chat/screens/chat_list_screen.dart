@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +14,7 @@ import '../../../core/utils/app_toast.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/user_repository.dart';
+import 'group_chat_conversation_screen.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
@@ -28,6 +30,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _selectedTab = 'all'; // 'all' | 'unread' | 'groups'
+  Timer? _activeStoriesTicker;
 
   @override
   void initState() {
@@ -37,10 +40,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
         _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
+    _activeStoriesTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
   void dispose() {
+    _activeStoriesTicker?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -194,17 +201,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
     bool isDark,
     UserRepository userRepo,
   ) {
+    final myShowActiveStatus =
+        context.watch<LocalSettingsService>().showActiveStatus;
+
     return Container(
       height: 112,
       margin: const EdgeInsets.only(top: 6, bottom: 2),
       child: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: userRepo.streamFriends(myUid),
+        stream: userRepo.streamActiveFriendsRealtime(myUid),
         builder: (context, snapshot) {
           final friends = snapshot.data ?? [];
           final activeOrOnlineFriends = friends.where((f) {
             final hasNote = f['hasActiveNote'] == true;
-            final isOnline = f['isOnline'] == true && f['showActiveStatus'] != false;
-            return hasNote || isOnline;
+            final canShowOnline = (f['isOnline'] == true) &&
+                (f['showActiveStatus'] != false) &&
+                (f['activeStatusMode'] == 'public' || myShowActiveStatus);
+            return hasNote || canShowOnline;
           }).toList();
 
           activeOrOnlineFriends.sort((a, b) {
@@ -301,7 +313,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
               final displayName = friendName.trim().split(' ').last;
               final hasNote = friend['hasActiveNote'] == true;
               final noteText = friend['userNote'] as String? ?? '';
-              final isOnline = friend['isOnline'] == true && friend['showActiveStatus'] != false;
+              final isOnline = friend['isOnline'] == true &&
+                  friend['showActiveStatus'] != false &&
+                  (friend['activeStatusMode'] == 'public' || myShowActiveStatus);
 
               return InkWell(
                 onTap: () {
@@ -672,9 +686,18 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
             // CONVERSATIONS STREAM
             Expanded(
-              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: chatRepo.streamUserChats(myUid),
-                builder: (context, snapshot) {
+              child: StreamBuilder<List<Map<String, dynamic>>>(
+                stream: userRepo.streamFriends(myUid),
+                builder: (context, friendsSnapshot) {
+                  final friendsList = friendsSnapshot.data ?? [];
+                  final friendUids = friendsList
+                      .map((f) => (f['uid'] ?? '').toString())
+                      .where((uid) => uid.isNotEmpty)
+                      .toSet();
+
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: chatRepo.streamUserChats(myUid),
+                    builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting &&
                       !snapshot.hasData) {
                     return const Center(
@@ -834,11 +857,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                           lastSenderId != myUid &&
                                           data['lastMessageIsRead'] == false);
 
+                                  final isFriend = friendUids.contains(otherUid);
+
                                   return _ConversationItemTile(
                                     key: ValueKey(doc.id),
                                     chatId: doc.id,
                                     myUid: myUid,
                                     otherUid: otherUid,
+                                    isFriend: isFriend,
                                     lastMessage: lastMessage,
                                     lastSenderId: lastSenderId,
                                     lastType: lastType,
@@ -857,8 +883,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     ],
                   );
                 },
-              ),
-            ),
+              );
+            },
+          ),
+        ),
           ],
         ),
       ),
@@ -948,12 +976,14 @@ class _ConversationItemTile extends StatelessWidget {
   final bool isUnread;
   final UserRepository userRepo;
   final String searchQuery;
+  final bool isFriend;
 
   const _ConversationItemTile({
     super.key,
     required this.chatId,
     required this.myUid,
     required this.otherUid,
+    required this.isFriend,
     required this.lastMessage,
     required this.lastSenderId,
     required this.lastType,
@@ -998,6 +1028,17 @@ class _ConversationItemTile extends StatelessWidget {
       return context.l10n.startConversation;
     }
 
+    if (lastType == 'system' ||
+        lastMessage.contains('đã thêm chi tiêu') ||
+        lastMessage.contains('đã nạp') ||
+        lastMessage.contains('added expense') ||
+        lastMessage.contains('deposited')) {
+      final localized = GroupChatConversationScreen.localizeGroupSystemText(context, lastMessage);
+      if (localized != lastMessage) {
+        return localized;
+      }
+    }
+
     if (lastSenderId == myUid) {
       return context.l10n.youPrefix(lastMessage);
     }
@@ -1022,8 +1063,11 @@ class _ConversationItemTile extends StatelessWidget {
         final username = otherUser?.username ?? '';
         final avatarUrl = otherUser?.avatarUrl ?? '';
         final avatarFrame = otherUser?.avatarFrame ?? 'plain';
-        final isOnline = otherUser?.isCurrentlyOnline == true &&
-            (otherUser?.showActiveStatus ?? true);
+        final myShowActiveStatus =
+            context.watch<LocalSettingsService>().showActiveStatus;
+        final isOnline = otherUser != null &&
+            otherUser.isOnlineVisibleTo(isFriend: isFriend) &&
+            (otherUser.activeStatusMode == 'public' || myShowActiveStatus);
 
         final draft = context.watch<LocalSettingsService>().getDraft(otherUid);
         final hasDraft = !isOtherTyping && draft != null && draft.trim().isNotEmpty;
@@ -1267,10 +1311,14 @@ class _GroupConversationItemTile extends StatelessWidget {
     final draft = context.watch<LocalSettingsService>().getDraft('group_$groupId');
     final hasDraft = !isGroupTyping && draft != null && draft.trim().isNotEmpty;
 
+    final localizedLastMessage =
+        GroupChatConversationScreen.localizeGroupSystemText(context, lastMessage);
+
     if (searchQuery.isNotEmpty) {
       final query = searchQuery.toLowerCase();
       final matchName = groupName.toLowerCase().contains(query);
-      final matchMsg = lastMessage.toLowerCase().contains(query);
+      final matchMsg = lastMessage.toLowerCase().contains(query) ||
+          localizedLastMessage.toLowerCase().contains(query);
       final matchDraft = hasDraft && draft.toLowerCase().contains(query);
       if (!matchName && !matchMsg && !matchDraft) {
         return const SizedBox.shrink();
@@ -1292,9 +1340,13 @@ class _GroupConversationItemTile extends StatelessWidget {
       } else if (isUnread) {
         displaySnippet = unreadCount > 1
             ? context.l10n.newMessagesCount(unreadCount)
-            : (lastMessage.isNotEmpty ? lastMessage : context.l10n.newMessagesCount(1));
+            : (localizedLastMessage.isNotEmpty
+                ? localizedLastMessage
+                : context.l10n.newMessagesCount(1));
       } else {
-        displaySnippet = lastMessage.isNotEmpty ? lastMessage : 'Nhóm chat';
+        displaySnippet = localizedLastMessage.isNotEmpty
+            ? localizedLastMessage
+            : context.l10n.groupChat;
       }
 
       return InkWell(

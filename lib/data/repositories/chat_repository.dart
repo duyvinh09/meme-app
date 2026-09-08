@@ -472,6 +472,10 @@ class ChatRepository {
     required String groupId,
     required String systemText,
     String? actorUid,
+    String? postId,
+    String? postImageUrl,
+    String? postCaption,
+    DateTime? postCreatedAt,
   }) async {
     try {
       final messageId = _uuid.v4();
@@ -483,6 +487,10 @@ class ChatRepository {
         receiverId: groupId,
         text: systemText,
         type: 'system',
+        postId: postId,
+        postImageUrl: postImageUrl,
+        postCaption: postCaption,
+        postCreatedAt: postCreatedAt,
         groupId: groupId,
         createdAt: now,
         isRead: false,
@@ -529,6 +537,14 @@ class ChatRepository {
     String? replyToMessageId,
     String? replyToText,
     String? replyToSenderName,
+    String? postId,
+    String? postImageUrl,
+    String? postCaption,
+    DateTime? postCreatedAt,
+    String? postAuthorName,
+    String? postAuthorAvatar,
+    String? postAuthorFrame,
+    String? postOwnerId,
   }) async {
     try {
       final messageId = _uuid.v4();
@@ -550,6 +566,14 @@ class ChatRepository {
         replyToMessageId: replyToMessageId,
         replyToText: replyToText,
         replyToSenderName: replyToSenderName,
+        postId: postId,
+        postImageUrl: postImageUrl,
+        postCaption: postCaption,
+        postCreatedAt: postCreatedAt,
+        postAuthorName: postAuthorName,
+        postAuthorAvatar: postAuthorAvatar,
+        postAuthorFrame: postAuthorFrame,
+        postOwnerId: postOwnerId,
       );
 
       final chatDoc = await _firestore.collection('chats').doc(groupId).get();
@@ -577,6 +601,8 @@ class ChatRepository {
           'lastMessage': '$senderName: $text',
           'lastSenderId': senderId,
           'lastType': type,
+          if (postImageUrl != null) 'lastPostImageUrl': postImageUrl,
+          if (postCaption != null) 'lastPostCaption': postCaption,
           'unreadBy': otherMembers,
           'updatedAt': Timestamp.fromDate(now),
         },

@@ -206,6 +206,7 @@ class CaptureController extends ChangeNotifier {
     String locationName = '',
     double? latitude,
     double? longitude,
+    bool? isGroupContribution,
   }) async {
     try {
       isSaving = true;
@@ -214,9 +215,10 @@ class CaptureController extends ChangeNotifier {
       final now = DateTime.now();
 
       // Resolve valid tagged usernames:
-      // 1. If privacy == 'private': NO valid tags (treated as plain text).
-      // 2. If privacy == 'close_friends': ONLY friends whose UID is in closeFriendUids.
-      // 3. If privacy == 'friends': all valid existing friends.
+      // 1. Chế độ "Riêng tư" (privacy == 'private'): Không có tag hợp lệ, coi là plain text, không gửi thông báo.
+      // 2. Chế độ "Mọi người" (privacy == 'friends'): Chỉ chấp nhận người được tag B là bạn bè của A (isFriendWith(userId, B.uid)).
+      // 3. Chế độ "Bạn thân" (privacy == 'close_friends'): B vừa phải là bạn bè, vừa phải thuộc closeFriendUids của A.
+      // 4. Chế độ "Nhóm quỹ" (privacy == 'group'): B vừa phải là thành viên nhóm (groupMemberIds), vừa phải là bạn bè của A (Members(Group) ∩ Friends(A)). Tránh hoàn toàn việc tag người lạ trong nhóm.
       final validTaggedUsernames = <String>[];
       final mentionRegex = RegExp(r'@([a-zA-Z0-9_.]+)');
       final matches = mentionRegex.allMatches(caption);
@@ -231,8 +233,17 @@ class CaptureController extends ChangeNotifier {
           final taggedUser = await userRepository.findUserByUsername(uName);
           if (taggedUser == null || taggedUser.uid == userId) continue;
 
-          // If close_friends, user MUST be in closeFriendUids to be an active tag
+          // B MUST be a friend of A (author)
+          final isFriend = await userRepository.isFriendWith(userId, taggedUser.uid);
+          if (!isFriend) continue;
+
+          // If close_friends, user MUST be in closeFriendUids
           if (privacy == 'close_friends' && !closeFriendUids.contains(taggedUser.uid)) {
+            continue;
+          }
+
+          // If group, user MUST be in groupMemberIds (Members(Group) ∩ Friends(A))
+          if (privacy == 'group' && !groupMemberIds.contains(taggedUser.uid)) {
             continue;
           }
 
@@ -240,11 +251,20 @@ class CaptureController extends ChangeNotifier {
         }
       }
 
+      final effectiveGroupContribution = (isGroupContribution ?? false) ||
+          (privacy == 'group' &&
+              (type == 'income' ||
+                  category == 'Quỹ nhóm' ||
+                  category == 'Group Fund'));
+      final effectiveGroupExpense =
+          privacy == 'group' && !effectiveGroupContribution;
+      final effectiveType = effectiveGroupContribution ? 'expense' : type;
+
       final savedTx = await transactionRepository.addTransaction(
         userId: userId,
         amount: amount,
-        type: type,
-        category: category,
+        type: effectiveType,
+        category: effectiveGroupContribution ? 'Quỹ nhóm' : category,
         caption: caption,
         note: note,
         createdAt: now,
@@ -268,6 +288,8 @@ class CaptureController extends ChangeNotifier {
         locationName: selectedLocation?.locationName ?? locationName,
         latitude: selectedLocation?.latitude ?? latitude,
         longitude: selectedLocation?.longitude ?? longitude,
+        isGroupExpense: effectiveGroupExpense,
+        isGroupContribution: effectiveGroupContribution,
       );
 
       await _updateUserStreak(
@@ -275,9 +297,9 @@ class CaptureController extends ChangeNotifier {
         newTransactionDate: now,
       );
 
-      // If this spending was logged for a group, update group contribution and log system message
+      // If this spending/income was logged for a group, update group state and log system message
       if (privacy == 'group' && groupId != null && groupId.isNotEmpty) {
-        if (type == 'expense') {
+        if (effectiveGroupContribution) {
           try {
             await userRepository.addGroupContribution(
               groupId: groupId,
@@ -285,6 +307,15 @@ class CaptureController extends ChangeNotifier {
               memberUid: userId,
               amount: amount,
               sendSystemMessage: false,
+            );
+          } catch (_) {}
+        } else if (effectiveGroupExpense) {
+          try {
+            await userRepository.addGroupExpense(
+              groupId: groupId,
+              actorUid: userId,
+              memberUid: userId,
+              amount: amount,
             );
           } catch (_) {}
         }
@@ -300,17 +331,28 @@ class CaptureController extends ChangeNotifier {
             amountVnd: amount,
             currency: 'VND',
           );
+          final imgUrl = savedTx.imageUrl.isNotEmpty
+              ? savedTx.imageUrl
+              : (savedTx.thumbnailUrl.isNotEmpty
+                  ? savedTx.thumbnailUrl
+                  : savedTx.mediaUrl);
+          final actionText = effectiveGroupExpense
+              ? '$authorName đã thêm chi tiêu $moneyStr cho "$category"'
+              : '$authorName đã nạp $moneyStr vào quỹ nhóm';
           await ChatRepository().sendGroupSystemMessage(
             groupId: groupId,
-            systemText:
-                '$authorName đã thêm chi tiêu $moneyStr cho "$category"',
+            systemText: actionText,
             actorUid: userId,
+            postId: savedTx.id,
+            postImageUrl: imgUrl.isNotEmpty ? imgUrl : null,
+            postCaption: savedTx.caption.isNotEmpty ? savedTx.caption : null,
+            postCreatedAt: savedTx.createdAt,
           );
         } catch (_) {}
       }
 
       // Notify mentioned friends in caption if post is visible to them
-      if (validTaggedUsernames.isNotEmpty && sharedToFeed) {
+      if (validTaggedUsernames.isNotEmpty && sharedToFeed && privacy != 'private') {
         _notifyMentionedUsers(
           authorUid: userId,
           caption: caption.trim(),

@@ -7,14 +7,16 @@ import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
-import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/currency_formatter.dart';
-import '../../../core/utils/money_input_formatter.dart';
-import '../../../core/widgets/async_filled_button.dart';
+import '../../../core/utils/budget_name_localizer.dart';
+import '../../../data/models/transaction_model.dart';
+import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../core/routes/route_names.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../home/screens/moment_viewer_screen.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../capture/screens/camera_screen.dart';
 import 'edit_group_screen.dart';
 
 class GroupDetailScreen extends StatefulWidget {
@@ -73,96 +75,44 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
     List<String> memberIds,
   ) async {
     final repo = context.read<UserRepository>();
-    final result = <Map<String, dynamic>>[];
+    final validIds = memberIds
+        .map((e) => e.toString().trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
 
-    for (final uid in memberIds) {
-      final user = await repo.getUserProfile(uid);
+    final results = await Future.wait(
+      validIds.map((uid) async {
+        try {
+          final user = await repo.getUserProfile(uid);
+          if (user != null) {
+            return {
+              'uid': user.uid,
+              'name': user.name,
+              'username': user.username,
+              'email': user.email,
+              'avatarUrl': user.avatarUrl,
+            };
+          }
+        } catch (_) {}
 
-      if (user != null) {
-        result.add({
-          'uid': user.uid,
-          'name': user.name,
-          'username': user.username,
-          'email': user.email,
-          'avatarUrl': user.avatarUrl,
-        });
-      }
-    }
-
-    return result;
-  }
-
-  Future<void> _showAddContributionSheet({
-    required BuildContext context,
-    required List<Map<String, dynamic>> members,
-    required String groupId,
-    required String? myUid,
-    required bool isOwner,
-    required Color groupColor,
-  }) async {
-    if (myUid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: AppDurations.snackBar,
-          content: Text(context.l10n.currentUserNotFound),
-        ),
-      );
-      return;
-    }
-
-    if (members.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: AppDurations.snackBar,
-          content: Text(context.l10n.groupNoMembersToContribute),
-        ),
-      );
-      return;
-    }
-
-    final currency = context.read<ProfileController>().currency;
-
-    final meInGroup = members.where((member) {
-      return (member['uid'] ?? '').toString() == myUid;
-    }).toList();
-
-    if (!isOwner && meInGroup.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: AppDurations.snackBar,
-          content: Text(context.l10n.youAreNotMember),
-        ),
-      );
-      return;
-    }
-
-    final added = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.card(context),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(28),
-        ),
-      ),
-      builder: (_) => _AddContributionSheet(
-        members: members,
-        groupId: groupId,
-        myUid: myUid,
-        isOwner: isOwner,
-        groupColor: groupColor,
-        currency: currency,
-      ),
+        return {
+          'uid': uid,
+          'name': 'Thành viên',
+          'username': '',
+          'email': '',
+          'avatarUrl': '',
+        };
+      }),
     );
 
-    if (added == true && mounted) {
-      AppToast.show(context, context.l10n.contributionAdded);
-    }
+    return results;
   }
+
+
 
   @override
   Widget build(BuildContext context) {
-    final initialGroupId = (widget.groupData['id'] ?? '').toString();
+    final initialGroupId = (widget.groupData['id'] ?? widget.groupData['groupId'] ?? '').toString();
     final myUid = context.read<AuthController>().user?.uid;
     final currency = context.watch<ProfileController>().currency;
 
@@ -221,9 +171,14 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
             final goalAmount = _toDouble(groupData['goalAmount']);
             final currentAmount = _toDouble(groupData['currentAmount']);
+            final spentAmount = _toDouble(groupData['spentAmount']);
+            final remainingBalance = currentAmount - spentAmount;
 
             final memberContributions = Map<String, dynamic>.from(
               groupData['memberContributions'] ?? {},
+            );
+            final memberSpent = Map<String, dynamic>.from(
+              groupData['memberSpent'] ?? {},
             );
 
             final progress = goalAmount <= 0
@@ -244,8 +199,18 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
                 final members = membersSnapshot.data ?? [];
 
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(
+                return RefreshIndicator(
+                  color: groupColor,
+                  onRefresh: () async {
+                    if (mounted) {
+                      setState(() {
+                        _cachedMemberIdsKey = '';
+                        _cachedMembersFuture = null;
+                      });
+                    }
+                  },
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(
                     AppSizes.pagePadding,
                     12,
                     AppSizes.pagePadding,
@@ -305,17 +270,40 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
                     _GoalProgressCard(
                       groupColor: groupColor,
+                      currentAmount: currentAmount,
                       currentAmountText: money(currentAmount),
+                      spentAmount: spentAmount,
+                      spentAmountText: money(spentAmount),
+                      remainingBalance: remainingBalance,
+                      remainingBalanceText: money(remainingBalance),
                       goalAmountText: money(goalAmount),
                       progress: progress,
-                      onAddContribution: () => _showAddContributionSheet(
-                        context: context,
-                        members: members,
-                        groupId: groupId,
-                        myUid: myUid,
-                        isOwner: isOwner,
-                        groupColor: groupColor,
+                      onAddContribution: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CameraScreen(
+                            initialType: 'expense',
+                            initialPrivacy: 'group',
+                            initialGroupId: groupId,
+                            initialGroupName: groupName,
+                            initialGroupMemberIds: memberIds,
+                            lockType: true,
+                            lockPrivacy: true,
+                            isGroupContribution: true,
+                          ),
+                        ),
                       ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    _GroupExpenseHistorySection(
+                      groupId: groupId,
+                      groupColor: groupColor,
+                      currency: currency,
+                      members: members,
+                      money: money,
+                      myUid: myUid,
                     ),
 
                     const SizedBox(height: 18),
@@ -325,6 +313,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       isLoadingMembers: isLoadingMembers,
                       goalAmount: goalAmount,
                       memberContributions: memberContributions,
+                      memberSpent: memberSpent,
                       groupColor: groupColor,
                       money: money,
                       toDouble: _toDouble,
@@ -336,7 +325,7 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       isOwner: isOwner,
                       groupColor: groupColor,
                       onEdit: () async {
-                        await Navigator.push(
+                        final changed = await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => EditGroupScreen(
@@ -344,6 +333,13 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                             ),
                           ),
                         );
+
+                        if (changed == true && mounted) {
+                          setState(() {
+                            _cachedMemberIdsKey = '';
+                            _cachedMembersFuture = null;
+                          });
+                        }
                       },
                       onDeleteOrLeave: () async {
                         if (groupId.isEmpty) return;
@@ -459,341 +455,12 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       },
                     ),
                   ],
-                );
+                ),
+              );
               },
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _AddContributionSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> members;
-  final String groupId;
-  final String myUid;
-  final bool isOwner;
-  final Color groupColor;
-  final String currency;
-
-  const _AddContributionSheet({
-    required this.members,
-    required this.groupId,
-    required this.myUid,
-    required this.isOwner,
-    required this.groupColor,
-    required this.currency,
-  });
-
-  @override
-  State<_AddContributionSheet> createState() => _AddContributionSheetState();
-}
-
-class _AddContributionSheetState extends State<_AddContributionSheet> {
-  late final TextEditingController _amountController;
-  late String _selectedUid;
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController = TextEditingController();
-    _selectedUid = widget.isOwner
-        ? (widget.members.isNotEmpty
-            ? (widget.members.first['uid'] ?? '').toString()
-            : widget.myUid)
-        : widget.myUid;
-  }
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  double _parseMoney(String value, String currency) {
-    final cleaned = currency == 'USD'
-        ? value.replaceAll(RegExp(r'[^0-9.]'), '')
-        : value.replaceAll(RegExp(r'[^0-9]'), '');
-
-    return double.tryParse(cleaned) ?? 0;
-  }
-
-  Future<void> _submitContribution() async {
-    final inputAmount = _parseMoney(
-      _amountController.text,
-      widget.currency,
-    );
-
-    if (inputAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: AppDurations.snackBar,
-          content: Text(context.l10n.enterValidAmount),
-        ),
-      );
-      return;
-    }
-
-    if (!widget.isOwner && _selectedUid != widget.myUid) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: AppDurations.snackBar,
-          content: Text(context.l10n.canOnlyAddForSelf),
-        ),
-      );
-      return;
-    }
-
-    final amount = AppCurrencyFormatter.toVnd(
-      inputAmount: inputAmount,
-      currency: widget.currency,
-    );
-
-    try {
-      final repo = context.read<UserRepository>();
-      await repo.addGroupContribution(
-        groupId: widget.groupId,
-        actorUid: widget.myUid,
-        memberUid: _selectedUid,
-        amount: amount,
-      );
-
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: AppDurations.snackBar,
-          content: Text(context.l10n.cannotAddContribution(e.toString())),
-        ),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final selectedMember = widget.members.where((member) {
-      return (member['uid'] ?? '').toString() == _selectedUid;
-    }).toList();
-
-    final selectedName = selectedMember.isEmpty
-        ? context.l10n.you
-        : (selectedMember.first['name'] ?? context.l10n.you).toString();
-
-    final selectedUsername = selectedMember.isEmpty
-        ? ''
-        : (selectedMember.first['username'] ?? '').toString();
-
-    final selectedAvatar = selectedMember.isEmpty
-        ? ''
-        : (selectedMember.first['avatarUrl'] ?? '').toString();
-
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        18,
-        18,
-        18,
-        MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 44,
-            height: 5,
-            decoration: BoxDecoration(
-              color: AppColors.textSecondary(context).withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            context.l10n.addContribution,
-            style: AppTextStyles.sectionTitle(context).copyWith(
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 18),
-          if (widget.isOwner)
-            DropdownButtonFormField<String>(
-              initialValue: _selectedUid,
-              dropdownColor: AppColors.card(context),
-              style: AppTextStyles.body(context).copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-              decoration: InputDecoration(
-                labelText: context.l10n.selectMember,
-                labelStyle: TextStyle(
-                  color: AppColors.textSecondary(context),
-                ),
-                filled: true,
-                fillColor: AppColors.surface(context),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  borderSide: BorderSide(
-                    color: AppColors.innerBorder(context),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                  borderSide: BorderSide(
-                    color: widget.groupColor,
-                    width: 1.4,
-                  ),
-                ),
-              ),
-              items: widget.members.map((member) {
-                final uid = (member['uid'] ?? '').toString();
-                final name = (member['name'] ?? context.l10n.user).toString();
-                final username = (member['username'] ?? '').toString();
-
-                return DropdownMenuItem<String>(
-                  value: uid,
-                  child: Text(
-                    username.isEmpty ? name : '$name (@$username)',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() {
-                  _selectedUid = value;
-                });
-              },
-            )
-          else
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: widget.groupColor.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                border: Border.all(
-                  color: widget.groupColor.withValues(alpha: 0.22),
-                ),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 22,
-                    backgroundColor: AppColors.surface(context),
-                    backgroundImage: selectedAvatar.isNotEmpty
-                        ? NetworkImage(selectedAvatar)
-                        : null,
-                    child: selectedAvatar.isEmpty
-                        ? Icon(
-                            Icons.person_rounded,
-                            color: AppColors.textSecondary(context),
-                          )
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.youAreContributingFor,
-                          style: AppTextStyles.caption(context).copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          selectedUsername.isEmpty
-                              ? selectedName
-                              : '$selectedName (@$selectedUsername)',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.body(context).copyWith(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Icon(
-                    Icons.lock_rounded,
-                    color: widget.groupColor,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(height: 14),
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
-            inputFormatters:
-                widget.currency == 'VND' ? [MoneyInputFormatter()] : [],
-            cursorColor: widget.groupColor,
-            style: AppTextStyles.body(context).copyWith(
-              fontSize: 20,
-              fontWeight: FontWeight.w900,
-            ),
-            decoration: InputDecoration(
-              labelText: context.l10n.amount,
-              hintText: AppCurrencyFormatter.formatInputHint(widget.currency),
-              suffixText: AppCurrencyFormatter.symbol(widget.currency),
-              labelStyle: TextStyle(
-                color: AppColors.textSecondary(context),
-              ),
-              hintStyle: TextStyle(
-                color: AppColors.textSecondary(context).withValues(alpha: 0.65),
-              ),
-              suffixStyle: AppTextStyles.caption(context).copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
-              filled: true,
-              fillColor: AppColors.surface(context),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                borderSide: BorderSide(
-                  color: AppColors.innerBorder(context),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                borderSide: BorderSide(
-                  color: widget.groupColor,
-                  width: 1.4,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          SizedBox(
-            width: double.infinity,
-            child: AsyncFilledButton(
-              onPressedAsync: _submitContribution,
-              style: FilledButton.styleFrom(
-                backgroundColor: widget.groupColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                ),
-              ),
-              child: Text(
-                context.l10n.confirm,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -902,10 +569,10 @@ class _GroupHeroCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                 decoration: BoxDecoration(
-                  color: groupColor.withOpacity(0.14),
+                  color: groupColor.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: groupColor.withOpacity(0.4),
+                    color: groupColor.withValues(alpha: 0.4),
                     width: 1.2,
                   ),
                 ),
@@ -939,14 +606,24 @@ class _GroupHeroCard extends StatelessWidget {
 
 class _GoalProgressCard extends StatelessWidget {
   final Color groupColor;
+  final double currentAmount;
   final String currentAmountText;
+  final double spentAmount;
+  final String spentAmountText;
+  final double remainingBalance;
+  final String remainingBalanceText;
   final String goalAmountText;
   final double progress;
   final VoidCallback onAddContribution;
 
   const _GoalProgressCard({
     required this.groupColor,
+    required this.currentAmount,
     required this.currentAmountText,
+    required this.spentAmount,
+    required this.spentAmountText,
+    required this.remainingBalance,
+    required this.remainingBalanceText,
     required this.goalAmountText,
     required this.progress,
     required this.onAddContribution,
@@ -954,6 +631,9 @@ class _GoalProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isSurplus = remainingBalance >= 0;
+    final balanceStatusColor = isSurplus ? AppColors.income : AppColors.expense;
+
     return _SectionCard(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       child: Column(
@@ -962,59 +642,268 @@ class _GoalProgressCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: groupColor.withValues(alpha: 0.16),
                 ),
                 child: Icon(
-                  Icons.flag_rounded,
+                  Icons.account_balance_wallet_rounded,
                   color: groupColor,
+                  size: 22,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.groupFinancialOverview,
+                      style: AppTextStyles.sectionTitle(context).copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      context.l10n.groupFundBalanceAndProgress,
+                      style: AppTextStyles.caption(context).copyWith(
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: balanceStatusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                  border: Border.all(
+                    color: balanceStatusColor.withValues(alpha: 0.25),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isSurplus
+                          ? Icons.check_circle_rounded
+                          : Icons.warning_amber_rounded,
+                      color: balanceStatusColor,
+                      size: 13,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      isSurplus ? context.l10n.groupFundSurplus : context.l10n.groupFundDeficit,
+                      style: TextStyle(
+                        color: balanceStatusColor,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            context.l10n.groupFundRemaining,
+            style: AppTextStyles.bodySecondary(context).copyWith(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
                 child: Text(
-                  context.l10n.contributionGoal,
-                  style: AppTextStyles.sectionTitle(context),
+                  remainingBalanceText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.pageTitle(context).copyWith(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    color: isSurplus
+                        ? AppColors.textPrimary(context)
+                        : AppColors.expense,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            currentAmountText,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.pageTitle(context).copyWith(
-              fontSize: 30,
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+            decoration: BoxDecoration(
+              color: AppColors.surface(context),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: AppColors.innerBorder(context),
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            context.l10n.ofAmount(goalAmountText),
-            style: AppTextStyles.bodySecondary(context).copyWith(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.savings_outlined,
+                            size: 14,
+                            color: AppColors.income,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            context.l10n.groupTotalContributed,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          currentAmountText,
+                          style: TextStyle(
+                            color: AppColors.income,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: AppColors.innerBorder(context),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.receipt_long_outlined,
+                            size: 14,
+                            color: spentAmount > 0
+                                ? AppColors.expense
+                                : AppColors.textSecondary(context),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            context.l10n.groupTotalSpent,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          spentAmountText,
+                          style: TextStyle(
+                            color: spentAmount > 0
+                                ? AppColors.expense
+                                : AppColors.textSecondary(context),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: AppColors.innerBorder(context),
+                ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.flag_outlined,
+                            size: 14,
+                            color: groupColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            context.l10n.groupGoal,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          goalAmountText,
+                          style: TextStyle(
+                            color: groupColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                context.l10n.groupGoalProgress,
+                style: AppTextStyles.caption(context).copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                context.l10n.reachedPercentage((progress * 100).round()),
+                style: AppTextStyles.caption(context).copyWith(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: groupColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 10,
+              minHeight: 8,
               backgroundColor: AppColors.innerBorder(context),
               valueColor: AlwaysStoppedAnimation<Color>(groupColor),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            context.l10n.reachedPercentage((progress * 100).round()),
-            style: AppTextStyles.caption(context).copyWith(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
             ),
           ),
           const SizedBox(height: 16),
@@ -1022,7 +911,7 @@ class _GoalProgressCard extends StatelessWidget {
             width: double.infinity,
             child: FilledButton.icon(
               onPressed: onAddContribution,
-              icon: const Icon(Icons.add_card_rounded),
+              icon: const Icon(Icons.add_card_rounded, size: 18),
               label: Text(context.l10n.addContribution),
               style: FilledButton.styleFrom(
                 backgroundColor: groupColor,
@@ -1040,11 +929,325 @@ class _GoalProgressCard extends StatelessWidget {
   }
 }
 
+class _GroupExpenseHistorySection extends StatelessWidget {
+  final String groupId;
+  final Color groupColor;
+  final String currency;
+  final List<Map<String, dynamic>> members;
+  final String Function(double value) money;
+  final String myUid;
+
+  const _GroupExpenseHistorySection({
+    required this.groupId,
+    required this.groupColor,
+    required this.currency,
+    required this.members,
+    required this.money,
+    required this.myUid,
+  });
+
+  String _formatDateTime(BuildContext context, DateTime dt) {
+    final locale = Localizations.localeOf(context).languageCode;
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final y = dt.year;
+    if (locale == 'vi') {
+      return '$hh:$mm • $d/$m/$y';
+    } else {
+      return '$d/$m/$y • $hh:$mm';
+    }
+  }
+
+  Map<String, dynamic>? _findMember(String uid) {
+    for (final m in members) {
+      if ((m['uid'] ?? '').toString() == uid) {
+        return m;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final txRepo = context.read<TransactionRepository>();
+
+    return _SectionCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.expense.withValues(alpha: 0.14),
+                ),
+                child: const Icon(
+                  Icons.receipt_long_rounded,
+                  color: AppColors.expense,
+                  size: 19,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  context.l10n.groupExpenseHistory,
+                  style: AppTextStyles.sectionTitle(context).copyWith(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          StreamBuilder<List<TransactionModel>>(
+            stream: txRepo.streamGroupTransactions(groupId),
+            builder: (ctx, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting &&
+                  !snapshot.hasData) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              final allTransactions = snapshot.data ?? [];
+              // Lọc chỉ lấy các khoản thành viên thực sự đã chi tiêu từ quỹ nhóm
+              final transactions = allTransactions.where((tx) =>
+                  tx.isGroupExpense ||
+                  (tx.privacy == 'group' &&
+                      tx.type == 'expense' &&
+                      !tx.isGroupContribution &&
+                      tx.category != 'Quỹ nhóm' &&
+                      tx.category != 'Group Fund')
+              ).toList();
+              transactions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+              if (transactions.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface(context),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: AppColors.innerBorder(context),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 40,
+                        color: AppColors.textSecondary(context).withValues(alpha: 0.5),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        context.l10n.groupNoExpensesYet,
+                        style: AppTextStyles.body(context).copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        context.l10n.groupNoExpensesDesc,
+                        textAlign: TextAlign.center,
+                        style: AppTextStyles.caption(context).copyWith(
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Column(
+                children: transactions.map((tx) {
+                  final isMe = tx.userId == myUid;
+                  final spender = _findMember(tx.userId);
+                  final spenderName = isMe
+                      ? context.l10n.you
+                      : (spender != null
+                          ? (spender['name'] ?? spender['username'] ?? context.l10n.member).toString()
+                          : context.l10n.member);
+                  final spenderAvatar = (spender?['avatarUrl'] ?? '').toString();
+
+                  final imgUrl = tx.imageUrl.isNotEmpty
+                      ? tx.imageUrl
+                      : (tx.thumbnailUrl.isNotEmpty
+                          ? tx.thumbnailUrl
+                          : tx.mediaUrl);
+
+                  final hasImage = imgUrl.isNotEmpty;
+
+                  final categoryDisplay = tx.category.isNotEmpty
+                      ? BudgetNameLocalizer.display(context, tx.category)
+                      : context.l10n.groupExpense;
+
+                  final purpose = tx.caption.trim().isNotEmpty
+                      ? tx.caption.trim()
+                      : (tx.note.trim().isNotEmpty ? tx.note.trim() : '');
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface(context),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppColors.innerBorder(context),
+                      ),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MomentViewerScreen(
+                              transactions: [tx],
+                              initialIndex: 0,
+                            ),
+                          ),
+                        );
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                width: 52,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: groupColor.withValues(alpha: 0.12),
+                                ),
+                                child: hasImage
+                                    ? Image.network(
+                                        imgUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Icon(
+                                          Icons.receipt_rounded,
+                                          color: groupColor,
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.receipt_rounded,
+                                        color: groupColor,
+                                        size: 24,
+                                      ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Tiêu những gì: Danh mục đã địa phương hoá
+                                  Text(
+                                    categoryDisplay,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.body(context).copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  // Tiêu về việc gì: Lý do / caption chi tiêu
+                                  if (purpose.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      purpose,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.caption(context).copyWith(
+                                        fontSize: 12,
+                                        color: AppColors.textPrimary(context).withValues(alpha: 0.85),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 4),
+                                  // Ai tiêu & Tiêu lúc nào
+                                  Row(
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 8,
+                                        backgroundColor: AppColors.card(context),
+                                        backgroundImage: spenderAvatar.isNotEmpty
+                                            ? NetworkImage(spenderAvatar)
+                                            : null,
+                                        child: spenderAvatar.isEmpty
+                                            ? const Icon(Icons.person, size: 9)
+                                            : null,
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          '$spenderName • ${_formatDateTime(context, tx.createdAt)}',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTextStyles.caption(context).copyWith(
+                                            fontSize: 11,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '-${money(tx.amount)}',
+                                  style: const TextStyle(
+                                    color: AppColors.expense,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 16,
+                                  color: AppColors.textSecondary(context),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _MembersContributionCard extends StatelessWidget {
   final List<Map<String, dynamic>> members;
   final bool isLoadingMembers;
   final double goalAmount;
   final Map<String, dynamic> memberContributions;
+  final Map<String, dynamic> memberSpent;
   final Color groupColor;
   final String Function(double value) money;
   final double Function(dynamic value) toDouble;
@@ -1054,6 +1257,7 @@ class _MembersContributionCard extends StatelessWidget {
     required this.isLoadingMembers,
     required this.goalAmount,
     required this.memberContributions,
+    required this.memberSpent,
     required this.groupColor,
     required this.money,
     required this.toDouble,
@@ -1095,6 +1299,9 @@ class _MembersContributionCard extends StatelessWidget {
               final paidAmount = toDouble(
                 memberContributions[memberUid],
               );
+              final spentAmount = toDouble(
+                memberSpent[memberUid],
+              );
 
               final paidProgress = goalAmount <= 0
                   ? 0.0
@@ -1122,12 +1329,12 @@ class _MembersContributionCard extends StatelessWidget {
                     radius: 24,
                     backgroundColor: AppColors.card(context),
                     backgroundImage:
-                    avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                        avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
                     child: avatarUrl.isEmpty
                         ? Icon(
-                      Icons.person,
-                      color: AppColors.textSecondary(context),
-                    )
+                            Icons.person,
+                            color: AppColors.textSecondary(context),
+                          )
                         : null,
                   ),
                   title: Text(
@@ -1160,14 +1367,49 @@ class _MembersContributionCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        context.l10n.paidAmount(money(paidAmount)),
-                        style: TextStyle(
-                          color: groupColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: groupColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '${context.l10n.groupTotalContributed}: ${money(paidAmount)}',
+                              style: TextStyle(
+                                color: groupColor,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
+                          if (spentAmount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.expense.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${context.l10n.groupTotalSpent}: ${money(spentAmount)}',
+                                style: const TextStyle(
+                                  color: AppColors.expense,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),

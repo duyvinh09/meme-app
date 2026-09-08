@@ -2530,4 +2530,130 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get draftPrefix => 'Draft: ';
+
+  @override
+  String get browseTransactionsTitle => 'Browse Transactions';
+
+  @override
+  String get browseTransactionsSearchHint =>
+      'Notes, categories, accounts, amount...';
+
+  @override
+  String get timeFilterLabel => 'Time';
+
+  @override
+  String get timeFilterAll => 'All';
+
+  @override
+  String get timeFilterToday => 'Today';
+
+  @override
+  String get timeFilterLast7Days => 'Last 7 days';
+
+  @override
+  String get timeFilterThisMonth => 'This month';
+
+  @override
+  String get timeFilterLastMonth => 'Last month';
+
+  @override
+  String get timeFilterThisYear => 'This year';
+
+  @override
+  String get typeFilterAll => 'All';
+
+  @override
+  String get typeFilterExpense => 'Expenses';
+
+  @override
+  String get typeFilterIncome => 'Income';
+
+  @override
+  String get allCategories => 'Categories';
+
+  @override
+  String get noTransactionsFound => 'No transactions found';
+
+  @override
+  String get groupFinancialOverview => 'Group Fund & Finance';
+
+  @override
+  String get groupFundBalanceAndProgress => 'Actual balance & progress';
+
+  @override
+  String get groupFundRemaining => 'Remaining fund balance';
+
+  @override
+  String get groupFundSurplus => 'Surplus';
+
+  @override
+  String get groupFundDeficit => 'Deficit';
+
+  @override
+  String get groupTotalContributed => 'Contributed';
+
+  @override
+  String get groupTotalSpent => 'Spent';
+
+  @override
+  String get groupGoal => 'Goal';
+
+  @override
+  String get groupGoalProgress => 'Fund goal progress';
+
+  @override
+  String get groupExpenseHistory => 'Group expense history';
+
+  @override
+  String get groupNoExpensesYet => 'No group expenses yet';
+
+  @override
+  String get groupNoExpensesDesc => 'Shared group expenses will appear here';
+
+  @override
+  String groupExpenseExceedsBalance(String balance) {
+    return 'Expense exceeds current group fund balance ($balance)';
+  }
+
+  @override
+  String get groupFundDeposit => 'Deposit to group fund';
+
+  @override
+  String get groupDepositSuccess => 'Deposited to group fund';
+
+  @override
+  String groupBalanceShort(String amount) {
+    return 'Bal: $amount';
+  }
+
+  @override
+  String groupSpentShort(String amount) {
+    return 'Spent: $amount';
+  }
+
+  @override
+  String get member => 'Member';
+
+  @override
+  String get groupFundCategory => 'Group Fund';
+
+  @override
+  String get momentDetails => 'Moment Details';
+
+  @override
+  String get notFriendsGroupPostNotice =>
+      'You and the author are not friends, so you cannot view this post on the Feed. Here are the moment details shared in the group:';
+
+  @override
+  String get groupExpense => 'Group expense';
+
+  @override
+  String spentReason(String reason) {
+    return 'Purpose: $reason';
+  }
+
+  @override
+  String spentBy(String name) {
+    return 'Spent by: $name';
+  }
 }

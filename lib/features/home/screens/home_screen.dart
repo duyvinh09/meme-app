@@ -351,8 +351,8 @@ class _SectionContainer extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(
-              AppColors.isDark(context) ? 0.18 : 0.05,
+            color: Colors.black.withValues(
+              alpha: AppColors.isDark(context) ? 0.18 : 0.05,
             ),
             blurRadius: 14,
             offset: const Offset(0, 4),
@@ -454,10 +454,10 @@ class _SummaryChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(9, 5, 10, 5),
       decoration: BoxDecoration(
-        color: accentColor.withOpacity(AppColors.isDark(context) ? 0.16 : 0.12),
+        color: accentColor.withValues(alpha: AppColors.isDark(context) ? 0.16 : 0.12),
         borderRadius: BorderRadius.circular(AppSizes.radiusPill),
         border: Border.all(
-          color: accentColor.withOpacity(0.12),
+          color: accentColor.withValues(alpha: 0.12),
           width: 0.7,
         ),
       ),

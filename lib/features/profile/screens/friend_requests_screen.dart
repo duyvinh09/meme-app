@@ -7,8 +7,10 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/async_filled_button.dart';
 import '../../../core/extensions/localization_extension.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../widgets/avatar_with_frame.dart';
 
 class FriendRequestsScreen extends StatefulWidget {
   const FriendRequestsScreen({super.key});
@@ -221,66 +223,109 @@ class _ReceivedRequestCardState extends State<_ReceivedRequestCard> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    final avatarUrl = (item['fromAvatarUrl'] ?? '').toString();
-    final name = (item['fromName'] ?? '').toString().trim();
-    final username = (item['fromUsername'] ?? '').toString().trim();
+    final fromUid = (item['fromUid'] ?? '').toString();
+    final fallbackAvatarUrl = (item['fromAvatarUrl'] ?? '').toString().trim();
+    final fallbackName = (item['fromName'] ?? '').toString().trim();
+    final fallbackUsername = (item['fromUsername'] ?? '').toString().trim();
+    final userRepo = context.read<UserRepository>();
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppColors.border(context),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSizes.cardPadding),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 28,
-                  backgroundColor: AppColors.surface(context),
-                  backgroundImage:
-                  avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-                  child: avatarUrl.isEmpty
-                      ? Icon(
-                    Icons.person,
-                    color: AppColors.textPrimary(context),
-                  )
-                      : null,
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name.isEmpty ? context.l10n.user : name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.sectionTitle(context).copyWith(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '@$username',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.caption(context).copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+    return StreamBuilder<UserModel?>(
+      stream: fromUid.isNotEmpty ? userRepo.streamUserProfile(fromUid) : null,
+      builder: (context, snapshot) {
+        final liveUser = snapshot.data;
+        final avatarUrl = (liveUser?.avatarUrl.trim().isNotEmpty == true)
+            ? liveUser!.avatarUrl.trim()
+            : fallbackAvatarUrl;
+        final avatarFrame = liveUser?.avatarFrame ??
+            (item['fromAvatarFrame'] ?? 'plain').toString();
+        final name = (liveUser?.name.trim().isNotEmpty == true)
+            ? liveUser!.name.trim()
+            : fallbackName;
+        final username = (liveUser?.username.trim().isNotEmpty == true)
+            ? liveUser!.username.trim()
+            : fallbackUsername;
+        final isOnline =
+            liveUser?.isOnlineVisibleTo(isFriend: false) ?? false;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.card(context),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.border(context),
             ),
-            const SizedBox(height: 16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSizes.cardPadding),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        AvatarWithFrame(
+                          avatarUrl: avatarUrl,
+                          frameId: avatarFrame,
+                          size: 56,
+                        ),
+                        if (isOnline)
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF22C55E),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: AppColors.card(context),
+                                  width: 2.2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF22C55E)
+                                        .withValues(alpha: 0.45),
+                                    blurRadius: 4,
+                                    spreadRadius: 0.5,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name.isEmpty ? context.l10n.user : name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.sectionTitle(context).copyWith(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '@$username',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -343,6 +388,8 @@ class _ReceivedRequestCardState extends State<_ReceivedRequestCard> {
         ),
       ),
     );
+  },
+);
   }
 }
 
@@ -365,9 +412,9 @@ class _SentRequestTileState extends State<_SentRequestTile> {
   @override
   Widget build(BuildContext context) {
     final item = widget.item;
-    final avatarUrl = (item['toAvatarUrl'] ?? '').toString();
-    final name = (item['toName'] ?? '').toString().trim();
-    final username = (item['toUsername'] ?? '').toString().trim();
+    final fallbackAvatarUrl = (item['toAvatarUrl'] ?? '').toString().trim();
+    final fallbackName = (item['toName'] ?? '').toString().trim();
+    final fallbackUsername = (item['toUsername'] ?? '').toString().trim();
     final toUid = (item['toUid'] ?? '').toString();
     final status = (item['status'] ?? 'pending').toString();
     final isPending = status == 'pending';
@@ -436,69 +483,109 @@ class _SentRequestTileState extends State<_SentRequestTile> {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: AppColors.border(context),
-        ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 12,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 28,
-              backgroundColor: AppColors.surface(context),
-              backgroundImage:
-                  avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
-              child: avatarUrl.isEmpty
-                  ? Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                      style: TextStyle(
-                        color: AppColors.textPrimary(context),
-                        fontWeight: FontWeight.w700,
+    return StreamBuilder<UserModel?>(
+      stream: toUid.isNotEmpty ? widget.repo.streamUserProfile(toUid) : null,
+      builder: (context, snapshot) {
+        final liveUser = snapshot.data;
+        final avatarUrl = (liveUser?.avatarUrl.trim().isNotEmpty == true)
+            ? liveUser!.avatarUrl.trim()
+            : fallbackAvatarUrl;
+        final avatarFrame = liveUser?.avatarFrame ??
+            (item['toAvatarFrame'] ?? 'plain').toString();
+        final name = (liveUser?.name.trim().isNotEmpty == true)
+            ? liveUser!.name.trim()
+            : fallbackName;
+        final username = (liveUser?.username.trim().isNotEmpty == true)
+            ? liveUser!.username.trim()
+            : fallbackUsername;
+        final isOnline =
+            liveUser?.isOnlineVisibleTo(isFriend: false) ?? false;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: AppColors.card(context),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: AppColors.border(context),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    AvatarWithFrame(
+                      avatarUrl: avatarUrl,
+                      frameId: avatarFrame,
+                      size: 56,
+                    ),
+                    if (isOnline)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF22C55E),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppColors.card(context),
+                              width: 2.2,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF22C55E)
+                                    .withValues(alpha: 0.45),
+                                blurRadius: 4,
+                                spreadRadius: 0.5,
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    name.isEmpty ? context.l10n.user : name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.sectionTitle(context).copyWith(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  ],
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name.isEmpty ? context.l10n.user : name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.sectionTitle(context).copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        context.l10n.sentRequestToUsername(username),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.caption(context).copyWith(
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    context.l10n.sentRequestToUsername(username),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.caption(context).copyWith(
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+                actionStrip(),
+              ],
             ),
-            const SizedBox(width: 10),
-            actionStrip(),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

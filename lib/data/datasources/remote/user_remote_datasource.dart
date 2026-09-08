@@ -9,15 +9,25 @@ class UserRemoteDataSource {
   }
 
   Future<UserModel?> getUserProfile(String uid) async {
-    final doc = await _db.collection('users').doc(uid).get();
-    if (!doc.exists || doc.data() == null) return null;
-    return UserModel.fromMap(doc.data()!);
+    if (uid.trim().isEmpty) return null;
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      if (!doc.exists || doc.data() == null) return null;
+      return UserModel.fromMap(doc.data()!);
+    } catch (_) {
+      return null;
+    }
   }
 
   Stream<UserModel?> streamUserProfile(String uid) {
+    if (uid.trim().isEmpty) return Stream.value(null);
     return _db.collection('users').doc(uid).snapshots().map((doc) {
-      if (!doc.exists || doc.data() == null) return null;
-      return UserModel.fromMap(doc.data()!);
+      try {
+        if (!doc.exists || doc.data() == null) return null;
+        return UserModel.fromMap(doc.data()!);
+      } catch (_) {
+        return null;
+      }
     });
   }
 

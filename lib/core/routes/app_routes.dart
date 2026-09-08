@@ -22,6 +22,7 @@ import '../../features/feed/screens/feed_screen.dart';
 import '../../features/home/screens/calendar_screen.dart';
 import '../../features/home/screens/day_detail_screen.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/home/screens/transaction_browse_screen.dart';
 import '../../features/profile/screens/edit_profile_screen.dart';
 import '../../features/profile/screens/feedback_screen.dart';
 import '../../features/profile/screens/friend_requests_screen.dart';
@@ -183,11 +184,13 @@ class AppRoutes {
           return MaterialPageRoute(
             builder: (_) => GroupChatConversationScreen(
               groupId: args['groupId'] as String,
-              groupName: args['groupName'] as String,
+              groupName: (args['groupName'] as String?) ?? 'Nhóm',
               groupColor: args['groupColor'] as String?,
               memberUids: (args['memberUids'] as List<dynamic>?)
                   ?.map((e) => e.toString())
                   .toList(),
+              initialPostReply: args['initialPostReply'] as TransactionModel?,
+              initialPostAuthor: args['initialPostAuthor'] as UserModel?,
             ),
           );
         }
@@ -210,6 +213,14 @@ class AppRoutes {
       case RouteNames.rewind:
         return MaterialPageRoute(
           builder: (_) => const RewindScreen(),
+        );
+
+      case RouteNames.browseTransactions:
+        final transactions = settings.arguments as List<TransactionModel>?;
+        return MaterialPageRoute(
+          builder: (_) => TransactionBrowseScreen(
+            initialTransactions: transactions,
+          ),
         );
 
       default:
@@ -330,6 +341,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     final uid = context.read<AuthController>().user?.uid;
     if (uid == null || isRefreshingFeed) return;
 
+    context.read<FeedController>().triggerScrollToTop();
+
     setState(() {
       isRefreshingFeed = true;
     });
@@ -360,6 +373,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         await _reloadFeed(context);
         return;
       }
+
+      context.read<FeedController>().triggerScrollToTop();
 
       setState(() {
         index = value;

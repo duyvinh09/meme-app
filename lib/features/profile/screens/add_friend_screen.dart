@@ -163,6 +163,14 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
         return;
       }
 
+      setState(() {
+        if (result == 'auto_accepted') {
+          _connectionForFoundUser = AddFriendConnectionState.alreadyFriends;
+        } else {
+          _connectionForFoundUser = AddFriendConnectionState.pendingSent;
+        }
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: AppDurations.snackBar,
@@ -173,8 +181,6 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
           ),
         ),
       );
-
-      Navigator.pop(context);
     } catch (_) {
       if (!mounted) return;
 
@@ -444,6 +450,10 @@ class _FoundUserCard extends StatelessWidget {
     final name = user.name.trim().isEmpty ? context.l10n.user : user.name.trim();
     final username = user.username.trim();
 
+    final isFriend =
+        connectionState == AddFriendConnectionState.alreadyFriends;
+    final showOnline = user.isOnlineVisibleTo(isFriend: isFriend);
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -457,10 +467,32 @@ class _FoundUserCard extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.max,
         children: [
-          AvatarWithFrame(
-            avatarUrl: avatarUrl,
-            frameId: user.avatarFrame,
-            size: 58,
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AvatarWithFrame(
+                avatarUrl: avatarUrl,
+                frameId: user.avatarFrame,
+                size: 58,
+              ),
+              if (showOnline)
+                Positioned(
+                  bottom: 2,
+                  right: 2,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF22C55E),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: cardBg,
+                        width: 2.2,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
 
           const SizedBox(width: 12),

@@ -144,6 +144,23 @@ class _BalanceCardState extends State<BalanceCard> {
 
             const Spacer(),
 
+            // Nút Tìm kiếm — Duyệt giao dịch
+            _HeaderIconButton(
+              icon: Icons.search_rounded,
+              backgroundColor: actionBtnBg,
+              iconColor: actionIconColor,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                Navigator.pushNamed(
+                  context,
+                  RouteNames.browseTransactions,
+                  arguments: widget.transactions,
+                );
+              },
+            ),
+
+            const SizedBox(width: 8),
+
             // Top Button: Meme Rewind — Kỷ niệm chi tiêu
             _HeaderIconButton(
               icon: Icons.auto_awesome_rounded,

@@ -156,6 +156,11 @@ class _GroupsScreenState extends State<GroupsScreen> {
                       final currentAmount =
                       _toDouble(item['currentAmount']);
 
+                      final spentAmount =
+                      _toDouble(item['spentAmount']);
+
+                      final remainingBalance = currentAmount - spentAmount;
+
                       final progress = goalAmount <= 0
                           ? 0.0
                           : (currentAmount / goalAmount)
@@ -169,6 +174,10 @@ class _GroupsScreenState extends State<GroupsScreen> {
                         groupColor: groupColor,
                         memberCount: memberCount,
                         currentAmountText: money(currentAmount),
+                        spentAmount: spentAmount,
+                        spentAmountText: money(spentAmount),
+                        remainingBalance: remainingBalance,
+                        remainingBalanceText: money(remainingBalance),
                         goalAmountText: money(goalAmount),
                         progress: progress,
                         onTap: () async {
@@ -237,6 +246,10 @@ class _GroupTile extends StatelessWidget {
   final Color groupColor;
   final int memberCount;
   final String currentAmountText;
+  final double spentAmount;
+  final String spentAmountText;
+  final double remainingBalance;
+  final String remainingBalanceText;
   final String goalAmountText;
   final double progress;
   final VoidCallback onTap;
@@ -246,6 +259,10 @@ class _GroupTile extends StatelessWidget {
     required this.groupColor,
     required this.memberCount,
     required this.currentAmountText,
+    required this.spentAmount,
+    required this.spentAmountText,
+    required this.remainingBalance,
+    required this.remainingBalanceText,
     required this.goalAmountText,
     required this.progress,
     required this.onTap,
@@ -271,7 +288,7 @@ class _GroupTile extends StatelessWidget {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: groupColor.withOpacity(0.18),
+            color: groupColor.withValues(alpha: 0.18),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Icon(
@@ -291,23 +308,55 @@ class _GroupTile extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text(
-              memberCount > 0
-                  ? context.l10n.membersCount(memberCount)
-                  : context.l10n.noFriends,
-              style: AppTextStyles.caption(context).copyWith(
-                fontSize: 13,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  memberCount > 0
+                      ? context.l10n.membersCount(memberCount)
+                      : context.l10n.noFriends,
+                  style: AppTextStyles.caption(context).copyWith(
+                    fontSize: 13,
+                  ),
+                ),
+                Text(
+                  context.l10n.groupBalanceShort(remainingBalanceText),
+                  style: TextStyle(
+                    color: remainingBalance >= 0
+                        ? AppColors.income
+                        : AppColors.expense,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              '$currentAmountText / $goalAmountText',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: groupColor,
-                fontWeight: FontWeight.w800,
-              ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    '$currentAmountText / $goalAmountText',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: groupColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                if (spentAmount > 0)
+                  Text(
+                    context.l10n.groupSpentShort(spentAmountText),
+                    style: TextStyle(
+                      color: AppColors.expense,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 6),
             ClipRRect(
@@ -370,6 +419,13 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
   bool isCreating = false;
   String searchKeyword = '';
   final Set<String> selectedFriendIds = {};
+  late final Stream<List<Map<String, dynamic>>> _friendsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _friendsStream = widget.repo.streamFriends(widget.myUid);
+  }
 
   @override
   void dispose() {
@@ -472,6 +528,18 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
     }
   }
 
+  static String _removeVietnameseDiacritics(String str) {
+    const withDia =
+        'àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđĐ';
+    const withoutDia =
+        'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydD';
+    var result = str;
+    for (int i = 0; i < withDia.length; i++) {
+      result = result.replaceAll(withDia[i], withoutDia[i]);
+    }
+    return result.toLowerCase();
+  }
+
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<ProfileController>().currency;
@@ -480,7 +548,7 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
       backgroundColor: AppColors.background(context),
       body: SafeArea(
         child: StreamBuilder<List<Map<String, dynamic>>>(
-          stream: widget.repo.streamFriends(widget.myUid),
+          stream: _friendsStream,
           builder: (context, snapshot) {
             final friends = snapshot.data ?? [];
 
@@ -489,10 +557,16 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
 
               final name = (friend['name'] ?? '').toString().toLowerCase();
               final username =
-              (friend['username'] ?? '').toString().toLowerCase();
+                  (friend['username'] ?? '').toString().toLowerCase();
               final keyword = searchKeyword.trim().toLowerCase();
+              final cleanKeyword = _removeVietnameseDiacritics(keyword);
+              final cleanName = _removeVietnameseDiacritics(name);
+              final cleanUsername = _removeVietnameseDiacritics(username);
 
-              return name.contains(keyword) || username.contains(keyword);
+              return name.contains(keyword) ||
+                  username.contains(keyword) ||
+                  cleanName.contains(cleanKeyword) ||
+                  cleanUsername.contains(cleanKeyword);
             }).toList();
 
             return ListView(
@@ -751,6 +825,12 @@ class _CreateGroupScreenState extends State<CreateGroupScreen> {
                             searchKeyword = value;
                           });
                         },
+                        onClear: () {
+                          setState(() {
+                            searchController.clear();
+                            searchKeyword = '';
+                          });
+                        },
                       ),
 
                       const SizedBox(height: 24),
@@ -845,10 +925,12 @@ class _LargeInputBox extends StatelessWidget {
 class _SearchFriendBox extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
+  final VoidCallback? onClear;
 
   const _SearchFriendBox({
     required this.controller,
     required this.onChanged,
+    this.onClear,
   });
 
   @override
@@ -868,7 +950,7 @@ class _SearchFriendBox extends StatelessWidget {
           Icon(
             Icons.search_rounded,
             color: AppColors.textSecondary(context),
-            size: 30,
+            size: 28,
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -877,19 +959,35 @@ class _SearchFriendBox extends StatelessWidget {
               onChanged: onChanged,
               cursorColor: AppColors.primaryBlue,
               style: AppTextStyles.body(context).copyWith(
-                fontSize: 18,
+                fontSize: 17,
                 fontWeight: FontWeight.w600,
               ),
               decoration: TextInputDecoration(
                 hintText: context.l10n.friendsSearchHint,
                 hintStyle: AppTextStyles.bodySecondary(context).copyWith(
-                  color: AppColors.textSecondary(context).withOpacity(0.75),
-                  fontSize: 18,
+                  color: AppColors.textSecondary(context).withValues(alpha: 0.75),
+                  fontSize: 17,
                   fontWeight: FontWeight.w500,
                 ),
-              ).toInputDecoration(),
+              ).toInputDecoration().copyWith(
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+              ),
             ),
           ),
+          if (controller.text.isNotEmpty && onClear != null)
+            GestureDetector(
+              onTap: onClear,
+              child: Padding(
+                padding: const EdgeInsets.all(6),
+                child: Icon(
+                  Icons.cancel_rounded,
+                  color: AppColors.textSecondary(context),
+                  size: 22,
+                ),
+              ),
+            ),
         ],
       ),
     );

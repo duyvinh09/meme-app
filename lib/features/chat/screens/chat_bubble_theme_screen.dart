@@ -33,12 +33,15 @@ class _ChatBubbleThemeScreenState extends State<ChatBubbleThemeScreen> {
 
   Future<void> _saveTheme() async {
     HapticFeedback.mediumImpact();
-    await context.read<LocalSettingsService>().setChatBubbleTheme(_selectedThemeId);
-
+    final localSettings = context.read<LocalSettingsService>();
+    final userRepo = context.read<UserRepository>();
     final uid = context.read<AuthController>().user?.uid;
+
+    await localSettings.setChatBubbleTheme(_selectedThemeId);
+
     if (uid != null) {
       try {
-        await context.read<UserRepository>().updateUserProfile(uid, {
+        await userRepo.updateUserProfile(uid, {
           'chatBubbleTheme': _selectedThemeId,
         });
       } catch (_) {}

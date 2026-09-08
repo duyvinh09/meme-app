@@ -31,4 +31,5 @@ class RouteNames {
   static const chatBubbleTheme = '/chat-bubble-theme';
   static const chatList = '/chat-list';
   static const rewind = '/rewind';
+  static const browseTransactions = '/browse-transactions';
 }
