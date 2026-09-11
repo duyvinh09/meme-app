@@ -16,6 +16,7 @@ import '../../../core/widgets/async_filled_button.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../chat/controllers/chat_controller.dart';
+import '../../home/controllers/home_controller.dart';
 import '../../home/widgets/streak_detail_sheet.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/avatar_with_frame.dart';
@@ -29,20 +30,16 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  bool loaded = false;
+  String? _loadedUid;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    if (!loaded) {
-      final uid = context.read<AuthController>().user?.uid;
-
-      if (uid != null) {
-        context.read<ProfileController>().loadUser(uid);
-      }
-
-      loaded = true;
+    final uid = context.watch<AuthController>().user?.uid;
+    if (uid != null && uid.isNotEmpty && uid != _loadedUid) {
+      _loadedUid = uid;
+      context.read<ProfileController>().loadUser(uid);
     }
   }
 
@@ -489,8 +486,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileController>();
+    final home = context.watch<HomeController>();
     final auth = context.watch<AuthController>();
-    final user = profile.user;
+    final user = profile.user ?? home.profile;
 
     final createdAt = user?.createdAt;
     final createdAtText = createdAt != null
@@ -517,7 +515,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ),
-      body: ListView(
+      body: RefreshIndicator(
+        onRefresh: () async {
+          final uid = context.read<AuthController>().user?.uid;
+          if (uid != null && uid.isNotEmpty) {
+            await Future.wait([
+              context.read<ProfileController>().refreshUser(uid),
+              context.read<HomeController>().refreshProfile(uid),
+            ]);
+          }
+        },
+        child: ListView(
         padding: const EdgeInsets.fromLTRB(
           AppSizes.pagePadding,
           8,
@@ -648,7 +656,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               StreakDetailSheet.show(
                 context,
                 user: user,
-                hasPostedToday: true,
               );
             },
             child: Container(
@@ -911,6 +918,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 titleColor: const Color(0xFFFF5252),
                 onTap: () async {
                   context.read<ChatController>().disposeListeners();
+                  context.read<ProfileController>().clear();
                   await auth.logout();
 
                   if (context.mounted) {
@@ -926,7 +934,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _buildAchievementStat(

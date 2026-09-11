@@ -66,12 +66,15 @@ class _StreakDetailSheetState extends State<StreakDetailSheet> {
   }
 
   Future<void> _handleSelectFrame(AvatarFrameItem frame) async {
-    final streak = widget.user?.currentStreak ?? 0;
-    final bestStreak = widget.user?.bestStreak ?? 0;
+    final currentUser = context.read<ProfileController>().user ??
+        context.read<HomeController>().profile;
+    final user = currentUser ?? widget.user;
+    final streak = user?.currentStreak ?? 0;
+    final bestStreak = user?.bestStreak ?? 0;
     if (!frame.isUnlocked(streak, bestStreak: bestStreak)) {
       AppToast.show(
         context,
-        context.l10n.needStreakToUnlock(frame.requiredStreak, frame.name),
+        context.l10n.needStreakToUnlock(frame.requiredStreak, frame.getName(context)),
         icon: Icons.lock_rounded,
       );
       return;
@@ -96,7 +99,11 @@ class _StreakDetailSheetState extends State<StreakDetailSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
-    final user = widget.user;
+    final currentUser = context.watch<ProfileController>().user ??
+        context.watch<HomeController>().profile;
+    final user = (widget.user != null && widget.user?.uid == currentUser?.uid)
+        ? (currentUser ?? widget.user)
+        : (widget.user ?? currentUser);
     final currentStreak = user?.currentStreak ?? 0;
     final bestStreak = user?.bestStreak ?? 0;
     final effectiveStreak = currentStreak > bestStreak ? currentStreak : bestStreak;
@@ -170,58 +177,60 @@ class _StreakDetailSheetState extends State<StreakDetailSheet> {
                 ],
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
+
+              // Title with Flame Icon (placed outside scroll view so glow halo is not clipped)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 6, 4, 14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFFF416C).withValues(alpha: 0.15),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF416C).withValues(alpha: 0.32),
+                            blurRadius: 14,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.local_fire_department_rounded,
+                          color: Color(0xFFFF416C),
+                          size: 22,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        context.l10n.dailyMemeStreak,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: textPrimary,
+                          letterSpacing: -0.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
               Expanded(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(top: 4),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
-              // Title with Flame Icon
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFFFF416C).withValues(alpha: 0.15),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF416C).withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.local_fire_department_rounded,
-                        color: Color(0xFFFF416C),
-                        size: 22,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      context.l10n.dailyMemeStreak,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: textPrimary,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 18),
 
               // 3-Column Stats: Streak | Best Streak | Collection
               IntrinsicHeight(
@@ -782,7 +791,7 @@ class _StreakDetailSheetState extends State<StreakDetailSheet> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Hãy tiếp tục duy trì chuỗi khoảnh khắc tuyệt vời mỗi ngày!',
+                            context.l10n.allFramesUnlockedDesc,
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,

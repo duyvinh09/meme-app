@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -38,6 +42,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   late int currentIndex;
 
   bool isSavingMedia = false;
+  bool isSharingMedia = false;
 
   @override
   void initState() {
@@ -143,6 +148,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   }
 
   Future<void> _showMoreMenu(TransactionModel tx) async {
+    if (isSavingMedia || isSharingMedia) return;
     final l10n = context.l10n;
     final result = await showModalBottomSheet<String>(
       context: context,
@@ -163,11 +169,17 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                   width: 44,
                   height: 5,
                   decoration: BoxDecoration(
-                    color: AppColors.textSecondary(context).withOpacity(0.22),
+                    color: AppColors.textSecondary(context).withValues(alpha: 0.22),
                     borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                   ),
                 ),
                 const SizedBox(height: 16),
+                _BottomSheetActionTile(
+                  icon: Icons.share_rounded,
+                  title: l10n.share,
+                  color: AppColors.textPrimary(context),
+                  onTap: () => Navigator.pop(sheetContext, 'share'),
+                ),
                 _BottomSheetActionTile(
                   icon: Icons.download_rounded,
                   title: tx.isVideo
@@ -191,10 +203,140 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
     if (!mounted || result == null) return;
 
-    if (result == 'save') {
+    if (result == 'share') {
+      await _shareTransaction(tx);
+    } else if (result == 'save') {
       await _saveMediaToGallery(tx);
     } else if (result == 'delete') {
       await _deleteTransaction(tx);
+    }
+  }
+
+  Future<void> _shareTransaction(TransactionModel tx) async {
+    final l10n = context.l10n;
+    final currency = context.read<ProfileController>().currency;
+    final isContribution = tx.isGroupContribution ||
+        (tx.privacy == 'group' &&
+            (tx.category == 'Quỹ nhóm' || tx.category == 'Group Fund'));
+    final amountText = AppCurrencyFormatter.formatFromVnd(
+      amountVnd: tx.amount.abs(),
+      currency: currency,
+    );
+
+    final privacyText = tx.privacy == 'private'
+        ? l10n.private
+        : (tx.privacy == 'close_friends'
+            ? l10n.closeFriends
+            : (tx.privacy == 'group'
+                ? (tx.groupName?.trim().isNotEmpty == true
+                    ? tx.groupName!
+                    : l10n.groupBadge)
+                : l10n.everyone));
+
+    final shareText = StringBuffer()
+      ..writeln('Meme')
+      ..writeln()
+      ..writeln(l10n.shareType(isContribution
+          ? l10n.groupFundDeposit
+          : (tx.type == 'expense' ? l10n.expense : l10n.income)))
+      ..writeln(l10n.shareCategory(
+          BudgetNameLocalizer.display(context, tx.category)));
+
+    if (tx.amount != 0) {
+      shareText.writeln(l10n.shareAmount(
+          '${(isContribution ? '+' : (tx.type == 'expense' ? '-' : '+'))}$amountText'));
+    }
+
+    final details = tx.caption.trim().isNotEmpty
+        ? tx.caption.trim()
+        : tx.note.trim();
+    if (details.isNotEmpty) {
+      shareText.writeln(l10n.shareDetails(details));
+    }
+
+    shareText.writeln(l10n.sharePrivacy(privacyText));
+
+    final mediaUrl = tx.isVideo ? tx.playableVideoUrl : tx.displayImageUrl;
+
+    try {
+      setState(() {
+        isSharingMedia = true;
+      });
+
+      File? shareFile;
+      final trimmedUrl = mediaUrl.trim();
+
+      if (trimmedUrl.isNotEmpty) {
+        final localFile = File(trimmedUrl);
+        if (await localFile.exists()) {
+          shareFile = localFile;
+        } else if (trimmedUrl.startsWith('http://') ||
+            trimmedUrl.startsWith('https://')) {
+          final uri = Uri.tryParse(trimmedUrl);
+          if (uri != null) {
+            try {
+              final response = await http
+                  .get(uri)
+                  .timeout(const Duration(seconds: 25));
+              if (response.statusCode == 200 &&
+                  response.bodyBytes.isNotEmpty) {
+                final tempDir = await getTemporaryDirectory();
+                final ext = tx.isVideo
+                    ? 'mp4'
+                    : (trimmedUrl.toLowerCase().contains('.png')
+                        ? 'png'
+                        : (trimmedUrl.toLowerCase().contains('.webp')
+                            ? 'webp'
+                            : 'jpg'));
+                final file = File(
+                  '${tempDir.path}/meme_share_${DateTime.now().millisecondsSinceEpoch}.$ext',
+                );
+                shareFile = await file.writeAsBytes(response.bodyBytes);
+              }
+            } catch (e) {
+              debugPrint('Error downloading media for share: $e');
+            }
+          }
+        }
+      }
+
+      if (!mounted) return;
+
+      final box = context.findRenderObject() as RenderBox?;
+      final origin = box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : null;
+
+      if (shareFile != null && await shareFile.exists()) {
+        // ignore: deprecated_member_use
+        await Share.shareXFiles(
+          [XFile(shareFile.path)],
+          text: shareText.toString(),
+          sharePositionOrigin: origin,
+        );
+      } else {
+        // ignore: deprecated_member_use
+        await Share.share(
+          shareText.toString(),
+          sharePositionOrigin: origin,
+        );
+      }
+    } catch (e) {
+      debugPrint('Share transaction error: $e');
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.cannotShareNow),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSharingMedia = false;
+        });
+      }
     }
   }
 
@@ -368,7 +510,9 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                 children: [
                   _TopGlassButton(
                     icon: Icons.more_horiz_rounded,
-                    onTap: () => _showMoreMenu(tx),
+                    onTap: (isSavingMedia || isSharingMedia)
+                        ? null
+                        : () => _showMoreMenu(tx),
                     backgroundColor: glassColor,
                     borderColor: glassBorder,
                     iconColor: primaryText,
@@ -440,22 +584,25 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                         Expanded(
                           child: Column(
                             children: [
-                              AspectRatio(
-                                aspectRatio: 1,
-                                child: _MomentMediaCard(
-                                  transaction: item,
-                                  currency: currency,
-                                  amountText: _formatMoney(item, currency),
-                                  chipColor: _chipColorFromTransaction(item),
-                                  primaryText: primaryText,
-                                  glassBorder: glassBorder,
-                                  overlayCardBg: overlayCardBg,
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                                child: AspectRatio(
+                                  aspectRatio: 1,
+                                  child: _MomentMediaCard(
+                                    transaction: item,
+                                    currency: currency,
+                                    amountText: _formatMoney(item, currency),
+                                    chipColor: _chipColorFromTransaction(item),
+                                    primaryText: primaryText,
+                                    glassBorder: glassBorder,
+                                    overlayCardBg: overlayCardBg,
+                                  ),
                                 ),
                               ),
 
                               const SizedBox(height: 16),
 
-                              if (isSavingMedia)
+                              if (isSavingMedia || isSharingMedia)
                                 const Padding(
                                   padding: EdgeInsets.only(bottom: 10),
                                   child: CircularProgressIndicator(),
@@ -556,7 +703,15 @@ class _MomentMediaCard extends StatelessWidget {
       case 'Khác':
       case 'Other':
         return l10n.other;
+      case 'Quỹ nhóm':
+      case 'Group Fund':
+        return l10n.groupFundCategory;
       default:
+        if (category.trim().toLowerCase() == 'quỹ nhóm' ||
+            category.trim().toLowerCase() == 'group fund' ||
+            category.trim().toLowerCase() == l10n.groupFundCategory.toLowerCase()) {
+          return l10n.groupFundCategory;
+        }
         return BudgetNameLocalizer.display(context, category);
     }
   }
@@ -611,8 +766,8 @@ class _MomentMediaCard extends StatelessWidget {
           ),
 
           Positioned(
-            top: 18,
-            left: 18,
+            top: 14,
+            left: 14,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppSizes.radiusPill),
               child: BackdropFilter(
@@ -622,22 +777,22 @@ class _MomentMediaCard extends StatelessWidget {
                 ),
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 10,
+                    horizontal: 12,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: chipColor.withOpacity(isDark ? 0.22 : 0.16),
                     borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                     border: Border.all(
                       color: chipColor,
-                      width: 1.4,
+                      width: 1.2,
                     ),
                   ),
                   child: Text(
                     _localizedCategoryLabel(context, transaction.category),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -852,14 +1007,14 @@ class _MomentMutedVideoPlayerState extends State<_MomentMutedVideoPlayer> {
 
 class _TopGlassButton extends StatelessWidget {
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final Color backgroundColor;
   final Color borderColor;
   final Color iconColor;
 
   const _TopGlassButton({
     required this.icon,
-    required this.onTap,
+    this.onTap,
     required this.backgroundColor,
     required this.borderColor,
     required this.iconColor,

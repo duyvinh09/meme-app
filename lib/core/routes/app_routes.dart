@@ -32,6 +32,7 @@ import '../../features/profile/screens/manage_categories_screen.dart';
 import '../../features/profile/controllers/user_category_controller.dart';
 import '../../features/profile/screens/app_icon_picker_screen.dart';
 import '../../features/profile/screens/camera_theme_picker_screen.dart';
+import '../../features/profile/controllers/profile_controller.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
 import '../../features/stats/screens/stats_screen.dart';
@@ -289,6 +290,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
       final uid = context.read<AuthController>().user?.uid;
       if (uid != null) {
+        context.read<ProfileController>().loadUser(uid);
         context.read<UserCategoryController>().load(uid);
         context.read<ChatController>().initIncomingMessageListener(uid);
         _updatePresence(true);
@@ -394,6 +396,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
         _showCaptureFabNow();
       } else {
         _captureFabTimer?.cancel();
+      }
+      if (value == 4) {
+        final uid = context.read<AuthController>().user?.uid;
+        if (uid != null) {
+          context.read<ProfileController>().refreshUser(uid);
+        }
       }
     }
   }

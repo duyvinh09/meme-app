@@ -62,7 +62,15 @@ class RecentTransactionCard extends StatelessWidget {
       case 'Khác':
       case 'Other':
         return l10n.other;
+      case 'Quỹ nhóm':
+      case 'Group Fund':
+        return l10n.groupFundCategory;
       default:
+        if (category.trim().toLowerCase() == 'quỹ nhóm' ||
+            category.trim().toLowerCase() == 'group fund' ||
+            category.trim().toLowerCase() == l10n.groupFundCategory.toLowerCase()) {
+          return l10n.groupFundCategory;
+        }
         return BudgetNameLocalizer.display(context, category);
     }
   }

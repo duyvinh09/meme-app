@@ -125,30 +125,47 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     }
 
     if (offset > 20) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
       final stackBox = _listStackKey.currentContext?.findRenderObject() as RenderBox?;
-      final double listTopGlobalY = (stackBox != null && stackBox.hasSize)
+      final double listTopGlobalY = (stackBox != null && stackBox.hasSize && stackBox.attached)
           ? stackBox.localToGlobal(Offset.zero).dy
           : 0.0;
-      const double floatingHeaderTriggerY = 55.0;
+      const double floatingHeaderTriggerY = 10.0;
       final double triggerGlobalY = listTopGlobalY + floatingHeaderTriggerY;
 
-      DateTime activeDate = messages.first.createdAt;
+      DateTime? matchedDate;
 
-      for (int i = 0; i < messages.length; i++) {
-        final msg = messages[i];
-        final gKey = _itemKeys[msg.id];
-        final box = gKey?.currentContext?.findRenderObject() as RenderBox?;
-        if (box != null && box.hasSize) {
-          final topY = box.localToGlobal(Offset.zero).dy;
-          final bottomY = topY + box.size.height;
-          if (topY <= triggerGlobalY) {
-            activeDate = msg.createdAt;
-            if (bottomY >= triggerGlobalY) {
+      // When scrolled near or to the very top (oldest messages / start of conversation)
+      if (offset >= maxScroll - 30) {
+        matchedDate = messages.last.createdAt;
+      } else {
+        double? minDistance;
+
+        for (int i = 0; i < messages.length; i++) {
+          final msg = messages[i];
+          final gKey = _itemKeys[msg.id];
+          final box = gKey?.currentContext?.findRenderObject() as RenderBox?;
+          if (box != null && box.hasSize && box.attached) {
+            final topY = box.localToGlobal(Offset.zero).dy;
+            final bottomY = topY + box.size.height;
+            if (topY <= triggerGlobalY && bottomY >= triggerGlobalY) {
+              matchedDate = msg.createdAt;
               break;
+            }
+
+            final distance = (topY - triggerGlobalY).abs();
+            if (minDistance == null || distance < minDistance) {
+              minDistance = distance;
+              matchedDate = msg.createdAt;
             }
           }
         }
       }
+
+      final activeDate = matchedDate ??
+          (offset > (maxScroll > 0 ? maxScroll * 0.5 : 50)
+              ? messages.last.createdAt
+              : messages.first.createdAt);
 
       final formatted = _formatFloatingDate(activeDate);
 
@@ -205,6 +222,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
   }
 
   void _onFocusChanged() {
+    if (mounted) setState(() {});
     if (!_textFocusNode.hasFocus) {
       final myUid = context.read<AuthController>().user?.uid;
       _stopTypingHeartbeat(myUid);
@@ -1585,34 +1603,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                 ),
               ),
 
-            // Emoji Quick Drawer (if opened)
-            if (_showEmojiGrid)
-              Container(
-                height: 180,
-                color: isDark ? const Color(0xFF181A22) : const Color(0xFFF3F4F6),
-                child: GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 8,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                  ),
-                  itemCount: emojiList.length,
-                  itemBuilder: (context, index) {
-                    final em = emojiList[index];
-                    return GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => _sendEmojiDirect(em),
-                      child: Center(
-                        child: Text(em, style: const TextStyle(fontSize: 26)),
-                      ),
-                    );
-                  },
-                ),
-              ),
-
-            // Modern Input Bar exact match to Screenshot 1
-            // Footer Input Bar exact match to Group Chat
+            // Modern Input Bar
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
@@ -1647,40 +1638,82 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                     },
                   ),
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: TextField(
-                        controller: _textController,
-                        focusNode: _textFocusNode,
-                        maxLines: 4,
-                        minLines: 1,
-                        textCapitalization: TextCapitalization.sentences,
-                        style: TextStyle(
-                          fontSize: 14.5,
-                          color: AppColors.textPrimary(context),
-                        ),
-                        decoration: InputDecoration(
-                          hintText: context.l10n.typeMessageHint,
-                          hintStyle: TextStyle(
-                            fontSize: 14.5,
-                            color: AppColors.textSecondary(context).withValues(alpha: 0.7),
+                    child: AnimatedBuilder(
+                      animation: _textFocusNode,
+                      builder: (context, child) {
+                        final isFocused = _textFocusNode.hasFocus;
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? (isFocused
+                                    ? Colors.white.withValues(alpha: 0.12)
+                                    : Colors.white.withValues(alpha: 0.08))
+                                : (isFocused
+                                    ? Colors.black.withValues(alpha: 0.07)
+                                    : Colors.black.withValues(alpha: 0.05)),
+                            borderRadius: BorderRadius.circular(24),
+                            border: Border.all(
+                              color: isFocused
+                                  ? AppColors.primaryBlue
+                                  : (isDark
+                                      ? Colors.white.withValues(alpha: 0.10)
+                                      : Colors.black.withValues(alpha: 0.08)),
+                              width: 1.2,
+                            ),
                           ),
-                          border: InputBorder.none,
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          child: child,
+                        );
+                      },
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          inputDecorationTheme: const InputDecorationTheme(
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            filled: false,
+                            fillColor: Colors.transparent,
+                          ),
                         ),
-                        onSubmitted: (_) => _sendMessage(),
-                        onTap: () {
-                          if (_showEmojiGrid) {
-                            setState(() => _showEmojiGrid = false);
-                          }
-                        },
+                        child: TextField(
+                          controller: _textController,
+                          focusNode: _textFocusNode,
+                          maxLines: 4,
+                          minLines: 1,
+                          textAlignVertical: TextAlignVertical.center,
+                          textCapitalization: TextCapitalization.sentences,
+                          style: TextStyle(
+                            fontSize: 14.5,
+                            color: AppColors.textPrimary(context),
+                          ),
+                          decoration: InputDecoration(
+                            hintText: context.l10n.typeMessageHint,
+                            hintStyle: TextStyle(
+                              fontSize: 14.5,
+                              color: AppColors.textSecondary(context).withValues(alpha: 0.7),
+                            ),
+                            filled: false,
+                            fillColor: Colors.transparent,
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            disabledBorder: InputBorder.none,
+                            errorBorder: InputBorder.none,
+                            focusedErrorBorder: InputBorder.none,
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onSubmitted: (_) => _sendMessage(),
+                          onTap: () {
+                            if (_showEmojiGrid) {
+                              setState(() => _showEmojiGrid = false);
+                            }
+                          },
+                        ),
                       ),
                     ),
                   ),
@@ -1702,6 +1735,32 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                 ],
               ),
             ),
+
+            // Emoji Quick Drawer (if opened)
+            if (_showEmojiGrid)
+              Container(
+                height: 180,
+                color: isDark ? const Color(0xFF181A22) : const Color(0xFFF3F4F6),
+                child: GridView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 8,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                  ),
+                  itemCount: emojiList.length,
+                  itemBuilder: (context, index) {
+                    final em = emojiList[index];
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () => _sendEmojiDirect(em),
+                      child: Center(
+                        child: Text(em, style: const TextStyle(fontSize: 26)),
+                      ),
+                    );
+                  },
+                ),
+              ),
           ],
         ),
       ),

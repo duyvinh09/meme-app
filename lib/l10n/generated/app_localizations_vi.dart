@@ -1953,12 +1953,31 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get allFramesUnlockedDesc =>
-      'Bạn đã chinh phục tất cả các cột mốc chuỗi cao nhất!';
+      'Hãy tiếp tục duy trì chuỗi khoảnh khắc tuyệt vời mỗi ngày!';
 
   @override
   String needStreakToUnlock(int days, String frameName) {
     return 'Đạt chuỗi $days ngày để mở khóa khung $frameName!';
   }
+
+  @override
+  String get streakMilestoneUnlocked => 'Mở khóa cột mốc mới!';
+
+  @override
+  String streakMilestoneDaysLabel(int days) {
+    return '$days ngày';
+  }
+
+  @override
+  String get streakMilestoneContinue => 'Tiếp tục';
+
+  @override
+  String get streakRewardAvatarFrameHint =>
+      'Mở mục Chuỗi để nhận & đổi khung avatar mới!';
+
+  @override
+  String get streakRewardCameraThemeHint =>
+      'Mở khóa Khung avatar & Khám phá Chủ đề máy ảnh mới!';
 
   @override
   String get today => 'Hôm nay';
@@ -2658,5 +2677,92 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String spentBy(String name) {
     return 'Người chi: $name';
+  }
+
+  @override
+  String get seeAll => 'Xem tất cả';
+
+  @override
+  String get groupStatsContributionAndExpense => 'Thống kê Góp & Chi';
+
+  @override
+  String get groupStatsFundFlowSubtitle => 'Tình hình luân chuyển quỹ nhóm';
+
+  @override
+  String groupContributionCount(int count) {
+    return '$count lượt nạp quỹ';
+  }
+
+  @override
+  String groupExpenseCount(int count) {
+    return '$count lần chi tiêu';
+  }
+
+  @override
+  String get groupFundUsageRatio => 'Tỷ lệ sử dụng quỹ';
+
+  @override
+  String groupSurplusWithAmount(String amount) {
+    return 'Còn dư $amount';
+  }
+
+  @override
+  String groupDeficitWithAmount(String amount) {
+    return 'Thâm hụt $amount';
+  }
+
+  @override
+  String groupSpentPercent(String percent) {
+    return 'Đã chi $percent%';
+  }
+
+  @override
+  String groupRemainingPercent(String percent) {
+    return 'Còn lại $percent%';
+  }
+
+  @override
+  String get groupTopSpendingCategories => 'Top danh mục chi tiêu quỹ';
+
+  @override
+  String get groupActivitiesAndTransactions => 'Hoạt động & Giao dịch quỹ';
+
+  @override
+  String groupFilterAllWithCount(int count) {
+    return 'Tất cả ($count)';
+  }
+
+  @override
+  String groupFilterContributedWithCount(int count) {
+    return 'Đã góp ($count)';
+  }
+
+  @override
+  String groupFilterSpentWithCount(int count) {
+    return 'Đã chi ($count)';
+  }
+
+  @override
+  String get groupNoContributionsYet => 'Chưa có khoản góp nào';
+
+  @override
+  String get groupNoFundTransactionsYet => 'Chưa có giao dịch quỹ nào';
+
+  @override
+  String get groupNoContributionsDesc =>
+      'Các khoản nạp vào quỹ nhóm sẽ hiển thị ở đây';
+
+  @override
+  String get groupNoFundTransactionsDesc =>
+      'Góp quỹ và chi tiêu nhóm sẽ được thống kê tại đây';
+
+  @override
+  String groupMemberSurplus(String amount) {
+    return 'Dư: +$amount';
+  }
+
+  @override
+  String groupMemberDeficit(String amount) {
+    return 'Chi vượt: -$amount';
   }
 }

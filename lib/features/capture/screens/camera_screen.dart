@@ -643,7 +643,7 @@ class _CameraScreenState extends State<CameraScreen>
     await _disposeCameraController();
     if (!mounted || _isDisposed) return;
 
-    await Navigator.push(
+    final result = await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => previewScreen,
@@ -651,6 +651,19 @@ class _CameraScreenState extends State<CameraScreen>
     );
 
     if (!mounted || _isDisposed) return;
+
+    if (result == true || result == 'close') {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, result);
+      } else {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          RouteNames.mainShell,
+          (route) => false,
+        );
+      }
+      return;
+    }
+
     final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
     if (!isCurrentRoute) return;
 
@@ -888,7 +901,7 @@ class _CameraScreenState extends State<CameraScreen>
     if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
     await _navigateToPreview(
-      const PreviewScreen(
+      _buildPreviewScreen(
         imageFile: null,
         videoFile: null,
         mediaType: 'none',

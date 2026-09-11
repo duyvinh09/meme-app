@@ -297,7 +297,17 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
 
                     const SizedBox(height: 18),
 
-                    _GroupExpenseHistorySection(
+                    _GroupFundStatisticsCard(
+                      groupId: groupId,
+                      groupColor: groupColor,
+                      currency: currency,
+                      money: money,
+                      goalAmount: goalAmount,
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    _GroupTransactionActivitySection(
                       groupId: groupId,
                       groupColor: groupColor,
                       currency: currency,
@@ -929,7 +939,448 @@ class _GoalProgressCard extends StatelessWidget {
   }
 }
 
-class _GroupExpenseHistorySection extends StatelessWidget {
+class _GroupFundStatisticsCard extends StatelessWidget {
+  final String groupId;
+  final Color groupColor;
+  final String currency;
+  final String Function(double value) money;
+  final double goalAmount;
+
+  const _GroupFundStatisticsCard({
+    required this.groupId,
+    required this.groupColor,
+    required this.currency,
+    required this.money,
+    required this.goalAmount,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final txRepo = context.read<TransactionRepository>();
+
+    return StreamBuilder<List<TransactionModel>>(
+      stream: txRepo.streamGroupTransactions(groupId),
+      builder: (ctx, snapshot) {
+        final allTxs = snapshot.data ?? [];
+
+        // Tiền nạp/góp vào quỹ nhóm
+        final contributionTxs = allTxs.where((tx) =>
+            tx.isGroupContribution ||
+            tx.category == 'Quỹ nhóm' ||
+            tx.category == 'Group Fund' ||
+            (tx.privacy == 'group' && tx.type == 'income')
+        ).toList();
+
+        // Tiền chi tiêu từ quỹ nhóm
+        final expenseTxs = allTxs.where((tx) =>
+            tx.isGroupExpense ||
+            (tx.privacy == 'group' &&
+                tx.type == 'expense' &&
+                !tx.isGroupContribution &&
+                tx.category != 'Quỹ nhóm' &&
+                tx.category != 'Group Fund')
+        ).toList();
+
+        double totalContributed = 0;
+        for (final tx in contributionTxs) {
+          totalContributed += tx.amount;
+        }
+
+        double totalSpent = 0;
+        final Map<String, double> categorySpentMap = {};
+        for (final tx in expenseTxs) {
+          totalSpent += tx.amount;
+          final cat = tx.category.trim().isNotEmpty
+              ? tx.category.trim()
+              : context.l10n.groupExpense;
+          categorySpentMap[cat] = (categorySpentMap[cat] ?? 0) + tx.amount;
+        }
+
+        final remainingFund = totalContributed - totalSpent;
+        final isSurplus = remainingFund >= 0;
+
+        // Tính tỷ lệ % phân bổ quỹ
+        final double spentRatio = totalContributed > 0
+            ? (totalSpent / totalContributed).clamp(0.0, 1.0)
+            : (totalSpent > 0 ? 1.0 : 0.0);
+        final double remainingRatio = totalContributed > 0
+            ? (remainingFund > 0 ? remainingFund / totalContributed : 0.0).clamp(0.0, 1.0)
+            : 0.0;
+
+        // Sắp xếp top danh mục chi tiêu
+        final sortedCategories = categorySpentMap.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+        final topCategories = sortedCategories.take(4).toList();
+
+        return _SectionCard(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: groupColor.withValues(alpha: 0.14),
+                    ),
+                    child: Icon(
+                      Icons.analytics_rounded,
+                      color: groupColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          context.l10n.groupStatsContributionAndExpense,
+                          style: AppTextStyles.sectionTitle(context).copyWith(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        Text(
+                          context.l10n.groupStatsFundFlowSubtitle,
+                          style: AppTextStyles.caption(context).copyWith(
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // 2 Thẻ lớn: Tổng Góp & Tổng Chi
+              Row(
+                children: [
+                  // Cột Góp
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_downward_rounded,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.groupTotalContributed,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption(context).copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          FittedBox(
+                            alignment: Alignment.centerLeft,
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              money(totalContributed),
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF10B981),
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            context.l10n.groupContributionCount(contributionTxs.length),
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 11,
+                              color: AppColors.textSecondary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Cột Chi
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.expense.withValues(alpha: 0.09),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.expense.withValues(alpha: 0.22),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.expense,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.arrow_upward_rounded,
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  context.l10n.groupTotalSpent,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.caption(context).copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                    color: AppColors.expense,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          FittedBox(
+                            alignment: Alignment.centerLeft,
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              money(totalSpent),
+                              style: const TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w900,
+                                color: AppColors.expense,
+                                letterSpacing: -0.3,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            context.l10n.groupExpenseCount(expenseTxs.length),
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 11,
+                              color: AppColors.textSecondary(context),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Thanh tỷ lệ Quỹ (Fund Allocation Bar)
+              if (totalContributed > 0 || totalSpent > 0) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface(context),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.innerBorder(context),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            context.l10n.groupFundUsageRatio,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            isSurplus
+                                ? context.l10n.groupSurplusWithAmount(money(remainingFund))
+                                : context.l10n.groupDeficitWithAmount(money(remainingFund.abs())),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: isSurplus
+                                  ? const Color(0xFF10B981)
+                                  : AppColors.expense,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Multi-segment Bar
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                        child: Container(
+                          height: 8,
+                          color: AppColors.innerBorder(context),
+                          child: Row(
+                            children: [
+                              if (spentRatio > 0)
+                                Flexible(
+                                  flex: (spentRatio * 1000).toInt(),
+                                  child: Container(
+                                    color: AppColors.expense,
+                                  ),
+                                ),
+                              if (remainingRatio > 0)
+                                Flexible(
+                                  flex: (remainingRatio * 1000).toInt(),
+                                  child: Container(
+                                    color: const Color(0xFF10B981),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: AppColors.expense,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                context.l10n.groupSpentPercent((spentRatio * 100).toStringAsFixed(1)),
+                                style: AppTextStyles.caption(context).copyWith(fontSize: 11),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFF10B981),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                context.l10n.groupRemainingPercent((remainingRatio * 100).toStringAsFixed(1)),
+                                style: AppTextStyles.caption(context).copyWith(fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+
+              // Top danh mục chi tiêu của quỹ
+              if (topCategories.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                Text(
+                  context.l10n.groupTopSpendingCategories,
+                  style: AppTextStyles.caption(context).copyWith(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                    color: AppColors.textSecondary(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...topCategories.map((entry) {
+                  final catName = BudgetNameLocalizer.display(context, entry.key);
+                  final catAmount = entry.value;
+                  final catRatio = totalSpent > 0 ? (catAmount / totalSpent).clamp(0.0, 1.0) : 0.0;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              catName,
+                              style: AppTextStyles.body(context).copyWith(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Text(
+                              '${money(catAmount)} (${(catRatio * 100).toStringAsFixed(0)}%)',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.expense,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                          child: LinearProgressIndicator(
+                            value: catRatio,
+                            minHeight: 5,
+                            backgroundColor: AppColors.innerBorder(context),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.expense.withValues(alpha: 0.8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _GroupTransactionActivitySection extends StatefulWidget {
   final String groupId;
   final Color groupColor;
   final String currency;
@@ -937,7 +1388,7 @@ class _GroupExpenseHistorySection extends StatelessWidget {
   final String Function(double value) money;
   final String myUid;
 
-  const _GroupExpenseHistorySection({
+  const _GroupTransactionActivitySection({
     required this.groupId,
     required this.groupColor,
     required this.currency,
@@ -945,6 +1396,16 @@ class _GroupExpenseHistorySection extends StatelessWidget {
     required this.money,
     required this.myUid,
   });
+
+  @override
+  State<_GroupTransactionActivitySection> createState() =>
+      _GroupTransactionActivitySectionState();
+}
+
+class _GroupTransactionActivitySectionState
+    extends State<_GroupTransactionActivitySection> {
+  // 0: Tất cả, 1: Đã góp (+), 2: Đã chi (-)
+  int _activeFilter = 0;
 
   String _formatDateTime(BuildContext context, DateTime dt) {
     final locale = Localizations.localeOf(context).languageCode;
@@ -961,12 +1422,28 @@ class _GroupExpenseHistorySection extends StatelessWidget {
   }
 
   Map<String, dynamic>? _findMember(String uid) {
-    for (final m in members) {
+    for (final m in widget.members) {
       if ((m['uid'] ?? '').toString() == uid) {
         return m;
       }
     }
     return null;
+  }
+
+  bool _isContribution(TransactionModel tx) {
+    return tx.isGroupContribution ||
+        tx.category == 'Quỹ nhóm' ||
+        tx.category == 'Group Fund' ||
+        (tx.privacy == 'group' && tx.type == 'income');
+  }
+
+  bool _isExpense(TransactionModel tx) {
+    return tx.isGroupExpense ||
+        (tx.privacy == 'group' &&
+            tx.type == 'expense' &&
+            !tx.isGroupContribution &&
+            tx.category != 'Quỹ nhóm' &&
+            tx.category != 'Group Fund');
   }
 
   @override
@@ -985,18 +1462,18 @@ class _GroupExpenseHistorySection extends StatelessWidget {
                 height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: AppColors.expense.withValues(alpha: 0.14),
+                  color: widget.groupColor.withValues(alpha: 0.14),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.receipt_long_rounded,
-                  color: AppColors.expense,
+                  color: widget.groupColor,
                   size: 19,
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  context.l10n.groupExpenseHistory,
+                  context.l10n.groupActivitiesAndTransactions,
                   style: AppTextStyles.sectionTitle(context).copyWith(
                     fontSize: 18,
                     fontWeight: FontWeight.w900,
@@ -1007,7 +1484,7 @@ class _GroupExpenseHistorySection extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           StreamBuilder<List<TransactionModel>>(
-            stream: txRepo.streamGroupTransactions(groupId),
+            stream: txRepo.streamGroupTransactions(widget.groupId),
             builder: (ctx, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting &&
                   !snapshot.hasData) {
@@ -1020,223 +1497,326 @@ class _GroupExpenseHistorySection extends StatelessWidget {
               }
 
               final allTransactions = snapshot.data ?? [];
-              // Lọc chỉ lấy các khoản thành viên thực sự đã chi tiêu từ quỹ nhóm
-              final transactions = allTransactions.where((tx) =>
-                  tx.isGroupExpense ||
-                  (tx.privacy == 'group' &&
-                      tx.type == 'expense' &&
-                      !tx.isGroupContribution &&
-                      tx.category != 'Quỹ nhóm' &&
-                      tx.category != 'Group Fund')
-              ).toList();
-              transactions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              final contributions = allTransactions.where(_isContribution).toList();
+              final expenses = allTransactions.where(_isExpense).toList();
 
-              if (transactions.isEmpty) {
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface(context),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: AppColors.innerBorder(context),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.shopping_bag_outlined,
-                        size: 40,
-                        color: AppColors.textSecondary(context).withValues(alpha: 0.5),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        context.l10n.groupNoExpensesYet,
-                        style: AppTextStyles.body(context).copyWith(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        context.l10n.groupNoExpensesDesc,
-                        textAlign: TextAlign.center,
-                        style: AppTextStyles.caption(context).copyWith(
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
+              final validTransactions = allTransactions
+                  .where((tx) => _isContribution(tx) || _isExpense(tx))
+                  .toList();
+              validTransactions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+              final List<TransactionModel> displayTransactions;
+              if (_activeFilter == 1) {
+                displayTransactions = contributions;
+                displayTransactions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              } else if (_activeFilter == 2) {
+                displayTransactions = expenses;
+                displayTransactions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+              } else {
+                displayTransactions = validTransactions;
               }
 
               return Column(
-                children: transactions.map((tx) {
-                  final isMe = tx.userId == myUid;
-                  final spender = _findMember(tx.userId);
-                  final spenderName = isMe
-                      ? context.l10n.you
-                      : (spender != null
-                          ? (spender['name'] ?? spender['username'] ?? context.l10n.member).toString()
-                          : context.l10n.member);
-                  final spenderAvatar = (spender?['avatarUrl'] ?? '').toString();
-
-                  final imgUrl = tx.imageUrl.isNotEmpty
-                      ? tx.imageUrl
-                      : (tx.thumbnailUrl.isNotEmpty
-                          ? tx.thumbnailUrl
-                          : tx.mediaUrl);
-
-                  final hasImage = imgUrl.isNotEmpty;
-
-                  final categoryDisplay = tx.category.isNotEmpty
-                      ? BudgetNameLocalizer.display(context, tx.category)
-                      : context.l10n.groupExpense;
-
-                  final purpose = tx.caption.trim().isNotEmpty
-                      ? tx.caption.trim()
-                      : (tx.note.trim().isNotEmpty ? tx.note.trim() : '');
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface(context),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: AppColors.innerBorder(context),
-                      ),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Filter tabs
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip(
+                          label: context.l10n.groupFilterAllWithCount(validTransactions.length),
+                          isSelected: _activeFilter == 0,
+                          onTap: () => setState(() => _activeFilter = 0),
+                          activeColor: widget.groupColor,
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          label: context.l10n.groupFilterContributedWithCount(contributions.length),
+                          isSelected: _activeFilter == 1,
+                          onTap: () => setState(() => _activeFilter = 1),
+                          activeColor: const Color(0xFF10B981),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildFilterChip(
+                          label: context.l10n.groupFilterSpentWithCount(expenses.length),
+                          isSelected: _activeFilter == 2,
+                          onTap: () => setState(() => _activeFilter = 2),
+                          activeColor: AppColors.expense,
+                        ),
+                      ],
                     ),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MomentViewerScreen(
-                              transactions: [tx],
-                              initialIndex: 0,
+                  ),
+                  const SizedBox(height: 14),
+
+                  if (displayTransactions.isEmpty)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface(context),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: AppColors.innerBorder(context),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            _activeFilter == 1
+                                ? Icons.savings_outlined
+                                : (_activeFilter == 2
+                                    ? Icons.shopping_bag_outlined
+                                    : Icons.receipt_long_outlined),
+                            size: 40,
+                            color: AppColors.textSecondary(context).withValues(alpha: 0.5),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            _activeFilter == 1
+                                ? context.l10n.groupNoContributionsYet
+                                : (_activeFilter == 2
+                                    ? context.l10n.groupNoExpensesYet
+                                    : context.l10n.groupNoFundTransactionsYet),
+                            style: AppTextStyles.body(context).copyWith(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
                             ),
                           ),
-                        );
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Container(
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  color: groupColor.withValues(alpha: 0.12),
-                                ),
-                                child: hasImage
-                                    ? Image.network(
-                                        imgUrl,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Icon(
-                                          Icons.receipt_rounded,
-                                          color: groupColor,
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.receipt_rounded,
-                                        color: groupColor,
-                                        size: 24,
-                                      ),
-                              ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _activeFilter == 1
+                                ? context.l10n.groupNoContributionsDesc
+                                : (_activeFilter == 2
+                                    ? context.l10n.groupNoExpensesDesc
+                                    : context.l10n.groupNoFundTransactionsDesc),
+                            textAlign: TextAlign.center,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 12,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Tiêu những gì: Danh mục đã địa phương hoá
-                                  Text(
-                                    categoryDisplay,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.body(context).copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    Column(
+                      children: displayTransactions.map((tx) {
+                        final isContribution = _isContribution(tx);
+                        final isMe = tx.userId == widget.myUid;
+                        final actor = _findMember(tx.userId);
+                        final actorName = isMe
+                            ? context.l10n.you
+                            : (actor != null
+                                ? (actor['name'] ?? actor['username'] ?? context.l10n.member).toString()
+                                : context.l10n.member);
+                        final actorAvatar = (actor?['avatarUrl'] ?? '').toString();
+
+                        final imgUrl = tx.imageUrl.isNotEmpty
+                            ? tx.imageUrl
+                            : (tx.thumbnailUrl.isNotEmpty
+                                ? tx.thumbnailUrl
+                                : tx.mediaUrl);
+                        final hasImage = imgUrl.isNotEmpty;
+
+                        final categoryDisplay = isContribution
+                            ? context.l10n.groupFundDeposit
+                            : (tx.category.isNotEmpty
+                                ? BudgetNameLocalizer.display(context, tx.category)
+                                : context.l10n.groupExpense);
+
+                        final purpose = tx.caption.trim().isNotEmpty
+                            ? tx.caption.trim()
+                            : (tx.note.trim().isNotEmpty ? tx.note.trim() : '');
+
+                        final actionColor = isContribution
+                            ? const Color(0xFF10B981)
+                            : AppColors.expense;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface(context),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: AppColors.innerBorder(context),
+                            ),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () {
+                              if (hasImage) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => MomentViewerScreen(
+                                      transactions: [tx],
+                                      initialIndex: 0,
                                     ),
                                   ),
-                                  // Tiêu về việc gì: Lý do / caption chi tiêu
-                                  if (purpose.isNotEmpty) ...[
-                                    const SizedBox(height: 3),
-                                    Text(
-                                      purpose,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: AppTextStyles.caption(context).copyWith(
-                                        fontSize: 12,
-                                        color: AppColors.textPrimary(context).withValues(alpha: 0.85),
-                                        fontWeight: FontWeight.w600,
+                                );
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        color: actionColor.withValues(alpha: 0.12),
                                       ),
+                                      child: hasImage
+                                          ? Image.network(
+                                              imgUrl,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Icon(
+                                                isContribution
+                                                    ? Icons.savings_rounded
+                                                    : Icons.receipt_rounded,
+                                                color: actionColor,
+                                                size: 24,
+                                              ),
+                                            )
+                                          : Icon(
+                                              isContribution
+                                                  ? Icons.savings_rounded
+                                                  : Icons.receipt_rounded,
+                                              color: actionColor,
+                                              size: 24,
+                                            ),
                                     ),
-                                  ],
-                                  const SizedBox(height: 4),
-                                  // Ai tiêu & Tiêu lúc nào
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 8,
-                                        backgroundColor: AppColors.card(context),
-                                        backgroundImage: spenderAvatar.isNotEmpty
-                                            ? NetworkImage(spenderAvatar)
-                                            : null,
-                                        child: spenderAvatar.isEmpty
-                                            ? const Icon(Icons.person, size: 9)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 5),
-                                      Expanded(
-                                        child: Text(
-                                          '$spenderName • ${_formatDateTime(context, tx.createdAt)}',
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          categoryDisplay,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: AppTextStyles.caption(context).copyWith(
-                                            fontSize: 11,
+                                          style: AppTextStyles.body(context).copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 14,
                                           ),
                                         ),
+                                        if (purpose.isNotEmpty) ...[
+                                          const SizedBox(height: 3),
+                                          Text(
+                                            purpose,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: AppTextStyles.caption(context).copyWith(
+                                              fontSize: 12,
+                                              color: AppColors.textPrimary(context).withValues(alpha: 0.85),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 8,
+                                              backgroundColor: AppColors.card(context),
+                                              backgroundImage: actorAvatar.isNotEmpty
+                                                  ? NetworkImage(actorAvatar)
+                                                  : null,
+                                              child: actorAvatar.isEmpty
+                                                  ? const Icon(Icons.person, size: 9)
+                                                  : null,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Expanded(
+                                              child: Text(
+                                                '$actorName • ${_formatDateTime(context, tx.createdAt)}',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: AppTextStyles.caption(context).copyWith(
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        isContribution
+                                            ? '+${widget.money(tx.amount)}'
+                                            : '-${widget.money(tx.amount)}',
+                                        style: TextStyle(
+                                          color: actionColor,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                        ),
                                       ),
+                                      if (hasImage) ...[
+                                        const SizedBox(height: 4),
+                                        Icon(
+                                          Icons.photo_library_outlined,
+                                          size: 14,
+                                          color: AppColors.textSecondary(context),
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  '-${money(tx.amount)}',
-                                  style: const TextStyle(
-                                    color: AppColors.expense,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Icon(
-                                  Icons.chevron_right_rounded,
-                                  size: 16,
-                                  color: AppColors.textSecondary(context),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      }).toList(),
                     ),
-                  );
-                }).toList(),
+                ],
               );
             },
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Color activeColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? activeColor.withValues(alpha: 0.16)
+              : AppColors.surface(context),
+          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+          border: Border.all(
+            color: isSelected
+                ? activeColor
+                : AppColors.innerBorder(context),
+            width: isSelected ? 1.5 : 1.0,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+            color: isSelected ? activeColor : AppColors.textSecondary(context),
+          ),
+        ),
       ),
     );
   }
@@ -1378,13 +1958,13 @@ class _MembersContributionCard extends StatelessWidget {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: groupColor.withValues(alpha: 0.12),
+                              color: const Color(0xFF10B981).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '${context.l10n.groupTotalContributed}: ${money(paidAmount)}',
-                              style: TextStyle(
-                                color: groupColor,
+                              style: const TextStyle(
+                                color: Color(0xFF10B981),
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -1404,6 +1984,32 @@ class _MembersContributionCard extends StatelessWidget {
                                 '${context.l10n.groupTotalSpent}: ${money(spentAmount)}',
                                 style: const TextStyle(
                                   color: AppColors.expense,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          if (paidAmount > 0 || spentAmount > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: (paidAmount >= spentAmount
+                                        ? const Color(0xFF10B981)
+                                        : Colors.amber.shade700)
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                paidAmount >= spentAmount
+                                    ? context.l10n.groupMemberSurplus(money(paidAmount - spentAmount))
+                                    : context.l10n.groupMemberDeficit(money(spentAmount - paidAmount)),
+                                style: TextStyle(
+                                  color: paidAmount >= spentAmount
+                                      ? const Color(0xFF10B981)
+                                      : Colors.amber.shade800,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                 ),

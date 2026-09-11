@@ -1171,7 +1171,7 @@
     }
   },
   "allFramesUnlocked": "All avatar frames unlocked",
-  "allFramesUnlockedDesc": "You have conquered all the highest streak milestones!",
+  "allFramesUnlockedDesc": "Keep maintaining your wonderful moment streak every day!",
   "needStreakToUnlock": "Reach a {days}-day streak to unlock {frameName} frame!",
   "@needStreakToUnlock": {
     "placeholders": {
@@ -1183,6 +1183,18 @@
       }
     }
   },
+  "streakMilestoneUnlocked": "New Milestone Unlocked!",
+  "streakMilestoneDaysLabel": "{days} Days",
+  "@streakMilestoneDaysLabel": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakMilestoneContinue": "Continue",
+  "streakRewardAvatarFrameHint": "Open Streak to claim & equip your new avatar frame!",
+  "streakRewardCameraThemeHint": "Unlocked new Avatar Frame & Camera Themes to explore!",
   "today": "Today",
   "yesterday": "Yesterday",
   "generalOverview": "Overview",
@@ -1683,6 +1695,104 @@
   "@spentBy": {
     "placeholders": {
       "name": {
+        "type": "String"
+      }
+    }
+  },
+  "seeAll": "See all",
+  "groupStatsContributionAndExpense": "Contribution & Expense Stats",
+  "groupStatsFundFlowSubtitle": "Group fund flow & overview",
+  "groupContributionCount": "{count} contributions",
+  "@groupContributionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupExpenseCount": "{count} expenses",
+  "@groupExpenseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFundUsageRatio": "Fund usage ratio",
+  "groupSurplusWithAmount": "Surplus {amount}",
+  "@groupSurplusWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupDeficitWithAmount": "Deficit {amount}",
+  "@groupDeficitWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupSpentPercent": "Spent {percent}%",
+  "@groupSpentPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "groupRemainingPercent": "Remaining {percent}%",
+  "@groupRemainingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "groupTopSpendingCategories": "Top fund spending categories",
+  "groupActivitiesAndTransactions": "Fund Activities & Transactions",
+  "groupFilterAllWithCount": "All ({count})",
+  "@groupFilterAllWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFilterContributedWithCount": "Contributed ({count})",
+  "@groupFilterContributedWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFilterSpentWithCount": "Spent ({count})",
+  "@groupFilterSpentWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupNoContributionsYet": "No contributions yet",
+  "groupNoFundTransactionsYet": "No fund transactions yet",
+  "groupNoContributionsDesc": "Contributions to the group fund will appear here",
+  "groupNoFundTransactionsDesc": "Group contributions and expenses will appear here",
+  "groupMemberSurplus": "Surplus: +{amount}",
+  "@groupMemberSurplus": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupMemberDeficit": "Overspent: -{amount}",
+  "@groupMemberDeficit": {
+    "placeholders": {
+      "amount": {
         "type": "String"
       }
     }

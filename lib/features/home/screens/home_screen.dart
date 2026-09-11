@@ -84,11 +84,11 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final todayIncome = todayTransactions
-        .where((tx) => tx.type == 'income')
+        .where((tx) => tx.isPersonalIncome)
         .fold<double>(0, (sum, tx) => sum + tx.amount);
 
     final todayExpense = todayTransactions
-        .where((tx) => tx.type == 'expense')
+        .where((tx) => tx.isPersonalExpense)
         .fold<double>(0, (sum, tx) => sum + tx.amount);
 
     String money(double value) {

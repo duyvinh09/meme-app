@@ -95,6 +95,14 @@ class TransactionModel {
   bool get isVideo => mediaType == 'video';
   bool get isImage => mediaType == 'image';
 
+  /// Chi tiêu cá nhân: bao gồm chi tiêu bình thường và nạp quỹ nhóm,
+  /// nhưng LOẠI TRỪ các khoản chi tiêu từ quỹ nhóm (vì đó là tiền của quỹ, không phải tiền cá nhân).
+  bool get isPersonalExpense =>
+      (type == 'expense' && !isGroupExpense) || isGroupContribution;
+
+  /// Thu nhập cá nhân: loại trừ các giao dịch quỹ nhóm.
+  bool get isPersonalIncome => type == 'income' && !isGroupContribution;
+
   /// Dùng cho các UI thumbnail như Home, Calendar, Recent.
   /// Ảnh thì lấy ảnh thật.
   /// Video thì lấy thumbnail.

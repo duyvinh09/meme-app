@@ -3534,7 +3534,7 @@ abstract class AppLocalizations {
   /// No description provided for @allFramesUnlockedDesc.
   ///
   /// In vi, this message translates to:
-  /// **'Bạn đã chinh phục tất cả các cột mốc chuỗi cao nhất!'**
+  /// **'Hãy tiếp tục duy trì chuỗi khoảnh khắc tuyệt vời mỗi ngày!'**
   String get allFramesUnlockedDesc;
 
   /// No description provided for @needStreakToUnlock.
@@ -3542,6 +3542,36 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Đạt chuỗi {days} ngày để mở khóa khung {frameName}!'**
   String needStreakToUnlock(int days, String frameName);
+
+  /// No description provided for @streakMilestoneUnlocked.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mở khóa cột mốc mới!'**
+  String get streakMilestoneUnlocked;
+
+  /// No description provided for @streakMilestoneDaysLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'{days} ngày'**
+  String streakMilestoneDaysLabel(int days);
+
+  /// No description provided for @streakMilestoneContinue.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tiếp tục'**
+  String get streakMilestoneContinue;
+
+  /// No description provided for @streakRewardAvatarFrameHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mở mục Chuỗi để nhận & đổi khung avatar mới!'**
+  String get streakRewardAvatarFrameHint;
+
+  /// No description provided for @streakRewardCameraThemeHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mở khóa Khung avatar & Khám phá Chủ đề máy ảnh mới!'**
+  String get streakRewardCameraThemeHint;
 
   /// No description provided for @today.
   ///
@@ -4700,6 +4730,132 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Người chi: {name}'**
   String spentBy(String name);
+
+  /// No description provided for @seeAll.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem tất cả'**
+  String get seeAll;
+
+  /// No description provided for @groupStatsContributionAndExpense.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thống kê Góp & Chi'**
+  String get groupStatsContributionAndExpense;
+
+  /// No description provided for @groupStatsFundFlowSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tình hình luân chuyển quỹ nhóm'**
+  String get groupStatsFundFlowSubtitle;
+
+  /// No description provided for @groupContributionCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} lượt nạp quỹ'**
+  String groupContributionCount(int count);
+
+  /// No description provided for @groupExpenseCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} lần chi tiêu'**
+  String groupExpenseCount(int count);
+
+  /// No description provided for @groupFundUsageRatio.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tỷ lệ sử dụng quỹ'**
+  String get groupFundUsageRatio;
+
+  /// No description provided for @groupSurplusWithAmount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Còn dư {amount}'**
+  String groupSurplusWithAmount(String amount);
+
+  /// No description provided for @groupDeficitWithAmount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thâm hụt {amount}'**
+  String groupDeficitWithAmount(String amount);
+
+  /// No description provided for @groupSpentPercent.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã chi {percent}%'**
+  String groupSpentPercent(String percent);
+
+  /// No description provided for @groupRemainingPercent.
+  ///
+  /// In vi, this message translates to:
+  /// **'Còn lại {percent}%'**
+  String groupRemainingPercent(String percent);
+
+  /// No description provided for @groupTopSpendingCategories.
+  ///
+  /// In vi, this message translates to:
+  /// **'Top danh mục chi tiêu quỹ'**
+  String get groupTopSpendingCategories;
+
+  /// No description provided for @groupActivitiesAndTransactions.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hoạt động & Giao dịch quỹ'**
+  String get groupActivitiesAndTransactions;
+
+  /// No description provided for @groupFilterAllWithCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tất cả ({count})'**
+  String groupFilterAllWithCount(int count);
+
+  /// No description provided for @groupFilterContributedWithCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã góp ({count})'**
+  String groupFilterContributedWithCount(int count);
+
+  /// No description provided for @groupFilterSpentWithCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã chi ({count})'**
+  String groupFilterSpentWithCount(int count);
+
+  /// No description provided for @groupNoContributionsYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có khoản góp nào'**
+  String get groupNoContributionsYet;
+
+  /// No description provided for @groupNoFundTransactionsYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có giao dịch quỹ nào'**
+  String get groupNoFundTransactionsYet;
+
+  /// No description provided for @groupNoContributionsDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Các khoản nạp vào quỹ nhóm sẽ hiển thị ở đây'**
+  String get groupNoContributionsDesc;
+
+  /// No description provided for @groupNoFundTransactionsDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Góp quỹ và chi tiêu nhóm sẽ được thống kê tại đây'**
+  String get groupNoFundTransactionsDesc;
+
+  /// No description provided for @groupMemberSurplus.
+  ///
+  /// In vi, this message translates to:
+  /// **'Dư: +{amount}'**
+  String groupMemberSurplus(String amount);
+
+  /// No description provided for @groupMemberDeficit.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi vượt: -{amount}'**
+  String groupMemberDeficit(String amount);
 }
 
 class _AppLocalizationsDelegate

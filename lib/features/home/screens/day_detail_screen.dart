@@ -61,11 +61,11 @@ class DayDetailScreen extends StatelessWidget {
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     final totalIncome = dayTransactions
-        .where((e) => e.type == 'income')
+        .where((e) => e.isPersonalIncome)
         .fold<double>(0, (sum, e) => sum + e.amount);
 
     final totalExpense = dayTransactions
-        .where((e) => e.type == 'expense')
+        .where((e) => e.isPersonalExpense)
         .fold<double>(0, (sum, e) => sum + e.amount);
 
     return Scaffold(
@@ -471,7 +471,15 @@ class _MomentGridCard extends StatelessWidget {
       case 'Khác':
       case 'Other':
         return l10n.other;
+      case 'Quỹ nhóm':
+      case 'Group Fund':
+        return l10n.groupFundCategory;
       default:
+        if (category.trim().toLowerCase() == 'quỹ nhóm' ||
+            category.trim().toLowerCase() == 'group fund' ||
+            category.trim().toLowerCase() == l10n.groupFundCategory.toLowerCase()) {
+          return l10n.groupFundCategory;
+        }
         return BudgetNameLocalizer.display(context, category);
     }
   }
@@ -571,8 +579,8 @@ class _MomentGridCard extends StatelessWidget {
           ),
 
           Positioned(
-            top: 10,
-            left: 10,
+            top: 7,
+            left: 7,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppSizes.radiusPill),
               child: BackdropFilter(
@@ -582,18 +590,18 @@ class _MomentGridCard extends StatelessWidget {
                 ),
                 child: Container(
                   constraints: const BoxConstraints(
-                    maxWidth: 86,
+                    maxWidth: 58,
                   ),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: 6,
+                    vertical: 2.5,
                   ),
                   decoration: BoxDecoration(
-                    color: chipColor.withOpacity(0.22),
+                    color: chipColor.withOpacity(0.25),
                     borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                     border: Border.all(
                       color: chipColor,
-                      width: 1.2,
+                      width: 1.0,
                     ),
                   ),
                   child: Text(
@@ -602,8 +610,9 @@ class _MomentGridCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w700,
+                      height: 1.1,
                     ),
                   ),
                 ),
@@ -612,18 +621,18 @@ class _MomentGridCard extends StatelessWidget {
           ),
 
           Positioned(
-            right: 10,
-            top: 12,
+            right: 7,
+            top: 8,
             child: Text(
               timeText,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.82),
-                fontSize: 10.5,
+                color: Colors.white.withOpacity(0.85),
+                fontSize: 9.5,
                 fontWeight: FontWeight.w600,
                 shadows: const [
                   Shadow(
-                    color: Colors.black45,
-                    blurRadius: 6,
+                    color: Colors.black54,
+                    blurRadius: 4,
                   ),
                 ],
               ),

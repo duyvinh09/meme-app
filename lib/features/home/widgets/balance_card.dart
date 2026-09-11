@@ -54,11 +54,11 @@ class _BalanceCardState extends State<BalanceCard> {
         _period == SummaryPeriod.day ? todayTransactions : monthTransactions;
 
     final income = activeTransactions
-        .where((e) => e.type == 'income')
+        .where((e) => e.isPersonalIncome)
         .fold(0.0, (sum, e) => sum + e.amount);
 
     final expense = activeTransactions
-        .where((e) => e.type == 'expense')
+        .where((e) => e.isPersonalExpense)
         .fold(0.0, (sum, e) => sum + e.amount);
 
     String formatDisplay(double amount, bool isHidden) {

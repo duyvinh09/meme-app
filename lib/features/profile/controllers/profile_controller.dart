@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -24,19 +25,42 @@ class ProfileController extends ChangeNotifier {
   UserModel? user;
   bool isSaving = false;
 
+  StreamSubscription<UserModel?>? _userSub;
+  String? _currentUid;
+
   String get languageCode => localSettingsService.languageCode;
   String get rawLanguageCode => localSettingsService.rawLanguageCode;
   String get currency => localSettingsService.currency;
   ThemeMode get themeMode => localSettingsService.themeMode;
 
   Future<void> loadUser(String uid) async {
-    user = await userRepository.getUserProfile(uid);
-    notifyListeners();
+    if (uid.trim().isEmpty) return;
+
+    if (_currentUid != uid || _userSub == null) {
+      _currentUid = uid;
+      await _userSub?.cancel();
+      _userSub = userRepository.streamUserProfile(uid).listen((userData) {
+        if (userData != null) {
+          user = userData;
+          notifyListeners();
+        }
+      });
+    }
+
+    final fetched = await userRepository.getUserProfile(uid);
+    if (fetched != null) {
+      user = fetched;
+      notifyListeners();
+    }
   }
 
   Future<void> refreshUser(String uid) async {
-    user = await userRepository.getUserProfile(uid);
-    notifyListeners();
+    if (uid.trim().isEmpty) return;
+    final fetched = await userRepository.getUserProfile(uid);
+    if (fetched != null) {
+      user = fetched;
+      notifyListeners();
+    }
   }
 
   Future<bool> updateProfile({
@@ -193,5 +217,19 @@ class ProfileController extends ChangeNotifier {
       isSaving = false;
       notifyListeners();
     }
+  }
+
+  void clear() {
+    _userSub?.cancel();
+    _userSub = null;
+    _currentUid = null;
+    user = null;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _userSub?.cancel();
+    super.dispose();
   }
 }

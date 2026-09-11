@@ -420,6 +420,7 @@ class _GroupChatConversationScreenState
   }
 
   void _onFocusChanged() {
+    if (mounted) setState(() {});
     if (!_textFocusNode.hasFocus) {
       final myUid = context.read<AuthController>().user?.uid;
       _stopTypingHeartbeat(myUid);
@@ -492,31 +493,47 @@ class _GroupChatConversationScreenState
     final scrollOffset = _scrollController.offset;
     final maxScroll = _scrollController.position.maxScrollExtent;
 
-    if (scrollOffset > 20 && scrollOffset < maxScroll - 20) {
+    if (scrollOffset > 20) {
       final stackBox = _listStackKey.currentContext?.findRenderObject() as RenderBox?;
-      final double listTopGlobalY = (stackBox != null && stackBox.hasSize)
+      final double listTopGlobalY = (stackBox != null && stackBox.hasSize && stackBox.attached)
           ? stackBox.localToGlobal(Offset.zero).dy
           : 0.0;
-      const double floatingHeaderTriggerY = 55.0;
+      const double floatingHeaderTriggerY = 10.0;
       final double triggerGlobalY = listTopGlobalY + floatingHeaderTriggerY;
 
-      DateTime activeDate = messages.first.createdAt;
+      DateTime? matchedDate;
 
-      for (int i = 0; i < messages.length; i++) {
-        final msg = messages[i];
-        final gKey = _itemKeys[msg.id];
-        final box = gKey?.currentContext?.findRenderObject() as RenderBox?;
-        if (box != null && box.hasSize) {
-          final topY = box.localToGlobal(Offset.zero).dy;
-          final bottomY = topY + box.size.height;
-          if (topY <= triggerGlobalY) {
-            activeDate = msg.createdAt;
-            if (bottomY >= triggerGlobalY) {
+      // When scrolled near or to the very top (oldest messages / start of conversation)
+      if (scrollOffset >= maxScroll - 30) {
+        matchedDate = messages.last.createdAt;
+      } else {
+        double? minDistance;
+
+        for (int i = 0; i < messages.length; i++) {
+          final msg = messages[i];
+          final gKey = _itemKeys[msg.id];
+          final box = gKey?.currentContext?.findRenderObject() as RenderBox?;
+          if (box != null && box.hasSize && box.attached) {
+            final topY = box.localToGlobal(Offset.zero).dy;
+            final bottomY = topY + box.size.height;
+            if (topY <= triggerGlobalY && bottomY >= triggerGlobalY) {
+              matchedDate = msg.createdAt;
               break;
+            }
+
+            final distance = (topY - triggerGlobalY).abs();
+            if (minDistance == null || distance < minDistance) {
+              minDistance = distance;
+              matchedDate = msg.createdAt;
             }
           }
         }
       }
+
+      final activeDate = matchedDate ??
+          (scrollOffset > (maxScroll > 0 ? maxScroll * 0.5 : 50)
+              ? messages.last.createdAt
+              : messages.first.createdAt);
 
       final formatted = _formatFloatingDate(activeDate);
 
@@ -544,21 +561,27 @@ class _GroupChatConversationScreenState
   }
 
 
-  String _formatFloatingDate(DateTime dt) {
+  String _formatFloatingDate(DateTime date) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    final msgDate = DateTime(dt.year, dt.month, dt.day);
+    final msgDay = DateTime(date.year, date.month, date.day);
+    final isVi = Localizations.localeOf(context).languageCode == 'vi';
 
-    if (msgDate == today) {
+    if (msgDay == today) {
       return context.l10n.today;
-    } else if (msgDate == yesterday) {
-      return context.l10n.yesterday;
-    } else if (now.difference(msgDate).inDays < 7) {
-      return DateFormat('EEEE', Localizations.localeOf(context).languageCode).format(dt);
-    } else {
-      return DateFormat('dd/MM/yyyy').format(dt);
     }
+    if (msgDay == yesterday) {
+      return context.l10n.yesterday;
+    }
+    if (date.year == now.year) {
+      return isVi
+          ? '${date.day} Tháng ${date.month}'
+          : DateFormat('d MMM', 'en').format(date);
+    }
+    return isVi
+        ? '${date.day} Tháng ${date.month}, ${date.year}'
+        : DateFormat('d MMM, y', 'en').format(date);
   }
 
   String _formatSeparatorTime(DateTime date) {
@@ -1450,16 +1473,15 @@ class _GroupChatConversationScreenState
 
 
                   // Floating Sticky Date Header
-                  if (_showFloatingDate && _floatingDateText.isNotEmpty)
-                    Positioned(
-                      top: 10,
-                      left: 0,
-                      right: 0,
-                      child: Center(
-                        child: IgnorePointer(
-                          child: AnimatedOpacity(
-                            opacity: _showFloatingDate ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 200),
+                  Positioned(
+                    top: 10,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: IgnorePointer(
+                        child: AnimatedOpacity(
+                          opacity: _showFloatingDate && _floatingDateText.isNotEmpty ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 200),
                             curve: Curves.easeOutCubic,
                             child: Container(
                               padding: const EdgeInsets.symmetric(
@@ -2985,40 +3007,82 @@ class _GroupChatConversationScreenState
             },
           ),
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.black.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: TextField(
-                controller: _textController,
-                focusNode: _textFocusNode,
-                maxLines: 4,
-                minLines: 1,
-                textCapitalization: TextCapitalization.sentences,
-                style: TextStyle(
-                  fontSize: 14.5,
-                  color: AppColors.textPrimary(context),
-                ),
-                decoration: InputDecoration(
-                  hintText: isEn ? 'Type a group message...' : 'Nhập tin nhắn nhóm...',
-                  hintStyle: TextStyle(
-                    fontSize: 14.5,
-                    color: AppColors.textSecondary(context).withValues(alpha: 0.7),
+            child: AnimatedBuilder(
+              animation: _textFocusNode,
+              builder: (context, child) {
+                final isFocused = _textFocusNode.hasFocus;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? (isFocused
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : Colors.white.withValues(alpha: 0.08))
+                        : (isFocused
+                            ? Colors.black.withValues(alpha: 0.07)
+                            : Colors.black.withValues(alpha: 0.05)),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isFocused
+                          ? AppColors.primaryBlue
+                          : (isDark
+                              ? Colors.white.withValues(alpha: 0.10)
+                              : Colors.black.withValues(alpha: 0.08)),
+                      width: 1.2,
+                    ),
                   ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  child: child,
+                );
+              },
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  inputDecorationTheme: const InputDecorationTheme(
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    filled: false,
+                    fillColor: Colors.transparent,
+                  ),
                 ),
-                onSubmitted: (_) => _sendMessage(),
-                onTap: () {
-                  if (_showEmojiGrid) {
-                    setState(() => _showEmojiGrid = false);
-                  }
-                },
+                child: TextField(
+                  controller: _textController,
+                  focusNode: _textFocusNode,
+                  maxLines: 4,
+                  minLines: 1,
+                  textAlignVertical: TextAlignVertical.center,
+                  textCapitalization: TextCapitalization.sentences,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    color: AppColors.textPrimary(context),
+                  ),
+                  decoration: InputDecoration(
+                    hintText: isEn ? 'Type a group message...' : 'Nhập tin nhắn nhóm...',
+                    hintStyle: TextStyle(
+                      fontSize: 14.5,
+                      color: AppColors.textSecondary(context).withValues(alpha: 0.7),
+                    ),
+                    filled: false,
+                    fillColor: Colors.transparent,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onSubmitted: (_) => _sendMessage(),
+                  onTap: () {
+                    if (_showEmojiGrid) {
+                      setState(() => _showEmojiGrid = false);
+                    }
+                  },
+                ),
               ),
             ),
           ),

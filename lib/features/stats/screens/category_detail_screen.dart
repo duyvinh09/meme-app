@@ -10,7 +10,9 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../home/screens/moment_viewer_screen.dart';
+import '../../home/screens/transaction_browse_screen.dart';
 import '../../profile/controllers/profile_controller.dart';
+import 'category_photos_screen.dart';
 
 class CategoryDetailScreen extends StatelessWidget {
   final String category;
@@ -143,11 +145,12 @@ class CategoryDetailScreen extends StatelessWidget {
 
     final average = transactions.isEmpty ? 0.0 : total / transactions.length;
 
-    final imageCount = transactions.where((tx) {
-      return tx.imageUrl.trim().isNotEmpty;
-    }).length;
+    final photoTransactions = transactions
+        .where((tx) => tx.displayImageUrl.trim().isNotEmpty)
+        .toList();
+    final imageCount = photoTransactions.length;
 
-    final previewTransactions = transactions.take(2).toList();
+    final previewTransactions = photoTransactions.take(2).toList();
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -155,116 +158,112 @@ class CategoryDetailScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
           children: [
-            Stack(
-              children: [
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(18, 34, 18, 28),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: InkWell(
+                onTap: () => Navigator.pop(context),
+                borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
+                child: Container(
+                  width: 48,
+                  height: 48,
                   decoration: BoxDecoration(
+                    shape: BoxShape.circle,
                     color: cardColor,
-                    borderRadius: BorderRadius.circular(32),
                     border: Border.all(color: borderColor),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
-                        blurRadius: 22,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
                   ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 92,
-                        height: 92,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              accent.withValues(alpha: 0.95),
-                              accent.withValues(alpha: 0.62),
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: accent.withValues(alpha: 0.24),
-                              blurRadius: 22,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          icon,
-                          color: Colors.white,
-                          size: 42,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Text(
-                        _localizedCategoryLabel(context, category),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: primaryText,
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          height: 1.1,
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '${l10n.transactionCount(transactions.length)} • $periodTitle',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: secondaryText,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          _formatMoney(total, currency),
-                          maxLines: 1,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: accent,
-                            fontSize: 38,
-                            fontWeight: FontWeight.w900,
-                            height: 1.05,
-                          ),
-                        ),
-                      ),
-                    ],
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: primaryText,
+                    size: 20,
                   ),
                 ),
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  child: InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: AppColors.card(context),
-                        border: Border.all(
-                          color: AppColors.border(context),
-                        ),
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 30, 18, 28),
+              decoration: BoxDecoration(
+                color: cardColor,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.06),
+                    blurRadius: 22,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 92,
+                    height: 92,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          accent.withValues(alpha: 0.95),
+                          accent.withValues(alpha: 0.62),
+                        ],
                       ),
-                      child: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: AppColors.textPrimary(context),
-                        size: 20,
+                      boxShadow: [
+                        BoxShadow(
+                          color: accent.withValues(alpha: 0.24),
+                          blurRadius: 22,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      icon,
+                      color: Colors.white,
+                      size: 42,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    _localizedCategoryLabel(context, category),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: primaryText,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${l10n.transactionCount(transactions.length)} • $periodTitle',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: secondaryText,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      _formatMoney(total, currency),
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: accent,
+                        fontSize: 38,
+                        fontWeight: FontWeight.w900,
+                        height: 1.05,
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
 
             const SizedBox(height: 18),
@@ -283,6 +282,18 @@ class CategoryDetailScreen extends StatelessWidget {
                       borderColor: borderColor,
                       primaryText: primaryText,
                       secondaryText: secondaryText,
+                      onTap: transactions.isEmpty
+                          ? null
+                          : () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => TransactionBrowseScreen(
+                                    initialTransactions: transactions,
+                                  ),
+                                ),
+                              );
+                            },
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -309,6 +320,21 @@ class CategoryDetailScreen extends StatelessWidget {
                       borderColor: borderColor,
                       primaryText: primaryText,
                       secondaryText: secondaryText,
+                      onTap: photoTransactions.isEmpty
+                          ? null
+                          : () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => CategoryPhotosScreen(
+                                    category: category,
+                                    type: type,
+                                    periodTitle: periodTitle,
+                                    transactions: photoTransactions,
+                                  ),
+                                ),
+                              );
+                            },
                     ),
                   ),
                 ],
@@ -320,7 +346,22 @@ class CategoryDetailScreen extends StatelessWidget {
             _SectionCard(
               title: l10n.allPhotos,
               icon: Icons.photo_library_outlined,
-              actionText: transactions.length > 2 ? 'See all' : null,
+              actionText: photoTransactions.length > 2 ? l10n.seeAll : null,
+              onActionTap: photoTransactions.length > 2
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => CategoryPhotosScreen(
+                            category: category,
+                            type: type,
+                            periodTitle: periodTitle,
+                            transactions: photoTransactions,
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
               cardColor: cardColor,
               borderColor: borderColor,
               primaryText: primaryText,
@@ -357,7 +398,7 @@ class CategoryDetailScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (_) => MomentViewerScreen(
-                                transactions: transactions,
+                                transactions: photoTransactions,
                                 initialIndex: index,
                               ),
                             ),
@@ -386,13 +427,32 @@ class CategoryDetailScreen extends StatelessWidget {
             _SectionCard(
               title: l10n.recentTransactions,
               icon: Icons.list_alt_rounded,
+              actionText: transactions.length > 5 ? l10n.seeAll : null,
+              onActionTap: transactions.length > 5
+                  ? () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TransactionBrowseScreen(
+                            initialTransactions: transactions,
+                          ),
+                        ),
+                      );
+                    }
+                  : null,
               cardColor: cardColor,
               borderColor: borderColor,
               primaryText: primaryText,
               secondaryText: secondaryText,
               accent: const Color(0xFF79AFFF),
               child: Column(
-                children: transactions.asMap().entries.map((entry) {
+                children: (transactions.length > 5
+                        ? transactions.take(5)
+                        : transactions)
+                    .toList()
+                    .asMap()
+                    .entries
+                    .map((entry) {
                   final index = entry.key;
                   final tx = entry.value;
 
@@ -438,6 +498,7 @@ class _QuickStatCard extends StatelessWidget {
   final Color borderColor;
   final Color primaryText;
   final Color secondaryText;
+  final VoidCallback? onTap;
 
   const _QuickStatCard({
     required this.icon,
@@ -448,54 +509,59 @@ class _QuickStatCard extends StatelessWidget {
     required this.borderColor,
     required this.primaryText,
     required this.secondaryText,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 102),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: iconColor,
-            size: 22,
-          ),
-          const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: primaryText,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 102),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: iconColor,
+              size: 22,
+            ),
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                maxLines: 1,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: primaryText,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: secondaryText,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: secondaryText,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -505,6 +571,7 @@ class _SectionCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final String? actionText;
+  final VoidCallback? onActionTap;
   final Color cardColor;
   final Color borderColor;
   final Color primaryText;
@@ -516,6 +583,7 @@ class _SectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     this.actionText,
+    this.onActionTap,
     required this.cardColor,
     required this.borderColor,
     required this.primaryText,
@@ -554,22 +622,27 @@ class _SectionCard extends StatelessWidget {
                 ),
               ),
               if (actionText != null)
-                Row(
-                  children: [
-                    Text(
-                      actionText!,
-                      style: TextStyle(
-                        color: accent,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onActionTap,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        actionText!,
+                        style: TextStyle(
+                          color: accent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                    Icon(
-                      Icons.chevron_right_rounded,
-                      color: accent,
-                      size: 22,
-                    ),
-                  ],
+                      Icon(
+                        Icons.chevron_right_rounded,
+                        color: accent,
+                        size: 22,
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),

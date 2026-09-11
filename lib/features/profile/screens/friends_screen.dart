@@ -1421,124 +1421,138 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget _buildEmptyState(BuildContext context) {
     final textSecondary = AppColors.textSecondary(context);
 
+    Widget content;
+
     if (_searchQuery.isNotEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.search_off_rounded,
-              size: 48,
-              color: textSecondary.withValues(alpha: 0.5),
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.search_off_rounded,
+            size: 44,
+            color: textSecondary.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            context.l10n.noMatchingFriends,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: textSecondary,
             ),
-            const SizedBox(height: 12),
-            Text(
-              context.l10n.noMatchingFriends,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-                color: textSecondary,
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       );
-    }
-
-    if (_activeTab == 'requests') {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primaryBlue.withValues(alpha: 0.14),
-              ),
-              child: const Icon(
-                Icons.mark_email_read_outlined,
-                size: 44,
-                color: AppColors.primaryBlue,
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              context.l10n.noFriendRequestsYet,
-              style: AppTextStyles.pageTitle(context).copyWith(fontSize: 20),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_activeTab == 'close') {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.star_outline_rounded,
-              size: 52,
-              color: Color(0xFFF59E0B),
-            ),
-            const SizedBox(height: 14),
-            Text(
-              context.l10n.noCloseFriendsYet,
-              style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary(context),
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              context.l10n.noCloseFriendsSubtitle,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13.5,
-                color: textSecondary,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Center(
-      child: Column(
+    } else if (_activeTab == 'requests') {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: 88,
-            height: 88,
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primaryBlue.withValues(alpha: 0.14),
+            ),
+            child: const Icon(
+              Icons.mark_email_read_outlined,
+              size: 38,
+              color: AppColors.primaryBlue,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            context.l10n.noFriendRequestsYet,
+            textAlign: TextAlign.center,
+            style: AppTextStyles.pageTitle(context).copyWith(fontSize: 18.5),
+          ),
+        ],
+      );
+    } else if (_activeTab == 'close') {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.star_outline_rounded,
+            size: 46,
+            color: Color(0xFFF59E0B),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.l10n.noCloseFriendsYet,
+            style: TextStyle(
+              fontSize: 16.5,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary(context),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            context.l10n.noCloseFriendsSubtitle,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              color: textSecondary,
+            ),
+          ),
+        ],
+      );
+    } else {
+      content = Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 76,
+            height: 76,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.primaryBlue.withValues(alpha: 0.14),
             ),
             child: const Icon(
               Icons.group_outlined,
-              size: 44,
+              size: 38,
               color: AppColors.primaryBlue,
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           Text(
             context.l10n.noFriends,
-            style: AppTextStyles.pageTitle(context).copyWith(fontSize: 22),
+            style: AppTextStyles.pageTitle(context).copyWith(fontSize: 19),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             context.l10n.noFriendsSubtitle,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: 13.5,
               color: textSecondary,
             ),
           ),
         ],
-      ),
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: constraints.maxHeight,
+            ),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: content,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

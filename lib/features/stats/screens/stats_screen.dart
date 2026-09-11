@@ -102,6 +102,22 @@ class _StatsScreenState extends State<StatsScreen> {
     return DateTime(date.year - 1);
   }
 
+  bool _matchesMoneyType(dynamic tx, _MoneyType moneyType) {
+    if (tx is TransactionModel) {
+      return moneyType == _MoneyType.expense
+          ? tx.isPersonalExpense
+          : tx.isPersonalIncome;
+    }
+    if (moneyType == _MoneyType.expense) {
+      final isGroupExp = tx.isGroupExpense == true;
+      final isGroupContrib = tx.isGroupContribution == true;
+      return (tx.type == 'expense' && !isGroupExp) || isGroupContrib;
+    } else {
+      final isGroupContrib = tx.isGroupContribution == true;
+      return tx.type == 'income' && !isGroupContrib;
+    }
+  }
+
   List<dynamic> _filterTransactions(
       List<dynamic> transactions,
       DateTime date,
@@ -111,7 +127,7 @@ class _StatsScreenState extends State<StatsScreen> {
           ? _isSameMonth(tx.createdAt, date)
           : _isSameYear(tx.createdAt, date);
 
-      return samePeriod && tx.type == selectedType.name;
+      return samePeriod && _matchesMoneyType(tx, selectedType);
     }).toList();
   }
 
@@ -125,7 +141,7 @@ class _StatsScreenState extends State<StatsScreen> {
           ? _isSameMonth(tx.createdAt, date)
           : _isSameYear(tx.createdAt, date);
 
-      return samePeriod && tx.type == type.name;
+      return samePeriod && _matchesMoneyType(tx, type);
     }).toList();
   }
 

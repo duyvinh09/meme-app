@@ -1,0 +1,23 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Hàm kiểm tra: Người gửi yêu cầu đã đăng nhập vào app Meme chưa?
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // 2. Cho phép mọi người dùng ĐÃ ĐĂNG NHẬP được đọc & ghi tất cả các collection/tài liệu
+    // (Bỏ qua giới hạn hết hạn 30 ngày mặc định của Firebase)
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+    
+    // 3. Quy tắc riêng cho Collection Group 'transactions'
+    // Giúp app có thể truy vấn ảnh/moment của bạn bè trên Feed mà không bị Firebase từ chối.
+    match /{path=**}/transactions/{transactionId} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

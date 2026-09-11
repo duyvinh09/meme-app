@@ -1171,7 +1171,7 @@
     }
   },
   "allFramesUnlocked": "Đã mở khóa toàn bộ khung avatar",
-  "allFramesUnlockedDesc": "Bạn đã chinh phục tất cả các cột mốc chuỗi cao nhất!",
+  "allFramesUnlockedDesc": "Hãy tiếp tục duy trì chuỗi khoảnh khắc tuyệt vời mỗi ngày!",
   "needStreakToUnlock": "Đạt chuỗi {days} ngày để mở khóa khung {frameName}!",
   "@needStreakToUnlock": {
     "placeholders": {
@@ -1183,6 +1183,18 @@
       }
     }
   },
+  "streakMilestoneUnlocked": "Mở khóa cột mốc mới!",
+  "streakMilestoneDaysLabel": "{days} ngày",
+  "@streakMilestoneDaysLabel": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "streakMilestoneContinue": "Tiếp tục",
+  "streakRewardAvatarFrameHint": "Mở mục Chuỗi để nhận & đổi khung avatar mới!",
+  "streakRewardCameraThemeHint": "Mở khóa Khung avatar & Khám phá Chủ đề máy ảnh mới!",
   "today": "Hôm nay",
   "yesterday": "Hôm qua",
   "generalOverview": "Tổng quan",
@@ -1683,6 +1695,104 @@
   "@spentBy": {
     "placeholders": {
       "name": {
+        "type": "String"
+      }
+    }
+  },
+  "seeAll": "Xem tất cả",
+  "groupStatsContributionAndExpense": "Thống kê Góp & Chi",
+  "groupStatsFundFlowSubtitle": "Tình hình luân chuyển quỹ nhóm",
+  "groupContributionCount": "{count} lượt nạp quỹ",
+  "@groupContributionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupExpenseCount": "{count} lần chi tiêu",
+  "@groupExpenseCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFundUsageRatio": "Tỷ lệ sử dụng quỹ",
+  "groupSurplusWithAmount": "Còn dư {amount}",
+  "@groupSurplusWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupDeficitWithAmount": "Thâm hụt {amount}",
+  "@groupDeficitWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupSpentPercent": "Đã chi {percent}%",
+  "@groupSpentPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "groupRemainingPercent": "Còn lại {percent}%",
+  "@groupRemainingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
+  "groupTopSpendingCategories": "Top danh mục chi tiêu quỹ",
+  "groupActivitiesAndTransactions": "Hoạt động & Giao dịch quỹ",
+  "groupFilterAllWithCount": "Tất cả ({count})",
+  "@groupFilterAllWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFilterContributedWithCount": "Đã góp ({count})",
+  "@groupFilterContributedWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupFilterSpentWithCount": "Đã chi ({count})",
+  "@groupFilterSpentWithCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "groupNoContributionsYet": "Chưa có khoản góp nào",
+  "groupNoFundTransactionsYet": "Chưa có giao dịch quỹ nào",
+  "groupNoContributionsDesc": "Các khoản nạp vào quỹ nhóm sẽ hiển thị ở đây",
+  "groupNoFundTransactionsDesc": "Góp quỹ và chi tiêu nhóm sẽ được thống kê tại đây",
+  "groupMemberSurplus": "Dư: +{amount}",
+  "@groupMemberSurplus": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "groupMemberDeficit": "Chi vượt: -{amount}",
+  "@groupMemberDeficit": {
+    "placeholders": {
+      "amount": {
         "type": "String"
       }
     }

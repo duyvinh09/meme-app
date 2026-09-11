@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/constants/streak_milestones.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/user_model.dart';
@@ -32,6 +33,13 @@ class CaptureController extends ChangeNotifier {
   int? selectedVideoDurationMs;
 
   bool isSaving = false;
+  StreakMilestone? lastUnlockedMilestone;
+
+  StreakMilestone? consumeLastUnlockedMilestone() {
+    final m = lastUnlockedMilestone;
+    lastUnlockedMilestone = null;
+    return m;
+  }
 
   bool get hasImage => selectedMediaType == 'image' && selectedImage != null;
   bool get hasVideo => selectedMediaType == 'video' && selectedVideo != null;
@@ -139,12 +147,12 @@ class CaptureController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _updateUserStreak({
+  Future<StreakMilestone?> _updateUserStreak({
     required String userId,
     required DateTime newTransactionDate,
   }) async {
     final UserModel? profile = await userRepository.getUserProfile(userId);
-    if (profile == null) return;
+    if (profile == null) return null;
 
     final nowDay = DateTime.utc(
       newTransactionDate.year,
@@ -179,13 +187,26 @@ class CaptureController extends ChangeNotifier {
       newBest = profile.bestStreak > 0 ? profile.bestStreak : 1;
     }
 
+    final unlocked = List<int>.from(profile.unlockedMilestones);
+    final newlyUnlocked = StreakMilestones.checkNewMilestone(
+      oldStreak: profile.currentStreak,
+      newStreak: newCurrent,
+      unlockedMilestones: unlocked,
+    );
+
+    if (newlyUnlocked != null && !unlocked.contains(newlyUnlocked.days)) {
+      unlocked.add(newlyUnlocked.days);
+    }
+
     final Map<String, dynamic> streakUpdates = {
       'currentStreak': newCurrent,
       'bestStreak': newBest,
       'lastActiveDate': newTransactionDate,
+      if (newlyUnlocked != null) 'unlockedMilestones': unlocked,
     };
 
     await userRepository.updateUserProfile(userId, streakUpdates);
+    return newlyUnlocked;
   }
 
   Future<bool> saveTransaction({
@@ -292,7 +313,7 @@ class CaptureController extends ChangeNotifier {
         isGroupContribution: effectiveGroupContribution,
       );
 
-      await _updateUserStreak(
+      lastUnlockedMilestone = await _updateUserStreak(
         userId: userId,
         newTransactionDate: now,
       );

@@ -1950,12 +1950,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get allFramesUnlockedDesc =>
-      'You have conquered all the highest streak milestones!';
+      'Keep maintaining your wonderful moment streak every day!';
 
   @override
   String needStreakToUnlock(int days, String frameName) {
     return 'Reach a $days-day streak to unlock $frameName frame!';
   }
+
+  @override
+  String get streakMilestoneUnlocked => 'New Milestone Unlocked!';
+
+  @override
+  String streakMilestoneDaysLabel(int days) {
+    return '$days Days';
+  }
+
+  @override
+  String get streakMilestoneContinue => 'Continue';
+
+  @override
+  String get streakRewardAvatarFrameHint =>
+      'Open Streak to claim & equip your new avatar frame!';
+
+  @override
+  String get streakRewardCameraThemeHint =>
+      'Unlocked new Avatar Frame & Camera Themes to explore!';
 
   @override
   String get today => 'Today';
@@ -2655,5 +2674,92 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String spentBy(String name) {
     return 'Spent by: $name';
+  }
+
+  @override
+  String get seeAll => 'See all';
+
+  @override
+  String get groupStatsContributionAndExpense => 'Contribution & Expense Stats';
+
+  @override
+  String get groupStatsFundFlowSubtitle => 'Group fund flow & overview';
+
+  @override
+  String groupContributionCount(int count) {
+    return '$count contributions';
+  }
+
+  @override
+  String groupExpenseCount(int count) {
+    return '$count expenses';
+  }
+
+  @override
+  String get groupFundUsageRatio => 'Fund usage ratio';
+
+  @override
+  String groupSurplusWithAmount(String amount) {
+    return 'Surplus $amount';
+  }
+
+  @override
+  String groupDeficitWithAmount(String amount) {
+    return 'Deficit $amount';
+  }
+
+  @override
+  String groupSpentPercent(String percent) {
+    return 'Spent $percent%';
+  }
+
+  @override
+  String groupRemainingPercent(String percent) {
+    return 'Remaining $percent%';
+  }
+
+  @override
+  String get groupTopSpendingCategories => 'Top fund spending categories';
+
+  @override
+  String get groupActivitiesAndTransactions => 'Fund Activities & Transactions';
+
+  @override
+  String groupFilterAllWithCount(int count) {
+    return 'All ($count)';
+  }
+
+  @override
+  String groupFilterContributedWithCount(int count) {
+    return 'Contributed ($count)';
+  }
+
+  @override
+  String groupFilterSpentWithCount(int count) {
+    return 'Spent ($count)';
+  }
+
+  @override
+  String get groupNoContributionsYet => 'No contributions yet';
+
+  @override
+  String get groupNoFundTransactionsYet => 'No fund transactions yet';
+
+  @override
+  String get groupNoContributionsDesc =>
+      'Contributions to the group fund will appear here';
+
+  @override
+  String get groupNoFundTransactionsDesc =>
+      'Group contributions and expenses will appear here';
+
+  @override
+  String groupMemberSurplus(String amount) {
+    return 'Surplus: +$amount';
+  }
+
+  @override
+  String groupMemberDeficit(String amount) {
+    return 'Overspent: -$amount';
   }
 }

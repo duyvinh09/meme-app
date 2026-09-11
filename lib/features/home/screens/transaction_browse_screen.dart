@@ -413,8 +413,8 @@ class _TransactionBrowseScreenState extends State<TransactionBrowseScreen> {
       if (!_matchesTimeFilter(tx.createdAt, now)) return false;
 
       // 2. Lọc loại thu/chi
-      if (_typeFilter == TypeFilterOption.expense && tx.type != 'expense') return false;
-      if (_typeFilter == TypeFilterOption.income && tx.type != 'income') return false;
+      if (_typeFilter == TypeFilterOption.expense && !tx.isPersonalExpense) return false;
+      if (_typeFilter == TypeFilterOption.income && !tx.isPersonalIncome) return false;
 
       // 3. Lọc danh mục
       if (_selectedCategory != null &&
@@ -454,9 +454,9 @@ class _TransactionBrowseScreenState extends State<TransactionBrowseScreen> {
     double totalExpense = 0;
     double totalIncome = 0;
     for (final tx in filteredTransactions) {
-      if (tx.type == 'expense') {
+      if (tx.isPersonalExpense) {
         totalExpense += tx.amount;
-      } else if (tx.type == 'income') {
+      } else if (tx.isPersonalIncome) {
         totalIncome += tx.amount;
       }
     }

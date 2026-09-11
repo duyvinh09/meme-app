@@ -23,6 +23,7 @@ class UserModel {
   final String activeStatusMode;
   final String? userNote;
   final DateTime? userNoteCreatedAt;
+  final List<int> unlockedMilestones;
 
   const UserModel({
     required this.uid,
@@ -47,6 +48,7 @@ class UserModel {
     this.activeStatusMode = 'friends',
     this.userNote,
     this.userNoteCreatedAt,
+    this.unlockedMilestones = const [],
   });
 
   bool get hasActiveNote {
@@ -121,6 +123,10 @@ class UserModel {
           (map['showActiveStatus'] == false ? 'none' : 'friends'),
       userNote: map['userNote'] as String?,
       userNoteCreatedAt: _parseDateTime(map['userNoteCreatedAt']),
+      unlockedMilestones: (map['unlockedMilestones'] as List<dynamic>?)
+              ?.map((e) => (e as num).toInt())
+              .toList() ??
+          const [],
     );
   }
 
@@ -149,6 +155,7 @@ class UserModel {
       if (userNote != null) 'userNote': userNote,
       if (userNoteCreatedAt != null)
         'userNoteCreatedAt': Timestamp.fromDate(userNoteCreatedAt!),
+      if (unlockedMilestones.isNotEmpty) 'unlockedMilestones': unlockedMilestones,
     };
   }
 
@@ -175,6 +182,7 @@ class UserModel {
     String? activeStatusMode,
     String? userNote,
     DateTime? userNoteCreatedAt,
+    List<int>? unlockedMilestones,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -199,6 +207,7 @@ class UserModel {
       activeStatusMode: activeStatusMode ?? this.activeStatusMode,
       userNote: userNote ?? this.userNote,
       userNoteCreatedAt: userNoteCreatedAt ?? this.userNoteCreatedAt,
+      unlockedMilestones: unlockedMilestones ?? this.unlockedMilestones,
     );
   }
 }

@@ -24,6 +24,7 @@ import '../../budget/controllers/budget_controller.dart';
 import '../../budget/services/budget_cycle_helper.dart';
 import '../../profile/controllers/user_category_controller.dart';
 import '../../feed/controllers/feed_controller.dart';
+import '../../home/widgets/streak_milestone_dialog.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/capture_controller.dart';
@@ -215,44 +216,45 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   String _toCanonicalCategory(String label) {
     final l10n = context.l10n;
-    switch (label.trim()) {
-      case 'Ăn uống':
-      case 'Food':
+    final trimmed = label.trim().toLowerCase();
+    switch (trimmed) {
+      case 'ăn uống':
+      case 'food':
         return 'Ăn uống';
-      case 'Mua sắm':
-      case 'Shopping':
+      case 'mua sắm':
+      case 'shopping':
         return 'Mua sắm';
-      case 'Đi lại':
-      case 'Transport':
+      case 'đi lại':
+      case 'transport':
         return 'Đi lại';
-      case 'Học tập':
-      case 'Education':
+      case 'học tập':
+      case 'education':
         return 'Học tập';
-      case 'Giải trí':
-      case 'Entertainment':
+      case 'giải trí':
+      case 'entertainment':
         return 'Giải trí';
-      case 'Lương':
-      case 'Salary':
+      case 'lương':
+      case 'salary':
         return 'Lương';
-      case 'Quà tặng':
-      case 'Gift':
+      case 'quà tặng':
+      case 'gift':
         return 'Quà tặng';
-      case 'Khác':
-      case 'Other':
+      case 'khác':
+      case 'other':
         return 'Khác';
-      case 'Quỹ nhóm':
-      case 'Group Fund':
+      case 'quỹ nhóm':
+      case 'group fund':
         return 'Quỹ nhóm';
       default:
-        if (label == l10n.food) return 'Ăn uống';
-        if (label == l10n.shopping) return 'Mua sắm';
-        if (label == l10n.transport) return 'Đi lại';
-        if (label == l10n.education) return 'Học tập';
-        if (label == l10n.entertainment) return 'Giải trí';
-        if (label == l10n.salary) return 'Lương';
-        if (label == l10n.gift) return 'Quà tặng';
-        if (label == l10n.other) return 'Khác';
-        if (label == l10n.groupFundCategory) return 'Quỹ nhóm';
+        if (trimmed == l10n.food.toLowerCase()) return 'Ăn uống';
+        if (trimmed == l10n.shopping.toLowerCase()) return 'Mua sắm';
+        if (trimmed == l10n.transport.toLowerCase()) return 'Đi lại';
+        if (trimmed == l10n.education.toLowerCase()) return 'Học tập';
+        if (trimmed == l10n.entertainment.toLowerCase()) return 'Giải trí';
+        if (trimmed == l10n.salary.toLowerCase()) return 'Lương';
+        if (trimmed == l10n.gift.toLowerCase()) return 'Quà tặng';
+        if (trimmed == l10n.other.toLowerCase()) return 'Khác';
+        if (trimmed == l10n.groupFundCategory.toLowerCase()) return 'Quỹ nhóm';
         return label;
     }
   }
@@ -505,7 +507,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final isGroupMode = privacy == 'group';
 
     if (isGroupMode || widget.isGroupContribution) {
-      addRaw('Quỹ nhóm');
+      addRaw(l10n.groupFundCategory);
     }
 
     for (final label in [
@@ -598,10 +600,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   void _closeCaptureFlow() {
-    Navigator.of(context).pushNamedAndRemoveUntil(
-      RouteNames.mainShell,
-          (route) => false,
-    );
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context, 'close');
+    } else {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        RouteNames.mainShell,
+        (route) => false,
+      );
+    }
   }
 
   void _showMaxDigitsWarning() {
@@ -876,6 +882,15 @@ class _PreviewScreenState extends State<PreviewScreen> {
     if (!mounted) return;
 
     if (ok) {
+      final unlockedMilestone = capture.consumeLastUnlockedMilestone();
+      if (unlockedMilestone != null && mounted) {
+        await StreakMilestoneDialog.show(
+          context,
+          milestone: unlockedMilestone,
+        );
+      }
+      if (!mounted) return;
+
       final budgetCtrl = context.read<BudgetController>();
       final budget = budgetCtrl.findApplicableBudgetForExpense(category: category) ??
           budgetCtrl.findBudgetByName(category);
@@ -907,7 +922,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       if (!mounted) return;
 
-      Navigator.popUntil(context, (route) => route.isFirst);
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context, true);
+      } else {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          RouteNames.mainShell,
+          (route) => false,
+        );
+      }
     } else {
       if (mounted) {
         AppToast.show(
@@ -1397,7 +1419,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         : _CategoryFallbackPreview(
                             color: currentCategoryColor,
                             icon: currentCategoryIcon,
-                            label: category,
+                            label: _localizedCategoryLabel(category),
                           ),
               ),
 
