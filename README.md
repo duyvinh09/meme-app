@@ -1,7 +1,7 @@
 # 📸 Meme — Gen Z Social Expense Tracker & Visual Spending Diary
 
 <p align="center">
-  <img src="assets/images/logo.png" alt="Meme Logo" width="120" onerror="this.style.display='none'"/>
+  <img src="assets/icons/meme_wordmark.png" alt="Meme Logo" width="220" onerror="this.style.display='none'"/>
 </p>
 
 <p align="center">
