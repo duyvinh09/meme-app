@@ -1938,7 +1938,7 @@ abstract class AppLocalizations {
   /// No description provided for @maxAmountDigits.
   ///
   /// In vi, this message translates to:
-  /// **'Tối đa 10 chữ số'**
+  /// **'Tối đa 12 chữ số (trăm tỷ)'**
   String get maxAmountDigits;
 
   /// No description provided for @addDetails.
@@ -2004,7 +2004,7 @@ abstract class AppLocalizations {
   /// No description provided for @amountLimitExceeded.
   ///
   /// In vi, this message translates to:
-  /// **'Số tiền vượt quá giới hạn 10 chữ số'**
+  /// **'Số tiền vượt quá giới hạn 12 chữ số (trăm tỷ)'**
   String get amountLimitExceeded;
 
   /// No description provided for @savedWithOverLimit.
@@ -4268,6 +4268,24 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'{count, plural, other{{count} thành viên}}'**
   String groupMembersCount(int count);
+
+  /// No description provided for @everyoneActive.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mọi người đều hoạt động'**
+  String get everyoneActive;
+
+  /// No description provided for @groupActiveCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count, plural, other{{count} người đang hoạt động}}'**
+  String groupActiveCount(int count);
+
+  /// No description provided for @onePersonActive.
+  ///
+  /// In vi, this message translates to:
+  /// **'1 người đang hoạt động'**
+  String get onePersonActive;
 
   /// No description provided for @groupChatOpen.
   ///

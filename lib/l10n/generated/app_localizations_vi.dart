@@ -1035,7 +1035,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get everyone => 'Mọi người';
 
   @override
-  String get maxAmountDigits => 'Tối đa 10 chữ số';
+  String get maxAmountDigits => 'Tối đa 12 chữ số (trăm tỷ)';
 
   @override
   String get addDetails => 'Thêm chi tiết';
@@ -1080,7 +1080,8 @@ class AppLocalizationsVi extends AppLocalizations {
   String get cannotShareNow => 'Không thể chia sẻ lúc này';
 
   @override
-  String get amountLimitExceeded => 'Số tiền vượt quá giới hạn 10 chữ số';
+  String get amountLimitExceeded =>
+      'Số tiền vượt quá giới hạn 12 chữ số (trăm tỷ)';
 
   @override
   String savedWithOverLimit(String category) {
@@ -2400,6 +2401,22 @@ class AppLocalizationsVi extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get everyoneActive => 'Mọi người đều hoạt động';
+
+  @override
+  String groupActiveCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count người đang hoạt động',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get onePersonActive => '1 người đang hoạt động';
 
   @override
   String get groupChatOpen => 'Mở nhóm chat';

@@ -532,6 +532,61 @@ class _LocationGroup {
   }
 }
 
+Color _resolveCategoryColor(TransactionModel transaction) {
+  final hex = transaction.categoryColorHex;
+  if (hex != null && hex.trim().isNotEmpty) {
+    var cleaned = hex.trim().replaceAll('#', '');
+    if (cleaned.length == 6) {
+      cleaned = 'FF$cleaned';
+    }
+    if (cleaned.length == 8) {
+      final val = int.tryParse(cleaned, radix: 16);
+      if (val != null) {
+        return Color(val);
+      }
+    }
+  }
+
+  switch (transaction.category.trim()) {
+    case 'Ăn uống':
+    case 'Food':
+      return const Color(0xFF59D46F);
+    case 'Mua sắm':
+    case 'Shopping':
+      return const Color(0xFFFF4D8D);
+    case 'Đi lại':
+    case 'Transport':
+      return const Color(0xFF2F9BFF);
+    case 'Giải trí':
+    case 'Entertainment':
+      return const Color(0xFFFFA52F);
+    case 'Học tập':
+    case 'Education':
+      return const Color(0xFF8B7CFF);
+    case 'Lương':
+    case 'Salary':
+      return const Color(0xFF59D46F);
+    case 'Quà tặng':
+    case 'Gift':
+      return const Color(0xFFFF4D8D);
+    case 'Khác':
+    case 'Other':
+      return const Color(0xFF79AFFF);
+    default:
+      const fallbackColors = [
+        Color(0xFF59D46F),
+        Color(0xFFFF4D8D),
+        Color(0xFF2F9BFF),
+        Color(0xFFFFA52F),
+        Color(0xFF8B7CFF),
+        Color(0xFF1CC5C0),
+        Color(0xFFFF8B8B),
+      ];
+      final hash = transaction.category.hashCode.abs();
+      return fallbackColors[hash % fallbackColors.length];
+  }
+}
+
 class _MapMomentMarker extends StatelessWidget {
   final TransactionModel transaction;
 
@@ -541,24 +596,32 @@ class _MapMomentMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final categoryColor = _resolveCategoryColor(transaction);
+
     return Stack(
       alignment: Alignment.bottomCenter,
       children: [
         Container(
           width: 52,
           height: 52,
-          padding: const EdgeInsets.all(3),
+          padding: const EdgeInsets.all(1.5),
           decoration: BoxDecoration(
-            color: AppColors.card(context),
-            borderRadius: BorderRadius.circular(16),
+            color: categoryColor,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: AppColors.border(context),
+              color: Colors.white.withValues(alpha: 0.35),
+              width: 1,
             ),
             boxShadow: [
               BoxShadow(
+                color: categoryColor.withValues(alpha: 0.35),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
                 color: Colors.black.withValues(alpha: 0.22),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
@@ -567,8 +630,8 @@ class _MapMomentMarker extends StatelessWidget {
             category: transaction.category,
             categoryIconCodePoint: transaction.categoryIconCodePoint,
             categoryColorHex: transaction.categoryColorHex,
-            width: 46,
-            height: 46,
+            width: 49,
+            height: 49,
             fit: BoxFit.cover,
             borderRadius: BorderRadius.circular(12),
           ),
@@ -576,10 +639,10 @@ class _MapMomentMarker extends StatelessWidget {
         Positioned(
           bottom: 0,
           child: Container(
-            width: 14,
-            height: 8,
+            width: 12,
+            height: 6,
             decoration: BoxDecoration(
-              color: AppColors.card(context),
+              color: categoryColor,
               borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             ),
           ),
@@ -599,6 +662,7 @@ class _MapMomentClusterMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final previews = group.previews;
+    final leadCategoryColor = _resolveCategoryColor(group.latest);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -629,8 +693,8 @@ class _MapMomentClusterMarker extends StatelessWidget {
               color: AppColors.primaryBlue,
               borderRadius: BorderRadius.circular(AppSizes.radiusPill),
               border: Border.all(
-                color: AppColors.card(context),
-                width: 2,
+                color: Colors.white,
+                width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
@@ -656,10 +720,10 @@ class _MapMomentClusterMarker extends StatelessWidget {
         Positioned(
           bottom: 1,
           child: Container(
-            width: 16,
-            height: 8,
+            width: 14,
+            height: 6,
             decoration: BoxDecoration(
-              color: AppColors.card(context),
+              color: leadCategoryColor,
               borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             ),
           ),
@@ -708,20 +772,28 @@ class _ClusterPhotoFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final categoryColor = _resolveCategoryColor(transaction);
+
     return Container(
       width: size,
       height: size,
-      padding: const EdgeInsets.all(3),
+      padding: const EdgeInsets.all(1.5),
       decoration: BoxDecoration(
-        color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(16),
+        color: categoryColor,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: AppColors.border(context),
+          color: Colors.white.withValues(alpha: 0.35),
+          width: 1,
         ),
         boxShadow: [
           BoxShadow(
+            color: categoryColor.withValues(alpha: 0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+          BoxShadow(
             color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 9,
+            blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
@@ -731,8 +803,8 @@ class _ClusterPhotoFrame extends StatelessWidget {
         category: transaction.category,
         categoryIconCodePoint: transaction.categoryIconCodePoint,
         categoryColorHex: transaction.categoryColorHex,
-        width: size - 6,
-        height: size - 6,
+        width: size - 3,
+        height: size - 3,
         fit: BoxFit.cover,
         borderRadius: BorderRadius.circular(12),
       ),

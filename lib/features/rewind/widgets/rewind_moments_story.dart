@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -28,37 +29,30 @@ class RewindMomentsStory extends StatefulWidget {
 
 class _RewindMomentsStoryState extends State<RewindMomentsStory>
     with TickerProviderStateMixin {
-  late AnimationController _entranceController;
+  late AnimationController _sequenceController;
   late AnimationController _zoomController;
   late Animation<double> _zoomScaleAnimation;
   late Animation<double> _zoomFadeAnimation;
 
   TransactionModel? _zoomedMoment;
 
-  // Fixed deterministic rotations for collage aesthetic
-  static const List<double> _deterministicRotations = [
-    -0.07, // ~ -4.0 deg
-    0.05,  // ~ +2.9 deg
-    -0.04, // ~ -2.3 deg
-    0.06,  // ~ +3.4 deg
-    -0.05,
-    0.04,
-  ];
-
   @override
   void initState() {
     super.initState();
-    _entranceController = AnimationController(
+
+    // 1. Master Sequence Controller (Fireworks Rocket -> Radial Explosion -> Exact 2-Column Auto Arrange -> Static Settle)
+    _sequenceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 2100),
     )..forward();
 
+    // 2. Zoom Lightbox Controller
     _zoomController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
 
-    _zoomScaleAnimation = Tween<double>(begin: 0.72, end: 1.0).animate(
+    _zoomScaleAnimation = Tween<double>(begin: 0.75, end: 1.0).animate(
       CurvedAnimation(parent: _zoomController, curve: Curves.easeOutBack),
     );
 
@@ -70,9 +64,13 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
 
   @override
   void dispose() {
-    _entranceController.dispose();
+    _sequenceController.dispose();
     _zoomController.dispose();
     super.dispose();
+  }
+
+  void _onCardTapDown() {
+    widget.onZoomChanged?.call(true);
   }
 
   void _openZoom(TransactionModel tx) {
@@ -86,12 +84,12 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
 
   void _closeZoom() {
     HapticFeedback.lightImpact();
+    widget.onZoomChanged?.call(false);
     _zoomController.reverse().then((_) {
       if (mounted) {
         setState(() {
           _zoomedMoment = null;
         });
-        widget.onZoomChanged?.call(false);
       }
     });
   }
@@ -99,75 +97,102 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final moments = widget.data.momentTransactions.take(6).toList();
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final moments = widget.data.momentTransactions.take(10).toList();
 
     return Stack(
       children: [
-        // ORIGINAL FLOATING POLAROID COLLAGE
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+        // ═════════════════════════════════════════════════════════════════════
+        // MEMORY BURST & 2-COLUMN COLLAGE CANVAS
+        // ═════════════════════════════════════════════════════════════════════
+        Positioned.fill(
           child: Column(
             children: [
-              const SizedBox(height: 6),
-              // Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    width: 1,
-                  ),
+              // 1. TOP HEADER TITLE ("KHOẢNH KHẮC CHI TIÊU")
+              const SizedBox(height: 64),
+              FadeTransition(
+                opacity: CurvedAnimation(
+                  parent: _sequenceController,
+                  curve: const Interval(0.0, 0.20, curve: Curves.easeOut),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: Column(
                   children: [
-                    const Text('✨', style: TextStyle(fontSize: 14)),
-                    const SizedBox(width: 6),
-                    Text(
-                      l10n.rewindMomentsTitle,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('📸', style: TextStyle(fontSize: 13)),
+                          const SizedBox(width: 6),
+                          Text(
+                            isEn ? 'Spending Moments' : l10n.rewindMomentsTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Text(
+                        isEn
+                            ? 'A scrapbook of your memorable spending moments'
+                            : l10n.rewindMomentsSubtitle,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.82),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          height: 1.35,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 10),
-
-              // Subtitle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: Text(
-                  l10n.rewindMomentsSubtitle,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    height: 1.35,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // Polaroid Collage Area
-              Expanded(
-                child: Center(
-                  child: moments.length <= 2
-                      ? _buildLinearMoments(moments)
-                      : _buildCollageMoments(moments),
-                ),
-              ),
               const SizedBox(height: 12),
+
+              // 2. ANIMATED COLLAGE ARENA
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final w = constraints.maxWidth;
+                    final h = constraints.maxHeight;
+
+                    return _ExpenseMemoryCollageCanvas(
+                      moments: moments,
+                      currency: widget.currency,
+                      sequenceController: _sequenceController,
+                      availableWidth: w,
+                      availableHeight: h,
+                      onCardTapDown: _onCardTapDown,
+                      onTapMoment: _openZoom,
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
             ],
           ),
         ),
 
-        // ZOOMED MODAL LIGHTBOX OVERLAY
+        // ═════════════════════════════════════════════════════════════════════
+        // LIGHTBOX ZOOM MODAL
+        // ═════════════════════════════════════════════════════════════════════
         if (_zoomedMoment != null)
           Positioned.fill(
             child: AnimatedBuilder(
@@ -181,17 +206,17 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Backdrop (Tap anywhere outside to close)
+                      // Backdrop Blur (Tap anywhere outside to close)
                       GestureDetector(
                         onTap: _closeZoom,
                         behavior: HitTestBehavior.opaque,
                         child: BackdropFilter(
                           filter: ImageFilter.blur(
-                            sigmaX: 10 * fade,
-                            sigmaY: 10 * fade,
+                            sigmaX: 12 * fade,
+                            sigmaY: 12 * fade,
                           ),
                           child: Container(
-                            color: Colors.black.withValues(alpha: 0.82),
+                            color: Colors.black.withValues(alpha: 0.85),
                           ),
                         ),
                       ),
@@ -211,116 +236,6 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
     );
   }
 
-  Widget _buildLinearMoments(List<TransactionModel> items) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: items.asMap().entries.map((entry) {
-        final index = entry.key;
-        final tx = entry.value;
-        final rotation =
-            _deterministicRotations[index % _deterministicRotations.length];
-
-        return _buildAnimatedPolaroid(
-          tx: tx,
-          index: index,
-          rotation: rotation,
-          width: 210,
-          height: 240,
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildCollageMoments(List<TransactionModel> items) {
-    final count = items.length;
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-
-        // Original relative positions with slight breathing room
-        final relativePositions = [
-          Offset(w * 0.04, h * 0.03),
-          Offset(w * 0.44, h * 0.07),
-          Offset(w * 0.10, h * 0.36),
-          Offset(w * 0.48, h * 0.42),
-          Offset(w * 0.03, h * 0.67),
-          Offset(w * 0.43, h * 0.69),
-        ];
-
-        final cardWidth = (w * 0.48).clamp(145.0, 185.0);
-        final cardHeight = cardWidth * 1.25;
-
-        return Stack(
-          clipBehavior: Clip.none,
-          children: List.generate(count, (index) {
-            final tx = items[index];
-            final pos = relativePositions[index % relativePositions.length];
-            final rotation =
-                _deterministicRotations[index % _deterministicRotations.length];
-
-            return Positioned(
-              left: pos.dx,
-              top: pos.dy,
-              child: _buildAnimatedPolaroid(
-                tx: tx,
-                index: index,
-                rotation: rotation,
-                width: cardWidth,
-                height: cardHeight,
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-
-  Widget _buildAnimatedPolaroid({
-    required TransactionModel tx,
-    required int index,
-    required double rotation,
-    required double width,
-    required double height,
-  }) {
-    final startInterval = (index * 0.12).clamp(0.0, 0.6);
-    final endInterval = (startInterval + 0.4).clamp(0.0, 1.0);
-
-    final animation = CurvedAnimation(
-      parent: _entranceController,
-      curve: Interval(startInterval, endInterval, curve: Curves.easeOutBack),
-    );
-
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, child) {
-        final scale = animation.value;
-        final slideY = (1.0 - animation.value) * 60;
-
-        return Transform.translate(
-          offset: Offset(0, slideY),
-          child: Transform.rotate(
-            angle: rotation * animation.value,
-            child: Transform.scale(
-              scale: scale.clamp(0.0, 1.0),
-              child: child,
-            ),
-          ),
-        );
-      },
-      child: GestureDetector(
-        onTap: () => _openZoom(tx),
-        child: _PolaroidCard(
-          tx: tx,
-          width: width,
-          height: height,
-          currency: widget.currency,
-        ),
-      ),
-    );
-  }
-
   Widget _buildZoomedCard(TransactionModel tx) {
     final dateStr = DateFormat('dd/MM/yyyy • HH:mm').format(tx.createdAt);
     final catDisplay = BudgetNameLocalizer.display(context, tx.category);
@@ -328,25 +243,24 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
       amountVnd: tx.amount,
       currency: widget.currency,
     );
-
     final screenWidth = MediaQuery.of(context).size.width;
     final cardWidth = (screenWidth * 0.86).clamp(280.0, 360.0);
 
     return GestureDetector(
-      onTap: () {}, // Prevent tap on card from closing
+      onTap: () {}, // Prevent accidental dismissal when clicking on the card itself
       child: Container(
         width: cardWidth,
         margin: const EdgeInsets.symmetric(horizontal: 20),
         padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
         decoration: BoxDecoration(
-          color: const Color(0xFFF9FAFB),
+          color: const Color(0xFFFAF9F6),
           borderRadius: BorderRadius.circular(24),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.6),
-              blurRadius: 32,
+              color: Colors.black.withValues(alpha: 0.65),
+              blurRadius: 36,
               spreadRadius: 4,
-              offset: const Offset(0, 14),
+              offset: const Offset(0, 16),
             ),
           ],
         ),
@@ -354,7 +268,7 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Photo Header
+            // Photo Header with Amount Badge and Close Icon
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Stack(
@@ -382,10 +296,10 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
                     ),
                   ),
 
-                  // Close button at top right
+                  // Close button
                   Positioned(
-                    top: 8,
-                    right: 8,
+                    top: 10,
+                    right: 10,
                     child: GestureDetector(
                       onTap: _closeZoom,
                       child: Container(
@@ -414,7 +328,7 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.78),
+                        color: Colors.black.withValues(alpha: 0.8),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -437,7 +351,7 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEEF2FF),
                     borderRadius: BorderRadius.circular(8),
@@ -470,7 +384,7 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
                 tx.caption,
                 style: const TextStyle(
                   color: Color(0xFF111827),
-                  fontSize: 15,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                   height: 1.35,
                 ),
@@ -481,6 +395,315 @@ class _RewindMomentsStoryState extends State<RewindMomentsStory>
     );
   }
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// EXPENSE MEMORY FIREWORKS BURST & 2-COLUMN AUTO-ARRANGE CANVAS (STATIC FINALE)
+// Choreography:
+// 1. ROCKET LAUNCH (Small & dim rocket ascends from bottom)
+// 2. FIREWORKS RADIAL EXPLOSION (360° burst, scale pop & bright illumination)
+// 3. AUTO ARRANGE (Sparks smoothly glide into original 2-column layout)
+// 4. STATIC FINALE (No continuous floating, completely stable)
+// ═════════════════════════════════════════════════════════════════════════════
+
+class _ExpenseMemoryCollageCanvas extends StatelessWidget {
+  final List<TransactionModel> moments;
+  final String currency;
+  final AnimationController sequenceController;
+  final double availableWidth;
+  final double availableHeight;
+  final VoidCallback onCardTapDown;
+  final ValueChanged<TransactionModel> onTapMoment;
+
+  const _ExpenseMemoryCollageCanvas({
+    required this.moments,
+    required this.currency,
+    required this.sequenceController,
+    required this.availableWidth,
+    required this.availableHeight,
+    required this.onCardTapDown,
+    required this.onTapMoment,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final count = moments.length;
+    if (count == 0) return const SizedBox.shrink();
+
+    final w = availableWidth;
+    final h = availableHeight;
+
+    // Card dimensions matching original code: 2 columns with generous visibility
+    final cardWidth = count <= 6
+        ? (w * 0.48).clamp(145.0, 185.0)
+        : (w * 0.44).clamp(130.0, 166.0);
+    final cardHeight = cardWidth * 1.25;
+
+    // 1. Single Fireworks Launch Point at bottom center
+    final spawnPoint = Offset(
+      (w - cardWidth) / 2,
+      h * 0.94,
+    );
+
+    // 2. Fireworks Apex Explosion Point in upper/mid arena
+    final apexPoint = Offset(
+      (w - cardWidth) / 2,
+      h * 0.38,
+    );
+
+    // Generate tailored fireworks trajectories for all photos
+    final configs = _generateFireworksConfigs(
+      count: count,
+      w: w,
+      h: h,
+      cardWidth: cardWidth,
+      cardHeight: cardHeight,
+      spawnPoint: spawnPoint,
+      apexPoint: apexPoint,
+    );
+
+    return AnimatedBuilder(
+      animation: sequenceController,
+      builder: (context, _) {
+        final t = sequenceController.value; // Timeline: 0.0 -> 1.0 (2100ms)
+
+        return Stack(
+          clipBehavior: Clip.none,
+          children: List.generate(count, (index) {
+            final tx = moments[index];
+            final cfg = configs[index % configs.length];
+
+            // ═════════════════════════════════════════════════════════════════
+            // FIREWORKS TIMELINE PHASES:
+            // 0.00 -> 0.22: Rocket Launch (small, dim, zooming upward to apex)
+            // 0.22 -> 0.52: Fireworks Radial Explosion (360° burst, scale pop)
+            // 0.52 -> 0.88: Auto Arrange into Original 2 Columns
+            // 0.88 -> 1.00: Settle & STATIC FINALE (no endless floating)
+            // ═════════════════════════════════════════════════════════════════
+            Offset currentPos;
+            double currentRot;
+            double scale;
+            double opacity;
+
+            if (t <= 0.22) {
+              // ── PHASE 1: ROCKET LAUNCH (Từ nhỏ & mờ phóng vút lên) ──
+              final uRaw = (t / 0.22).clamp(0.0, 1.0);
+              final u = Curves.easeInCubic.transform(uRaw);
+
+              final x = (1 - u) * cfg.spawnPoint.dx + u * cfg.apexPoint.dx;
+              final y = (1 - u) * cfg.spawnPoint.dy + u * cfg.apexPoint.dy;
+              currentPos = Offset(x, y);
+
+              currentRot = cfg.launchRotation * (1.0 - u);
+              scale = 0.06 + 0.20 * u;
+              opacity = (u * 1.5).clamp(0.0, 0.5);
+            } else if (t <= 0.52) {
+              // ── PHASE 2: FIREWORKS RADIAL EXPLOSION (Bùng nổ pháo hoa tỏa ra) ──
+              final vRaw = ((t - 0.22) / (0.52 - 0.22)).clamp(0.0, 1.0);
+              final v = Curves.easeOutQuart.transform(vRaw);
+
+              final p0 = cfg.apexPoint;
+              final p1 = cfg.burstPoint;
+
+              final arcX = math.sin(v * math.pi) * cfg.burstArcBend.dx;
+              final arcY = math.sin(v * math.pi) * cfg.burstArcBend.dy;
+
+              final x = (1 - v) * p0.dx + v * p1.dx + arcX;
+              final y = (1 - v) * p0.dy + v * p1.dy + arcY;
+              currentPos = Offset(x, y);
+
+              currentRot = v * cfg.burstRotation;
+              scale = 0.26 + 0.84 * v + 0.08 * math.sin(v * math.pi);
+              opacity = (0.5 + 0.5 * v).clamp(0.0, 1.0);
+            } else if (t <= 0.88) {
+              // ── PHASE 3: AUTO ARRANGE FROM FIREWORKS BURST TO 2 COLUMNS ──
+              final wRaw = ((t - 0.52) / (0.88 - 0.52)).clamp(0.0, 1.0);
+              final wEase = Curves.easeInOutCubic.transform(wRaw);
+
+              final pStart = cfg.burstPoint;
+              final pEnd = cfg.finalPoint;
+
+              final arcX = math.sin(wEase * math.pi) * cfg.arrangeArcBend.dx;
+              final arcY = math.sin(wEase * math.pi) * cfg.arrangeArcBend.dy;
+
+              final x = (1 - wEase) * pStart.dx + wEase * pEnd.dx + arcX;
+              final y = (1 - wEase) * pStart.dy + wEase * pEnd.dy + arcY;
+              currentPos = Offset(x, y);
+
+              currentRot = (1 - wEase) * cfg.burstRotation + wEase * cfg.finalRotation;
+              scale = 1.0 + 0.03 * math.sin(wEase * math.pi);
+              opacity = 1.0;
+            } else {
+              // ── PHASE 4: FINAL SETTLE & STATIC FINALE ──
+              final sRaw = ((t - 0.88) / (1.0 - 0.88)).clamp(0.0, 1.0);
+              final s = Curves.easeOutBack.transform(sRaw);
+
+              final pFinal = cfg.finalPoint;
+              final settleOffset = (1.0 - s) * cfg.settleJitter;
+
+              currentPos = Offset(
+                pFinal.dx,
+                pFinal.dy + settleOffset,
+              );
+              currentRot = cfg.finalRotation;
+              scale = 1.0;
+              opacity = 1.0;
+            }
+
+            return Positioned(
+              left: currentPos.dx,
+              top: currentPos.dy,
+              child: Opacity(
+                opacity: opacity,
+                child: Transform.rotate(
+                  angle: currentRot,
+                  child: Transform.scale(
+                    scale: scale.clamp(0.05, 1.3),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (_) => onCardTapDown(),
+                      onTap: () => onTapMoment(tx),
+                      child: _PolaroidCard(
+                        tx: tx,
+                        width: cardWidth,
+                        height: cardHeight,
+                        currency: currency,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  /// Calculates dynamic fireworks trajectories using exact original 2-column layout
+  List<_FireworksTrajectoryConfig> _generateFireworksConfigs({
+    required int count,
+    required double w,
+    required double h,
+    required double cardWidth,
+    required double cardHeight,
+    required Offset spawnPoint,
+    required Offset apexPoint,
+  }) {
+    // Exact original 6-photo positions
+    final original6Positions = [
+      Offset(w * 0.04, h * 0.03),
+      Offset(w * 0.44, h * 0.07),
+      Offset(w * 0.10, h * 0.36),
+      Offset(w * 0.48, h * 0.42),
+      Offset(w * 0.03, h * 0.67),
+      Offset(w * 0.43, h * 0.69),
+    ];
+
+    // Extended 10-photo positions maintaining the original aesthetic
+    final original10Positions = [
+      Offset(w * 0.04, h * 0.02),
+      Offset(w * 0.44, h * 0.05),
+      Offset(w * 0.09, h * 0.22),
+      Offset(w * 0.48, h * 0.25),
+      Offset(w * 0.03, h * 0.42),
+      Offset(w * 0.45, h * 0.45),
+      Offset(w * 0.08, h * 0.62),
+      Offset(w * 0.47, h * 0.65),
+      Offset(w * 0.04, h * 0.81),
+      Offset(w * 0.44, h * 0.83),
+    ];
+
+    final targetPositions = count <= 6 ? original6Positions : original10Positions;
+
+    // Exact deterministic rotations from original code
+    final deterministicRotations = [
+      -0.07, // ~ -4.0°
+      0.05,  // ~ +2.9°
+      -0.04, // ~ -2.3°
+      0.06,  // ~ +3.4°
+      -0.05, // ~ -2.8°
+      0.04,  // ~ +2.3°
+      -0.06,
+      0.05,
+      -0.04,
+      0.06,
+    ];
+
+    final List<_FireworksTrajectoryConfig> configs = [];
+
+    for (int i = 0; i < count; i++) {
+      final finalPos = targetPositions[i % targetPositions.length];
+      final finalRot = deterministicRotations[i % deterministicRotations.length];
+
+      // Fireworks Radial Burst (360° nan hoa bùng nổ từ apex)
+      final angle = (i * (2 * math.pi / math.max(1, count))) + (i % 2 == 0 ? 0.10 : -0.10);
+      final burstRadiusX = (w * 0.35 + ((i * 11) % 25)).clamp(85.0, 155.0);
+      final burstRadiusY = (h * 0.25 + ((i * 13) % 30)).clamp(75.0, 135.0);
+
+      final burstX = (apexPoint.dx + math.cos(angle) * burstRadiusX).clamp(0.0, w - cardWidth);
+      final burstY = (apexPoint.dy + math.sin(angle) * burstRadiusY).clamp(0.0, h - cardHeight);
+      final burstPos = Offset(burstX, burstY);
+
+      final burstRot = math.sin(angle) * 0.18;
+
+      final burstArcBend = Offset(
+        math.cos(angle + math.pi / 4) * 18.0,
+        math.sin(angle + math.pi / 4) * 18.0,
+      );
+
+      final isLeftCol = (i % 2 == 0);
+      final arrangeArcBend = Offset(
+        isLeftCol ? -14.0 : 14.0,
+        -10.0 + (i % 3) * 6.0,
+      );
+
+      configs.add(_FireworksTrajectoryConfig(
+        spawnPoint: spawnPoint,
+        apexPoint: apexPoint,
+        burstPoint: burstPos,
+        finalPoint: finalPos,
+        launchRotation: (i % 2 == 0 ? -0.06 : 0.06),
+        burstRotation: burstRot,
+        finalRotation: finalRot,
+        burstArcBend: burstArcBend,
+        arrangeArcBend: arrangeArcBend,
+        settleJitter: (i % 2 == 0 ? 2.0 : -2.0),
+      ));
+    }
+
+    return configs;
+  }
+}
+
+class _FireworksTrajectoryConfig {
+  final Offset spawnPoint;
+  final Offset apexPoint;
+  final Offset burstPoint;
+  final Offset finalPoint;
+  final double launchRotation;
+  final double burstRotation;
+  final double finalRotation;
+  final Offset burstArcBend;
+  final Offset arrangeArcBend;
+  final double settleJitter;
+
+  const _FireworksTrajectoryConfig({
+    required this.spawnPoint,
+    required this.apexPoint,
+    required this.burstPoint,
+    required this.finalPoint,
+    required this.launchRotation,
+    required this.burstRotation,
+    required this.finalRotation,
+    required this.burstArcBend,
+    required this.arrangeArcBend,
+    required this.settleJitter,
+  });
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// PHYSICAL POLAROID CARD COMPONENT
+// ═════════════════════════════════════════════════════════════════════════════
 
 class _PolaroidCard extends StatelessWidget {
   final TransactionModel tx;
@@ -507,25 +730,35 @@ class _PolaroidCard extends StatelessWidget {
     return Container(
       width: width,
       height: height,
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+      padding: const EdgeInsets.fromLTRB(7, 7, 7, 9),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFFFAF9F6), // Warm paper off-white
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.92),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.35),
+            color: Colors.black.withValues(alpha: 0.32),
             blurRadius: 14,
-            offset: const Offset(0, 8),
+            spreadRadius: 1,
+            offset: const Offset(0, 7),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Photo
+          // Photo Body
           Expanded(
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(9),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -536,8 +769,8 @@ class _PolaroidCard extends StatelessWidget {
                       color: const Color(0xFFE5E7EB),
                       child: const Center(
                         child: SizedBox(
-                          width: 20,
-                          height: 20,
+                          width: 18,
+                          height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       ),
@@ -547,25 +780,29 @@ class _PolaroidCard extends StatelessWidget {
                       child: const Icon(
                         Icons.broken_image_rounded,
                         color: Colors.black38,
+                        size: 24,
                       ),
                     ),
                   ),
-                  // Amount Badge Stamp
+
+                  // Amount Badge Stamp in bottom right corner
                   Positioned(
-                    bottom: 6,
-                    right: 6,
+                    bottom: 5,
+                    right: 5,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2.5),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.72),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         amountStr,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
+                          color: Color(0xFF6EE7B7),
+                          fontSize: 10,
                           fontWeight: FontWeight.w800,
+                          letterSpacing: -0.2,
                         ),
                       ),
                     ),
@@ -574,9 +811,9 @@ class _PolaroidCard extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
 
-          // Caption & Date
+          // Polaroid Bottom Label (Caption or Category + Date)
           Row(
             children: [
               Expanded(
@@ -586,7 +823,7 @@ class _PolaroidCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFF1F2937),
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: -0.2,
                   ),
@@ -597,7 +834,7 @@ class _PolaroidCard extends StatelessWidget {
                 dateStr,
                 style: const TextStyle(
                   color: Color(0xFF6B7280),
-                  fontSize: 10.5,
+                  fontSize: 9.5,
                   fontWeight: FontWeight.w600,
                 ),
               ),

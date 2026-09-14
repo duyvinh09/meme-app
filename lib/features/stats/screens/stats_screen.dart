@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +11,7 @@ import 'category_detail_screen.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../widgets/transaction_map_panel.dart';
+import '../widgets/monthly_comparison_card.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/extensions/localization_extension.dart';
@@ -726,13 +728,23 @@ class _StatsScreenState extends State<StatsScreen> {
         : context.l10n.incomeLess(absPercent);
   }
 
-  int _getPercent(
-      double value,
-      List<MapEntry<String, double>> entries,
-      ) {
+  double _getRawPercent(
+    double value,
+    List<MapEntry<String, double>> entries,
+  ) {
     final total = entries.fold<double>(0, (sum, item) => sum + item.value);
-    if (total <= 0) return 0;
-    return ((value / total) * 100).round();
+    if (total <= 0) return 0.0;
+    return (value / total) * 100.0;
+  }
+
+  String _formatPercent(double rawPercent) {
+    if (rawPercent <= 0) return '0%';
+    if (rawPercent >= 100) return '100%';
+    final rounded = (rawPercent * 10).round() / 10;
+    if (rounded % 1 == 0) {
+      return '${rounded.toInt()}%';
+    }
+    return '${rounded.toStringAsFixed(1)}%';
   }
 
   @override
@@ -920,6 +932,20 @@ class _StatsScreenState extends State<StatsScreen> {
 
             const SizedBox(height: 18),
 
+            MonthlyComparisonCard(
+              transactions: stats.transactions,
+              referenceDate: selectedDate,
+              currency: currency,
+              cardBackground: palette.cardBackground,
+              cardBorder: palette.cardBorder,
+              textPrimary: palette.textPrimary,
+              textSecondary: palette.textSecondary,
+              innerTileBackground: palette.innerTileBackground,
+              innerTileBorder: palette.innerTileBorder,
+            ),
+
+            const SizedBox(height: 18),
+
             _RowSegment(
               selectedIndex: selectedContentTab.index,
               labels: [context.l10n.categories, context.l10n.map],
@@ -1042,13 +1068,14 @@ class _StatsScreenState extends State<StatsScreen> {
                     )
                   else ...[
                     SizedBox(
-                      height: 285,
+                      height: 300,
                       child: Stack(
+                        clipBehavior: Clip.none,
                         alignment: Alignment.center,
                         children: [
                           PieChart(
                             PieChartData(
-                              centerSpaceRadius: 74,
+                              centerSpaceRadius: 60,
                               sectionsSpace: 3,
                               startDegreeOffset: -90,
                               borderData: FlBorderData(show: false),
@@ -1056,33 +1083,39 @@ class _StatsScreenState extends State<StatsScreen> {
                               sections: categoryEntries.asMap().entries.map((entry) {
                                 final index = entry.key;
                                 final item = entry.value;
-                                final percent = _getPercent(item.value, categoryEntries);
                                 final color = categoryColorMap[item.key] ??
                                     _fallbackCategoryColor(item.key, index);
 
                                 return PieChartSectionData(
                                   value: item.value,
                                   color: color,
-                                  radius: 42,
-                                  title: percent >= 8 ? '$percent%' : '',
-                                  titlePositionPercentageOffset: 0.58,
-                                  titleStyle: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
-                                    shadows: [
-                                      Shadow(
-                                        color: Colors.black26,
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
+                                  radius: 35,
+                                  showTitle: false,
                                 );
                               }).toList(),
                             ),
                           ),
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: CustomPaint(
+                                painter: _CategoryLeaderLinePainter(
+                                  entries: categoryEntries,
+                                  categoryColorMap: categoryColorMap,
+                                  fallbackColor: _fallbackCategoryColor,
+                                  localizedCategory: _localizedCategoryLabel,
+                                  getRawPercent: (val) =>
+                                      _getRawPercent(val, categoryEntries),
+                                  formatPercent: _formatPercent,
+                                  textPrimary: palette.textPrimary,
+                                  outerRadius: 95,
+                                ),
+                              ),
+                            ),
+                          ),
                           _ChartCenterInfo(
-                            title: isExpense ? context.l10n.totalExpenseLabel : context.l10n.totalIncomeLabel,
+                            title: isExpense
+                                ? context.l10n.totalExpenseLabel
+                                : context.l10n.totalIncomeLabel,
                             amount: money(currentTotal),
                             accent: mainColor,
                             palette: palette,
@@ -1097,7 +1130,9 @@ class _StatsScreenState extends State<StatsScreen> {
                       children: categoryEntries.asMap().entries.map((entry) {
                         final index = entry.key;
                         final item = entry.value;
-                        final percent = _getPercent(item.value, categoryEntries);
+                        final rawPercent =
+                            _getRawPercent(item.value, categoryEntries);
+                        final percentText = _formatPercent(rawPercent);
 
                         final color = categoryColorMap[item.key] ??
                             _fallbackCategoryColor(item.key, index);
@@ -1105,7 +1140,8 @@ class _StatsScreenState extends State<StatsScreen> {
                         return _ChartLegendTile(
                           color: color,
                           title: _localizedCategoryLabel(item.key),
-                          percent: percent,
+                          percentText: percentText,
+                          rawPercent: rawPercent,
                           amount: money(item.value),
                           palette: palette,
                         );
@@ -1121,7 +1157,9 @@ class _StatsScreenState extends State<StatsScreen> {
             if (selectedContentTab != _StatsContentTab.map &&
                 categoryEntries.isNotEmpty) ...[
               Text(
-                isExpense ? context.l10n.expenseDetails : context.l10n.incomeDetails,
+                isExpense
+                    ? context.l10n.expenseDetails
+                    : context.l10n.incomeDetails,
                 style: TextStyle(
                   color: palette.textPrimary,
                   fontSize: 20,
@@ -1135,7 +1173,9 @@ class _StatsScreenState extends State<StatsScreen> {
               ...categoryEntries.asMap().entries.map((entry) {
                 final index = entry.key;
                 final item = entry.value;
-                final percent = _getPercent(item.value, categoryEntries);
+                final rawPercent =
+                    _getRawPercent(item.value, categoryEntries);
+                final percentText = _formatPercent(rawPercent);
 
                 final categoryTransactions = currentTransactions
                     .where((tx) => tx.category == item.key)
@@ -1145,12 +1185,20 @@ class _StatsScreenState extends State<StatsScreen> {
                 final color = categoryColorMap[item.key] ??
                     _fallbackCategoryColor(item.key, index);
 
+                final isVi =
+                    Localizations.localeOf(context).languageCode == 'vi';
+                final subtitle = isExpense
+                    ? (isVi
+                        ? '$percentText tổng chi tiêu'
+                        : '$percentText of total expense')
+                    : (isVi
+                        ? '$percentText tổng thu nhập'
+                        : '$percentText of total income');
+
                 return _DetailCategoryTile(
                   color: color,
                   title: _localizedCategoryLabel(item.key),
-                  subtitle: isExpense 
-                      ? context.l10n.percentOfTotalExpense(percent)
-                      : context.l10n.percentOfTotalIncome(percent),
+                  subtitle: subtitle,
                   value: money(item.value),
                   palette: palette,
                   onTap: () {
@@ -1366,19 +1414,19 @@ class _ChartCenterInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 118,
-      height: 118,
-      padding: const EdgeInsets.all(12),
+      width: 112,
+      height: 112,
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: palette.cardBackground,
         border: Border.all(
-          color: accent.withOpacity(0.16),
+          color: accent.withValues(alpha: 0.16),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: accent.withOpacity(0.08),
+            color: accent.withValues(alpha: 0.08),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -1393,11 +1441,11 @@ class _ChartCenterInfo extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: palette.textSecondary,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 3),
           Text(
             amount,
             maxLines: 2,
@@ -1405,7 +1453,7 @@ class _ChartCenterInfo extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: palette.textPrimary,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: FontWeight.w900,
               height: 1.15,
             ),
@@ -1416,17 +1464,208 @@ class _ChartCenterInfo extends StatelessWidget {
   }
 }
 
+class _CalloutPoint {
+  final String label;
+  final String percentText;
+  final Color color;
+  final Offset startPoint;
+  final bool isRightSide;
+  Offset elbowPoint;
+  Offset textAnchor;
+
+  _CalloutPoint({
+    required this.label,
+    required this.percentText,
+    required this.color,
+    required this.startPoint,
+    required this.isRightSide,
+    required this.elbowPoint,
+    required this.textAnchor,
+  });
+}
+
+class _CategoryLeaderLinePainter extends CustomPainter {
+  final List<MapEntry<String, double>> entries;
+  final Map<String, Color> categoryColorMap;
+  final Color Function(String, int) fallbackColor;
+  final String Function(String) localizedCategory;
+  final double Function(double) getRawPercent;
+  final String Function(double) formatPercent;
+  final Color textPrimary;
+  final double outerRadius;
+
+  _CategoryLeaderLinePainter({
+    required this.entries,
+    required this.categoryColorMap,
+    required this.fallbackColor,
+    required this.localizedCategory,
+    required this.getRawPercent,
+    required this.formatPercent,
+    required this.textPrimary,
+    required this.outerRadius,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (entries.isEmpty) return;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final total = entries.fold<double>(0, (sum, e) => sum + e.value);
+    if (total <= 0) return;
+
+    double currentAngle = -math.pi / 2;
+    const double totalAngle = 2 * math.pi;
+
+    final List<_CalloutPoint> points = [];
+
+    // Chỉ hiển thị tối đa 4 đường chỉ cho các danh mục lớn (>= 2.5%) để biểu đồ luôn thoáng mắt, không bị rối
+    final majorEntries =
+        entries.where((e) => getRawPercent(e.value) >= 2.5).take(4).toList();
+    final displayedEntries =
+        majorEntries.isNotEmpty ? majorEntries : entries.take(3).toList();
+
+    // Chiều dài tia vươn ra ngoài từ mép biểu đồ tròn (thanh mảnh, chừa khoảng đệm rộng rãi 2 bên)
+    const double leaderLength = 10.0;
+
+    for (int i = 0; i < entries.length; i++) {
+      final entry = entries[i];
+      final sweep = (entry.value / total) * totalAngle;
+      final midAngle = currentAngle + sweep / 2;
+      final rawPercent = getRawPercent(entry.value);
+
+      if (displayedEntries.contains(entry) && rawPercent > 0) {
+        final color =
+            categoryColorMap[entry.key] ?? fallbackColor(entry.key, i);
+        final cosVal = math.cos(midAngle);
+        final sinVal = math.sin(midAngle);
+        final isRight = cosVal >= 0;
+
+        // 1. Điểm gốc: Dính liền chuẩn xác ngay tại mép ngoài lát bánh tròn
+        final startPoint = Offset(
+          center.dx + outerRadius * cosVal,
+          center.dy + outerRadius * sinVal,
+        );
+
+        // 2. Điểm gập: Phóng thẳng theo đúng góc tự nhiên của lát đó
+        final elbowPoint = Offset(
+          center.dx + (outerRadius + leaderLength) * cosVal,
+          center.dy + (outerRadius + leaderLength) * sinVal,
+        );
+
+        // 3. Đường gạch vai ngang ngắn hướng về phía đặt chữ
+        final textAnchor = Offset(
+          elbowPoint.dx + (isRight ? 8.0 : -8.0),
+          elbowPoint.dy,
+        );
+
+        points.add(_CalloutPoint(
+          label: localizedCategory(entry.key),
+          percentText: formatPercent(rawPercent),
+          color: color,
+          startPoint: startPoint,
+          isRightSide: isRight,
+          elbowPoint: elbowPoint,
+          textAnchor: textAnchor,
+        ));
+      }
+
+      currentAngle += sweep;
+    }
+
+    if (points.isEmpty) return;
+
+    for (final item in points) {
+      _drawCallout(canvas, size, item);
+    }
+  }
+
+  void _drawCallout(Canvas canvas, Size size, _CalloutPoint item) {
+    final linePaint = Paint()
+      ..color = item.color
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..isAntiAlias = true;
+
+    final dotPaint = Paint()
+      ..color = item.color
+      ..style = PaintingStyle.fill
+      ..isAntiAlias = true;
+
+    final path = Path()
+      ..moveTo(item.startPoint.dx, item.startPoint.dy)
+      ..lineTo(item.elbowPoint.dx, item.elbowPoint.dy)
+      ..lineTo(item.textAnchor.dx, item.textAnchor.dy);
+
+    canvas.drawPath(path, linePaint);
+    canvas.drawCircle(item.elbowPoint, 2.5, dotPaint);
+
+    final textSpan = TextSpan(
+      children: [
+        TextSpan(
+          text: '${item.label}\n',
+          style: TextStyle(
+            color: textPrimary.withValues(alpha: 0.90),
+            fontSize: 11.5,
+            fontWeight: FontWeight.w700,
+            height: 1.15,
+          ),
+        ),
+        TextSpan(
+          text: item.percentText,
+          style: TextStyle(
+            color: item.color,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w900,
+            height: 1.2,
+          ),
+        ),
+      ],
+    );
+
+    final textPainter = TextPainter(
+      text: textSpan,
+      textAlign: item.isRightSide ? TextAlign.left : TextAlign.right,
+      textDirection: TextDirection.ltr,
+    );
+
+    final double maxTextWidth = item.isRightSide
+        ? (size.width - item.textAnchor.dx - 6).clamp(50.0, 100.0)
+        : (item.textAnchor.dx - 6).clamp(50.0, 100.0);
+
+    textPainter.layout(maxWidth: maxTextWidth);
+
+    final double textX = item.isRightSide
+        ? item.textAnchor.dx + 4
+        : item.textAnchor.dx - 4 - textPainter.width;
+
+    final double textY = item.textAnchor.dy - (textPainter.height / 2);
+
+    textPainter.paint(canvas, Offset(textX, textY));
+  }
+
+  @override
+  bool shouldRepaint(covariant _CategoryLeaderLinePainter oldDelegate) {
+    return oldDelegate.entries != entries ||
+        oldDelegate.categoryColorMap != categoryColorMap ||
+        oldDelegate.textPrimary != textPrimary;
+  }
+}
+
 class _ChartLegendTile extends StatelessWidget {
   final Color color;
   final String title;
-  final int percent;
+  final String percentText;
+  final double rawPercent;
   final String amount;
   final _StatsPalette palette;
 
   const _ChartLegendTile({
     required this.color,
     required this.title,
-    required this.percent,
+    required this.percentText,
+    required this.rawPercent,
     required this.amount,
     required this.palette,
   });
@@ -1480,7 +1719,7 @@ class _ChartLegendTile extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(999),
                   child: LinearProgressIndicator(
-                    value: percent / 100,
+                    value: (rawPercent / 100).clamp(0.0, 1.0),
                     minHeight: 5,
                     backgroundColor: color.withOpacity(0.10),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
@@ -1494,7 +1733,7 @@ class _ChartLegendTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '$percent%',
+                percentText,
                 style: TextStyle(
                   color: color,
                   fontSize: 13,
@@ -1541,24 +1780,24 @@ class _MoneyTypeSelector extends StatelessWidget {
       children: [
         Expanded(
           child: _MoneyTypeCard(
-            title: context.l10n.income,
-            amount: incomeAmount,
-            icon: Icons.south_west_rounded,
-            accent: const Color(0xFF7DDC86),
-            selected: selectedType == _MoneyType.income,
-            onTap: () => onChanged(_MoneyType.income),
-            palette: palette,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _MoneyTypeCard(
             title: context.l10n.expense,
             amount: expenseAmount,
             icon: Icons.north_east_rounded,
             accent: const Color(0xFFFF7A7A),
             selected: selectedType == _MoneyType.expense,
             onTap: () => onChanged(_MoneyType.expense),
+            palette: palette,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _MoneyTypeCard(
+            title: context.l10n.income,
+            amount: incomeAmount,
+            icon: Icons.south_west_rounded,
+            accent: const Color(0xFF7DDC86),
+            selected: selectedType == _MoneyType.income,
+            onTap: () => onChanged(_MoneyType.income),
             palette: palette,
           ),
         ),

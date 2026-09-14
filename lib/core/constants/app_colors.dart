@@ -75,13 +75,13 @@ class AppColors {
   static Color glassBackground(BuildContext context) {
     return isDark(context)
         ? Colors.white.withValues(alpha: 0.08)
-        : Colors.white.withValues(alpha: 0.18);
+        : Colors.white.withValues(alpha: 0.42);
   }
 
   static Color glassBorder(BuildContext context) {
     return isDark(context)
         ? Colors.white.withValues(alpha: 0.14)
-        : Colors.black.withValues(alpha: 0.08);
+        : const Color(0xFFCBD5E1);
   }
 
   /// Readable foreground on an arbitrary accent color (buttons, icon grids).

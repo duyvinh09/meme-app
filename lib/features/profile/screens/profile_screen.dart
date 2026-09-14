@@ -12,6 +12,7 @@ import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/exchange_rate_service.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/widgets/app_back_button.dart';
 import '../../../core/widgets/async_filled_button.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -30,7 +31,14 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final ScrollController _scrollController = ScrollController();
   String? _loadedUid;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -507,32 +515,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      appBar: AppBar(
-        title: Text(
-          context.l10n.profile,
-          style: AppTextStyles.sectionTitle(context).copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          final uid = context.read<AuthController>().user?.uid;
-          if (uid != null && uid.isNotEmpty) {
-            await Future.wait([
-              context.read<ProfileController>().refreshUser(uid),
-              context.read<HomeController>().refreshProfile(uid),
-            ]);
-          }
-        },
-        child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          AppSizes.pagePadding,
-          8,
-          AppSizes.pagePadding,
-          AppSizes.bottomNavSafePadding,
-        ),
-        children: [
+      body: SafeArea(
+        bottom: false,
+        child: Stack(
+          children: [
+            // 1. Scrollable Content underneath the floating header
+            Positioned.fill(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  final uid = context.read<AuthController>().user?.uid;
+                  if (uid != null && uid.isNotEmpty) {
+                    await Future.wait([
+                      context.read<ProfileController>().refreshUser(uid),
+                      context.read<HomeController>().refreshProfile(uid),
+                    ]);
+                  }
+                },
+                child: ListView(
+                  controller: _scrollController,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSizes.pagePadding,
+                    68,
+                    AppSizes.pagePadding,
+                    AppSizes.bottomNavSafePadding,
+                  ),
+                  children: [
           // Hero User Profile Card
           Container(
             padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
@@ -935,7 +943,57 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
     ),
-  );
+  ),
+
+            // 2. Floating Transparent Header
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.pagePadding,
+                  12,
+                  AppSizes.pagePadding,
+                  12,
+                ),
+                child: Row(
+                  children: [
+                    if (Navigator.canPop(context)) ...[
+                      const AppBackButton(),
+                      const SizedBox(width: 14),
+                    ],
+                    Expanded(
+                      child: AnimatedBuilder(
+                        animation: _scrollController,
+                        builder: (context, child) {
+                          final offset = _scrollController.hasClients
+                              ? _scrollController.offset
+                              : 0.0;
+                          final titleOpacity =
+                              (1.0 - (offset / 80.0)).clamp(0.0, 1.0);
+                          return Opacity(
+                            opacity: titleOpacity,
+                            child: child,
+                          );
+                        },
+                        child: Text(
+                          context.l10n.profile,
+                          style: AppTextStyles.pageTitle(context).copyWith(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildAchievementStat(

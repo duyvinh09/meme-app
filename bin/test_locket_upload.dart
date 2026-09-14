@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:moment_money/core/services/locket/locket_upload_service.dart';
+import 'package:meme_app/core/services/locket/locket_upload_service.dart';
 
 Future<void> main(List<String> args) async {
   if (args.isEmpty) {

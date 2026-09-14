@@ -7,6 +7,7 @@ import 'package:flutter/widgets.dart';
 import '../../../core/services/in_app_notification_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../data/models/chat_message_model.dart';
+import '../../../data/models/note_reaction_model.dart';
 import '../../../data/models/post_reaction_model.dart';
 import '../../../data/models/post_view_model.dart';
 import '../../../data/models/user_model.dart';
@@ -40,6 +41,7 @@ class ChatController extends ChangeNotifier {
     _activeChatGroupId = groupId;
   }
 
+  String? _currentListeningUid;
   StreamSubscription? _incomingChatsSub;
   StreamSubscription? _incomingFriendRequestsSub;
   StreamSubscription? _friendsSub;
@@ -50,6 +52,7 @@ class ChatController extends ChangeNotifier {
   final Set<String> _processedAcceptedFriendKeys = {};
 
   void disposeListeners() {
+    _currentListeningUid = null;
     _incomingChatsSub?.cancel();
     _incomingChatsSub = null;
     _incomingFriendRequestsSub?.cancel();
@@ -63,12 +66,36 @@ class ChatController extends ChangeNotifier {
     _processedMessageKeys.clear();
     _processedFriendRequestKeys.clear();
     _processedAcceptedFriendKeys.clear();
+    InAppNotificationService.instance.clearHistory();
   }
 
   void initIncomingMessageListener(String myUid) {
-    disposeListeners();
+    if (_currentListeningUid == myUid && _incomingChatsSub != null) {
+      return;
+    }
+    if (_currentListeningUid != null && _currentListeningUid != myUid) {
+      disposeListeners();
+    }
+    _currentListeningUid = myUid;
+
+    bool isFirstChatsSnapshot = true;
+    _incomingChatsSub?.cancel();
     _incomingChatsSub = _chatRepository.streamUserChats(myUid).listen((snapshot) async {
+      if (isFirstChatsSnapshot) {
+        isFirstChatsSnapshot = false;
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+          if (updatedAt != null) {
+            _processedMessageKeys.add('${doc.id}_${updatedAt.millisecondsSinceEpoch}');
+          }
+        }
+        return;
+      }
+
       for (final change in snapshot.docChanges) {
+        if (change.type == DocumentChangeType.removed) continue;
+
         final data = change.doc.data();
         if (data == null) continue;
 
@@ -97,6 +124,18 @@ class ChatController extends ChangeNotifier {
             lastSenderId == myUid ||
             lastSenderId == currentAuthUid ||
             updatedAt == null) {
+          continue;
+        }
+
+        // Check if user already read the message
+        final unreadBy = (data['unreadBy'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList();
+        final lastMessageIsRead = data['lastMessageIsRead'] == true;
+        if (unreadBy != null && !unreadBy.contains(myUid)) {
+          continue;
+        }
+        if (unreadBy == null && lastMessageIsRead) {
           continue;
         }
 
@@ -182,9 +221,11 @@ class ChatController extends ChangeNotifier {
 
     _listenToFriendRequests(myUid);
     _listenToFriendAccepted(myUid);
+    _listenToMentions(myUid);
   }
 
   void _listenToFriendRequests(String myUid) {
+    bool isFirstFreqSnapshot = true;
     _incomingFriendRequestsSub?.cancel();
     _incomingFriendRequestsSub = FirebaseFirestore.instance
         .collection('users')
@@ -192,6 +233,18 @@ class ChatController extends ChangeNotifier {
         .collection('friend_requests')
         .snapshots()
         .listen((snapshot) async {
+      if (isFirstFreqSnapshot) {
+        isFirstFreqSnapshot = false;
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          final fromUid = (data['fromUid'] as String?) ?? doc.id;
+          final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+          _processedFriendRequestKeys.add(
+              'freq_${fromUid}_${createdAt?.millisecondsSinceEpoch ?? 0}');
+        }
+        return;
+      }
+
       final bool isAppResumed =
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
 
@@ -246,6 +299,7 @@ class ChatController extends ChangeNotifier {
   }
 
   void _listenToFriendAccepted(String myUid) {
+    bool isFirstFriendsSnapshot = true;
     _friendsSub?.cancel();
     _friendsSub = FirebaseFirestore.instance
         .collection('users')
@@ -253,6 +307,18 @@ class ChatController extends ChangeNotifier {
         .collection('friends')
         .snapshots()
         .listen((snapshot) async {
+      if (isFirstFriendsSnapshot) {
+        isFirstFriendsSnapshot = false;
+        for (final doc in snapshot.docs) {
+          final data = doc.data();
+          final friendUid = (data['uid'] as String?) ?? doc.id;
+          final addedAt = (data['addedAt'] as Timestamp?)?.toDate();
+          _processedAcceptedFriendKeys.add(
+              'friend_acc_${friendUid}_${addedAt?.millisecondsSinceEpoch ?? 0}');
+        }
+        return;
+      }
+
       final bool isAppResumed =
           WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
 
@@ -305,8 +371,10 @@ class ChatController extends ChangeNotifier {
         }
       }
     });
+  }
 
-    // 3. Listen to incoming mention notifications
+  void _listenToMentions(String myUid) {
+    bool isFirstMentionsSnapshot = true;
     _mentionsSub?.cancel();
     _mentionsSub = FirebaseFirestore.instance
         .collection('users')
@@ -315,11 +383,20 @@ class ChatController extends ChangeNotifier {
         .where('type', isEqualTo: 'mention')
         .snapshots()
         .listen((snapshot) async {
+      if (isFirstMentionsSnapshot) {
+        isFirstMentionsSnapshot = false;
+        for (final doc in snapshot.docs) {
+          _processedMessageKeys.add('mention_${doc.id}');
+        }
+        return;
+      }
+
       for (final change in snapshot.docChanges) {
         if (change.type != DocumentChangeType.added) continue;
 
         final data = change.doc.data();
         if (data == null) continue;
+        if (data['isRead'] == true) continue;
 
         final senderUid = data['senderUid'] as String? ?? '';
         final senderName = data['senderName'] as String? ?? 'Bạn bè';
@@ -392,6 +469,10 @@ class ChatController extends ChangeNotifier {
 
   Stream<List<PostReactionModel>> postReactionsStream(String postId) {
     return _chatRepository.getPostReactionsStream(postId);
+  }
+
+  Stream<List<NoteReactionModel>> noteReactionsStream(String noteOwnerId) {
+    return _chatRepository.getNoteReactionsStream(noteOwnerId);
   }
 
   Stream<List<PostViewModel>> postViewsStream(String postId) {
@@ -503,6 +584,30 @@ class ChatController extends ChangeNotifier {
       postImageUrl: postImageUrl,
       postCaption: postCaption,
       postCreatedAt: postCreatedAt,
+    );
+  }
+
+  Future<bool> sendNoteReaction({
+    required String noteOwnerId,
+    required String noteId,
+    required String noteText,
+    required String noteOwnerName,
+    required String myUid,
+    required String userName,
+    required String userAvatar,
+    String userFrame = 'plain',
+    required String emoji,
+  }) async {
+    return await _chatRepository.sendNoteReaction(
+      noteOwnerId: noteOwnerId,
+      noteId: noteId,
+      noteText: noteText,
+      noteOwnerName: noteOwnerName,
+      reactorId: myUid,
+      reactorName: userName,
+      reactorAvatar: userAvatar,
+      reactorFrame: userFrame,
+      emoji: emoji,
     );
   }
 

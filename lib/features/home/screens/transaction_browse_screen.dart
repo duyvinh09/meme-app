@@ -632,109 +632,103 @@ class _TransactionBrowseScreenState extends State<TransactionBrowseScreen> {
                         const SizedBox(height: 6),
 
                         // Filter Row 1: [∞ Thời gian ⌵] + Segment [Tất cả | Chi tiêu | Thu nhập]
-                        // Bọc LayoutBuilder + FittedBox chống tràn ngang trên máy nhỏ
+                        // Filter Row 1: [∞ Thời gian ⌵] + Segment [Tất cả | Chi tiêu | Thu nhập]
+                        // Bọc FittedBox tự động thu nhỏ nếu màn hình nhỏ, tránh RenderFlex overflow
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              return FittedBox(
-                                fit: BoxFit.scaleDown,
-                                alignment: Alignment.centerLeft,
-                                child: SizedBox(
-                                  width: constraints.maxWidth,
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      // Nút Dropdown Thời gian
-                                      GestureDetector(
-                                        key: _timeFilterKey,
-                                        onTap: _showTimeFilterMenu,
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.surface(context),
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(
-                                              color: AppColors.border(context),
-                                              width: 0.8,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                timeLabel,
-                                                style: TextStyle(
-                                                  color: AppColors.textPrimary(context),
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 4),
-                                              Icon(
-                                                Icons.keyboard_arrow_down_rounded,
-                                                color: AppColors.textSecondary(context),
-                                                size: 18,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                // Nút Dropdown Thời gian
+                                GestureDetector(
+                                  key: _timeFilterKey,
+                                  onTap: _showTimeFilterMenu,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6.5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface(context),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color: AppColors.border(context),
+                                        width: 0.8,
                                       ),
-
-                                      const SizedBox(width: 6),
-
-                                      // Segmented Filter: Tất cả | Chi tiêu | Thu nhập
-                                      Container(
-                                        padding: const EdgeInsets.all(2.5),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.surface(context),
-                                          borderRadius: BorderRadius.circular(24),
-                                          border: Border.all(
-                                            color: AppColors.border(context),
-                                            width: 0.8,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          timeLabel,
+                                          style: TextStyle(
+                                            color: AppColors.textPrimary(context),
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            _buildTypeSegmentItem(
-                                              label: l10n.typeFilterAll,
-                                              isSelected: _typeFilter == TypeFilterOption.all,
-                                              onTap: () {
-                                                if (_typeFilter != TypeFilterOption.all) {
-                                                  HapticFeedback.lightImpact();
-                                                  setState(() => _typeFilter = TypeFilterOption.all);
-                                                }
-                                              },
-                                            ),
-                                            _buildTypeSegmentItem(
-                                              label: l10n.typeFilterExpense,
-                                              isSelected: _typeFilter == TypeFilterOption.expense,
-                                              onTap: () {
-                                                if (_typeFilter != TypeFilterOption.expense) {
-                                                  HapticFeedback.lightImpact();
-                                                  setState(() => _typeFilter = TypeFilterOption.expense);
-                                                }
-                                              },
-                                            ),
-                                            _buildTypeSegmentItem(
-                                              label: l10n.typeFilterIncome,
-                                              isSelected: _typeFilter == TypeFilterOption.income,
-                                              onTap: () {
-                                                if (_typeFilter != TypeFilterOption.income) {
-                                                  HapticFeedback.lightImpact();
-                                                  setState(() => _typeFilter = TypeFilterOption.income);
-                                                }
-                                              },
-                                            ),
-                                          ],
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          color: AppColors.textSecondary(context),
+                                          size: 17,
                                         ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+
+                                const SizedBox(width: 8),
+
+                                // Segmented Filter: Tất cả | Chi tiêu | Thu nhập
+                                Container(
+                                  padding: const EdgeInsets.all(2.5),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.surface(context),
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: AppColors.border(context),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildTypeSegmentItem(
+                                        label: l10n.typeFilterAll,
+                                        isSelected: _typeFilter == TypeFilterOption.all,
+                                        onTap: () {
+                                          if (_typeFilter != TypeFilterOption.all) {
+                                            HapticFeedback.lightImpact();
+                                            setState(() => _typeFilter = TypeFilterOption.all);
+                                          }
+                                        },
+                                      ),
+                                      _buildTypeSegmentItem(
+                                        label: l10n.typeFilterExpense,
+                                        isSelected: _typeFilter == TypeFilterOption.expense,
+                                        onTap: () {
+                                          if (_typeFilter != TypeFilterOption.expense) {
+                                            HapticFeedback.lightImpact();
+                                            setState(() => _typeFilter = TypeFilterOption.expense);
+                                          }
+                                        },
+                                      ),
+                                      _buildTypeSegmentItem(
+                                        label: l10n.typeFilterIncome,
+                                        isSelected: _typeFilter == TypeFilterOption.income,
+                                        onTap: () {
+                                          if (_typeFilter != TypeFilterOption.income) {
+                                            HapticFeedback.lightImpact();
+                                            setState(() => _typeFilter = TypeFilterOption.income);
+                                          }
+                                        },
                                       ),
                                     ],
                                   ),
                                 ),
-                              );
-                            },
+                              ],
+                            ),
                           ),
                         ),
 
@@ -1059,7 +1053,7 @@ class _TransactionBrowseScreenState extends State<TransactionBrowseScreen> {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6.5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primaryBlue : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
@@ -1068,7 +1062,7 @@ class _TransactionBrowseScreenState extends State<TransactionBrowseScreen> {
           label,
           style: TextStyle(
             color: isSelected ? Colors.white : AppColors.textSecondary(context),
-            fontSize: 12.5,
+            fontSize: 12,
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),

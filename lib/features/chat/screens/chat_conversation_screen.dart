@@ -1395,7 +1395,10 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                             bottom: 12,
                             right: 14,
                             child: ChatScrollToBottomButton(
-                              isVisible: _showScrollToBottom,
+                              isVisible: _showScrollToBottom ||
+                                  (isFriendTyping &&
+                                      _scrollController.hasClients &&
+                                      _scrollController.offset > 40),
                               isFriendTyping: isFriendTyping,
                               friend: liveFriend,
                               isDark: isDark,

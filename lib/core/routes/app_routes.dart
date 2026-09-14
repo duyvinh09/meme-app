@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -17,6 +18,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/budget/screens/budget_screen.dart';
 import '../../features/budget/screens/create_budget_screen.dart';
 import '../../features/capture/screens/camera_screen.dart';
+import '../../features/capture/widgets/quick_voice_expense_sheet.dart';
 import '../../features/feed/controllers/feed_controller.dart';
 import '../../features/feed/screens/feed_screen.dart';
 import '../../features/home/screens/calendar_screen.dart';
@@ -270,6 +272,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   bool isRefreshingFeed = false;
 
   bool showCaptureFab = true;
+  bool isFabMenuOpen = false;
 
   Timer? _captureFabTimer;
   Timer? _presenceHeartbeatTimer;
@@ -369,6 +372,12 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   Future<void> _onNavTap(BuildContext context, int value) async {
+    if (isFabMenuOpen) {
+      setState(() {
+        isFabMenuOpen = false;
+      });
+    }
+
     // Nếu bấm lại tab Bạn bè thì refresh feed.
     if (value == 2) {
       if (index == 2) {
@@ -420,6 +429,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (showCaptureFab && mounted) {
       setState(() {
         showCaptureFab = false;
+        isFabMenuOpen = false;
       });
     }
   }
@@ -435,6 +445,8 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
     return Scaffold(
       extendBody: true,
       body: Stack(
@@ -470,6 +482,23 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               ),
             ),
           ),
+
+          // Backdrop barrier when FAB menu is open
+          if (index == 0 && isFabMenuOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    isFabMenuOpen = false;
+                  });
+                },
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.20),
+                ),
+              ),
+            ),
+
           Positioned(
             left: AppSizes.pagePadding,
             right: AppSizes.pagePadding,
@@ -480,6 +509,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               onTap: (value) => _onNavTap(context, value),
             ),
           ),
+
           if (index == 0)
             Positioned(
               right: 20,
@@ -494,91 +524,335 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     duration: const Duration(milliseconds: 200),
                     curve: Curves.easeOutCubic,
                     opacity: showCaptureFab ? 1.0 : 0.0,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // 1. TOP: CHAT / NHẮN TIN BUTTON
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.pushNamed(context, RouteNames.chatList);
-                          },
-                          child: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.isDark(context)
-                                  ? const Color(0xFF262938)
-                                  : Colors.white,
-                              border: Border.all(
-                                color: AppColors.isDark(context)
-                                    ? Colors.white.withValues(alpha: 0.16)
-                                    : AppColors.primaryBlue.withValues(alpha: 0.20),
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: AppColors.isDark(context) ? 0.28 : 0.10,
-                                  ),
-                                  blurRadius: 12,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Icon(
-                              Icons.chat_bubble_rounded,
-                              color: AppColors.isDark(context)
-                                  ? Colors.white
-                                  : AppColors.primaryBlue,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        // 2. BOTTOM: CAMERA BUTTON
-                        GestureDetector(
-                          onTap: () {
-                            HapticFeedback.selectionClick();
-                            Navigator.pushNamed(context, RouteNames.addTransaction);
-                          },
-                          child: Container(
-                            width: AppSizes.captureFabSize,
-                            height: AppSizes.captureFabSize,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: AppColors.primaryBlue,
-                              border: Border.all(
-                                color: Colors.white.withValues(
-                                  alpha: AppColors.isDark(context) ? 0.14 : 0.90,
-                                ),
-                                width: 3,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.primaryBlue.withValues(alpha: 0.35),
-                                  blurRadius: 16,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.add_a_photo_rounded,
-                              color: Colors.white,
-                              size: 30,
-                            ),
-                          ),
-                        ),
-                      ],
+                    child: _GenZExpandableFab(
+                      isOpen: isFabMenuOpen,
+                      onToggle: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          isFabMenuOpen = !isFabMenuOpen;
+                        });
+                      },
+                      onVoiceTap: () {
+                        setState(() => isFabMenuOpen = false);
+                        QuickVoiceExpenseSheet.show(context);
+                      },
+                      onCameraTap: () {
+                        setState(() => isFabMenuOpen = false);
+                        Navigator.pushNamed(context, RouteNames.addTransaction);
+                      },
+                      onChatTap: () {
+                        if (isFabMenuOpen) {
+                          setState(() => isFabMenuOpen = false);
+                        }
+                        Navigator.pushNamed(context, RouteNames.chatList);
+                      },
                     ),
                   ),
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GenZExpandableFab extends StatefulWidget {
+  final bool isOpen;
+  final VoidCallback onToggle;
+  final VoidCallback onVoiceTap;
+  final VoidCallback onCameraTap;
+  final VoidCallback onChatTap;
+
+  const _GenZExpandableFab({
+    required this.isOpen,
+    required this.onToggle,
+    required this.onVoiceTap,
+    required this.onCameraTap,
+    required this.onChatTap,
+  });
+
+  @override
+  State<_GenZExpandableFab> createState() => _GenZExpandableFabState();
+}
+
+class _GenZExpandableFabState extends State<_GenZExpandableFab>
+    with SingleTickerProviderStateMixin {
+  // ===========================================================================
+  // ⚙️ CẤU HÌNH KÍCH THƯỚC & TỌA ĐỘ CÁC NÚT
+  // ===========================================================================
+  static const double mainFabSize = 62.0;  // Kích thước nút chính (+ / ×)
+  static const double subFabSize = 42.0;   // Kích thước nút phụ (Camera, Mic)
+  static const double chatFabSize = 46.0;  // Kích thước nút Nhắn tin
+  static const double borderWidth = 1.5;   // Độ mỏng của viền nút
+
+  // Tọa độ đích khi bung ra (X: âm là sang trái, Y: âm là lên trên)
+  static const Offset cameraOffset = Offset(-16.0, -70.0); // Nút Camera ở trên
+  static const Offset micOffset = Offset(-70.0, -16.0);    // Nút Mic ở ngoài/trái
+
+  // Vị trí nút Nhắn tin (Chat)
+  static const double chatClosedY = -72.0;   // Khoảng cách nút Chat khi ĐÓNG (xa nút + hơn)
+  static const double chatOpenedY = -125.0;  // Vị trí nút Chat khi MỞ menu
+  // ===========================================================================
+
+  late AnimationController _controller;
+  late Animation<double> _rotationAnimation;
+  late Animation<double> _voiceAnimation;
+  late Animation<double> _cameraAnimation;
+  late Animation<double> _chatSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+      reverseDuration: const Duration(milliseconds: 240),
+    );
+
+    // Xoay 45 độ (0.125 turns) khi mở và xoay ngược lại khi đóng
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 0.125).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInOutCubic,
+      ),
+    );
+
+    // Nút Mic: bung ra ngay và thu hồi ngược lại
+    _voiceAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.82, curve: Curves.easeOutBack),
+      reverseCurve: const Interval(0.18, 1.0, curve: Curves.easeInOutCubic),
+    );
+
+    // Nút Camera: bung ra lệch sau 50ms và thu hồi ngược lại
+    _cameraAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.16, 1.0, curve: Curves.easeOutBack),
+      reverseCurve: const Interval(0.0, 0.82, curve: Curves.easeInOutCubic),
+    );
+
+    // Nút Chat trượt lên / xuống đồng bộ
+    _chatSlideAnimation = Tween<double>(begin: chatClosedY, end: chatOpenedY).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInOutCubic,
+      ),
+    );
+
+    if (widget.isOpen) {
+      _controller.value = 1.0;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _GenZExpandableFab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isOpen != oldWidget.isOpen) {
+      if (widget.isOpen) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Widget _buildSubItem({
+    required Animation<double> animation,
+    required Offset targetOffset,
+    required IconData icon,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return AnimatedBuilder(
+      animation: animation,
+      builder: (context, child) {
+        final progress = animation.value;
+        if (progress <= 0.001) {
+          return const SizedBox.shrink();
+        }
+
+        final currentOffset = Offset(
+          targetOffset.dx * progress,
+          targetOffset.dy * progress,
+        );
+        final scale = progress.clamp(0.0, 1.0);
+        final opacity = progress.clamp(0.0, 1.0);
+
+        return Transform.translate(
+          offset: currentOffset,
+          child: Transform.scale(
+            scale: scale,
+            alignment: Alignment.center,
+            child: Opacity(
+              opacity: opacity,
+              child: GestureDetector(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  onTap();
+                },
+                child: Container(
+                  width: subFabSize,
+                  height: subFabSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primaryBlue,
+                    border: Border.all(
+                      color: Colors.white.withValues(
+                        alpha: isDark ? 0.35 : 0.90,
+                      ),
+                      width: borderWidth,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryBlue.withValues(alpha: 0.35),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: 23,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    return SizedBox(
+      width: 170,
+      height: 250,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        clipBehavior: Clip.none,
+        children: [
+          // 1. Nút Chat (Trượt lên cao khi mở menu và hạ xuống khi đóng)
+          AnimatedBuilder(
+            animation: _chatSlideAnimation,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(0, _chatSlideAnimation.value),
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    widget.onChatTap();
+                  },
+                  child: Container(
+                    width: chatFabSize,
+                    height: chatFabSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark
+                          ? const Color(0xFF262938)
+                          : Colors.white,
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.20)
+                            : AppColors.primaryBlue.withValues(alpha: 0.25),
+                        width: borderWidth,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.28 : 0.10,
+                          ),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.chat_bubble_rounded,
+                      color: isDark
+                          ? Colors.white
+                          : AppColors.primaryBlue,
+                      size: 21,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // 2. Nút Camera (Bung ra phía trên theo cánh cung)
+          _buildSubItem(
+            animation: _cameraAnimation,
+            targetOffset: cameraOffset,
+            icon: Icons.photo_camera_rounded,
+            onTap: widget.onCameraTap,
+            isDark: isDark,
+          ),
+
+          // 3. Nút Mic (Bung ra bên trái/ngoài theo cánh cung)
+          _buildSubItem(
+            animation: _voiceAnimation,
+            targetOffset: micOffset,
+            icon: Icons.mic_rounded,
+            onTap: widget.onVoiceTap,
+            isDark: isDark,
+          ),
+
+          // 4. Nút chính + (Xoay 45° thành × khi mở, xoay ngược lại khi đóng)
+          GestureDetector(
+            onTap: widget.onToggle,
+            child: Container(
+              width: mainFabSize,
+              height: mainFabSize,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: widget.isOpen
+                    ? (isDark ? const Color(0xFF384050) : const Color(0xFF374151))
+                    : AppColors.primaryBlue,
+                border: Border.all(
+                  color: Colors.white.withValues(
+                    alpha: isDark ? 0.25 : 0.90,
+                  ),
+                  width: borderWidth + 0.3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (widget.isOpen
+                            ? Colors.black
+                            : AppColors.primaryBlue)
+                        .withValues(alpha: 0.35),
+                    blurRadius: 14,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: AnimatedBuilder(
+                animation: _rotationAnimation,
+                builder: (context, child) {
+                  return Transform.rotate(
+                    angle: _rotationAnimation.value * 2 * math.pi,
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -600,10 +874,12 @@ class _FloatingGlassNavbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
 
-    final selectedColor = AppColors.primaryBlue;
+    final selectedColor = isDark
+        ? AppColors.primaryBlue
+        : const Color(0xFF1D4ED8);
     final unselectedColor = isDark
         ? Colors.white.withValues(alpha: 0.82)
-        : Colors.black.withValues(alpha: 0.62);
+        : const Color(0xFF334155);
 
     final l10n = context.l10n;
     final items = <_NavBarItemData>[
@@ -637,7 +913,7 @@ class _FloatingGlassNavbar extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+        filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
         child: Container(
           height: AppSizes.navbarHeight,
           padding: const EdgeInsets.symmetric(
@@ -649,13 +925,16 @@ class _FloatingGlassNavbar extends StatelessWidget {
             color: AppColors.glassBackground(context),
             border: Border.all(
               color: AppColors.glassBorder(context),
-              width: 1.2,
+              width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.10),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.24)
+                    : Colors.black.withValues(alpha: 0.10),
+                blurRadius: 20,
+                spreadRadius: 1,
+                offset: const Offset(0, 6),
               ),
             ],
           ),

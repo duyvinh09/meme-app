@@ -732,6 +732,7 @@ class _MomentMediaCard extends StatelessWidget {
               category: transaction.category,
               categoryIconCodePoint: transaction.categoryIconCodePoint,
               categoryColorHex: transaction.categoryColorHex,
+              isFrontCamera: transaction.isFrontCamera,
             )
           else
             TransactionMomentImage(
@@ -900,6 +901,7 @@ class _MomentMutedVideoPlayer extends StatefulWidget {
   final String category;
   final int? categoryIconCodePoint;
   final String? categoryColorHex;
+  final bool isFrontCamera;
 
   const _MomentMutedVideoPlayer({
     required this.videoUrl,
@@ -907,6 +909,7 @@ class _MomentMutedVideoPlayer extends StatefulWidget {
     required this.category,
     this.categoryIconCodePoint,
     this.categoryColorHex,
+    this.isFrontCamera = false,
   });
 
   @override
@@ -974,6 +977,25 @@ class _MomentMutedVideoPlayerState extends State<_MomentMutedVideoPlayer> {
   Widget build(BuildContext context) {
     final controller = _controller;
 
+    Widget? videoWidget;
+    if (_isReady && controller != null) {
+      videoWidget = FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: controller.value.size.width,
+          height: controller.value.size.height,
+          child: VideoPlayer(controller),
+        ),
+      );
+
+      if (widget.isFrontCamera) {
+        videoWidget = Transform.flip(
+          flipX: true,
+          child: videoWidget,
+        );
+      }
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -991,15 +1013,8 @@ class _MomentMutedVideoPlayerState extends State<_MomentMutedVideoPlayer> {
           showVideoBadge: false,
         ),
 
-        if (_isReady && controller != null)
-          FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              width: controller.value.size.width,
-              height: controller.value.size.height,
-              child: VideoPlayer(controller),
-            ),
-          ),
+        if (videoWidget != null)
+          videoWidget,
       ],
     );
   }

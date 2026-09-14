@@ -87,7 +87,7 @@ class AppTextStyles {
     return TextStyle(
       color: color,
       fontSize: selected ? 11.0 : 10.2,
-      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+      fontWeight: selected ? FontWeight.w800 : FontWeight.w700,
       height: 1,
       letterSpacing: -0.2,
     );

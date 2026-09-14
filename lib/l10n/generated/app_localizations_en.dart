@@ -1035,7 +1035,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get everyone => 'Everyone';
 
   @override
-  String get maxAmountDigits => 'Max 10 digits';
+  String get maxAmountDigits => 'Maximum 12 digits';
 
   @override
   String get addDetails => 'Add details';
@@ -1080,7 +1080,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cannotShareNow => 'Cannot share at this time';
 
   @override
-  String get amountLimitExceeded => 'Amount exceeds the 10-digit limit';
+  String get amountLimitExceeded => 'Amount exceeds 12-digit limit';
 
   @override
   String savedWithOverLimit(String category) {
@@ -2398,6 +2398,23 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get everyoneActive => 'Everyone is active';
+
+  @override
+  String groupActiveCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count active now',
+      one: '1 active now',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get onePersonActive => '1 active now';
 
   @override
   String get groupChatOpen => 'Group Chat';

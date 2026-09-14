@@ -26,6 +26,7 @@ import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/chat_bubble_widget.dart';
 import '../widgets/message_action_menu_overlay.dart';
+import '../widgets/nearby_place_bottom_sheet.dart';
 import '../widgets/typing_indicator_widget.dart';
 
 class GroupChatConversationScreen extends StatefulWidget {
@@ -304,12 +305,25 @@ class _GroupChatConversationScreenState
   final Map<String, TransactionModel?> _resolvedExpensePosts = {};
   final Set<String> _resolvingExpenseIds = {};
 
+  Stream<List<Map<String, dynamic>>>? _activeFriendsStream;
+  List<Map<String, dynamic>> _lastActiveFriends = [];
+
   static const List<String> emojiList = [
     '🤣', '🥺', '😱', '🔥', '❤️', '👏', '😍', '🎉',
     '😎', '💯', '👀', '💀', '😭', '🤯', '🥳', '✨',
     '👍', '🙏', '🥰', '🤩', '💩', '🤑', '🤫', '🥱',
     '🫶', '🚀', '💖', '🙈', '🤤', '😈', '💤', '🍕',
   ];
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final myUid = context.read<AuthController>().user?.uid ?? '';
+    if (myUid.isNotEmpty && _activeFriendsStream == null) {
+      _activeFriendsStream = _userRepo.streamActiveFriendsRealtime(myUid);
+      _lastActiveFriends = _userRepo.getLatestActiveFriends(myUid);
+    }
+  }
 
   @override
   void initState() {
@@ -1098,18 +1112,36 @@ class _GroupChatConversationScreenState
                       }).map((e) => e.key).toList();
 
                       final bool isSomeoneTyping = typingUids.isNotEmpty;
-                      final String? typingUid =
-                          isSomeoneTyping ? typingUids.first : null;
-                      UserModel? typingUser =
-                          typingUid != null ? _memberCache[typingUid] : null;
-                      if (typingUid != null && typingUser == null) {
-                        _userRepo.getUserProfile(typingUid).then((profile) {
-                          if (profile != null && mounted) {
-                            setState(() {
-                              _memberCache[typingUid] = profile;
+                      final List<UserModel> typingMembers = [];
+                      if (isSomeoneTyping) {
+                        for (final uid in typingUids) {
+                          final cached = _memberCache[uid];
+                          if (cached != null) {
+                            typingMembers.add(cached);
+                          } else {
+                            typingMembers.add(UserModel(
+                              uid: uid,
+                              email: '',
+                              name: 'Thành viên',
+                              username: 'member',
+                              avatarUrl: '',
+                              currency: 'VND',
+                              language: 'vi',
+                              themeMode: 'dark',
+                              currentStreak: 0,
+                              bestStreak: 0,
+                              createdAt: DateTime.now(),
+                              lastActiveDate: DateTime.now(),
+                            ));
+                            _userRepo.getUserProfile(uid).then((profile) {
+                              if (profile != null && mounted) {
+                                setState(() {
+                                  _memberCache[uid] = profile;
+                                });
+                              }
                             });
                           }
-                        });
+                        }
                       }
 
                       return StreamBuilder<List<ChatMessageModel>>(
@@ -1177,23 +1209,8 @@ class _GroupChatConversationScreenState
                               itemCount: totalItemCount,
                               itemBuilder: (context, index) {
                                 if (isSomeoneTyping && index == 0) {
-                                  final friendModel = typingUser ??
-                                      UserModel(
-                                        uid: typingUid ?? '',
-                                        email: '',
-                                        name: 'Thành viên',
-                                        username: 'member',
-                                        avatarUrl: '',
-                                        currency: 'VND',
-                                        language: 'vi',
-                                        themeMode: 'dark',
-                                        currentStreak: 0,
-                                        bestStreak: 0,
-                                        createdAt: DateTime.now(),
-                                        lastActiveDate: DateTime.now(),
-                                      );
                                   return ChatTypingBubble(
-                                    friend: friendModel,
+                                    friends: typingMembers,
                                     isDark: isDark,
                                   );
                                 }
@@ -1566,25 +1583,46 @@ class _GroupChatConversationScreenState
                         }).toList();
 
                         final isFriendTyping = typingUsers.isNotEmpty;
-                        final firstTypingUid =
-                            typingUsers.isNotEmpty ? typingUsers.first.key : null;
-                        final typingFriend = firstTypingUid != null
-                            ? _memberCache[firstTypingUid]
-                            : null;
-                        if (firstTypingUid != null && typingFriend == null) {
-                          _userRepo.getUserProfile(firstTypingUid).then((profile) {
-                            if (profile != null && mounted) {
-                              setState(() {
-                                _memberCache[firstTypingUid] = profile;
-                              });
-                            }
-                          });
+                        final List<UserModel> typingFriends = [];
+                        for (final entry in typingUsers) {
+                          final uid = entry.key;
+                          final cached = _memberCache[uid];
+                          if (cached != null) {
+                            typingFriends.add(cached);
+                          } else {
+                            typingFriends.add(UserModel(
+                              uid: uid,
+                              email: '',
+                              name: 'Thành viên',
+                              username: 'member',
+                              avatarUrl: '',
+                              currency: 'VND',
+                              language: 'vi',
+                              themeMode: 'dark',
+                              currentStreak: 0,
+                              bestStreak: 0,
+                              createdAt: DateTime.now(),
+                              lastActiveDate: DateTime.now(),
+                            ));
+                            _userRepo.getUserProfile(uid).then((profile) {
+                              if (profile != null && mounted) {
+                                setState(() {
+                                  _memberCache[uid] = profile;
+                                });
+                              }
+                            });
+                          }
                         }
 
+                        final bool shouldBeVisible = _showScrollToBottom ||
+                            (isFriendTyping &&
+                                _scrollController.hasClients &&
+                                _scrollController.offset > 40);
+
                         return ChatScrollToBottomButton(
-                          isVisible: _showScrollToBottom,
+                          isVisible: shouldBeVisible,
                           isFriendTyping: isFriendTyping,
-                          friend: typingFriend,
+                          friends: typingFriends,
                           isDark: isDark,
                           onTap: _scrollToBottom,
                         );
@@ -1644,147 +1682,250 @@ class _GroupChatConversationScreenState
               [];
           final memberCount = participants.length;
 
-          return InkWell(
-            onTap: _openGroupDetails,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-              child: Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: groupColor.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: groupColor.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.groups_2_rounded,
-                        color: groupColor,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Flexible(
-                              child: Text(
-                                currentName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary(context),
+          final myUid = context.read<AuthController>().user?.uid ?? '';
+          final myShowActiveStatus =
+              context.watch<LocalSettingsService>().showActiveStatus;
+
+          return StreamBuilder<List<Map<String, dynamic>>>(
+            stream: _activeFriendsStream ??
+                _userRepo.streamActiveFriendsRealtime(myUid),
+            initialData: _lastActiveFriends,
+            builder: (context, friendsSnap) {
+              if (friendsSnap.hasData && friendsSnap.data != null) {
+                _lastActiveFriends = friendsSnap.data!;
+              }
+              final friends = friendsSnap.data ?? _lastActiveFriends;
+              final activeFriends = friends.where((f) {
+                final uid = (f['uid'] ?? '').toString();
+                if (uid == myUid || !participants.contains(uid)) return false;
+                final isOnline = f['isOnline'] == true;
+                final showActive = f['showActiveStatus'] != false;
+                final mode = (f['activeStatusMode'] ?? 'friends').toString();
+                return isOnline &&
+                    showActive &&
+                    (mode == 'public' || myShowActiveStatus);
+              }).toList();
+
+              final onlineCount = activeFriends.length;
+              final otherMembersCount =
+                  participants.where((u) => u != myUid).length;
+              final hasActiveMember = onlineCount > 0;
+
+              return InkWell(
+                onTap: _openGroupDetails,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                  child: Row(
+                    children: [
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: groupColor.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: groupColor.withValues(alpha: 0.6),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Center(
+                              child: Icon(
+                                Icons.groups_2_rounded,
+                                color: groupColor,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                          if (hasActiveMember)
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                width: 11,
+                                height: 11,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF22C55E),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.card(context),
+                                    width: 1.8,
+                                  ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: groupColor.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                context.l10n.groupBadge,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w700,
-                                  color: groupColor,
+                        ],
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    currentName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary(context),
+                                    ),
+                                  ),
                                 ),
-                              ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: groupColor.withValues(alpha: 0.18),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    context.l10n.groupBadge,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      color: groupColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Builder(
+                              builder: (context) {
+                                final typingData =
+                                    data?['typing'] as Map<String, dynamic>?;
+                                final typingUids = (typingData?.entries ?? [])
+                                    .where((e) {
+                                      if (e.key == myUid) return false;
+                                      return e.value == true ||
+                                          e.value is Timestamp;
+                                    })
+                                    .map((e) => e.key)
+                                    .toList();
+
+                                if (typingUids.isNotEmpty) {
+                                  String typingText;
+                                  if (typingUids.length == 1) {
+                                    final firstTypingUid = typingUids.first;
+                                    final typingUser =
+                                        _memberCache[firstTypingUid];
+                                    final displayName =
+                                        typingUser?.name.trim().isNotEmpty ==
+                                                true
+                                            ? typingUser!.name.trim()
+                                            : (typingUser?.username
+                                                        .trim()
+                                                        .isNotEmpty ==
+                                                    true
+                                                ? typingUser!.username.trim()
+                                                : 'Thành viên');
+                                    typingText =
+                                        '$displayName ${context.l10n.isTyping.toLowerCase()}';
+                                  } else if (typingUids.length == 2) {
+                                    final user1 = _memberCache[typingUids[0]];
+                                    final user2 = _memberCache[typingUids[1]];
+                                    final name1 =
+                                        user1?.name.trim().isNotEmpty == true
+                                            ? user1!.name.trim()
+                                            : (user1?.username
+                                                        .trim()
+                                                        .isNotEmpty ==
+                                                    true
+                                                ? user1!.username.trim()
+                                                : 'Thành viên');
+                                    final name2 =
+                                        user2?.name.trim().isNotEmpty == true
+                                            ? user2!.name.trim()
+                                            : (user2?.username
+                                                        .trim()
+                                                        .isNotEmpty ==
+                                                    true
+                                                ? user2!.username.trim()
+                                                : 'Thành viên');
+                                    typingText = '$name1 và $name2 đang soạn...';
+                                  } else {
+                                    typingText =
+                                        '${typingUids.length} người đang soạn tin...';
+                                  }
+
+                                  return Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          typingText,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.primaryBlue,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const TypingDotsIndicator(
+                                        dotSize: 3.5,
+                                        spacing: 2,
+                                        color: AppColors.primaryBlue,
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                if (onlineCount == 0) {
+                                  return Text(
+                                    context.l10n.groupMembersCount(memberCount),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.textSecondary(context),
+                                    ),
+                                  );
+                                }
+
+                                final String activeText;
+                                if (otherMembersCount >= 2 &&
+                                    onlineCount == otherMembersCount) {
+                                  activeText = context.l10n.everyoneActive;
+                                } else if (onlineCount >= 2) {
+                                  activeText =
+                                      context.l10n.groupActiveCount(onlineCount);
+                                } else {
+                                  activeText = context.l10n.onePersonActive;
+                                }
+
+                                return Text(
+                                  activeText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                    color:
+                                        AppColors.textSecondary(context),
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
-                        const SizedBox(height: 2),
-                        Builder(
-                          builder: (context) {
-                            final myUid =
-                                context.read<AuthController>().user?.uid ?? '';
-                            final typingData =
-                                data?['typing'] as Map<String, dynamic>?;
-                            final typingUids = (typingData?.entries ?? [])
-                                .where((e) {
-                                  if (e.key == myUid) return false;
-                                  return e.value == true || e.value is Timestamp;
-                                })
-                                .map((e) => e.key)
-                                .toList();
-
-                            if (typingUids.isNotEmpty) {
-                              final firstTypingUid = typingUids.first;
-                              final typingUser = _memberCache[firstTypingUid];
-                              final displayName =
-                                  typingUser?.name.trim().isNotEmpty == true
-                                      ? typingUser!.name.trim()
-                                      : (typingUser?.username.trim().isNotEmpty ==
-                                              true
-                                          ? typingUser!.username.trim()
-                                          : 'Thành viên');
-
-                              String typingText;
-                              if (typingUids.length > 1) {
-                                typingText =
-                                    '${typingUids.length} người đang soạn tin...';
-                              } else {
-                                typingText =
-                                    '$displayName ${context.l10n.isTyping.toLowerCase()}';
-                              }
-
-                              return Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      typingText,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primaryBlue,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  const TypingDotsIndicator(
-                                    dotSize: 3.5,
-                                    spacing: 2,
-                                    color: AppColors.primaryBlue,
-                                  ),
-                                ],
-                              );
-                            }
-
-                            return Text(
-                              context.l10n.groupMembersCount(memberCount),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary(context),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -2802,6 +2943,67 @@ class _GroupChatConversationScreenState
                   ),
                 ),
               ),
+            ),
+          if (isExpense && hasTargetPost) ...[                     
+            const SizedBox(height: 8),
+            _buildExploreButton(msg, isDark, isEn),
+          ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// "✨ Khám phá" action button shown below expense system message card.
+  /// Opens [NearbyPlaceBottomSheet] with the viewer's own location.
+  Widget _buildExploreButton(ChatMessageModel msg, bool isDark, bool isEn) {
+    final category = msg.transactionCategory;
+    if (category == null || category.isEmpty) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () {
+        showNearbyPlaceBottomSheet(
+          context,
+          spendingCategory: category,
+        );
+      },
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.32),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('✨', style: TextStyle(fontSize: 14)),
+            const SizedBox(width: 6),
+            Text(
+              isEn ? 'Explore nearby' : 'Khám phá gần bạn',
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.explore_rounded,
+              size: 14,
+              color: Colors.white,
             ),
           ],
         ),

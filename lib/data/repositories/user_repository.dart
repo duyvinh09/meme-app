@@ -579,10 +579,23 @@ class UserRepository {
     });
   }
 
+  static final Map<String, Stream<List<Map<String, dynamic>>>>
+      _activeFriendsStreamCache = {};
+  static final Map<String, List<Map<String, dynamic>>>
+      _latestActiveFriendsCache = {};
+
+  List<Map<String, dynamic>> getLatestActiveFriends(String uid) {
+    return _latestActiveFriendsCache[uid] ?? const [];
+  }
+
   /// Lắng nghe danh sách bạn bè kết hợp với trạng thái realtime (online/offline/note) của từng bạn bè.
   /// Bất cứ khi nào bạn bè mở app, tắt app, hoặc cập nhật ghi chú, stream sẽ emit ngay lập tức.
   Stream<List<Map<String, dynamic>>> streamActiveFriendsRealtime(String uid) {
     if (uid.trim().isEmpty) return Stream.value([]);
+
+    if (_activeFriendsStreamCache.containsKey(uid)) {
+      return _activeFriendsStreamCache[uid]!;
+    }
 
     late StreamController<List<Map<String, dynamic>>> controller;
     StreamSubscription? friendsSub;
@@ -655,6 +668,8 @@ class UserRepository {
           return bDt.compareTo(aDt);
         });
 
+        _latestActiveFriendsCache[uid] = items;
+
         if (!controller.isClosed) {
           controller.add(items);
         }
@@ -663,8 +678,14 @@ class UserRepository {
       }
     }
 
-    controller = StreamController<List<Map<String, dynamic>>>(
+    controller = StreamController<List<Map<String, dynamic>>>.broadcast(
       onListen: () {
+        if (_latestActiveFriendsCache.containsKey(uid) &&
+            _latestActiveFriendsCache[uid]!.isNotEmpty &&
+            !controller.isClosed) {
+          controller.add(_latestActiveFriendsCache[uid]!);
+        }
+
         friendsSub = _db
             .collection('users')
             .doc(uid)
@@ -709,6 +730,7 @@ class UserRepository {
         });
       },
       onCancel: () {
+        _activeFriendsStreamCache.remove(uid);
         friendsSub?.cancel();
         friendsSub = null;
         for (final sub in userSubs.values) {
@@ -720,6 +742,7 @@ class UserRepository {
       },
     );
 
+    _activeFriendsStreamCache[uid] = controller.stream;
     return controller.stream;
   }
 
@@ -730,6 +753,7 @@ class UserRepository {
       await deleteUserNote(uid);
       return;
     }
+    await deleteUserNote(uid);
     await _db.collection('users').doc(uid).update({
       'userNote': trimmed,
       'userNoteCreatedAt': FieldValue.serverTimestamp(),
@@ -742,6 +766,16 @@ class UserRepository {
       'userNote': FieldValue.delete(),
       'userNoteCreatedAt': FieldValue.delete(),
     });
+    try {
+      final snap = await _db
+          .collection('users')
+          .doc(uid)
+          .collection('note_reactions')
+          .get();
+      for (final doc in snap.docs) {
+        await doc.reference.delete();
+      }
+    } catch (_) {}
   }
 
   Future<void> toggleCloseFriend({

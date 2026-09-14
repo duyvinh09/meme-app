@@ -590,7 +590,7 @@
   "entertainment": "Giải trí",
   "private": "Riêng tư",
   "everyone": "Mọi người",
-  "maxAmountDigits": "Tối đa 10 chữ số",
+  "maxAmountDigits": "Tối đa 12 chữ số (trăm tỷ)",
   "addDetails": "Thêm chi tiết",
   "overBudgetLimitTitle": "Vượt mục tiêu ngân sách",
   "overBudgetLimitWarning": "Giao dịch này sẽ khiến chủ đề \"{name}\" vượt mục tiêu {limit} khoảng {over}. Bạn vẫn muốn lưu chứ?",
@@ -649,7 +649,7 @@
     }
   },
   "cannotShareNow": "Không thể chia sẻ lúc này",
-  "amountLimitExceeded": "Số tiền vượt quá giới hạn 10 chữ số",
+  "amountLimitExceeded": "Số tiền vượt quá giới hạn 12 chữ số (trăm tỷ)",
   "savedWithOverLimit": "Đã lưu, nhưng chủ đề \"{category}\" đã vượt mục tiêu.",
   "@savedWithOverLimit": {
     "placeholders": {
@@ -1456,6 +1456,16 @@
       }
     }
   },
+  "everyoneActive": "Mọi người đều hoạt động",
+  "groupActiveCount": "{count, plural, other{{count} người đang hoạt động}}",
+  "@groupActiveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "onePersonActive": "1 người đang hoạt động",
   "groupChatOpen": "Mở nhóm chat",
   "systemGroupCreated": "{name} đã tạo nhóm \"{group}\"",
   "@systemGroupCreated": {

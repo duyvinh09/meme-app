@@ -94,6 +94,7 @@ class _RewindScreenState extends State<RewindScreen>
 
   void _onProgressStatusChanged(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
+      if (_isZoomedIn) return;
       if (_currentIndex < _stories.length - 1) {
         _nextStory();
       }
@@ -103,6 +104,7 @@ class _RewindScreenState extends State<RewindScreen>
 
   void _nextStory() {
     if (_currentIndex < _stories.length - 1) {
+      _isZoomedIn = false;
       HapticFeedback.selectionClick();
       setState(() {
         _currentIndex++;
@@ -112,6 +114,7 @@ class _RewindScreenState extends State<RewindScreen>
   }
 
   void _previousStory() {
+    _isZoomedIn = false;
     if (_currentIndex > 0) {
       HapticFeedback.selectionClick();
       setState(() {
@@ -125,16 +128,17 @@ class _RewindScreenState extends State<RewindScreen>
   }
 
   void _pause() {
-    if (!_isPaused) {
-      setState(() => _isPaused = true);
-      _progressController.stop();
-    }
+    _isPaused = true;
+    _progressController.stop();
+    if (mounted) setState(() {});
   }
 
   void _resume() {
+    if (_isZoomedIn) return; // NEVER resume if zoomed into a photo!
     if (_isPaused) {
-      setState(() => _isPaused = false);
+      _isPaused = false;
       _progressController.forward();
+      if (mounted) setState(() {});
     }
   }
 
@@ -242,20 +246,17 @@ class _RewindScreenState extends State<RewindScreen>
             child: SafeArea(
               child: Stack(
                 children: [
-                  // STORY CONTENT WITH TOP INSET TO AVOID COLLISION WITH HEADER
+                  // STORY CONTENT (Scrolls naturally under floating transparent header)
                   Positioned.fill(
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 72, bottom: 8),
-                      child: _buildStoryContent(
-                        story: currentStory,
-                        data: _rewindData,
-                        currency: currency,
-                        userName: userName,
-                      ),
+                    child: _buildStoryContent(
+                      story: currentStory,
+                      data: _rewindData,
+                      currency: currency,
+                      userName: userName,
                     ),
                   ),
 
-                  // TOP NAVIGATION BAR (Progress + Period Selector + Close)
+                  // TOP NAVIGATION BAR (Progress + Period Selector + Close) - Floating on transparent background
                   Positioned(
                     top: 8,
                     left: 14,
@@ -274,83 +275,83 @@ class _RewindScreenState extends State<RewindScreen>
                             );
                           },
                         ),
-                        const SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
-                        // Header Controls Row
-                        Row(
-                          children: [
-                            // Period Selector Capsule Button
-                            InkWell(
-                              onTap: _openPeriodPicker,
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.22),
+                          // Header Controls Row
+                          Row(
+                            children: [
+                              // Period Selector Capsule Button
+                              InkWell(
+                                onTap: _openPeriodPicker,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.22),
+                                    ),
                                   ),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      _currentPeriod.getTitle(context),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w800,
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _currentPeriod.getTitle(context),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      color: Colors.white,
-                                      size: 16,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-
-                            // Close Button 'X'
-                            InkWell(
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                Navigator.pop(context);
-                              },
-                              borderRadius: BorderRadius.circular(20),
-                              child: Container(
-                                width: 34,
-                                height: 34,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.15),
-                                ),
-                                child: const Center(
-                                  child: Icon(
-                                    Icons.close_rounded,
-                                    color: Colors.white,
-                                    size: 18,
+                                      const SizedBox(width: 4),
+                                      const Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const Spacer(),
+
+                              // Close Button 'X'
+                              InkWell(
+                                onTap: () {
+                                  HapticFeedback.selectionClick();
+                                  Navigator.pop(context);
+                                },
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      color: Colors.white,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildStoryContent({
@@ -359,39 +360,41 @@ class _RewindScreenState extends State<RewindScreen>
     required String currency,
     required String userName,
   }) {
+    final periodKey = '${data.period.type.name}_${data.period.startDateTime.millisecondsSinceEpoch}';
+
     switch (story.type) {
       case RewindStoryType.overview:
         return RewindOverviewStory(
-          key: ValueKey('overview_${story.id}_$_currentIndex'),
+          key: ValueKey('overview_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
           currency: currency,
         );
       case RewindStoryType.categories:
         return RewindCategoryStory(
-          key: ValueKey('cat_${story.id}_$_currentIndex'),
+          key: ValueKey('cat_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
           currency: currency,
         );
       case RewindStoryType.streak:
         return RewindStreakStory(
-          key: ValueKey('streak_${story.id}_$_currentIndex'),
+          key: ValueKey('streak_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
         );
       case RewindStoryType.topExpenses:
         return RewindTopSpendingStory(
-          key: ValueKey('top_${story.id}_$_currentIndex'),
+          key: ValueKey('top_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
           currency: currency,
         );
       case RewindStoryType.biggestDay:
         return RewindBiggestDayStory(
-          key: ValueKey('big_${story.id}_$_currentIndex'),
+          key: ValueKey('big_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
           currency: currency,
         );
       case RewindStoryType.moments:
         return RewindMomentsStory(
-          key: ValueKey('moments_${story.id}_$_currentIndex'),
+          key: ValueKey('moments_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
           currency: currency,
           onZoomChanged: (isZoomed) {
@@ -405,25 +408,25 @@ class _RewindScreenState extends State<RewindScreen>
         );
       case RewindStoryType.highlight:
         return RewindHighlightStory(
-          key: ValueKey('highlight_${story.id}_$_currentIndex'),
+          key: ValueKey('highlight_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
         );
       case RewindStoryType.comparison:
         return RewindComparisonStory(
-          key: ValueKey('comparison_${story.id}_$_currentIndex'),
+          key: ValueKey('comparison_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
           currency: currency,
         );
       case RewindStoryType.summary:
         return RewindSummaryStory(
-          key: ValueKey('summary_${story.id}_$_currentIndex'),
+          key: ValueKey('summary_${story.id}_${periodKey}_$_currentIndex'),
           data: data,
           currency: currency,
           userName: userName,
         );
       case RewindStoryType.empty:
         return RewindEmptyStory(
-          key: ValueKey('empty_${story.id}_$_currentIndex'),
+          key: ValueKey('empty_${story.id}_${periodKey}_$_currentIndex'),
           period: data.period,
           onPickPeriod: _openPeriodPicker,
         );

@@ -30,6 +30,10 @@ class ChatMessageModel {
   final String? postAuthorFrame;
   final String? postOwnerId;
 
+  /// Metadata for group expense system messages – used by Nearby Place Suggestions.
+  final String? transactionCategory;
+  final double? transactionAmount;
+
   const ChatMessageModel({
     required this.id,
     required this.senderId,
@@ -59,6 +63,8 @@ class ChatMessageModel {
     this.postAuthorAvatar,
     this.postAuthorFrame,
     this.postOwnerId,
+    this.transactionCategory,
+    this.transactionAmount,
   });
 
   bool get isSystem => type == 'system';
@@ -130,6 +136,8 @@ class ChatMessageModel {
       postAuthorAvatar: data['postAuthorAvatar'],
       postAuthorFrame: data['postAuthorFrame'],
       postOwnerId: data['postOwnerId'],
+      transactionCategory: data['transactionCategory'] as String?,
+      transactionAmount: (data['transactionAmount'] as num?)?.toDouble(),
     );
   }
 
@@ -163,6 +171,8 @@ class ChatMessageModel {
       if (postAuthorAvatar != null) 'postAuthorAvatar': postAuthorAvatar,
       if (postAuthorFrame != null) 'postAuthorFrame': postAuthorFrame,
       if (postOwnerId != null) 'postOwnerId': postOwnerId,
+      if (transactionCategory != null) 'transactionCategory': transactionCategory,
+      if (transactionAmount != null) 'transactionAmount': transactionAmount,
     };
   }
 
@@ -195,6 +205,8 @@ class ChatMessageModel {
     String? postAuthorAvatar,
     String? postAuthorFrame,
     String? postOwnerId,
+    String? transactionCategory,
+    double? transactionAmount,
   }) {
     return ChatMessageModel(
       id: id ?? this.id,
@@ -225,6 +237,8 @@ class ChatMessageModel {
       postAuthorAvatar: postAuthorAvatar ?? this.postAuthorAvatar,
       postAuthorFrame: postAuthorFrame ?? this.postAuthorFrame,
       postOwnerId: postOwnerId ?? this.postOwnerId,
+      transactionCategory: transactionCategory ?? this.transactionCategory,
+      transactionAmount: transactionAmount ?? this.transactionAmount,
     );
   }
 }

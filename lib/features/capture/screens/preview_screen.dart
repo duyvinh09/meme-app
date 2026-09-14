@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -43,6 +44,7 @@ class PreviewScreen extends StatefulWidget {
   final bool lockType;
   final bool lockPrivacy;
   final bool isGroupContribution;
+  final bool isFrontCamera;
 
   const PreviewScreen({
     super.key,
@@ -58,6 +60,7 @@ class PreviewScreen extends StatefulWidget {
     this.lockType = false,
     this.lockPrivacy = false,
     this.isGroupContribution = false,
+    this.isFrontCamera = false,
   });
 
   @override
@@ -69,9 +72,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
   final captionController = TextEditingController();
   final ValueNotifier<bool> _hasAmountNotifier = ValueNotifier<bool>(false);
 
-  static const int kMaxAmountDigits = 10;
-  static const double kMaxAmountValue = 9999999999;
+  static const int kMaxAmountDigits = 12;
+  static const double kMaxAmountValue = 999999999999;
   static const int kMaxCaptionLength = 70;
+  bool _hasShownMaxDigitsWarning = false;
 
   static const Color _captureBackground = Color(0xFF15171C);
   static const Color _darkSwitch = Color(0xFF1A1B24);
@@ -79,11 +83,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
   String type = 'expense';
   String category = 'Ăn uống';
   String privacy = 'friends';
+  final Set<String> _selectedFriendUids = {};
   String? _selectedGroupId;
   String? _selectedGroupName;
   List<String> _selectedGroupMemberIds = [];
   List<Map<String, dynamic>> _userGroups = [];
-  bool _loadedGroups = false;
+  List<Map<String, dynamic>> _friends = [];
 
   Map<String, dynamic>? get _currentSelectedGroupData {
     if (_selectedGroupId == null || _selectedGroupId!.isEmpty) return null;
@@ -105,7 +110,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   bool categoryOpen = false;
-  bool privacyOpen = false;
   bool _loadedBudgets = false;
   bool _loadedUserCategories = false;
   bool _submitTapBusy = false;
@@ -117,7 +121,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
   bool _isVideoMuted = true;
 
   List<String> _closeFriendUids = [];
+  StreamSubscription<List<Map<String, dynamic>>>? _friendsSub;
   StreamSubscription<List<String>>? _closeFriendsSub;
+  StreamSubscription<List<Map<String, dynamic>>>? _groupsSub;
 
   bool get isVideo => widget.mediaType == 'video' && widget.videoFile != null;
   bool get isImage => widget.mediaType == 'image' && widget.imageFile != null;
@@ -310,17 +316,32 @@ class _PreviewScreenState extends State<PreviewScreen> {
     _prepareVideoIfNeeded();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final uid = context.read<AuthController>().user?.uid;
-      if (uid != null) {
-        _closeFriendsSub = context
-            .read<UserRepository>()
-            .streamCloseFriendIds(uid)
-            .listen((ids) {
+      if (uid != null && uid.isNotEmpty) {
+        final userRepo = context.read<UserRepository>();
+
+        _friendsSub = userRepo.streamFriends(uid).listen((friendsList) {
+          if (mounted) {
+            setState(() {
+              _friends = friendsList;
+            });
+          }
+        });
+
+        _closeFriendsSub = userRepo.streamCloseFriendIds(uid).listen((ids) {
           if (mounted) {
             setState(() {
               _closeFriendUids = ids;
               if (_closeFriendUids.isEmpty && privacy == 'close_friends') {
                 privacy = 'friends';
               }
+            });
+          }
+        });
+
+        _groupsSub = userRepo.streamGroups(uid).listen((groupsList) {
+          if (mounted) {
+            setState(() {
+              _userGroups = groupsList;
             });
           }
         });
@@ -392,28 +413,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       _loadedUserCategories = true;
     }
-
-    if (!_loadedGroups) {
-      final uid = context.read<AuthController>().user?.uid;
-
-      if (uid != null) {
-        context.read<UserRepository>().fetchUserGroups(uid).then((groups) {
-          if (mounted) {
-            setState(() {
-              _userGroups = groups;
-            });
-          }
-        });
-      }
-
-      _loadedGroups = true;
-    }
   }
 
   @override
   void dispose() {
     _hasAmountNotifier.dispose();
+    _friendsSub?.cancel();
     _closeFriendsSub?.cancel();
+    _groupsSub?.cancel();
     amountController.dispose();
     captionController.dispose();
     _videoController?.dispose();
@@ -611,13 +618,18 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   void _showMaxDigitsWarning() {
+    if (_hasShownMaxDigitsWarning) return;
+    _hasShownMaxDigitsWarning = true;
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           duration: AppDurations.snackBar,
           content: Text(context.l10n.maxAmountDigits),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     });
@@ -629,6 +641,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final raw = currency == 'USD'
         ? value.replaceAll(RegExp(r'[^0-9.]'), '')
         : value.replaceAll(RegExp(r'[^0-9]'), '');
+
+    final digitCount = (currency == 'USD'
+        ? raw.split('.').first
+        : raw).length;
+
+    if (digitCount < kMaxAmountDigits) {
+      _hasShownMaxDigitsWarning = false;
+    }
 
     final inputAmount = double.tryParse(raw) ?? 0;
 
@@ -841,9 +861,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
       capture.setVideo(
         widget.videoFile!,
         durationMs: widget.durationMs,
+        isFrontCamera: widget.isFrontCamera,
       );
     } else if (widget.imageFile != null) {
-      capture.setImage(widget.imageFile!);
+      capture.setImage(
+        widget.imageFile!,
+        isFrontCamera: widget.isFrontCamera,
+      );
     } else {
       capture.clearMedia();
     }
@@ -858,6 +882,36 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
     final effectiveType = isContribution ? 'expense' : type;
 
+    // Resolve effective privacy, close friends, and group
+    String effectivePrivacy = 'friends';
+    List<String> effectiveCloseFriends = const [];
+    bool effectiveSharedToFeed = true;
+    String? effectiveGroupId;
+    String? effectiveGroupName;
+    List<String> effectiveGroupMemberIds = const [];
+
+    if (privacy == 'private') {
+      effectivePrivacy = 'private';
+      effectiveSharedToFeed = false;
+    } else if (privacy == 'friends') {
+      effectivePrivacy = 'friends';
+      effectiveSharedToFeed = true;
+    } else if (privacy == 'close_friends') {
+      effectivePrivacy = 'close_friends';
+      effectiveSharedToFeed = true;
+      effectiveCloseFriends = _closeFriendUids;
+    } else if (privacy == 'group' && _selectedGroupId != null) {
+      effectivePrivacy = 'group';
+      effectiveSharedToFeed = true;
+      effectiveGroupId = _selectedGroupId;
+      effectiveGroupName = _selectedGroupName;
+      effectiveGroupMemberIds = _selectedGroupMemberIds;
+    } else if (_selectedFriendUids.isNotEmpty) {
+      effectivePrivacy = 'close_friends';
+      effectiveSharedToFeed = true;
+      effectiveCloseFriends = _selectedFriendUids.toList();
+    }
+
     final ok = await capture.saveTransaction(
       userId: uid,
       amount: amountValue,
@@ -865,18 +919,19 @@ class _PreviewScreenState extends State<PreviewScreen> {
       category: isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category),
       caption: captionController.text.trim(),
       note: '',
-      sharedToFeed: privacy != 'private',
-      privacy: privacy,
-      closeFriendUids: privacy == 'close_friends' ? _closeFriendUids : const [],
-      groupId: _selectedGroupId,
-      groupName: _selectedGroupName,
-      groupMemberIds: _selectedGroupMemberIds,
+      sharedToFeed: effectiveSharedToFeed,
+      privacy: effectivePrivacy,
+      closeFriendUids: effectiveCloseFriends,
+      groupId: effectiveGroupId,
+      groupName: effectiveGroupName,
+      groupMemberIds: effectiveGroupMemberIds,
       categoryIconCodePoint: selectedIcon.codePoint,
       categoryColorHex: selectedColorHex,
       locationName: location?.locationName ?? '',
       latitude: location?.latitude,
       longitude: location?.longitude,
       isGroupContribution: isContribution,
+      isFrontCamera: widget.isFrontCamera,
     );
 
     if (!mounted) return;
@@ -940,7 +995,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
     }
   }
 
-  Widget _buildCategoryDropdownPanel() {
+  Widget _buildFloatingCategoryMenu(double previewSize) {
     final budgetController = context.watch<BudgetController>();
     final categories = currentCategories(context);
     final isEn = Localizations.localeOf(context).languageCode == 'en';
@@ -959,128 +1014,148 @@ class _PreviewScreenState extends State<PreviewScreen> {
       };
     }).toList();
 
-    return _DropdownPanel(
-      children: List.generate(items.length, (index) {
-        final item = items[index];
-        final label = item['label'] as String;
-        final displayLabel = item['displayLabel'] as String;
-        final color = item['color'] as Color;
-        final icon = item['icon'] as IconData;
-        final badgeText = item['badgeText'] as String?;
-        final isSelected = category.trim().toLowerCase() == label.trim().toLowerCase() ||
-            _toCanonicalCategory(category).toLowerCase() == _toCanonicalCategory(label).toLowerCase();
-
-        return Column(
-          children: [
-            _DropdownItem(
-              icon: icon,
-              label: displayLabel,
-              color: color,
-              isSelected: isSelected,
-              badgeText: badgeText,
-              onTap: () {
-                setState(() {
-                  final isBudget = item['isCustomBudget'] == true;
-                  category = isBudget ? label : _toCanonicalCategory(label);
-                  categoryOpen = false;
-                });
-              },
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          width: (previewSize * 0.84).clamp(240.0, 340.0),
+          constraints: BoxConstraints(
+            maxHeight: (previewSize * 0.68).clamp(160.0, 260.0),
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFF14161F).withValues(alpha: 0.94),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.22),
+              width: 1.1,
             ),
-            if (index != items.length - 1) const _DropdownDivider(),
-          ],
-        );
-      }),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.50),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(items.length, (index) {
+                final item = items[index];
+                final label = item['label'] as String;
+                final displayLabel = item['displayLabel'] as String;
+                final color = item['color'] as Color;
+                final icon = item['icon'] as IconData;
+                final badgeText = item['badgeText'] as String?;
+                final isSelected = category.trim().toLowerCase() == label.trim().toLowerCase() ||
+                    _toCanonicalCategory(category).toLowerCase() == _toCanonicalCategory(label).toLowerCase();
+
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          final isBudget = item['isCustomBudget'] == true;
+                          category = isBudget ? label : _toCanonicalCategory(label);
+                          categoryOpen = false;
+                        });
+                      },
+                      child: Container(
+                        height: 46,
+                        color: isSelected ? Colors.white.withValues(alpha: 0.08) : Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 28,
+                              height: 28,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: color.withValues(alpha: 0.22),
+                              ),
+                              child: Center(
+                                child: Icon(
+                                  icon,
+                                  color: color,
+                                  size: 15,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      displayLabel,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: isSelected ? Colors.white : Colors.white70,
+                                        fontSize: 13.5,
+                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  if (badgeText != null) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.amber.withValues(alpha: 0.22),
+                                        borderRadius: BorderRadius.circular(6),
+                                        border: Border.all(
+                                          color: Colors.amber.withValues(alpha: 0.5),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        badgeText,
+                                        style: const TextStyle(
+                                          color: Color(0xFFFBBF24),
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_rounded,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (index != items.length - 1)
+                      Divider(
+                        height: 1,
+                        thickness: 0.8,
+                        color: Colors.white.withValues(alpha: 0.08),
+                      ),
+                  ],
+                );
+              }),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
-  Color _parseHexColor(String? hex) {
-    if (hex == null || hex.isEmpty) return const Color(0xFF79AFFF);
-    final cleaned = hex.replaceAll('#', '');
-    if (cleaned.length == 6) {
-      return Color(int.parse('FF$cleaned', radix: 16));
-    }
-    return const Color(0xFF79AFFF);
-  }
 
-  Widget _buildPrivacyDropdownPanel() {
-    final items = [
-      {
-        'value': 'friends',
-        'label': context.l10n.everyone,
-        'icon': Icons.groups_2_outlined,
-        'color': AppColors.income,
-      },
-      if (_closeFriendUids.isNotEmpty)
-        {
-          'value': 'close_friends',
-          'label': context.l10n.closeFriends,
-          'icon': Icons.star_rounded,
-          'color': const Color(0xFFF59E0B),
-        },
-      {
-        'value': 'private',
-        'label': context.l10n.private,
-        'icon': Icons.lock_outline_rounded,
-        'color': AppColors.expense,
-      },
-      for (final g in _userGroups)
-        {
-          'value': 'group_${g['id']}',
-          'groupId': (g['id'] ?? '').toString(),
-          'groupName': (g['name'] ?? 'Nhóm').toString(),
-          'memberIds': (g['memberIds'] as List<dynamic>?)
-                  ?.map((e) => e.toString())
-                  .toList() ??
-              <String>[],
-          'label': (g['name'] ?? 'Nhóm').toString(),
-          'icon': Icons.groups_2_rounded,
-          'color': _parseHexColor(g['color'] as String?),
-        },
-    ];
-
-    return _DropdownPanel(
-      children: List.generate(items.length, (index) {
-        final item = items[index];
-        final value = item['value'] as String;
-        final label = item['label'] as String;
-        final icon = item['icon'] as IconData;
-        final color = item['color'] as Color;
-        final isSelected = privacy == 'group'
-            ? (_selectedGroupId != null && _selectedGroupId == item['groupId'])
-            : privacy == value;
-
-        return Column(
-          children: [
-            _DropdownItem(
-              icon: icon,
-              label: label,
-              color: color,
-              isSelected: isSelected,
-              onTap: () {
-                setState(() {
-                  if (value.startsWith('group_')) {
-                    privacy = 'group';
-                    _selectedGroupId = item['groupId'] as String?;
-                    _selectedGroupName = item['groupName'] as String?;
-                    _selectedGroupMemberIds =
-                        (item['memberIds'] as List<String>?) ?? [];
-                  } else {
-                    privacy = value;
-                    _selectedGroupId = null;
-                    _selectedGroupName = null;
-                    _selectedGroupMemberIds = [];
-                  }
-                  privacyOpen = false;
-                });
-                _notifyPrivacyTagAdjustmentIfNeeded(value);
-              },
-            ),
-            if (index != items.length - 1) const _DropdownDivider(),
-          ],
-        );
-      }),
-    );
-  }
 
   void _notifyPrivacyTagAdjustmentIfNeeded(String newPrivacy) {
     final text = captionController.text.trim();
@@ -1107,72 +1182,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
             : 'Chế độ bạn thân: bạn bè không thuộc Bạn thân sẽ hiển thị chữ thường.',
       );
     }
-  }
-
-  Widget _dropdownPill({
-    required IconData icon,
-    required String label,
-    required bool isOpen,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withOpacity(0.10),
-              Colors.white.withOpacity(0.045),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-          border: Border.all(
-            color: Colors.white.withOpacity(isOpen ? 0.22 : 0.09),
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 17,
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            const SizedBox(width: 3),
-            AnimatedRotation(
-              turns: isOpen ? 0.5 : 0.0,
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              child: const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Colors.white,
-                size: 19,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _typeSwitch() {
@@ -1248,7 +1257,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
             ? currentCanonical
             : _toCanonicalCategory(categories.first);
         categoryOpen = false;
-        privacyOpen = false;
       });
 
       _onAmountChanged(amountController.text);
@@ -1268,7 +1276,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
             ? currentCanonical
             : _toCanonicalCategory(categories.first);
         categoryOpen = false;
-        privacyOpen = false;
       });
 
       _onAmountChanged(amountController.text);
@@ -1276,8 +1283,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
     return Container(
       width: 148,
-      height: 62,
-      padding: const EdgeInsets.all(6),
+      height: 56,
+      padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
         color: _darkSwitch,
         borderRadius: BorderRadius.circular(AppSizes.radiusPill),
@@ -1292,8 +1299,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
             curve: Curves.easeOut,
             alignment: isExpense ? Alignment.centerLeft : Alignment.centerRight,
             child: Container(
-              width: 50,
-              height: 50,
+              width: 46,
+              height: 46,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: activeColor,
@@ -1304,7 +1311,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       ? Icons.arrow_outward_rounded
                       : Icons.arrow_downward_rounded,
                   color: Colors.white,
-                  size: 23,
+                  size: 21,
                 ),
               ),
             ),
@@ -1322,7 +1329,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     child: Icon(
                       Icons.arrow_outward_rounded,
                       color: isExpense ? Colors.transparent : Colors.white38,
-                      size: 20,
+                      size: 19,
                     ),
                   ),
                 ),
@@ -1337,7 +1344,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     child: Icon(
                       Icons.arrow_downward_rounded,
                       color: isExpense ? Colors.white38 : Colors.transparent,
-                      size: 24,
+                      size: 22,
                     ),
                   ),
                 ),
@@ -1409,6 +1416,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         durationLabel: _formatDurationLabel(),
                         isMuted: _isVideoMuted,
                         onToggleMute: _toggleVideoMute,
+                        isFrontCamera: widget.isFrontCamera,
                       )
                     : widget.imageFile != null
                         ? Image.file(
@@ -1430,16 +1438,17 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.22),
                         Colors.transparent,
                         Colors.black.withValues(alpha: 0.05),
-                        Colors.black.withValues(alpha: 0.18),
+                        Colors.black.withValues(alpha: 0.28),
                       ],
                     ),
                   ),
                 ),
               ),
 
+              // 1. Input Card overlay at bottom
               Positioned(
                 left: 14,
                 right: 14,
@@ -1455,11 +1464,102 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     onMaxDigitsExceeded: _showMaxDigitsWarning,
                     myUid: context.read<AuthController>().user?.uid ?? '',
                     privacy: privacy,
-                    closeFriendUids: _closeFriendUids,
+                    closeFriendUids: _selectedFriendUids.isNotEmpty ? _selectedFriendUids.toList() : _closeFriendUids,
                     groupMemberIds: _selectedGroupMemberIds,
                     groupRemainingBalance: (privacy == 'group' && type == 'expense' && !isContribution)
                         ? _currentGroupRemainingBalance
                         : null,
+                  ),
+                ),
+              ),
+
+              // 2. Floating Category Dropdown Pill & Floating Menu in Top-Center (Rendered on top)
+              Positioned(
+                top: 8,
+                left: 12,
+                right: 12,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            categoryOpen = !categoryOpen;
+                          });
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 15,
+                                vertical: 8.5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF14161F).withValues(alpha: 0.80),
+                                borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                                border: Border.all(
+                                  color: Colors.white.withValues(alpha: categoryOpen ? 0.40 : 0.20),
+                                  width: 1.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    currentCategoryIcon,
+                                    color: currentCategoryColor,
+                                    size: 16,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth: previewSize * 0.52,
+                                    ),
+                                    child: Text(
+                                      _localizedCategoryLabel(category),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  AnimatedRotation(
+                                    turns: categoryOpen ? 0.5 : 0.0,
+                                    duration: const Duration(milliseconds: 180),
+                                    curve: Curves.easeOut,
+                                    child: const Icon(
+                                      Icons.keyboard_arrow_down_rounded,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (categoryOpen) ...[
+                        const SizedBox(height: 8),
+                        _buildFloatingCategoryMenu(previewSize),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -1551,8 +1651,15 @@ class _PreviewScreenState extends State<PreviewScreen> {
   @override
   Widget build(BuildContext context) {
     final isSaving = context.watch<CaptureController>().isSaving;
+    final screenHeight = MediaQuery.sizeOf(context).height;
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final previewSize = (screenWidth - 28).clamp(240.0, 400.0);
+    final isShort = screenHeight < 720;
+    final isSmall = screenWidth < 370;
+
+    // Like camera screen, square frame that fits full width or maxPreviewHeight
+    final maxPreviewHeight = screenHeight - (isShort ? 250 : 285);
+    final previewSize = screenWidth.clamp(220.0, maxPreviewHeight);
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
 
     return Scaffold(
       backgroundColor: _captureBackground,
@@ -1562,125 +1669,189 @@ class _PreviewScreenState extends State<PreviewScreen> {
           onTap: () {
             FocusScope.of(context).unfocus();
 
-            if (categoryOpen || privacyOpen) {
+            if (categoryOpen) {
               setState(() {
                 categoryOpen = false;
-                privacyOpen = false;
               });
             }
           },
-          child: Column(
+          child: Stack(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
-                child: _CancelButton(
-                  onTap: _closeCaptureFlow,
-                ),
-              ),
-
-              Expanded(
+              // 1. Scrollable body tràn lên toàn màn hình
+              Positioned.fill(
                 child: SingleChildScrollView(
                   keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                   physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
+                  padding: EdgeInsets.fromLTRB(
+                    0,
+                    isShort ? 46 : 52,
+                    0,
+                    24,
+                  ),
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         _buildPreviewMedia(previewSize),
 
-                        const SizedBox(height: 14),
+                        SizedBox(height: isShort ? 10 : 14),
 
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _dropdownPill(
-                                icon: currentCategoryIcon,
-                                label: _localizedCategoryLabel(category),
-                                isOpen: categoryOpen,
-                                onTap: () {
-                                  setState(() {
-                                    categoryOpen = !categoryOpen;
-
-                                    if (categoryOpen) {
-                                      privacyOpen = false;
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _dropdownPill(
-                                icon: privacyIcon,
-                                label: privacyLabel,
-                                isOpen: privacyOpen,
-                                onTap: () {
-                                  if (widget.lockPrivacy) return;
-                                  setState(() {
-                                    privacyOpen = !privacyOpen;
-
-                                    if (privacyOpen) {
-                                      categoryOpen = false;
-                                    }
-                                  });
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        if (categoryOpen) _buildCategoryDropdownPanel(),
-                        if (privacyOpen) _buildPrivacyDropdownPanel(),
-
-                        const SizedBox(height: 14),
-
+                        // 1. Dòng chuyển chi tiêu và thu nhập
                         Center(
                           child: _typeSwitch(),
                         ),
 
-                        const SizedBox(height: 18),
+                        SizedBox(height: isShort ? 10 : 14),
 
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _bottomAction(
-                              icon: Icons.photo_camera_back_outlined,
-                              label: context.l10n.retake,
-                              onTap: () {
-                                if (Navigator.canPop(context)) {
-                                  Navigator.pop(context);
-                                } else {
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => const CameraScreen(),
-                                    ),
-                                  );
+                        // 2. Dòng chọn đối tượng (Riêng tư, Tất cả, Bạn thân, Nhóm, Bạn bè...)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: _CaptureAudienceSelectorRow(
+                            selectedAudience: privacy,
+                            selectedFriendUids: _selectedFriendUids,
+                            selectedGroupId: _selectedGroupId,
+                            friends: _friends,
+                            closeFriendUids: _closeFriendUids,
+                            userGroups: _userGroups,
+                            onPrivateSelected: () {
+                              setState(() {
+                                privacy = 'private';
+                                _selectedFriendUids.clear();
+                                _selectedGroupId = null;
+                                _selectedGroupName = null;
+                                _selectedGroupMemberIds = [];
+                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  category = 'Ăn uống';
                                 }
-                              },
-                            ),
+                              });
+                              _notifyPrivacyTagAdjustmentIfNeeded('private');
+                            },
+                            onAllFriendsSelected: () {
+                              setState(() {
+                                privacy = 'friends';
+                                _selectedFriendUids.clear();
+                                _selectedGroupId = null;
+                                _selectedGroupName = null;
+                                _selectedGroupMemberIds = [];
+                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  category = 'Ăn uống';
+                                }
+                              });
+                              _notifyPrivacyTagAdjustmentIfNeeded('friends');
+                            },
+                            onCloseFriendsSelected: () {
+                              setState(() {
+                                privacy = 'close_friends';
+                                _selectedGroupId = null;
+                                _selectedGroupName = null;
+                                _selectedGroupMemberIds = [];
+                                _selectedFriendUids.clear();
+                                _selectedFriendUids.addAll(_closeFriendUids);
+                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  category = 'Ăn uống';
+                                }
+                              });
+                              _notifyPrivacyTagAdjustmentIfNeeded('close_friends');
+                            },
+                            onGroupSelected: (group) {
+                              final gId = (group['id'] ?? group['groupId'] ?? '').toString();
+                              final gName = (group['name'] ?? 'Nhóm').toString();
+                              final gMembers = (group['memberIds'] as List<dynamic>?)
+                                      ?.map((e) => e.toString())
+                                      .toList() ??
+                                  <String>[];
+                              setState(() {
+                                privacy = 'group';
+                                _selectedGroupId = gId;
+                                _selectedGroupName = gName;
+                                _selectedGroupMemberIds = gMembers;
+                                _selectedFriendUids.clear();
+                              });
+                              _notifyPrivacyTagAdjustmentIfNeeded('group');
+                            },
+                            onFriendToggled: (friend) {
+                              final fUid = (friend['uid'] ?? '').toString();
+                              setState(() {
+                                _selectedGroupId = null;
+                                _selectedGroupName = null;
+                                _selectedGroupMemberIds = [];
 
-                            _buildSubmitButton(
-                              controllerSaving: isSaving,
-                            ),
+                                if (_selectedFriendUids.contains(fUid)) {
+                                  _selectedFriendUids.remove(fUid);
+                                  if (_selectedFriendUids.isEmpty) {
+                                    privacy = 'friends';
+                                  }
+                                } else {
+                                  _selectedFriendUids.add(fUid);
+                                  privacy = 'friends_custom';
+                                }
 
-                            if (hasMedia)
+                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  category = 'Ăn uống';
+                                }
+                              });
+                              _notifyPrivacyTagAdjustmentIfNeeded(privacy);
+                            },
+                            isDark: true,
+                            isEnUI: isEn,
+                          ),
+                        ),
+
+                        SizedBox(height: isShort ? 14 : 20),
+
+                        // 3. Hàng nút hành động dưới cùng
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
                               _bottomAction(
-                                icon: Icons.ios_share_rounded,
-                                label: context.l10n.share,
-                                onTap: _shareMoment,
-                              )
-                            else
-                              const SizedBox(
-                                width: 58,
-                                height: 78,
+                                icon: Icons.photo_camera_back_outlined,
+                                label: context.l10n.retake,
+                                onTap: () {
+                                  if (Navigator.canPop(context)) {
+                                    Navigator.pop(context);
+                                  } else {
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const CameraScreen(),
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
-                          ],
+
+                              _buildSubmitButton(
+                                controllerSaving: isSaving,
+                              ),
+
+                              if (hasMedia)
+                                _bottomAction(
+                                  icon: Icons.ios_share_rounded,
+                                  label: context.l10n.share,
+                                  onTap: _shareMoment,
+                                )
+                              else
+                                const SizedBox(
+                                  width: 58,
+                                  height: 78,
+                                ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
+                ),
+              ),
+
+              // 2. Floating Transparent Header
+              Positioned(
+                top: 8,
+                left: isSmall ? 12 : 16,
+                child: _CancelButton(
+                  onTap: _closeCaptureFlow,
                 ),
               ),
             ],
@@ -1713,6 +1884,10 @@ class _CancelButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.10),
               borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.12),
+                width: 1,
+              ),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1722,12 +1897,12 @@ class _CancelButton extends StatelessWidget {
                   color: Colors.white,
                   size: 16,
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 5),
                 Text(
                   context.l10n.cancel,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1786,6 +1961,7 @@ class _VideoPreviewLayer extends StatelessWidget {
   final String durationLabel;
   final bool isMuted;
   final VoidCallback onToggleMute;
+  final bool isFrontCamera;
 
   const _VideoPreviewLayer({
     required this.controller,
@@ -1793,23 +1969,37 @@ class _VideoPreviewLayer extends StatelessWidget {
     required this.durationLabel,
     required this.isMuted,
     required this.onToggleMute,
+    this.isFrontCamera = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final videoController = controller;
+
+    Widget? playerWidget;
+    if (isReady && videoController != null) {
+      playerWidget = FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: videoController.value.size.width,
+          height: videoController.value.size.height,
+          child: VideoPlayer(videoController),
+        ),
+      );
+
+      if (isFrontCamera) {
+        playerWidget = Transform.flip(
+          flipX: true,
+          child: playerWidget,
+        );
+      }
+    }
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        if (isReady && videoController != null)
-          FittedBox(
-            fit: BoxFit.cover,
-            child: SizedBox(
-              width: videoController.value.size.width,
-              height: videoController.value.size.height,
-              child: VideoPlayer(videoController),
-            ),
-          )
+        if (playerWidget != null)
+          playerWidget
         else
           const Center(
             child: CircularProgressIndicator(
@@ -1925,7 +2115,7 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
   }
 
   void _onAmountChangedInternal() {
-    if (mounted && widget.groupRemainingBalance != null) {
+    if (mounted) {
       setState(() {});
     }
   }
@@ -1990,6 +2180,14 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
   Widget build(BuildContext context) {
     final allowDecimal = widget.currency == 'USD';
 
+    final rawDigits = widget.currency == 'USD'
+        ? widget.amountController.text.replaceAll(RegExp(r'[^0-9.]'), '')
+        : widget.amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final integerDigits = widget.currency == 'USD'
+        ? rawDigits.split('.').first
+        : rawDigits;
+    final isAtMaxDigits = integerDigits.length >= _PreviewScreenState.kMaxAmountDigits;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -2017,21 +2215,31 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                widget.accentColor.withValues(alpha: 0.34),
-                widget.accentColor.withValues(alpha: 0.20),
-                Colors.black.withValues(alpha: 0.34),
-              ],
+              colors: isAtMaxDigits
+                  ? [
+                      const Color(0xFFFF3B30).withValues(alpha: 0.38),
+                      const Color(0xFFFF3B30).withValues(alpha: 0.20),
+                      Colors.black.withValues(alpha: 0.34),
+                    ]
+                  : [
+                      widget.accentColor.withValues(alpha: 0.34),
+                      widget.accentColor.withValues(alpha: 0.20),
+                      Colors.black.withValues(alpha: 0.34),
+                    ],
             ),
             borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: widget.accentColor.withValues(alpha: 0.55),
-              width: 1.15,
+              color: isAtMaxDigits
+                  ? const Color(0xFFFF3B30)
+                  : widget.accentColor.withValues(alpha: 0.55),
+              width: isAtMaxDigits ? 1.5 : 1.15,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 14,
+                color: isAtMaxDigits
+                    ? const Color(0x66FF3B30)
+                    : Colors.black.withValues(alpha: 0.25),
+                blurRadius: isAtMaxDigits ? 16 : 14,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -2076,7 +2284,7 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                     child: Text(
                       widget.amountPrefix,
                       style: TextStyle(
-                        color: widget.accentColor,
+                        color: isAtMaxDigits ? const Color(0xFFFF5252) : widget.accentColor,
                         fontSize: 28,
                         fontWeight: FontWeight.w900,
                       ),
@@ -2499,173 +2707,423 @@ class _FriendMentionSuggestionsCard extends StatelessWidget {
   }
 }
 
-class _DropdownPanel extends StatelessWidget {
-  final List<Widget> children;
+/// Horizontal Audience & Privacy Selector Row for Capture & Preview Screens
+class _CaptureAudienceSelectorRow extends StatelessWidget {
+  final String selectedAudience;
+  final Set<String> selectedFriendUids;
+  final String? selectedGroupId;
+  final List<Map<String, dynamic>> friends;
+  final List<String> closeFriendUids;
+  final List<Map<String, dynamic>> userGroups;
+  final VoidCallback onPrivateSelected;
+  final VoidCallback onAllFriendsSelected;
+  final VoidCallback onCloseFriendsSelected;
+  final ValueChanged<Map<String, dynamic>> onGroupSelected;
+  final ValueChanged<Map<String, dynamic>> onFriendToggled;
+  final bool isDark;
+  final bool isEnUI;
 
-  const _DropdownPanel({
-    required this.children,
+  const _CaptureAudienceSelectorRow({
+    required this.selectedAudience,
+    required this.selectedFriendUids,
+    required this.selectedGroupId,
+    required this.friends,
+    required this.closeFriendUids,
+    required this.userGroups,
+    required this.onPrivateSelected,
+    required this.onAllFriendsSelected,
+    required this.onCloseFriendsSelected,
+    required this.onGroupSelected,
+    required this.onFriendToggled,
+    this.isDark = true,
+    this.isEnUI = false,
   });
+
+  Color _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return const Color(0xFF10B981);
+    final cleaned = hex.replaceAll('#', '');
+    if (cleaned.length == 6) {
+      return Color(int.parse('FF$cleaned', radix: 16));
+    }
+    return const Color(0xFF10B981);
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 9),
-      decoration: BoxDecoration(
-        color: _PreviewColors.darkPanel,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.08),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.18),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+    const primaryColor = AppColors.primaryBlue;
+
+    final isPrivateSelected = selectedAudience == 'private';
+    final isAllSelected = selectedAudience == 'friends' && selectedFriendUids.isEmpty && selectedGroupId == null;
+    final isCloseFriendsSelected = selectedAudience == 'close_friends';
+
+    // Always display full friends list
+    final displayedFriends = friends;
+
+    return SizedBox(
+      height: 66,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        children: [
+          // 1. Riêng tư (Private)
+          _buildItem(
+            label: isEnUI ? 'Private' : 'Riêng tư',
+            isSelected: isPrivateSelected,
+            onTap: onPrivateSelected,
+            child: Icon(
+              Icons.lock_rounded,
+              size: 19,
+              color: isPrivateSelected ? Colors.white : const Color(0xFF8E95A5),
+            ),
+            primaryColor: primaryColor,
+          ),
+          const SizedBox(width: 10),
+
+          // 2. Tất cả (All Friends)
+          _buildItem(
+            label: isEnUI ? 'All' : 'Tất cả',
+            isSelected: isAllSelected,
+            onTap: onAllFriendsSelected,
+            child: Icon(
+              Icons.groups_rounded,
+              size: 20,
+              color: isAllSelected ? Colors.white : const Color(0xFF8E95A5),
+            ),
+            primaryColor: primaryColor,
+          ),
+
+          // 3. Bạn thân (Close Friends) - Only show if user has close friends!
+          if (closeFriendUids.isNotEmpty) ...[
+            const SizedBox(width: 10),
+            _buildItem(
+              label: isEnUI ? 'Close friends' : 'Bạn thân',
+              isSelected: isCloseFriendsSelected,
+              onTap: onCloseFriendsSelected,
+              child: const Icon(
+                Icons.star_rounded,
+                size: 21,
+                color: Color(0xFFFBBF24),
+              ),
+              primaryColor: primaryColor,
+            ),
+          ],
+
+          // 4. Nhóm (Groups)
+          for (final group in userGroups) ...[
+            const SizedBox(width: 10),
+            _buildGroupItem(
+              group: group,
+              isSelected: selectedAudience == 'group' &&
+                  (group['id'] ?? group['groupId'] ?? '').toString() == selectedGroupId,
+              onTap: () => onGroupSelected(group),
+              primaryColor: primaryColor,
+            ),
+          ],
+
+          // 5. Friends list (Multi-selectable)
+          for (final friend in displayedFriends) ...[
+            const SizedBox(width: 10),
+            _buildFriendItem(
+              friend: friend,
+              isCloseFriend: closeFriendUids.contains((friend['uid'] ?? '').toString()),
+              isSelected: selectedFriendUids.contains((friend['uid'] ?? '').toString()),
+              onTap: () => onFriendToggled(friend),
+              primaryColor: primaryColor,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItem({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Widget child,
+    required Color primaryColor,
+  }) {
+    const textSecondary = Colors.white60;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isSelected
+                  ? primaryColor.withValues(alpha: 0.28)
+                  : const Color(0xFF242732),
+              border: Border.all(
+                color: isSelected ? primaryColor : Colors.transparent,
+                width: 2.2,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.40),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: child,
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: 52,
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? Colors.white : textSecondary,
+              ),
+            ),
           ),
         ],
       ),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxHeight: 280,
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Scrollbar(
-            thumbVisibility: true,
-            radius: const Radius.circular(999),
-            thickness: 3,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: children,
+    );
+  }
+
+  Widget _buildGroupItem({
+    required Map<String, dynamic> group,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Color primaryColor,
+  }) {
+    final groupName = (group['name'] ?? 'Nhóm').toString();
+    final groupColor = _parseHexColor(group['color'] as String? ?? group['colorHex'] as String?);
+    const textSecondary = Colors.white60;
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isSelected
+                  ? groupColor.withValues(alpha: 0.35)
+                  : groupColor.withValues(alpha: 0.16),
+              border: Border.all(
+                color: isSelected ? groupColor : Colors.transparent,
+                width: 2.2,
+              ),
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: groupColor.withValues(alpha: 0.45),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: Icon(
+              Icons.groups_2_rounded,
+              size: 20,
+              color: groupColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: 52,
+            child: Text(
+              groupName,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? Colors.white : textSecondary,
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }
-}
 
-class _DropdownItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final bool isSelected;
-  final String? badgeText;
-  final VoidCallback onTap;
+  Widget _buildFriendItem({
+    required Map<String, dynamic> friend,
+    required bool isCloseFriend,
+    required bool isSelected,
+    required VoidCallback onTap,
+    required Color primaryColor,
+  }) {
+    final name = (friend['name'] ?? '').toString().trim();
+    final username = (friend['username'] ?? '').toString().trim();
+    final avatarUrl = (friend['avatarUrl'] ?? '').toString().trim();
+    final displayName = name.isNotEmpty ? name : (username.isNotEmpty ? username : 'User');
+    const textSecondary = Colors.white60;
 
-  const _DropdownItem({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.isSelected,
-    required this.onTap,
-    this.badgeText,
-  });
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 11,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: color.withOpacity(0.18),
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                width: 42,
+                height: 42,
+                padding: const EdgeInsets.all(1.5),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isSelected ? primaryColor : Colors.transparent,
+                    width: 2.2,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: primaryColor.withValues(alpha: 0.40),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: ClipOval(
+                  child: avatarUrl.isNotEmpty
+                      ? Image.network(
+                          avatarUrl,
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildFallbackInitial(initial),
+                        )
+                      : _buildFallbackInitial(initial),
+                ),
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
+
+              // Close Friend Star Badge indicator
+              if (isCloseFriend)
+                Positioned(
+                  left: -2,
+                  top: -2,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFF59E0B),
+                      border: Border.all(
+                        color: const Color(0xFF15171C),
+                        width: 1.4,
                       ),
+                    ),
+                    child: const Icon(
+                      Icons.star_rounded,
+                      size: 9,
+                      color: Colors.white,
                     ),
                   ),
-                  if (badgeText != null) ...[
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.10),
-                        borderRadius: BorderRadius.circular(
-                          AppSizes.radiusPill,
-                        ),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.12),
-                        ),
-                      ),
-                      child: Text(
-                        badgeText!,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w800,
-                        ),
+                ),
+
+              // Multi-select Check Badge indicator
+              if (isSelected)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    width: 15,
+                    height: 15,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primaryColor,
+                      border: Border.all(
+                        color: const Color(0xFF15171C),
+                        width: 1.5,
                       ),
                     ),
-                  ],
-                ],
+                    child: const Icon(
+                      Icons.check_rounded,
+                      size: 9,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: 52,
+            child: Text(
+              displayName,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color: isSelected ? Colors.white : textSecondary,
               ),
             ),
-            if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                color: AppColors.income,
-                size: 21,
-              ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFallbackInitial(String initial) {
+    final colors = [
+      const Color(0xFF00796B),
+      const Color(0xFF1E88E5),
+      const Color(0xFF5E35B1),
+      const Color(0xFFD81B60),
+      const Color(0xFF3949AB),
+      const Color(0xFF00897B),
+      const Color(0xFF43A047),
+      const Color(0xFFFB8C00),
+    ];
+    final color = colors[initial.codeUnitAt(0) % colors.length];
+
+    return Container(
+      width: 36,
+      height: 36,
+      color: color,
+      alignment: Alignment.center,
+      child: Text(
+        initial,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.w800,
         ),
       ),
     );
   }
-}
-
-class _DropdownDivider extends StatelessWidget {
-  const _DropdownDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Divider(
-      height: 1,
-      color: Colors.white.withOpacity(0.05),
-    );
-  }
-}
-
-class _PreviewColors {
-  static const Color darkPanel = Color(0xFF1C1F28);
 }

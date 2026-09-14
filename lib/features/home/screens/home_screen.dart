@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:provider/provider.dart';
@@ -8,10 +10,13 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../core/widgets/meme_logo.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../budget/controllers/budget_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/home_controller.dart';
+import '../services/daily_moment_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/calendar_section.dart';
 import '../widgets/recent_transaction_card.dart';
@@ -24,8 +29,38 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool loaded = false;
+  Timer? _timeUpdateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Tự động cập nhật greeting theo thời gian thực mỗi phút
+    _timeUpdateTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Cập nhật lại ngay khi người dùng quay lại app từ màn hình khác / background
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _timeUpdateTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   void didChangeDependencies() {
@@ -35,25 +70,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final uid = context.read<AuthController>().user?.uid;
       if (uid != null) {
         context.read<HomeController>().load(uid);
+        context.read<BudgetController>().load(uid);
       }
       loaded = true;
     }
-  }
-
-  String _getGreetingByTime(BuildContext context) {
-    final hour = DateTime.now().hour;
-
-    if (hour < 12) return context.l10n.goodMorning;
-    if (hour < 18) return context.l10n.goodAfternoon;
-    return context.l10n.goodEvening;
-  }
-
-  String _getGreetingIcon() {
-    final hour = DateTime.now().hour;
-
-    if (hour < 12) return '☀️';
-    if (hour < 18) return '🌤️';
-    return '🌙';
   }
 
   bool _isSameDate(DateTime a, DateTime b) {
@@ -76,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
         style: AppTextStyles.caption(context).copyWith(
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: FontWeight.w600,
           height: 1.35,
         ),
@@ -141,10 +161,23 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final home = context.watch<HomeController>();
-    final currency = context.watch<ProfileController>().currency;
+    final profileController = context.watch<ProfileController>();
+    final budgetController = context.watch<BudgetController>();
 
-    final greetingText = _getGreetingByTime(context);
-    final greetingIcon = _getGreetingIcon();
+    final currency = profileController.currency;
+    final localeLang = Localizations.localeOf(context).languageCode;
+    final languageCode = profileController.languageCode.isNotEmpty
+        ? profileController.languageCode
+        : localeLang;
+
+    final momentData = DailyMomentService.resolveMoment(
+      context: context,
+      profile: home.profile,
+      transactions: home.transactions,
+      budgets: budgetController.budgets,
+      languageCode: languageCode,
+    );
+
     final avatarUrl = home.profile?.avatarUrl ?? '';
     final now = DateTime.now();
     final currentMonthTransactions = home.transactions
@@ -169,16 +202,11 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: Text(
-                    'Meme',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
+                const MemeLogo(
+                  height: 44,
+                  showSubtitle: true,
                 ),
+                const Spacer(),
                 _TopActionButton(
                   icon: Icons.calendar_month_outlined,
                   onTap: () {
@@ -192,8 +220,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _WelcomeCard(
               avatarUrl: avatarUrl,
               avatarFrame: home.profile?.avatarFrame ?? 'plain',
-              greetingIcon: greetingIcon,
-              greetingText: greetingText,
+              greetingIcon: momentData.greetingIcon,
+              greetingText: momentData.greetingText,
               userName: home.profile?.name ?? context.l10n.you,
               todaySummary: _buildTodaySummary(
                 home: home,
@@ -277,9 +305,15 @@ class _WelcomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textLength = greetingText.length;
+    final double dynamicFontSize = textLength > 36
+        ? 12.0
+        : (textLength > 24 ? 13.0 : 14.0);
+
     return _SectionContainer(
       padding: const EdgeInsets.all(16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           AvatarWithFrame(
             avatarUrl: avatarUrl,
@@ -291,26 +325,47 @@ class _WelcomeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      greetingIcon,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        greetingText,
-                        style: AppTextStyles.bodySecondary(context).copyWith(
-                          fontWeight: FontWeight.w700,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  layoutBuilder: (currentChild, previousChildren) => Stack(
+                    alignment: Alignment.centerLeft,
+                    children: [
+                      ...previousChildren,
+                      if (currentChild != null) currentChild,
+                    ],
+                  ),
+                  transitionBuilder: (child, anim) =>
+                      FadeTransition(opacity: anim, child: child),
+                  child: Text.rich(
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: '$greetingIcon  ',
+                          style: TextStyle(
+                            fontSize: dynamicFontSize + 2,
+                            height: 1.1,
+                          ),
                         ),
-                      ),
+                        TextSpan(
+                          text: greetingText,
+                          style: AppTextStyles.bodySecondary(context).copyWith(
+                            fontSize: dynamicFontSize,
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                    key: ValueKey('$greetingIcon-$greetingText'),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$userName ✨',
+                  userName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.pageTitle(context).copyWith(
                     fontSize: 22,
                     height: 1.15,
@@ -452,7 +507,7 @@ class _SummaryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(9, 5, 10, 5),
+      padding: const EdgeInsets.fromLTRB(8, 4, 9, 4),
       decoration: BoxDecoration(
         color: accentColor.withValues(alpha: AppColors.isDark(context) ? 0.16 : 0.12),
         borderRadius: BorderRadius.circular(AppSizes.radiusPill),
@@ -466,10 +521,10 @@ class _SummaryChip extends StatelessWidget {
         children: [
           Icon(
             icon,
-            size: 14,
+            size: 13,
             color: accentColor,
           ),
-          const SizedBox(width: 5),
+          const SizedBox(width: 4),
           Flexible(
             child: Text(
               text,
@@ -478,7 +533,7 @@ class _SummaryChip extends StatelessWidget {
               softWrap: false,
               style: TextStyle(
                 color: accentColor,
-                fontSize: 12.5,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w800,
                 height: 1,
               ),

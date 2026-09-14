@@ -591,7 +591,7 @@
   "private": "Private",
   "closeFriends": "Close friends",
   "everyone": "Everyone",
-  "maxAmountDigits": "Max 10 digits",
+  "maxAmountDigits": "Maximum 12 digits",
   "addDetails": "Add details",
   "overBudgetLimitTitle": "Over budget target",
   "overBudgetLimitWarning": "This transaction will cause the theme \"{name}\" to exceed the target of {limit} by about {over}. Do you still want to save?",
@@ -650,7 +650,7 @@
     }
   },
   "cannotShareNow": "Cannot share at this time",
-  "amountLimitExceeded": "Amount exceeds the 10-digit limit",
+  "amountLimitExceeded": "Amount exceeds 12-digit limit",
   "savedWithOverLimit": "Saved, but theme \"{category}\" has exceeded target.",
   "@savedWithOverLimit": {
     "placeholders": {
@@ -1456,6 +1456,16 @@
       }
     }
   },
+  "everyoneActive": "Everyone is active",
+  "groupActiveCount": "{count, plural, =1{1 active now} other{{count} active now}}",
+  "@groupActiveCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "onePersonActive": "1 active now",
   "groupChatOpen": "Group Chat",
   "systemGroupCreated": "{name} created group \"{group}\"",
   "@systemGroupCreated": {

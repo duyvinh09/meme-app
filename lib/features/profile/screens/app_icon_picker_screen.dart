@@ -16,6 +16,7 @@ class AppIconPickerScreen extends StatefulWidget {
 }
 
 class _AppIconPickerScreenState extends State<AppIconPickerScreen> {
+  final ScrollController _scrollController = ScrollController();
   String _currentIcon = 'default';
   bool _isLoading = true;
   bool _isSwitching = false;
@@ -24,6 +25,12 @@ class _AppIconPickerScreenState extends State<AppIconPickerScreen> {
   void initState() {
     super.initState();
     _loadCurrentIcon();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCurrentIcon() async {
@@ -101,36 +108,11 @@ class _AppIconPickerScreenState extends State<AppIconPickerScreen> {
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: SafeArea(
-        child: Column(
+        bottom: false,
+        child: Stack(
           children: [
-            // Top Bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSizes.pagePadding,
-                12,
-                AppSizes.pagePadding,
-                0,
-              ),
-              child: Row(
-                children: [
-                  const AppBackButton(),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      l10n.appIcon,
-                      style: AppTextStyles.pageTitle(context).copyWith(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            Expanded(
+            // Scrollable GridView underneath the floating header
+            Positioned.fill(
               child: _isLoading
                   ? const Center(
                       child: CircularProgressIndicator(),
@@ -144,9 +126,11 @@ class _AppIconPickerScreenState extends State<AppIconPickerScreen> {
                         final aspectRatio = isTablet ? 0.9 : (isSmall ? 0.76 : 0.80);
 
                         return GridView.builder(
+                          controller: _scrollController,
+                          physics: const BouncingScrollPhysics(),
                           padding: const EdgeInsets.fromLTRB(
                             AppSizes.pagePadding,
-                            6,
+                            68,
                             AppSizes.pagePadding,
                             32,
                           ),
@@ -175,6 +159,50 @@ class _AppIconPickerScreenState extends State<AppIconPickerScreen> {
                         );
                       },
                     ),
+            ),
+
+            // Floating Transparent Header
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.pagePadding,
+                  12,
+                  AppSizes.pagePadding,
+                  12,
+                ),
+                child: Row(
+                  children: [
+                    const AppBackButton(),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: AnimatedBuilder(
+                        animation: _scrollController,
+                        builder: (context, child) {
+                          final offset = _scrollController.hasClients
+                              ? _scrollController.offset
+                              : 0.0;
+                          final titleOpacity =
+                              (1.0 - (offset / 80.0)).clamp(0.0, 1.0);
+                          return Opacity(
+                            opacity: titleOpacity,
+                            child: child,
+                          );
+                        },
+                        child: Text(
+                          l10n.appIcon,
+                          style: AppTextStyles.pageTitle(context).copyWith(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),

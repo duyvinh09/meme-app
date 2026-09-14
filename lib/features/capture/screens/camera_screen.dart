@@ -569,14 +569,27 @@ class _CameraScreenState extends State<CameraScreen>
     await _initController(_cameras[_cameraIndex]);
   }
 
-  Future<File> _cropImageToSquare(File file) async {
+  bool get _isFrontCamera {
+    if (_cameras.isEmpty || _cameraIndex >= _cameras.length) return false;
+    return _cameras[_cameraIndex].lensDirection == CameraLensDirection.front;
+  }
+
+  Future<File> _cropImageToSquare(File file, {bool isFrontCamera = false}) async {
     final bytes = await file.readAsBytes();
-    final original = img.decodeImage(bytes);
+    var original = img.decodeImage(bytes);
 
     if (original == null) return file;
 
+    // 1. Chuẩn hóa hướng EXIF để kích thước pixel chính xác
+    original = img.bakeOrientation(original);
+
+    // 2. Nếu chụp bằng camera trước, lật ngang ảnh để ảnh chụp ra khớp với ảnh gương hiển thị trên màn hình
+    if (isFrontCamera) {
+      original = img.copyFlip(original, direction: img.FlipDirection.horizontal);
+    }
+
     final cropSize =
-    original.width < original.height ? original.width : original.height;
+        original.width < original.height ? original.width : original.height;
 
     final offsetX = (original.width - cropSize) ~/ 2;
     final offsetY = (original.height - cropSize) ~/ 2;
@@ -622,6 +635,7 @@ class _CameraScreenState extends State<CameraScreen>
     File? videoFile,
     required String mediaType,
     int? durationMs,
+    bool isFrontCamera = false,
   }) {
     return PreviewScreen(
       imageFile: imageFile,
@@ -636,6 +650,7 @@ class _CameraScreenState extends State<CameraScreen>
       lockType: widget.lockType,
       lockPrivacy: widget.lockPrivacy,
       isGroupContribution: widget.isGroupContribution,
+      isFrontCamera: isFrontCamera,
     );
   }
 
@@ -723,8 +738,12 @@ class _CameraScreenState extends State<CameraScreen>
         _isCapturing = true;
       });
 
+      final isFront = _isFrontCamera;
       final file = await _controller!.takePicture();
-      final squareFile = await _cropImageToSquare(File(file.path));
+      final squareFile = await _cropImageToSquare(
+        File(file.path),
+        isFrontCamera: isFront,
+      );
 
       if (!mounted) return;
 
@@ -815,6 +834,7 @@ class _CameraScreenState extends State<CameraScreen>
       _isStoppingVideo = true;
       _recordTimer?.cancel();
 
+      final isFront = _isFrontCamera;
       final file = await _controller!.stopVideoRecording();
 
       final durationMs = startedAt == null
@@ -836,6 +856,7 @@ class _CameraScreenState extends State<CameraScreen>
           videoFile: File(file.path),
           mediaType: 'video',
           durationMs: durationMs,
+          isFrontCamera: isFront,
         ),
       );
     } catch (e) {

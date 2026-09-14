@@ -11,11 +11,14 @@ import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/local_settings_service.dart';
 import '../../../core/utils/app_toast.dart';
+import '../../../data/models/note_reaction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../controllers/chat_controller.dart';
 import 'group_chat_conversation_screen.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../feed/widgets/reaction_flying_animator.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
 
@@ -31,6 +34,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   String _searchQuery = '';
   String _selectedTab = 'all'; // 'all' | 'unread' | 'groups'
   Timer? _activeStoriesTicker;
+  Stream<List<Map<String, dynamic>>>? _activeFriendsStream;
 
   @override
   void initState() {
@@ -93,8 +97,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
       'Nov',
       'Dec'
     ];
-    if (month >= 1 && month <= 12) return months[month - 1];
-    return '$month';
+    if (month >= 1 && month <= 12) {
+      return months[month - 1];
+    }
+    return '';
   }
 
   void _openActiveStatusSheet(BuildContext context, String myUid) {
@@ -204,25 +210,92 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final myShowActiveStatus =
         context.watch<LocalSettingsService>().showActiveStatus;
 
+    _activeFriendsStream ??= userRepo.streamActiveFriendsRealtime(myUid);
+
     return Container(
       height: 112,
       margin: const EdgeInsets.only(top: 6, bottom: 2),
       child: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: userRepo.streamActiveFriendsRealtime(myUid),
+        stream: _activeFriendsStream,
+        initialData: userRepo.getLatestActiveFriends(myUid),
         builder: (context, snapshot) {
-          final friends = snapshot.data ?? [];
+          final friends =
+              snapshot.data ?? userRepo.getLatestActiveFriends(myUid);
+
+          // Helper to parse last seen / last active timestamp
+          DateTime? getSeenTime(Map<String, dynamic> f) {
+            DateTime? seen = f['lastSeen'] is Timestamp
+                ? (f['lastSeen'] as Timestamp).toDate()
+                : (f['lastSeen'] is DateTime ? f['lastSeen'] as DateTime : null);
+            seen ??= f['lastActiveDate'] is Timestamp
+                ? (f['lastActiveDate'] as Timestamp).toDate()
+                : (f['lastActiveDate'] is DateTime ? f['lastActiveDate'] as DateTime : null);
+            return seen;
+          }
+
+          int? getOfflineMinutes(
+              Map<String, dynamic> f, bool isOnline, bool canShowPresence) {
+            if (isOnline || !canShowPresence) return null;
+            final seen = getSeenTime(f);
+            if (seen != null) {
+              final now = DateTime.now();
+              final safeSeen = seen.isAfter(now) ? now : seen;
+              final diff = now.difference(safeSeen);
+              if (diff.inMinutes >= 0 && diff.inMinutes < 60) {
+                return diff.inMinutes == 0 ? 1 : diff.inMinutes;
+              }
+            }
+            return null;
+          }
+
           final activeOrOnlineFriends = friends.where((f) {
             final hasNote = f['hasActiveNote'] == true;
-            final canShowOnline = (f['isOnline'] == true) &&
-                (f['showActiveStatus'] != false) &&
+            final canShowPresence = (f['showActiveStatus'] != false) &&
                 (f['activeStatusMode'] == 'public' || myShowActiveStatus);
-            return hasNote || canShowOnline;
+            final isOnline = (f['isOnline'] == true) && canShowPresence;
+            final offlineMinutes =
+                getOfflineMinutes(f, isOnline, canShowPresence);
+            final isRecentlyActive = offlineMinutes != null;
+
+            return hasNote || isOnline || isRecentlyActive;
           }).toList();
 
           activeOrOnlineFriends.sort((a, b) {
-            final aHasNote = a['hasActiveNote'] == true ? 1 : 0;
-            final bHasNote = b['hasActiveNote'] == true ? 1 : 0;
-            return bHasNote.compareTo(aHasNote);
+            final aHasNote = a['hasActiveNote'] == true;
+            final bHasNote = b['hasActiveNote'] == true;
+            final aCanShowPresence = (a['showActiveStatus'] != false) &&
+                (a['activeStatusMode'] == 'public' || myShowActiveStatus);
+            final bCanShowPresence = (b['showActiveStatus'] != false) &&
+                (b['activeStatusMode'] == 'public' || myShowActiveStatus);
+            final aIsOnline = a['isOnline'] == true && aCanShowPresence;
+            final bIsOnline = b['isOnline'] == true && bCanShowPresence;
+
+            // Priority:
+            // 3: Online with note
+            // 2: Online without note
+            // 1: Offline with note
+            // 0: Offline without note
+            int score(bool isOnline, bool hasNote) {
+              if (isOnline && hasNote) return 3;
+              if (isOnline) return 2;
+              if (hasNote) return 1;
+              return 0;
+            }
+
+            final scoreA = score(aIsOnline, aHasNote);
+            final scoreB = score(bIsOnline, bHasNote);
+            if (scoreA != scoreB) {
+              return scoreB.compareTo(scoreA);
+            }
+
+            final aSeen = getSeenTime(a);
+            final bSeen = getSeenTime(b);
+            if (aSeen != null && bSeen != null) {
+              return bSeen.compareTo(aSeen);
+            }
+            if (aSeen != null) return -1;
+            if (bSeen != null) return 1;
+            return 0;
           });
 
           return ListView.builder(
@@ -313,9 +386,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
               final displayName = friendName.trim().split(' ').last;
               final hasNote = friend['hasActiveNote'] == true;
               final noteText = friend['userNote'] as String? ?? '';
-              final isOnline = friend['isOnline'] == true &&
-                  friend['showActiveStatus'] != false &&
+              final canShowPresence = friend['showActiveStatus'] != false &&
                   (friend['activeStatusMode'] == 'public' || myShowActiveStatus);
+              final isOnline = friend['isOnline'] == true && canShowPresence;
+              final friendOfflineMinutes =
+                  getOfflineMinutes(friend, isOnline, canShowPresence);
 
               return InkWell(
                 onTap: () {
@@ -370,6 +445,39 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                           border: Border.all(
                                             color: AppColors.background(context),
                                             width: 2.2,
+                                          ),
+                                        ),
+                                      ),
+                                    )
+                                  else if (friendOfflineMinutes != null)
+                                    Positioned(
+                                      bottom: -1,
+                                      right: -3,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4.5,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? const Color(0xFF141F17)
+                                              : const Color(0xFFE8F7ED),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: AppColors.background(context),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          '${friendOfflineMinutes}m',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w800,
+                                            color: isDark
+                                                ? const Color(0xFF22C55E)
+                                                : const Color(0xFF16A34A),
+                                            height: 1.1,
                                           ),
                                         ),
                                       ),
@@ -780,8 +888,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                     final bool isUnread = unreadBy.contains(myUid);
 
                                     // Group Typing detection
-                                    bool isGroupTyping = false;
-                                    String typingUid = '';
+                                    final List<String> typingUids = [];
                                     final typingData =
                                         data['typing'] as Map<String, dynamic>?;
                                     if (typingData != null) {
@@ -789,13 +896,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                         if (entry.key != myUid) {
                                           final val = entry.value;
                                           if (val == true || val is Timestamp) {
-                                            isGroupTyping = true;
-                                            typingUid = entry.key;
-                                            break;
+                                            typingUids.add(entry.key);
                                           }
                                         }
                                       }
                                     }
+                                    final bool isGroupTyping = typingUids.isNotEmpty;
+                                    final String typingUid =
+                                        typingUids.isNotEmpty ? typingUids.first : '';
 
                                     return _GroupConversationItemTile(
                                       key: ValueKey('group_${doc.id}'),
@@ -812,6 +920,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                       isUnread: isUnread,
                                       isGroupTyping: isGroupTyping,
                                       typingUid: typingUid,
+                                      typingCount: typingUids.length,
                                       userRepo: userRepo,
                                       chatRepo: chatRepo,
                                       searchQuery: _searchQuery,
@@ -1063,11 +1172,24 @@ class _ConversationItemTile extends StatelessWidget {
         final username = otherUser?.username ?? '';
         final avatarUrl = otherUser?.avatarUrl ?? '';
         final avatarFrame = otherUser?.avatarFrame ?? 'plain';
+        final isDark = AppColors.isDark(context);
         final myShowActiveStatus =
             context.watch<LocalSettingsService>().showActiveStatus;
-        final isOnline = otherUser != null &&
-            otherUser.isOnlineVisibleTo(isFriend: isFriend) &&
+        final canShowPresence = otherUser != null &&
+            otherUser.isPresenceVisibleTo(isFriend: isFriend) &&
             (otherUser.activeStatusMode == 'public' || myShowActiveStatus);
+        final isOnline = canShowPresence && otherUser.isCurrentlyOnline;
+
+        int? offlineMinutes;
+        if (!isOnline && canShowPresence) {
+          final seen = otherUser.lastSeen ?? otherUser.lastActiveDate;
+          final now = DateTime.now();
+          final safeSeen = seen.isAfter(now) ? now : seen;
+          final diff = now.difference(safeSeen);
+          if (diff.inMinutes >= 0 && diff.inMinutes < 60) {
+            offlineMinutes = diff.inMinutes == 0 ? 1 : diff.inMinutes;
+          }
+        }
 
         final draft = context.watch<LocalSettingsService>().getDraft(otherUid);
         final hasDraft = !isOtherTyping && draft != null && draft.trim().isNotEmpty;
@@ -1125,7 +1247,7 @@ class _ConversationItemTile extends StatelessWidget {
                 else
                   const SizedBox(width: 2),
 
-                // Avatar with Frame & Online Indicator Badge
+                // Avatar with Frame & Online / Offline Indicator Badge
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -1147,6 +1269,38 @@ class _ConversationItemTile extends StatelessWidget {
                             border: Border.all(
                               color: AppColors.background(context),
                               width: 2.2,
+                            ),
+                          ),
+                        ),
+                      )
+                    else if (offlineMinutes != null)
+                      Positioned(
+                        bottom: -1,
+                        right: -3,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 1.5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF141F17)
+                                : const Color(0xFFE8F7ED),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: AppColors.background(context),
+                              width: 2,
+                            ),
+                          ),
+                          child: Text(
+                            '${offlineMinutes}m',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color: isDark
+                                  ? const Color(0xFF22C55E)
+                                  : const Color(0xFF16A34A),
+                              height: 1.1,
                             ),
                           ),
                         ),
@@ -1275,6 +1429,7 @@ class _GroupConversationItemTile extends StatelessWidget {
   final bool isUnread;
   final bool isGroupTyping;
   final String typingUid;
+  final int typingCount;
   final UserRepository userRepo;
   final ChatRepository chatRepo;
   final String searchQuery;
@@ -1293,6 +1448,7 @@ class _GroupConversationItemTile extends StatelessWidget {
     required this.isUnread,
     required this.isGroupTyping,
     required this.typingUid,
+    this.typingCount = 0,
     required this.userRepo,
     required this.chatRepo,
     required this.searchQuery,
@@ -1332,7 +1488,9 @@ class _GroupConversationItemTile extends StatelessWidget {
     Widget buildTileContent(int unreadCount, UserModel? typingUser) {
       String displaySnippet;
       if (isGroupTyping) {
-        if (typingUser != null && typingUser.name.trim().isNotEmpty) {
+        if (typingCount > 1) {
+          displaySnippet = '$typingCount người đang soạn tin...';
+        } else if (typingUser != null && typingUser.name.trim().isNotEmpty) {
           displaySnippet = '${typingUser.name.trim()}: ${context.l10n.isTyping}';
         } else {
           displaySnippet = context.l10n.isTyping;
@@ -1382,25 +1540,69 @@ class _GroupConversationItemTile extends StatelessWidget {
               else
                 const SizedBox(width: 2),
 
-              // Group Circle Avatar
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: groupColor.withValues(alpha: 0.18),
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: groupColor.withValues(alpha: 0.45),
-                    width: 1.5,
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.groups_2_rounded,
-                    color: groupColor,
-                    size: 26,
-                  ),
-                ),
+              // Group Circle Avatar with Online Indicator
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: userRepo.streamActiveFriendsRealtime(myUid),
+                initialData: userRepo.getLatestActiveFriends(myUid),
+                builder: (context, friendsSnap) {
+                  final myShowActiveStatus =
+                      context.watch<LocalSettingsService>().showActiveStatus;
+                  final friends = friendsSnap.data ?? [];
+                  final hasActiveMember = friends.any((f) {
+                    final uid = (f['uid'] ?? '').toString();
+                    if (uid == myUid || !participants.contains(uid)) {
+                      return false;
+                    }
+                    final isOnline = f['isOnline'] == true;
+                    final showActive = f['showActiveStatus'] != false;
+                    final mode = (f['activeStatusMode'] ?? 'friends').toString();
+                    return isOnline &&
+                        showActive &&
+                        (mode == 'public' || myShowActiveStatus);
+                  });
+
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 54,
+                        height: 54,
+                        decoration: BoxDecoration(
+                          color: groupColor.withValues(alpha: 0.18),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: groupColor.withValues(alpha: 0.45),
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Center(
+                          child: Icon(
+                            Icons.groups_2_rounded,
+                            color: groupColor,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+                      if (hasActiveMember)
+                        Positioned(
+                          bottom: 1,
+                          right: 1,
+                          child: Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF22C55E),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.background(context),
+                                width: 2.2,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
 
               const SizedBox(width: 14),
@@ -2305,7 +2507,7 @@ class _NoteThoughtBubble extends StatelessWidget {
   }
 }
 
-class _MyNoteViewerModal extends StatelessWidget {
+class _MyNoteViewerModal extends StatefulWidget {
   final String myUid;
   final String note;
   final DateTime? createdAt;
@@ -2317,6 +2519,62 @@ class _MyNoteViewerModal extends StatelessWidget {
     this.createdAt,
     required this.onShareNewNote,
   });
+
+  @override
+  State<_MyNoteViewerModal> createState() => _MyNoteViewerModalState();
+}
+
+class _MyNoteViewerModalState extends State<_MyNoteViewerModal> {
+  final GlobalKey<ReactionFlyingOverlayState> _flyingOverlayKey =
+      GlobalKey<ReactionFlyingOverlayState>();
+  StreamSubscription<List<NoteReactionModel>>? _reactionsSub;
+  List<NoteReactionModel> _reactions = [];
+  bool _initialAnimationPlayed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _reactionsSub = context
+        .read<ChatController>()
+        .noteReactionsStream(widget.myUid)
+        .listen((reactions) {
+      if (!mounted) return;
+      setState(() {
+        _reactions = reactions;
+      });
+
+      if (!_initialAnimationPlayed && reactions.isNotEmpty) {
+        _initialAnimationPlayed = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final screenSize = MediaQuery.sizeOf(context);
+          final recentEmojis =
+              reactions.map((r) => r.emoji).toSet().take(3).toList();
+          for (int i = 0; i < recentEmojis.length; i++) {
+            Future.delayed(Duration(milliseconds: 250 + i * 280), () {
+              if (mounted) {
+                _flyingOverlayKey.currentState?.triggerReaction(
+                  recentEmojis[i],
+                  originOffset: Offset(
+                    screenSize.width / 2 + (i - 1) * 45,
+                    screenSize.height * 0.45,
+                  ),
+                  isFalling: false,
+                  particleCount: 8,
+                );
+              }
+            });
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _reactionsSub?.cancel();
+    super.dispose();
+  }
 
   String _formatRemainingTime(BuildContext context, DateTime? dt) {
     if (dt == null) return context.l10n.expiresIn24Hours;
@@ -2330,9 +2588,9 @@ class _MyNoteViewerModal extends StatelessWidget {
 
   Future<void> _deleteNote(BuildContext context) async {
     final userRepo = context.read<UserRepository>();
-    await userRepo.deleteUserNote(myUid);
+    await userRepo.deleteUserNote(widget.myUid);
     if (!context.mounted) return;
-    context.read<ProfileController>().refreshUser(myUid);
+    context.read<ProfileController>().refreshUser(widget.myUid);
     Navigator.pop(context);
     AppToast.show(
       context,
@@ -2364,244 +2622,440 @@ class _MyNoteViewerModal extends StatelessWidget {
               ),
             ),
           ),
-          Scaffold(
-            backgroundColor: Colors.transparent,
-            resizeToAvoidBottomInset: true,
-            body: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Column(
-                          children: [
-                            // Top close button
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
-                                  const Spacer(),
-                                ],
-                              ),
-                            ),
-
-                            const Spacer(),
-
-                            // Avatar with Thought Bubble Floating Over It
-                            Center(
-                              child: SizedBox(
-                                width: 260,
-                                height: 175,
-                                child: Stack(
-                                  alignment: Alignment.topCenter,
-                                  clipBehavior: Clip.none,
+          ReactionFlyingOverlay(
+            key: _flyingOverlayKey,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              resizeToAvoidBottomInset: true,
+              body: SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Column(
+                            children: [
+                              // Top close button
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                                child: Row(
                                   children: [
-                                    Positioned(
-                                      bottom: 0,
-                                      child: AvatarWithFrame(
-                                        avatarUrl: myAvatar,
-                                        frameId: myFrame,
-                                        size: 84,
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.close_rounded,
+                                        color: Colors.white,
+                                        size: 26,
                                       ),
+                                      onPressed: () => Navigator.pop(context),
                                     ),
-                                    Positioned(
-                                      top: 0,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            constraints: const BoxConstraints(
-                                              maxWidth: 240,
-                                              minWidth: 120,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 18,
-                                              vertical: 12,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isDark ? const Color(0xFF262626) : Colors.white,
-                                              borderRadius: BorderRadius.circular(20),
-                                              border: Border.all(
+                                    const Spacer(),
+                                  ],
+                                ),
+                              ),
+
+                              const Spacer(),
+
+                              // Avatar with Thought Bubble Floating Over It
+                              Center(
+                                child: SizedBox(
+                                  width: 260,
+                                  height: 175,
+                                  child: Stack(
+                                    alignment: Alignment.topCenter,
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Positioned(
+                                        bottom: 0,
+                                        child: AvatarWithFrame(
+                                          avatarUrl: myAvatar,
+                                          frameId: myFrame,
+                                          size: 84,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 0,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              constraints: const BoxConstraints(
+                                                maxWidth: 240,
+                                                minWidth: 120,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 18,
+                                                vertical: 12,
+                                              ),
+                                              decoration: BoxDecoration(
                                                 color: isDark
-                                                    ? Colors.white.withValues(alpha: 0.12)
-                                                    : Colors.black.withValues(alpha: 0.08),
-                                                width: 0.8,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.15),
-                                                  blurRadius: 16,
-                                                  offset: const Offset(0, 6),
+                                                    ? const Color(0xFF262626)
+                                                    : Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? Colors.white.withValues(
+                                                          alpha: 0.12,
+                                                        )
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.08,
+                                                        ),
+                                                  width: 0.8,
                                                 ),
-                                              ],
-                                            ),
-                                            child: Text(
-                                              note,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white : const Color(0xFF111827),
-                                                fontSize: 15.5,
-                                                fontWeight: FontWeight.w600,
-                                                height: 1.3,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withValues(
+                                                      alpha: isDark ? 0.35 : 0.15,
+                                                    ),
+                                                    blurRadius: 16,
+                                                    offset: const Offset(0, 6),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Text(
+                                                widget.note,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : const Color(
+                                                          0xFF111827,
+                                                        ),
+                                                  fontSize: 15.5,
+                                                  fontWeight: FontWeight.w600,
+                                                  height: 1.3,
+                                                ),
                                               ),
                                             ),
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.only(top: 0),
+                                              child: Column(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    width: 11,
+                                                    height: 8,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFF262626,
+                                                            )
+                                                          : Colors.white,
+                                                      borderRadius:
+                                                          const BorderRadius
+                                                              .only(
+                                                        bottomLeft:
+                                                            Radius.circular(5),
+                                                        bottomRight:
+                                                            Radius.circular(5),
+                                                      ),
+                                                      border: Border.all(
+                                                        color: isDark
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                alpha: 0.12,
+                                                              )
+                                                            : Colors.black
+                                                                .withValues(
+                                                                alpha: 0.08,
+                                                              ),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Container(
+                                                    width: 5.5,
+                                                    height: 5.5,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFF262626,
+                                                            )
+                                                          : Colors.white,
+                                                      border: Border.all(
+                                                        color: isDark
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                alpha: 0.12,
+                                                              )
+                                                            : Colors.black
+                                                                .withValues(
+                                                                alpha: 0.08,
+                                                              ),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // User Name
+                              Text(
+                                myName,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+
+                              const SizedBox(height: 6),
+
+                              // Shared with Public / Friends
+                              Text(
+                                context.l10n.sharedWithAudience(
+                                  context.l10n.audiencePublic,
+                                ),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.90),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+
+                              const SizedBox(height: 3),
+
+                              // Expires in 24 hours
+                              Text(
+                                _formatRemainingTime(context, widget.createdAt),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+
+                              // Reactor Avatars & Reactions Summary
+                              if (_reactions.isNotEmpty) ...[
+                                const SizedBox(height: 16),
+                                Container(
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.08)
+                                        : Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.15),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.favorite_rounded,
+                                            color: Color(0xFFFF2D55),
+                                            size: 16,
                                           ),
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 0),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Container(
-                                                  width: 11,
-                                                  height: 8,
-                                                  decoration: BoxDecoration(
-                                                    color: isDark ? const Color(0xFF262626) : Colors.white,
-                                                    borderRadius: const BorderRadius.only(
-                                                      bottomLeft: Radius.circular(5),
-                                                      bottomRight: Radius.circular(5),
-                                                    ),
-                                                    border: Border.all(
-                                                      color: isDark
-                                                          ? Colors.white.withValues(alpha: 0.12)
-                                                          : Colors.black.withValues(alpha: 0.08),
-                                                      width: 0.8,
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Container(
-                                                  width: 5.5,
-                                                  height: 5.5,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: isDark ? const Color(0xFF262626) : Colors.white,
-                                                    border: Border.all(
-                                                      color: isDark
-                                                          ? Colors.white.withValues(alpha: 0.12)
-                                                          : Colors.black.withValues(alpha: 0.08),
-                                                      width: 0.8,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            '${_reactions.length} người đã bày tỏ cảm xúc',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      SizedBox(
+                                        height: 52,
+                                        child: ListView.separated(
+                                          scrollDirection: Axis.horizontal,
+                                          shrinkWrap: true,
+                                          physics:
+                                              const BouncingScrollPhysics(),
+                                          itemCount: _reactions.length,
+                                          separatorBuilder: (_, __) =>
+                                              const SizedBox(width: 12),
+                                          itemBuilder: (context, idx) {
+                                            final r = _reactions[idx];
+                                            return Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Stack(
+                                                  clipBehavior: Clip.none,
+                                                  children: [
+                                                    AvatarWithFrame(
+                                                      avatarUrl: r.reactorAvatar,
+                                                      frameId: r.reactorFrame,
+                                                      size: 34,
+                                                    ),
+                                                    Positioned(
+                                                      right: -4,
+                                                      bottom: -4,
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .all(1.5),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: isDark
+                                                              ? const Color(
+                                                                  0xFF1E222B,
+                                                                )
+                                                              : Colors.white,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                        child: Text(
+                                                          r.emoji,
+                                                          style: const TextStyle(
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 3),
+                                                SizedBox(
+                                                  width: 46,
+                                                  child: Text(
+                                                    r.reactorName.isNotEmpty
+                                                        ? r.reactorName
+                                                            .split(' ')
+                                                            .last
+                                                        : 'Bạn bè',
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    textAlign:
+                                                        TextAlign.center,
+                                                    style: TextStyle(
+                                                      color: Colors.white
+                                                          .withValues(
+                                                        alpha: 0.8,
+                                                      ),
+                                                      fontSize: 10,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              const Spacer(),
+
+                              // Bottom Action Buttons
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 46,
+                                      child: ElevatedButton.icon(
+                                        onPressed: widget.onShareNewNote,
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              const Color(0xFF0084FF),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(23),
+                                          ),
+                                          elevation: 0,
+                                        ),
+                                        icon: const Icon(
+                                          Icons.edit_note_rounded,
+                                          size: 20,
+                                        ),
+                                        label: Text(
+                                          context.l10n.shareNewNote,
+                                          style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      height: 44,
+                                      child: TextButton.icon(
+                                        onPressed: () => _deleteNote(context),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor:
+                                              const Color(0xFFFF453A),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(22),
+                                          ),
+                                        ),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          size: 19,
+                                        ),
+                                        label: Text(
+                                          context.l10n.deleteNote,
+                                          style: const TextStyle(
+                                            fontSize: 14.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            // User Name
-                            Text(
-                              myName,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-
-                            const SizedBox(height: 6),
-
-                            // Shared with Public / Friends
-                            Text(
-                              context.l10n.sharedWithAudience(context.l10n.audiencePublic),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.90),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-
-                            const SizedBox(height: 3),
-
-                            // Expires in 24 hours
-                            Text(
-                              _formatRemainingTime(context, createdAt),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.55),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-
-                            const Spacer(),
-
-                            // Bottom Action Buttons
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 46,
-                                    child: ElevatedButton.icon(
-                                      onPressed: onShareNewNote,
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: const Color(0xFF0084FF),
-                                        foregroundColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(23),
-                                        ),
-                                        elevation: 0,
-                                      ),
-                                      icon: const Icon(Icons.edit_note_rounded, size: 20),
-                                      label: Text(
-                                        context.l10n.shareNewNote,
-                                        style: const TextStyle(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    height: 44,
-                                    child: TextButton.icon(
-                                      onPressed: () => _deleteNote(context),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: const Color(0xFFFF453A),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(22),
-                                        ),
-                                      ),
-                                      icon: const Icon(Icons.delete_outline_rounded, size: 19),
-                                      label: Text(
-                                        context.l10n.deleteNote,
-                                        style: const TextStyle(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -2923,19 +3377,152 @@ class _NoteViewerModal extends StatefulWidget {
 }
 
 class _NoteViewerModalState extends State<_NoteViewerModal> {
+  final GlobalKey<ReactionFlyingOverlayState> _flyingOverlayKey =
+      GlobalKey<ReactionFlyingOverlayState>();
   final TextEditingController _msgController = TextEditingController();
 
-  static const List<String> _quickReactions = ['😍', '🙏', '😭', '😂', '😮'];
+  static const List<String> _quickReactions = [
+    '❤️',
+    '😂',
+    '😮',
+    '😍',
+    '😢',
+    '🔥',
+    '👍',
+    '🎉',
+  ];
+
+  StreamSubscription<List<NoteReactionModel>>? _reactionsSub;
+  List<NoteReactionModel> _reactions = [];
+  final Set<String> _knownReactionIds = {};
+  bool _initialAnimationPlayed = false;
+  String? _mySelectedEmoji;
+
+  @override
+  void initState() {
+    super.initState();
+    final friendUid = widget.friend['uid'] as String? ?? '';
+    if (friendUid.isNotEmpty) {
+      _reactionsSub = context
+          .read<ChatController>()
+          .noteReactionsStream(friendUid)
+          .listen((reactions) {
+        if (!mounted) return;
+
+        final newReactionsFromOthers = reactions
+            .where((r) =>
+                r.reactorId != widget.myUid &&
+                !_knownReactionIds.contains(r.id))
+            .toList();
+
+        final myReaction = reactions
+            .where((r) => r.reactorId == widget.myUid)
+            .firstOrNull;
+
+        setState(() {
+          _reactions = reactions;
+          if (myReaction != null) {
+            _mySelectedEmoji = myReaction.emoji;
+          }
+        });
+
+        final screenSize = MediaQuery.sizeOf(context);
+
+        if (!_initialAnimationPlayed && reactions.isNotEmpty) {
+          _initialAnimationPlayed = true;
+          for (final r in reactions) {
+            _knownReactionIds.add(r.id);
+          }
+
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final recentEmojis =
+                reactions.map((r) => r.emoji).toSet().take(3).toList();
+            for (int i = 0; i < recentEmojis.length; i++) {
+              Future.delayed(Duration(milliseconds: 250 + i * 280), () {
+                if (mounted) {
+                  _flyingOverlayKey.currentState?.triggerReaction(
+                    recentEmojis[i],
+                    originOffset: Offset(
+                      screenSize.width / 2 + (i - 1) * 45,
+                      screenSize.height * 0.45,
+                    ),
+                    isFalling: false,
+                    particleCount: 9,
+                  );
+                }
+              });
+            }
+          });
+        } else if (newReactionsFromOthers.isNotEmpty) {
+          for (final r in newReactionsFromOthers) {
+            _knownReactionIds.add(r.id);
+            _flyingOverlayKey.currentState?.triggerReaction(
+              r.emoji,
+              originOffset: Offset(
+                screenSize.width / 2,
+                screenSize.height * 0.45,
+              ),
+              isFalling: false,
+              particleCount: 12,
+            );
+          }
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
+    _reactionsSub?.cancel();
     _msgController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendReply(String text, {String? emoji}) async {
+  void _onSelectReaction(String emoji, {Offset? originOffset}) {
+    HapticFeedback.mediumImpact();
+
+    setState(() {
+      _mySelectedEmoji = emoji;
+    });
+
+    final screenSize = MediaQuery.sizeOf(context);
+    final spawnOrigin =
+        originOffset ?? Offset(screenSize.width / 2, screenSize.height * 0.75);
+
+    _flyingOverlayKey.currentState?.triggerReaction(
+      emoji,
+      originOffset: spawnOrigin,
+      isFalling: false,
+      particleCount: 14,
+    );
+
+    final friendUid = widget.friend['uid'] as String;
+    final friendName = widget.friend['name'] as String? ?? 'Bạn bè';
+    final noteText = widget.friend['userNote'] as String? ?? '';
+    final noteCreatedAt = widget.friend['userNoteCreatedAt'] as DateTime?;
+    final profile = context.read<ProfileController>().user;
+    final myName = profile?.name ?? '';
+    final myAvatar = profile?.avatarUrl ?? '';
+    final myFrame = profile?.avatarFrame ?? 'plain';
+
+    // Persist reaction and create private chat event in background (no modal closing)
+    context.read<ChatController>().sendNoteReaction(
+          noteOwnerId: friendUid,
+          noteId: '${friendUid}_${noteCreatedAt?.millisecondsSinceEpoch ?? 0}',
+          noteText: noteText,
+          noteOwnerName: friendName,
+          myUid: widget.myUid,
+          userName: myName,
+          userAvatar: myAvatar,
+          userFrame: myFrame,
+          emoji: emoji,
+        );
+  }
+
+  Future<void> _sendDirectMessage(String text) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty && emoji == null) return;
+    if (trimmed.isEmpty) return;
 
     final friendUid = widget.friend['uid'] as String;
     final friendName = widget.friend['name'] as String? ?? 'Bạn bè';
@@ -2945,17 +3532,16 @@ class _NoteViewerModalState extends State<_NoteViewerModal> {
     await chatRepo.sendMessage(
       senderId: widget.myUid,
       receiverId: friendUid,
-      text: emoji ?? trimmed,
+      text: trimmed,
       type: 'note_reply',
       replyToText: noteText,
       replyToSenderName: friendName,
-      reactionEmoji: emoji,
     );
 
     if (!mounted) return;
     Navigator.pop(context);
 
-    // Open chat
+    // Open chat when intentionally sending a direct text message
     final targetFriend = UserModel.fromMap(widget.friend);
     Navigator.pushNamed(
       context,
@@ -3007,302 +3593,527 @@ class _NoteViewerModalState extends State<_NoteViewerModal> {
               ),
             ),
           ),
-          Scaffold(
-            backgroundColor: Colors.transparent,
-            resizeToAvoidBottomInset: true,
-            body: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return SingleChildScrollView(
-                    physics: const ClampingScrollPhysics(),
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        minHeight: constraints.maxHeight,
-                      ),
-                      child: IntrinsicHeight(
-                        child: Column(
-                          children: [
-                            // Top Bar (Matches Screenshot 3)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                              child: Row(
-                                children: [
-                                  AvatarWithFrame(
-                                    avatarUrl: avatarUrl,
-                                    frameId: avatarFrame,
-                                    size: 34,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Text(
-                                          friendName,
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        if (noteCreatedAt != null)
-                                          Text(
-                                            _formatNoteTime(noteCreatedAt),
-                                            style: TextStyle(
-                                              color: Colors.white.withValues(alpha: 0.75),
-                                              fontSize: 12,
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.close_rounded, color: Colors.white, size: 26),
-                                    onPressed: () => Navigator.pop(context),
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const Spacer(),
-
-                            // Large Avatar & Thought Bubble Floating Over It
-                            Center(
-                              child: SizedBox(
-                                width: 260,
-                                height: 175,
-                                child: Stack(
-                                  alignment: Alignment.topCenter,
-                                  clipBehavior: Clip.none,
-                                  children: [
-                                    Positioned(
-                                      bottom: 0,
-                                      child: AvatarWithFrame(
-                                        avatarUrl: avatarUrl,
-                                        frameId: avatarFrame,
-                                        size: 84,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      top: 0,
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Container(
-                                            constraints: const BoxConstraints(
-                                              maxWidth: 240,
-                                              minWidth: 120,
-                                            ),
-                                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                                            decoration: BoxDecoration(
-                                              color: isDark ? const Color(0xFF262626) : Colors.white,
-                                              borderRadius: BorderRadius.circular(20),
-                                              border: Border.all(
-                                                color: isDark
-                                                    ? Colors.white.withValues(alpha: 0.12)
-                                                    : Colors.black.withValues(alpha: 0.08),
-                                                width: 0.8,
-                                              ),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.15),
-                                                  blurRadius: 16,
-                                                  offset: const Offset(0, 6),
-                                                ),
-                                              ],
-                                            ),
-                                            child: Text(
-                                              noteText,
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                color: isDark ? Colors.white : const Color(0xFF111827),
-                                                fontSize: 15.5,
-                                                fontWeight: FontWeight.w600,
-                                                height: 1.3,
-                                              ),
-                                            ),
-                                          ),
-                                          Padding(
-                                            padding: const EdgeInsets.only(top: 0),
-                                            child: Column(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                Container(
-                                                  width: 11,
-                                                  height: 8,
-                                                  decoration: BoxDecoration(
-                                                    color: isDark ? const Color(0xFF262626) : Colors.white,
-                                                    borderRadius: const BorderRadius.only(
-                                                      bottomLeft: Radius.circular(5),
-                                                      bottomRight: Radius.circular(5),
-                                                    ),
-                                                    border: Border.all(
-                                                      color: isDark
-                                                          ? Colors.white.withValues(alpha: 0.12)
-                                                          : Colors.black.withValues(alpha: 0.08),
-                                                      width: 0.8,
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 2),
-                                                Container(
-                                                  width: 5.5,
-                                                  height: 5.5,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: isDark ? const Color(0xFF262626) : Colors.white,
-                                                    border: Border.all(
-                                                      color: isDark
-                                                          ? Colors.white.withValues(alpha: 0.12)
-                                                          : Colors.black.withValues(alpha: 0.08),
-                                                      width: 0.8,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 10),
-
-                            // Friend Name
-                            Text(
-                              friendName,
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-
-                            const SizedBox(height: 6),
-
-                            // Shared with Friends
-                            Text(
-                              context.l10n.sharedWithAudience(context.l10n.audienceFriends),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.90),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-
-                            const SizedBox(height: 3),
-
-                            // Expires in
-                            Text(
-                              _formatRemainingTime(context, noteCreatedAt),
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.55),
-                                fontSize: 13,
-                                fontWeight: FontWeight.w400,
-                              ),
-                            ),
-
-                            const Spacer(),
-
-                            // Bottom Reactions & Message Input Bar (Matches Screenshot 3)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: _quickReactions.map((emoji) {
-                                  return InkWell(
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      _sendReply('', emoji: emoji);
-                                    },
-                                    borderRadius: BorderRadius.circular(24),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(6.0),
-                                      child: Text(
-                                        emoji,
-                                        style: const TextStyle(fontSize: 26),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-
-                            const SizedBox(height: 8),
-
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: isDark
-                                      ? const Color(0xFF1E222B)
-                                      : Colors.white.withValues(alpha: 0.95),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.12)
-                                        : Colors.black.withValues(alpha: 0.08),
-                                    width: 0.8,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.12),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+          ReactionFlyingOverlay(
+            key: _flyingOverlayKey,
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              resizeToAvoidBottomInset: true,
+              body: SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      physics: const ClampingScrollPhysics(),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: IntrinsicHeight(
+                          child: Column(
+                            children: [
+                              // Top Bar
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
                                 child: Row(
                                   children: [
+                                    AvatarWithFrame(
+                                      avatarUrl: avatarUrl,
+                                      frameId: avatarFrame,
+                                      size: 34,
+                                    ),
+                                    const SizedBox(width: 10),
                                     Expanded(
-                                      child: TextField(
-                                        controller: _msgController,
-                                        style: TextStyle(
-                                          color: isDark ? Colors.white : const Color(0xFF111827),
-                                          fontSize: 14.5,
-                                        ),
-                                        decoration: InputDecoration(
-                                          hintText: context.l10n.sendDirectMessage,
-                                          hintStyle: TextStyle(
-                                            color: isDark
-                                                ? Colors.white.withValues(alpha: 0.5)
-                                                : const Color(0xFF6B7280),
-                                            fontSize: 14,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            friendName,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                            ),
                                           ),
-                                          border: InputBorder.none,
-                                        ),
-                                        onSubmitted: (val) => _sendReply(val),
+                                          if (noteCreatedAt != null)
+                                            Text(
+                                              _formatNoteTime(noteCreatedAt),
+                                              style: TextStyle(
+                                                color: Colors.white
+                                                    .withValues(alpha: 0.75),
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                     ),
                                     IconButton(
                                       icon: const Icon(
-                                        Icons.favorite_rounded,
-                                        color: Color(0xFFFF2D55),
+                                        Icons.close_rounded,
+                                        color: Colors.white,
+                                        size: 26,
                                       ),
-                                      onPressed: () => _sendReply('', emoji: '❤️'),
-                                    ),
-                                    IconButton(
-                                      icon: const Icon(Icons.send_rounded, color: Color(0xFF0084FF)),
-                                      onPressed: () => _sendReply(_msgController.text),
+                                      onPressed: () => Navigator.pop(context),
                                     ),
                                   ],
                                 ),
                               ),
-                            ),
-                          ],
+
+                              const Spacer(),
+
+                              // Large Avatar & Thought Bubble Floating Over It
+                              Center(
+                                child: SizedBox(
+                                  width: 260,
+                                  height: 175,
+                                  child: Stack(
+                                    alignment: Alignment.topCenter,
+                                    clipBehavior: Clip.none,
+                                    children: [
+                                      Positioned(
+                                        bottom: 0,
+                                        child: AvatarWithFrame(
+                                          avatarUrl: avatarUrl,
+                                          frameId: avatarFrame,
+                                          size: 84,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 0,
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              constraints: const BoxConstraints(
+                                                maxWidth: 240,
+                                                minWidth: 120,
+                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                horizontal: 18,
+                                                vertical: 12,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? const Color(0xFF262626)
+                                                    : Colors.white,
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? Colors.white.withValues(
+                                                          alpha: 0.12,
+                                                        )
+                                                      : Colors.black.withValues(
+                                                          alpha: 0.08,
+                                                        ),
+                                                  width: 0.8,
+                                                ),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withValues(
+                                                      alpha: isDark ? 0.35 : 0.15,
+                                                    ),
+                                                    blurRadius: 16,
+                                                    offset: const Offset(0, 6),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Text(
+                                                noteText,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  color: isDark
+                                                      ? Colors.white
+                                                      : const Color(
+                                                          0xFF111827,
+                                                        ),
+                                                  fontSize: 15.5,
+                                                  fontWeight: FontWeight.w600,
+                                                  height: 1.3,
+                                                ),
+                                              ),
+                                            ),
+                                            Padding(
+                                              padding:
+                                                  const EdgeInsets.only(top: 0),
+                                              child: Column(
+                                                mainAxisSize:
+                                                    MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    width: 11,
+                                                    height: 8,
+                                                    decoration: BoxDecoration(
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFF262626,
+                                                            )
+                                                          : Colors.white,
+                                                      borderRadius:
+                                                          const BorderRadius
+                                                              .only(
+                                                        bottomLeft:
+                                                            Radius.circular(5),
+                                                        bottomRight:
+                                                            Radius.circular(5),
+                                                      ),
+                                                      border: Border.all(
+                                                        color: isDark
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                alpha: 0.12,
+                                                              )
+                                                            : Colors.black
+                                                                .withValues(
+                                                                alpha: 0.08,
+                                                              ),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Container(
+                                                    width: 5.5,
+                                                    height: 5.5,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: isDark
+                                                          ? const Color(
+                                                              0xFF262626,
+                                                            )
+                                                          : Colors.white,
+                                                      border: Border.all(
+                                                        color: isDark
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                alpha: 0.12,
+                                                              )
+                                                            : Colors.black
+                                                                .withValues(
+                                                                alpha: 0.08,
+                                                              ),
+                                                        width: 0.8,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // Friend Name
+                              Text(
+                                friendName,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+
+                              const SizedBox(height: 6),
+
+                              // Shared with Friends
+                              Text(
+                                context.l10n.sharedWithAudience(
+                                  context.l10n.audienceFriends,
+                                ),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.90),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+
+                              const SizedBox(height: 3),
+
+                              // Expires in
+                              Text(
+                                _formatRemainingTime(context, noteCreatedAt),
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.55),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+
+                              // Reactor Avatars Badge
+                              if (_reactions.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.black.withValues(alpha: 0.40)
+                                        : Colors.white.withValues(alpha: 0.20),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      width: 0.6,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        height: 24,
+                                        width: (_reactions.take(4).length * 16.0 + 8.0),
+                                        child: Stack(
+                                          children: [
+                                            for (int i = 0; i < _reactions.take(4).length; i++)
+                                              Positioned(
+                                                left: i * 16.0,
+                                                child: Stack(
+                                                  clipBehavior: Clip.none,
+                                                  children: [
+                                                    AvatarWithFrame(
+                                                      avatarUrl: _reactions[i].reactorAvatar,
+                                                      frameId: _reactions[i].reactorFrame,
+                                                      size: 22,
+                                                    ),
+                                                    Positioned(
+                                                      right: -4,
+                                                      bottom: -4,
+                                                      child: Text(
+                                                        _reactions[i].emoji,
+                                                        style: const TextStyle(fontSize: 10),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        '${_reactions.length}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              const Spacer(),
+
+                              // Bottom Quick Reactions Bar
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                ),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  physics: const BouncingScrollPhysics(),
+                                  clipBehavior: Clip.none,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: _quickReactions.map((emoji) {
+                                      final isSelected =
+                                          _mySelectedEmoji == emoji;
+                                      return Builder(
+                                        builder: (emojiCtx) {
+                                          return Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                              vertical: 4,
+                                            ),
+                                            child: InkWell(
+                                              onTap: () {
+                                                final renderBox = emojiCtx
+                                                        .findRenderObject()
+                                                    as RenderBox?;
+                                                Offset? originOffset;
+                                                if (renderBox != null &&
+                                                    renderBox.hasSize) {
+                                                  final pos = renderBox
+                                                      .localToGlobal(
+                                                          Offset.zero);
+                                                  final size = renderBox.size;
+                                                  originOffset = Offset(
+                                                    pos.dx + size.width / 2,
+                                                    pos.dy + size.height / 2,
+                                                  );
+                                                }
+                                                _onSelectReaction(
+                                                  emoji,
+                                                  originOffset: originOffset,
+                                                );
+                                              },
+                                              borderRadius:
+                                                  BorderRadius.circular(24),
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.all(6.0),
+                                                decoration: isSelected
+                                                    ? BoxDecoration(
+                                                        shape: BoxShape.circle,
+                                                        color: isDark
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                alpha: 0.18,
+                                                              )
+                                                            : Colors.black
+                                                                .withValues(
+                                                                alpha: 0.10,
+                                                              ),
+                                                      )
+                                                    : null,
+                                                child: Text(
+                                                  emoji,
+                                                  style: const TextStyle(
+                                                    fontSize: 27,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // Bottom Direct Message Input
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  12,
+                                ),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? const Color(0xFF1E222B)
+                                        : Colors.white.withValues(alpha: 0.95),
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.12)
+                                          : Colors.black.withValues(alpha: 0.08),
+                                      width: 0.8,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.12,
+                                        ),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: _msgController,
+                                          style: TextStyle(
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF111827),
+                                            fontSize: 14.5,
+                                          ),
+                                          decoration: InputDecoration(
+                                            hintText:
+                                                context.l10n.sendDirectMessage,
+                                            hintStyle: TextStyle(
+                                              color: isDark
+                                                  ? Colors.white.withValues(
+                                                      alpha: 0.5,
+                                                    )
+                                                  : const Color(0xFF6B7280),
+                                              fontSize: 14,
+                                            ),
+                                            border: InputBorder.none,
+                                          ),
+                                          onSubmitted: (val) =>
+                                              _sendDirectMessage(val),
+                                        ),
+                                      ),
+                                      Builder(
+                                        builder: (heartCtx) {
+                                          return IconButton(
+                                            icon: Icon(
+                                              Icons.favorite_rounded,
+                                              color: _mySelectedEmoji == '❤️'
+                                                  ? const Color(0xFFFF2D55)
+                                                  : Colors.grey,
+                                            ),
+                                            onPressed: () {
+                                              final renderBox = heartCtx
+                                                      .findRenderObject()
+                                                  as RenderBox?;
+                                              Offset? originOffset;
+                                              if (renderBox != null &&
+                                                  renderBox.hasSize) {
+                                                final pos = renderBox
+                                                    .localToGlobal(
+                                                        Offset.zero);
+                                                final size = renderBox.size;
+                                                originOffset = Offset(
+                                                  pos.dx + size.width / 2,
+                                                  pos.dy + size.height / 2,
+                                                );
+                                              }
+                                              _onSelectReaction(
+                                                '❤️',
+                                                originOffset: originOffset,
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.send_rounded,
+                                          color: Color(0xFF0084FF),
+                                        ),
+                                        onPressed: () => _sendDirectMessage(
+                                          _msgController.text,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -3311,5 +4122,6 @@ class _NoteViewerModalState extends State<_NoteViewerModal> {
     );
   }
 }
+
 
 

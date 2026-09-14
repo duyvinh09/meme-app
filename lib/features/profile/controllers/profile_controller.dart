@@ -77,7 +77,7 @@ class ProfileController extends ChangeNotifier {
       if (avatarFile != null) {
         avatarUrl = await _cloudinaryService.uploadTransactionImage(
           file: avatarFile,
-          folder: 'moment_money/$uid/avatar',
+          folder: 'memeapp/$uid/avatar',
         );
       }
 

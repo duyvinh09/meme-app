@@ -46,12 +46,15 @@ class RewindAggregationService {
       final dateKey = _dayKeyFormat.format(tx.createdAt);
       activeDateKeys.add(dateKey);
 
-      if (tx.type == 'expense') {
+      if (tx.isPersonalExpense) {
         totalExpense += tx.amount;
         expenseCount++;
 
-        // Accumulate category
-        final catKey = tx.category.trim().isEmpty ? 'Khác' : tx.category.trim();
+        // Accumulate category (đồng bộ chuẩn với Stats tab)
+        final rawCat = tx.isGroupContribution
+            ? (tx.category.isNotEmpty ? tx.category : 'Quỹ nhóm')
+            : tx.category;
+        final catKey = rawCat.trim().isEmpty ? 'Khác' : rawCat.trim();
         final acc = categoryMap.putIfAbsent(
           catKey,
           () => _CategoryAccumulator(
@@ -70,7 +73,7 @@ class RewindAggregationService {
         );
         dayAcc.amount += tx.amount;
         dayAcc.count++;
-      } else if (tx.type == 'income') {
+      } else if (tx.isPersonalIncome) {
         totalIncome += tx.amount;
         incomeCount++;
       }
@@ -84,9 +87,9 @@ class RewindAggregationService {
     double prevTotalExpense = 0;
     double prevTotalIncome = 0;
     for (final tx in prevTxs) {
-      if (tx.type == 'expense') {
+      if (tx.isPersonalExpense) {
         prevTotalExpense += tx.amount;
-      } else if (tx.type == 'income') {
+      } else if (tx.isPersonalIncome) {
         prevTotalIncome += tx.amount;
       }
     }
@@ -112,7 +115,7 @@ class RewindAggregationService {
 
     // Top 5 expenses
     final topExpenses = currentTxs
-        .where((tx) => tx.type == 'expense')
+        .where((tx) => tx.isPersonalExpense)
         .toList()
       ..sort((a, b) => b.amount.compareTo(a.amount));
     final top5 = topExpenses.take(5).toList();

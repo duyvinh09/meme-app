@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
@@ -49,6 +51,7 @@ class TransactionRepository {
     double? longitude,
     bool? isGroupExpense,
     bool? isGroupContribution,
+    bool isFrontCamera = false,
   }) async {
     final id = _uuid.v4();
 
@@ -69,7 +72,10 @@ class TransactionRepository {
       videoUrl = videoUploadResult.downloadUrl;
       mediaUrl = videoUrl;
 
-      final thumbnailFile = await _createVideoThumbnail(videoFile);
+      final thumbnailFile = await _createVideoThumbnail(
+        videoFile,
+        isFrontCamera: isFrontCamera,
+      );
 
       if (thumbnailFile != null) {
         final thumbnailUploadResult = await _locketUploadService.uploadFile(
@@ -130,6 +136,7 @@ class TransactionRepository {
       longitude: longitude,
       isGroupExpense: isGroupExpense,
       isGroupContribution: isGroupContribution,
+      isFrontCamera: isFrontCamera,
     );
 
     await _remote.addTransaction(transaction);
@@ -157,7 +164,10 @@ class TransactionRepository {
     return transaction;
   }
 
-  Future<File?> _createVideoThumbnail(File videoFile) async {
+  Future<File?> _createVideoThumbnail(
+    File videoFile, {
+    bool isFrontCamera = false,
+  }) async {
     try {
       if (!await videoFile.exists()) {
         return null;
@@ -182,6 +192,23 @@ class TransactionRepository {
 
       if (!await thumbnailFile.exists()) {
         return null;
+      }
+
+      if (isFrontCamera) {
+        try {
+          final bytes = await thumbnailFile.readAsBytes();
+          var thumbImg = img.decodeImage(bytes);
+          if (thumbImg != null) {
+            thumbImg = img.bakeOrientation(thumbImg);
+            thumbImg = img.copyFlip(thumbImg, direction: img.FlipDirection.horizontal);
+            await thumbnailFile.writeAsBytes(
+              img.encodeJpg(thumbImg, quality: 90),
+              flush: true,
+            );
+          }
+        } catch (e) {
+          debugPrint('Thumbnail flip error: $e');
+        }
       }
 
       return thumbnailFile;
@@ -371,7 +398,8 @@ class TransactionRepository {
             } else if (tx.privacy == 'close_friends') {
               if (tx.closeFriendUids.contains(viewerUid)) {
                 uniqueMap[tx.id] = tx;
-              } else {
+              } else if (tx.closeFriendUids.isEmpty) {
+                // Fallback for legacy posts saved before closeFriendUids list was recorded on the transaction
                 final authorFriendDoc = await _db
                     .collection('users')
                     .doc(tx.userId)

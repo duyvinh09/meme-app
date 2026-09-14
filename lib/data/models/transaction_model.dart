@@ -38,6 +38,7 @@ class TransactionModel {
   final List<String> groupMemberIds;
   final bool isGroupExpense;
   final bool isGroupContribution;
+  final bool isFrontCamera;
 
   TransactionModel({
     required this.id,
@@ -68,6 +69,7 @@ class TransactionModel {
     this.longitude,
     bool? isGroupExpense,
     bool? isGroupContribution,
+    this.isFrontCamera = false,
   })  : mediaUrl = mediaUrl ?? imageUrl,
         thumbnailUrl = thumbnailUrl ?? imageUrl,
         isGroupContribution = isGroupContribution ??
@@ -94,6 +96,12 @@ class TransactionModel {
 
   bool get isVideo => mediaType == 'video';
   bool get isImage => mediaType == 'image';
+
+  /// Kiểm tra xem giao dịch có được tạo bằng giọng nói không
+  bool get isVoiceExpense {
+    final n = note.toLowerCase().trim();
+    return n == 'voice' || n.startsWith('voice:') || n.contains('[voice]') || n.startsWith('voice_expense');
+  }
 
   /// Chi tiêu cá nhân: bao gồm chi tiêu bình thường và nạp quỹ nhóm,
   /// nhưng LOẠI TRỪ các khoản chi tiêu từ quỹ nhóm (vì đó là tiền của quỹ, không phải tiền cá nhân).
@@ -248,6 +256,7 @@ class TransactionModel {
           : null,
       isGroupExpense: rawIsExpense,
       isGroupContribution: rawIsContribution,
+      isFrontCamera: map['isFrontCamera'] == true,
     );
   }
 
@@ -286,6 +295,7 @@ class TransactionModel {
       'longitude': longitude,
       'isGroupExpense': isGroupExpense,
       'isGroupContribution': isGroupContribution,
+      'isFrontCamera': isFrontCamera,
     };
   }
 }

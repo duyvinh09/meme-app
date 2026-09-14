@@ -36,7 +36,25 @@ class InAppNotificationService extends ChangeNotifier {
   InAppNotificationItem? _currentNotification;
   InAppNotificationItem? get currentNotification => _currentNotification;
 
+  final Set<String> _shownNotificationIds = {};
+
+  bool isNotificationShown(String id) => _shownNotificationIds.contains(id);
+
+  void markAsShown(String id) {
+    if (_shownNotificationIds.length > 500) {
+      _shownNotificationIds.clear();
+    }
+    _shownNotificationIds.add(id);
+  }
+
   void showNotification(InAppNotificationItem item) {
+    if (_shownNotificationIds.contains(item.id)) {
+      return;
+    }
+    if (_currentNotification?.id == item.id) {
+      return;
+    }
+    markAsShown(item.id);
     _currentNotification = item;
     notifyListeners();
   }
@@ -47,4 +65,11 @@ class InAppNotificationService extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  void clearHistory() {
+    _shownNotificationIds.clear();
+    _currentNotification = null;
+    notifyListeners();
+  }
 }
+

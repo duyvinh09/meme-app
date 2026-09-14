@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/chat_message_model.dart';
+import '../models/note_reaction_model.dart';
 import '../models/post_reaction_model.dart';
 import '../models/post_view_model.dart';
 
@@ -206,6 +207,102 @@ class ChatRepository {
           .toList();
     });
   }
+
+  /// Send reaction to a friend's Note
+  /// 1. Persists the reaction in users/{noteOwnerId}/note_reactions/{reactorId}
+  /// 2. Creates a private chat message in background between reactor and note owner
+  Future<bool> sendNoteReaction({
+    required String noteOwnerId,
+    required String noteId,
+    required String noteText,
+    required String noteOwnerName,
+    required String reactorId,
+    required String reactorName,
+    required String reactorAvatar,
+    String reactorFrame = 'plain',
+    required String emoji,
+  }) async {
+    try {
+      final now = DateTime.now();
+
+      // 1. Save reaction in noteOwner's note_reactions subcollection
+      final reactionRef = _firestore
+          .collection('users')
+          .doc(noteOwnerId)
+          .collection('note_reactions')
+          .doc(reactorId);
+
+      // Check existing reaction to avoid sending duplicate chat message if user taps the same emoji
+      final existingDoc = await reactionRef.get();
+      final bool isSameEmoji = existingDoc.exists && existingDoc.data()?['emoji'] == emoji;
+
+      final reaction = NoteReactionModel(
+        id: reactorId,
+        noteId: noteId,
+        noteOwnerId: noteOwnerId,
+        reactorId: reactorId,
+        reactorName: reactorName,
+        reactorAvatar: reactorAvatar,
+        reactorFrame: reactorFrame,
+        emoji: emoji,
+        createdAt: now,
+      );
+
+      await reactionRef.set(reaction.toMap(), SetOptions(merge: true));
+
+      // 2. Send private chat message only if emoji is new or changed (or first time)
+      if (!isSameEmoji && reactorId != noteOwnerId) {
+        await sendMessage(
+          senderId: reactorId,
+          receiverId: noteOwnerId,
+          text: emoji,
+          type: 'note_reply',
+          replyToText: noteText,
+          replyToSenderName: noteOwnerName,
+          reactionEmoji: emoji,
+        );
+      }
+
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Listen to real-time reactions on a specific user's active Note
+  Stream<List<NoteReactionModel>> getNoteReactionsStream(String noteOwnerId) {
+    return _firestore
+        .collection('users')
+        .doc(noteOwnerId)
+        .collection('note_reactions')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => NoteReactionModel.fromDoc(doc))
+          .toList();
+    });
+  }
+
+  /// Delete all note reactions for a user
+  Future<void> deleteNoteReactions(String noteOwnerId) async {
+    try {
+      final snapshot = await _firestore
+          .collection('users')
+          .doc(noteOwnerId)
+          .collection('note_reactions')
+          .get();
+
+      if (snapshot.docs.isEmpty) return;
+
+      final batch = _firestore.batch();
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (_) {}
+  }
+
 
   /// Mark all received messages in a chat as read
   Future<void> markMessagesAsRead(String chatId, String myUid) async {
@@ -476,6 +573,10 @@ class ChatRepository {
     String? postImageUrl,
     String? postCaption,
     DateTime? postCreatedAt,
+    /// Metadata for Nearby Place Suggestions: category of the expense
+    String? transactionCategory,
+    /// Metadata for Nearby Place Suggestions: amount of the expense
+    double? transactionAmount,
   }) async {
     try {
       final messageId = _uuid.v4();
@@ -494,6 +595,8 @@ class ChatRepository {
         groupId: groupId,
         createdAt: now,
         isRead: false,
+        transactionCategory: transactionCategory,
+        transactionAmount: transactionAmount,
       );
 
       final batch = _firestore.batch();

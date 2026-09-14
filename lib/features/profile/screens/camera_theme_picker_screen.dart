@@ -12,10 +12,22 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../home/controllers/home_controller.dart';
 import '../controllers/profile_controller.dart';
 
-class CameraThemePickerScreen extends StatelessWidget {
+class CameraThemePickerScreen extends StatefulWidget {
   const CameraThemePickerScreen({super.key});
 
+  @override
+  State<CameraThemePickerScreen> createState() => _CameraThemePickerScreenState();
+}
+
+class _CameraThemePickerScreenState extends State<CameraThemePickerScreen> {
   static const int requiredStreak = 3;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _selectTheme(
     BuildContext context,
@@ -91,40 +103,17 @@ class CameraThemePickerScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: SafeArea(
-        child: Column(
+        bottom: false,
+        child: Stack(
           children: [
-            // Top Bar with Standard Back Button
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSizes.pagePadding,
-                12,
-                AppSizes.pagePadding,
-                0,
-              ),
-              child: Row(
-                children: [
-                  const AppBackButton(),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      l10n.cameraTheme,
-                      style: AppTextStyles.pageTitle(context).copyWith(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Expanded(
+            // Scrollable Content underneath the floating header
+            Positioned.fill(
               child: ListView(
+                controller: _scrollController,
+                physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(
                   AppSizes.pagePadding,
-                  10,
+                  68,
                   AppSizes.pagePadding,
                   32,
                 ),
@@ -172,6 +161,50 @@ class CameraThemePickerScreen extends StatelessWidget {
                     );
                   }),
                 ],
+              ),
+            ),
+
+            // Floating Transparent Header
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.pagePadding,
+                  12,
+                  AppSizes.pagePadding,
+                  12,
+                ),
+                child: Row(
+                  children: [
+                    const AppBackButton(),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: AnimatedBuilder(
+                        animation: _scrollController,
+                        builder: (context, child) {
+                          final offset = _scrollController.hasClients
+                              ? _scrollController.offset
+                              : 0.0;
+                          final titleOpacity =
+                              (1.0 - (offset / 80.0)).clamp(0.0, 1.0);
+                          return Opacity(
+                            opacity: titleOpacity,
+                            child: child,
+                          );
+                        },
+                        child: Text(
+                          l10n.cameraTheme,
+                          style: AppTextStyles.pageTitle(context).copyWith(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

@@ -31,6 +31,7 @@ class CaptureController extends ChangeNotifier {
 
   String selectedMediaType = 'none'; // none | image | video
   int? selectedVideoDurationMs;
+  bool isFrontCameraMedia = false;
 
   bool isSaving = false;
   StreakMilestone? lastUnlockedMilestone;
@@ -45,22 +46,25 @@ class CaptureController extends ChangeNotifier {
   bool get hasVideo => selectedMediaType == 'video' && selectedVideo != null;
   bool get hasMedia => hasImage || hasVideo;
 
-  void setImage(File file) {
+  void setImage(File file, {bool isFrontCamera = false}) {
     selectedImage = file;
     selectedVideo = null;
     selectedMediaType = 'image';
     selectedVideoDurationMs = null;
+    isFrontCameraMedia = isFrontCamera;
     notifyListeners();
   }
 
   void setVideo(
       File file, {
         int? durationMs,
+        bool isFrontCamera = false,
       }) {
     selectedVideo = file;
     selectedImage = null;
     selectedMediaType = 'video';
     selectedVideoDurationMs = durationMs;
+    isFrontCameraMedia = isFrontCamera;
     notifyListeners();
   }
 
@@ -228,6 +232,7 @@ class CaptureController extends ChangeNotifier {
     double? latitude,
     double? longitude,
     bool? isGroupContribution,
+    bool? isFrontCamera,
   }) async {
     try {
       isSaving = true;
@@ -311,6 +316,7 @@ class CaptureController extends ChangeNotifier {
         longitude: selectedLocation?.longitude ?? longitude,
         isGroupExpense: effectiveGroupExpense,
         isGroupContribution: effectiveGroupContribution,
+        isFrontCamera: isFrontCamera ?? isFrontCameraMedia,
       );
 
       lastUnlockedMilestone = await _updateUserStreak(
@@ -368,6 +374,8 @@ class CaptureController extends ChangeNotifier {
             postImageUrl: imgUrl.isNotEmpty ? imgUrl : null,
             postCaption: savedTx.caption.isNotEmpty ? savedTx.caption : null,
             postCreatedAt: savedTx.createdAt,
+            transactionCategory: effectiveGroupExpense ? category : null,
+            transactionAmount: effectiveGroupExpense ? amount : null,
           );
         } catch (_) {}
       }

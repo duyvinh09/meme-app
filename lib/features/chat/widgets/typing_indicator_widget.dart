@@ -84,14 +84,18 @@ class _TypingDotsIndicatorState extends State<TypingDotsIndicator>
   }
 }
 
-/// Message list typing bubble (shows on receiver side when friend is typing)
-class ChatTypingBubble extends StatelessWidget {
-  final UserModel friend;
+/// Stacked avatars for typing users (supports 1, 2, or 3+ users with overlapping display)
+class TypingAvatarsStack extends StatelessWidget {
+  final List<UserModel> users;
+  final double size;
+  final double overlap;
   final bool isDark;
 
-  const ChatTypingBubble({
+  const TypingAvatarsStack({
     super.key,
-    required this.friend,
+    required this.users,
+    this.size = 28,
+    this.overlap = 9,
     required this.isDark,
   });
 
@@ -105,39 +109,141 @@ class ChatTypingBubble extends StatelessWidget {
     return trimmed.substring(0, trimmed.length >= 2 ? 2 : 1).toUpperCase();
   }
 
+  Widget _buildSingleAvatar(UserModel user, double avatarSize) {
+    if (user.avatarUrl.isNotEmpty) {
+      return AvatarWithFrame(
+        avatarUrl: user.avatarUrl,
+        frameId: user.avatarFrame,
+        size: avatarSize,
+      );
+    }
+    return Container(
+      width: avatarSize,
+      height: avatarSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+      ),
+      child: Center(
+        child: Text(
+          _getInitials(user.name),
+          style: TextStyle(
+            color: isDark ? Colors.white : const Color(0xFF111827),
+            fontSize: avatarSize * 0.40,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarWithBorder({required Widget child, required double avatarSize}) {
+    final borderColor = isDark ? const Color(0xFF18181B) : Colors.white;
+    return Container(
+      width: avatarSize,
+      height: avatarSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: borderColor,
+          width: 1.5,
+          strokeAlign: BorderSide.strokeAlignOutside,
+        ),
+      ),
+      child: ClipOval(child: child),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (users.isEmpty) return const SizedBox.shrink();
+
+    if (users.length == 1) {
+      return _buildSingleAvatar(users.first, size);
+    }
+
+    // Limit to max 3 items displayed in stack
+    final displayUsers = users.take(3).toList();
+    final remainingCount = users.length - displayUsers.length;
+    final totalBadges = displayUsers.length + (remainingCount > 0 ? 1 : 0);
+    final totalWidth = size + (totalBadges - 1) * (size - overlap);
+
+    return SizedBox(
+      width: totalWidth,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          for (int i = 0; i < displayUsers.length; i++)
+            Positioned(
+              left: i * (size - overlap),
+              child: _buildAvatarWithBorder(
+                child: _buildSingleAvatar(displayUsers[i], size),
+                avatarSize: size,
+              ),
+            ),
+          if (remainingCount > 0)
+            Positioned(
+              left: displayUsers.length * (size - overlap),
+              child: _buildAvatarWithBorder(
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark ? const Color(0xFF4B5563) : const Color(0xFF9CA3AF),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '+$remainingCount',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: size * 0.36,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+                avatarSize: size,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Message list typing bubble (shows on receiver side when friend or group members are typing)
+class ChatTypingBubble extends StatelessWidget {
+  final UserModel? friend;
+  final List<UserModel>? friends;
+  final bool isDark;
+
+  const ChatTypingBubble({
+    super.key,
+    this.friend,
+    this.friends,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final userList = friends ?? (friend != null ? [friend!] : <UserModel>[]);
+    if (userList.isEmpty) return const SizedBox.shrink();
+
     return Padding(
       padding: const EdgeInsets.only(top: 4, bottom: 6),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Friend Avatar
-          if (friend.avatarUrl.isNotEmpty)
-            AvatarWithFrame(
-              avatarUrl: friend.avatarUrl,
-              frameId: friend.avatarFrame,
-              size: 28,
-            )
-          else
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
-              ),
-              child: Center(
-                child: Text(
-                  _getInitials(friend.name),
-                  style: TextStyle(
-                    color: isDark ? Colors.white : const Color(0xFF111827),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
+          // Typing User Avatar(s)
+          TypingAvatarsStack(
+            users: userList,
+            size: 28,
+            overlap: 10,
+            isDark: isDark,
+          ),
 
           const SizedBox(width: 8),
 
@@ -173,12 +279,13 @@ class ChatTypingBubble extends StatelessWidget {
 }
 
 /// Floating Scroll-to-Bottom Button that seamlessly transforms
-/// into typing dots `...` when a friend is actively typing.
+/// into typing dots `...` when a friend or group members are actively typing.
 class ChatScrollToBottomButton extends StatelessWidget {
   final bool isVisible;
   final bool isFriendTyping;
   final bool isDark;
   final UserModel? friend;
+  final List<UserModel>? friends;
   final VoidCallback onTap;
 
   const ChatScrollToBottomButton({
@@ -187,18 +294,9 @@ class ChatScrollToBottomButton extends StatelessWidget {
     required this.isFriendTyping,
     required this.isDark,
     this.friend,
+    this.friends,
     required this.onTap,
   });
-
-  String _getInitials(String name) {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) return 'U';
-    final parts = trimmed.split(RegExp(r'\s+'));
-    if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
-    }
-    return trimmed.substring(0, trimmed.length >= 2 ? 2 : 1).toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -208,7 +306,7 @@ class ChatScrollToBottomButton extends StatelessWidget {
         : Colors.black.withValues(alpha: 0.10);
     final iconColor = isDark ? Colors.white : const Color(0xFF111827);
 
-    final liveFriend = friend;
+    final userList = friends ?? (friend != null ? [friend!] : <UserModel>[]);
 
     return IgnorePointer(
       ignoring: !isVisible,
@@ -231,86 +329,63 @@ class ChatScrollToBottomButton extends StatelessWidget {
                   horizontal: isFriendTyping ? 12 : 10,
                   vertical: isFriendTyping ? 6 : 9,
                 ),
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: isFriendTyping
-                      ? const Color(0xFF0084FF).withValues(alpha: 0.50)
-                      : borderColor,
-                  width: 1.2,
-                ),
-                boxShadow: [
-                  BoxShadow(
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
                     color: isFriendTyping
-                        ? const Color(0xFF0084FF).withValues(alpha: 0.25)
-                        : Colors.black.withValues(alpha: 0.18),
-                    blurRadius: isFriendTyping ? 12 : 8,
-                    offset: const Offset(0, 3),
+                        ? const Color(0xFF0084FF).withValues(alpha: 0.50)
+                        : borderColor,
+                    width: 1.2,
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (isFriendTyping) ...[
-                    if (liveFriend != null) ...[
-                      if (liveFriend.avatarUrl.isNotEmpty)
-                        AvatarWithFrame(
-                          avatarUrl: liveFriend.avatarUrl,
-                          frameId: liveFriend.avatarFrame,
-                          size: 22,
-                        )
-                      else
-                        Container(
-                          width: 22,
-                          height: 22,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isDark
-                                ? const Color(0xFF374151)
-                                : const Color(0xFFE5E7EB),
-                          ),
-                          child: Center(
-                            child: Text(
-                              _getInitials(liveFriend.name),
-                              style: TextStyle(
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF111827),
-                                fontSize: 9,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      const SizedBox(width: 7),
-                    ],
-                    const TypingDotsIndicator(
-                      dotSize: 5.5,
-                      spacing: 3.0,
-                      color: Color(0xFF0084FF),
-                    ),
-                    const SizedBox(width: 5),
-                    const Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: Color(0xFF0084FF),
-                      size: 16,
-                    ),
-                  ] else ...[
-                    Icon(
-                      Icons.keyboard_arrow_down_rounded,
-                      color: iconColor,
-                      size: 22,
+                  boxShadow: [
+                    BoxShadow(
+                      color: isFriendTyping
+                          ? const Color(0xFF0084FF).withValues(alpha: 0.25)
+                          : Colors.black.withValues(alpha: 0.18),
+                      blurRadius: isFriendTyping ? 12 : 8,
+                      offset: const Offset(0, 3),
                     ),
                   ],
-                ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isFriendTyping) ...[
+                      if (userList.isNotEmpty) ...[
+                        TypingAvatarsStack(
+                          users: userList,
+                          size: 22,
+                          overlap: 8,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(width: 7),
+                      ],
+                      const TypingDotsIndicator(
+                        dotSize: 5.5,
+                        spacing: 3.0,
+                        color: Color(0xFF0084FF),
+                      ),
+                      const SizedBox(width: 5),
+                      const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: Color(0xFF0084FF),
+                        size: 16,
+                      ),
+                    ] else ...[
+                      Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: iconColor,
+                        size: 22,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 }
