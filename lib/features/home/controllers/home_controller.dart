@@ -5,6 +5,7 @@ import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../../../core/services/video_cache_service.dart';
 
 class HomeController extends ChangeNotifier {
   final TransactionRepository transactionRepository;
@@ -49,6 +50,16 @@ class HomeController extends ChangeNotifier {
       transactions = data;
       isLoading = false;
       notifyListeners();
+
+      // Preload ngầm các video gần nhất cho Lịch, Recent moment và Home widget
+      final videoUrls = data
+          .where((tx) => tx.isVideo && tx.playableVideoUrl.isNotEmpty)
+          .take(10)
+          .map((tx) => tx.playableVideoUrl)
+          .toList();
+      if (videoUrls.isNotEmpty) {
+        VideoCacheService.instance.preloadBatch(videoUrls);
+      }
     });
   }
 

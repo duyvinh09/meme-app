@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/localization_extension.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/local_settings_service.dart';
 import '../../../core/utils/app_toast.dart';
@@ -26,7 +28,9 @@ import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/chat_bubble_widget.dart';
 import '../widgets/message_action_menu_overlay.dart';
+import '../widgets/message_reactions_detail_sheet.dart';
 import '../widgets/nearby_place_bottom_sheet.dart';
+import '../widgets/mute_chat_sheet.dart';
 import '../widgets/typing_indicator_widget.dart';
 
 class GroupChatConversationScreen extends StatefulWidget {
@@ -273,10 +277,94 @@ class GroupChatConversationScreen extends StatefulWidget {
       _GroupChatConversationScreenState();
 }
 
+class _MentionPopupState {
+  final bool show;
+  final String query;
+  final int startIndex;
+  const _MentionPopupState({
+    this.show = false,
+    this.query = '',
+    this.startIndex = -1,
+  });
+}
+
+class MentionTextEditingController extends TextEditingController {
+  final Color mentionColor;
+
+  MentionTextEditingController({
+    super.text,
+    this.mentionColor = const Color(0xFF3B82F6),
+  });
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    if (!value.isComposingRangeValid || !withComposing) {
+      return _buildMentionSpans(text, style);
+    }
+
+    final TextStyle composingStyle =
+        style?.merge(const TextStyle(decoration: TextDecoration.underline)) ??
+            const TextStyle(decoration: TextDecoration.underline);
+
+    return TextSpan(
+      style: style,
+      children: <TextSpan>[
+        TextSpan(text: value.composing.textBefore(value.text)),
+        TextSpan(
+          style: composingStyle,
+          text: value.composing.textInside(value.text),
+        ),
+        TextSpan(text: value.composing.textAfter(value.text)),
+      ],
+    );
+  }
+
+  TextSpan _buildMentionSpans(String textVal, TextStyle? style) {
+    if (!textVal.contains('@')) {
+      return TextSpan(text: textVal, style: style);
+    }
+
+    final List<InlineSpan> spans = [];
+    final regex = RegExp(r'(@[a-zA-Z0-9_\.\u00C0-\u1EF9]+)');
+    int lastIndex = 0;
+
+    for (final match in regex.allMatches(textVal)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: textVal.substring(lastIndex, match.start),
+          style: style,
+        ));
+      }
+      final mention = match.group(0)!;
+      spans.add(TextSpan(
+        text: mention,
+        style: (style ?? const TextStyle()).copyWith(
+          color: mentionColor,
+          fontWeight: FontWeight.w700,
+        ),
+      ));
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < textVal.length) {
+      spans.add(TextSpan(
+        text: textVal.substring(lastIndex),
+        style: style,
+      ));
+    }
+
+    return TextSpan(children: spans);
+  }
+}
+
 class _GroupChatConversationScreenState
     extends State<GroupChatConversationScreen>
-    with WidgetsBindingObserver {
-  final TextEditingController _textController = TextEditingController();
+    with WidgetsBindingObserver, RouteAware {
+  final MentionTextEditingController _textController = MentionTextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _textFocusNode = FocusNode();
   final ChatRepository _chatRepo = ChatRepository();
@@ -286,7 +374,7 @@ class _GroupChatConversationScreenState
   TransactionModel? _currentPostReply;
   UserModel? _currentPostAuthor;
   bool _showEmojiGrid = false;
-  bool _hasText = false;
+  final ValueNotifier<bool> _hasTextNotifier = ValueNotifier<bool>(false);
   bool _isSending = false;
   bool _showScrollToBottom = false;
   Timer? _typingIdleTimer;
@@ -301,12 +389,21 @@ class _GroupChatConversationScreenState
 
   final Map<String, String> _senderBubbleThemeCache = {};
   final Map<String, UserModel> _memberCache = {};
+  final List<UserModel> _allGroupMemberList = [];
+  final Set<String> _selectedTaggedUids = {};
+  final ValueNotifier<_MentionPopupState> _mentionNotifier =
+      ValueNotifier<_MentionPopupState>(const _MentionPopupState());
+
   final TransactionRepository _txRepo = TransactionRepository();
   final Map<String, TransactionModel?> _resolvedExpensePosts = {};
   final Set<String> _resolvingExpenseIds = {};
 
   Stream<List<Map<String, dynamic>>>? _activeFriendsStream;
   List<Map<String, dynamic>> _lastActiveFriends = [];
+
+  // Tracks whether the current user has been kicked from this group
+  bool _isKickedFromGroup = false;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _membershipSub;
 
   static const List<String> emojiList = [
     '🤣', '🥺', '😱', '🔥', '❤️', '👏', '😍', '🎉',
@@ -318,10 +415,35 @@ class _GroupChatConversationScreenState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute is PageRoute) {
+      AppRoutes.routeObserver.subscribe(this, modalRoute);
+    }
     final myUid = context.read<AuthController>().user?.uid ?? '';
     if (myUid.isNotEmpty && _activeFriendsStream == null) {
       _activeFriendsStream = _userRepo.streamActiveFriendsRealtime(myUid);
       _lastActiveFriends = _userRepo.getLatestActiveFriends(myUid);
+    }
+  }
+
+  @override
+  void didPopNext() {
+    if (mounted) {
+      context.read<ChatController>().setActiveChatGroup(widget.groupId);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    if (mounted) {
+      context.read<ChatController>().setActiveChatGroup(null);
+    }
+  }
+
+  @override
+  void didPop() {
+    if (mounted) {
+      context.read<ChatController>().setActiveChatGroup(null);
     }
   }
 
@@ -353,7 +475,7 @@ class _GroupChatConversationScreenState
       _textController.selection = TextSelection.fromPosition(
         TextPosition(offset: _textController.text.length),
       );
-      _hasText = draft.trim().isNotEmpty;
+      _hasTextNotifier.value = draft.trim().isNotEmpty;
     }
 
     _textController.addListener(_onTextChanged);
@@ -365,22 +487,449 @@ class _GroupChatConversationScreenState
         context.read<ChatController>().setActiveChatGroup(widget.groupId);
         _markAsRead();
         _fetchMemberProfiles();
+        _listenToMembership();
       }
     });
   }
 
   Future<void> _fetchMemberProfiles() async {
-    if (widget.memberUids == null) return;
-    for (final uid in widget.memberUids!) {
+    List<String> participants = widget.memberUids ?? [];
+    if (participants.isEmpty) {
+      try {
+        final doc = await FirebaseFirestore.instance.collection('chats').doc(widget.groupId).get();
+        if (doc.exists && doc.data() != null) {
+          final list = doc.data()!['participants'] as List<dynamic>?;
+          if (list != null) {
+            participants = list.map((e) => e.toString()).toList();
+          }
+        }
+      } catch (_) {}
+    }
+
+    for (final uid in participants) {
       if (!_memberCache.containsKey(uid)) {
         final profile = await _userRepo.getUserProfile(uid);
         if (profile != null && mounted) {
           setState(() {
             _memberCache[uid] = profile;
+            if (!_allGroupMemberList.any((m) => m.uid == uid)) {
+              _allGroupMemberList.add(profile);
+            }
           });
+        }
+      } else {
+        final profile = _memberCache[uid]!;
+        if (!_allGroupMemberList.any((m) => m.uid == uid)) {
+          _allGroupMemberList.add(profile);
         }
       }
     }
+  }
+
+  void _checkMentionTrigger() {
+    final text = _textController.text;
+    final selection = _textController.selection;
+    if (selection.baseOffset <= 0) {
+      if (_mentionNotifier.value.show) {
+        _mentionNotifier.value = const _MentionPopupState();
+      }
+      return;
+    }
+
+    final cursorPosition = selection.baseOffset;
+    final textBeforeCursor = text.substring(0, cursorPosition);
+    final lastAtIndex = textBeforeCursor.lastIndexOf('@');
+
+    if (lastAtIndex != -1) {
+      final bool isValidPrefix = lastAtIndex == 0 ||
+          RegExp(r'\s').hasMatch(textBeforeCursor[lastAtIndex - 1]);
+      final query = textBeforeCursor.substring(lastAtIndex + 1);
+      final bool hasNoSpace = !query.contains(' ') && !query.contains('\n');
+
+      if (isValidPrefix && hasNoSpace) {
+        final q = query.toLowerCase();
+        final current = _mentionNotifier.value;
+        if (!current.show || current.query != q || current.startIndex != lastAtIndex) {
+          _mentionNotifier.value = _MentionPopupState(
+            show: true,
+            query: q,
+            startIndex: lastAtIndex,
+          );
+        }
+        return;
+      }
+    }
+
+    if (_mentionNotifier.value.show) {
+      _mentionNotifier.value = const _MentionPopupState();
+    }
+  }
+
+  void _selectMentionUser(UserModel member) {
+    final mentionState = _mentionNotifier.value;
+    final text = _textController.text;
+    final selection = _textController.selection;
+    final cursorPosition = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
+
+    if (mentionState.startIndex != -1 && mentionState.startIndex <= text.length) {
+      final before = text.substring(0, mentionState.startIndex);
+      final after = (cursorPosition <= text.length && cursorPosition >= mentionState.startIndex)
+          ? text.substring(cursorPosition)
+          : '';
+      final mentionTag = member.username.isNotEmpty ? member.username : member.name.replaceAll(' ', '_');
+      final newText = '$before@$mentionTag $after';
+      final newCursorPos = (before.length + mentionTag.length + 2).clamp(0, newText.length);
+
+      _selectedTaggedUids.add(member.uid);
+      _mentionNotifier.value = const _MentionPopupState();
+
+      _textController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newCursorPos),
+        composing: TextRange.empty,
+      );
+
+      _textFocusNode.requestFocus();
+      SystemChannels.textInput.invokeMethod('TextInput.show');
+    }
+  }
+
+  void _selectMentionAll() {
+    final mentionState = _mentionNotifier.value;
+    final text = _textController.text;
+    final selection = _textController.selection;
+    final cursorPosition = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
+
+    if (mentionState.startIndex != -1 && mentionState.startIndex <= text.length) {
+      final before = text.substring(0, mentionState.startIndex);
+      final after = (cursorPosition <= text.length && cursorPosition >= mentionState.startIndex)
+          ? text.substring(cursorPosition)
+          : '';
+      const mentionTag = 'all';
+      final newText = '$before@$mentionTag $after';
+      final newCursorPos = (before.length + mentionTag.length + 2).clamp(0, newText.length);
+
+      _selectedTaggedUids.add('all');
+      final myUid = context.read<AuthController>().user?.uid ?? '';
+      for (final m in _allGroupMemberList) {
+        if (m.uid != myUid) _selectedTaggedUids.add(m.uid);
+      }
+      for (final uid in widget.memberUids ?? <String>[]) {
+        if (uid != myUid) _selectedTaggedUids.add(uid);
+      }
+
+      _mentionNotifier.value = const _MentionPopupState();
+
+      _textController.value = TextEditingValue(
+        text: newText,
+        selection: TextSelection.collapsed(offset: newCursorPos),
+        composing: TextRange.empty,
+      );
+
+      _textFocusNode.requestFocus();
+      SystemChannels.textInput.invokeMethod('TextInput.show');
+    }
+  }
+
+  Future<void> _showUserMentionBottomSheet(String mentionTag) async {
+    final cleanTag = mentionTag.replaceAll('@', '').trim().toLowerCase();
+    if (cleanTag.isEmpty) return;
+
+    // Tapping @all / @mọi_người opens group details and member list
+    if (cleanTag == 'all' ||
+        cleanTag == 'mọi_người' ||
+        cleanTag == 'moinguoi' ||
+        cleanTag == 'mọi' ||
+        cleanTag == 'moi' ||
+        cleanTag == 'everyone') {
+      _openGroupDetails();
+      return;
+    }
+
+    final myUid = context.read<AuthController>().user?.uid ?? '';
+
+    UserModel? targetUser = _allGroupMemberList.firstWhere(
+      (m) =>
+          m.username.toLowerCase() == cleanTag ||
+          m.name.toLowerCase().replaceAll(' ', '_') == cleanTag ||
+          m.name.toLowerCase() == cleanTag,
+      orElse: () => _memberCache.values.firstWhere(
+        (m) =>
+            m.username.toLowerCase() == cleanTag ||
+            m.name.toLowerCase().replaceAll(' ', '_') == cleanTag ||
+            m.name.toLowerCase() == cleanTag,
+        orElse: () => UserModel(
+          uid: '',
+          email: '',
+          name: '',
+          username: '',
+          avatarUrl: '',
+          currency: 'VND',
+          language: 'vi',
+          themeMode: 'dark',
+          currentStreak: 0,
+          bestStreak: 0,
+          createdAt: DateTime.now(),
+          lastActiveDate: DateTime.now(),
+        ),
+      ),
+    );
+
+    if (targetUser.uid.isEmpty) {
+      try {
+        final querySnap = await FirebaseFirestore.instance
+            .collection('users')
+            .where('username', isEqualTo: cleanTag)
+            .limit(1)
+            .get();
+        if (querySnap.docs.isNotEmpty) {
+          targetUser = UserModel.fromMap(querySnap.docs.first.data());
+          _memberCache[targetUser.uid] = targetUser;
+        }
+      } catch (_) {}
+    }
+
+    if (targetUser == null || targetUser.uid.isEmpty) return;
+    final user = targetUser;
+
+    if (!mounted) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMe = user.uid == myUid;
+    final l10n = context.l10n;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (sheetInnerCtx, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E222D) : Colors.white,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(28)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+                    blurRadius: 18,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white24 : Colors.black12,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    AvatarWithFrame(
+                      avatarUrl: user.avatarUrl,
+                      frameId: user.avatarFrame,
+                      size: 64,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      user.name.isNotEmpty
+                          ? user.name
+                          : user.username,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    if (user.username.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        '@${user.username}',
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    if (isMe) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.black.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Đây là chính bạn',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? Colors.white70 : Colors.black54,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ] else ...[
+                      FutureBuilder<AddFriendConnectionState>(
+                        future: _userRepo.checkConnectionState(
+                            myUid, user.uid),
+                        builder: (ctx, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.5,
+                                ),
+                              ),
+                            );
+                          }
+
+                          final state =
+                              snap.data ?? AddFriendConnectionState.canSend;
+
+                          if (state == AddFriendConnectionState.alreadyFriends) {
+                            return SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: AppColors.primaryBlue,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 13),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                ),
+                                icon: const Icon(
+                                    Icons.chat_bubble_outline_rounded,
+                                    size: 18),
+                                label: Text(
+                                  l10n.sendMessageAction,
+                                  style: const TextStyle(
+                                    fontSize: 14.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.pop(sheetCtx);
+                                  Navigator.pushNamed(
+                                    context,
+                                    RouteNames.chatConversation,
+                                    arguments: {
+                                      'friend': user,
+                                    },
+                                  );
+                                },
+                              ),
+                            );
+                          }
+
+                          if (state == AddFriendConnectionState.pendingSent) {
+                            return Container(
+                              width: double.infinity,
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 12),
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white10
+                                    : Colors.black.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.hourglass_top_rounded,
+                                    size: 16,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Đã gửi lời mời (Chờ chấp nhận)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13.5,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+
+                          return SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primaryBlue,
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                              icon: const Icon(Icons.person_add_rounded,
+                                  size: 18),
+                              label: Text(
+                                l10n.sendFriendRequest,
+                                style: const TextStyle(
+                                  fontSize: 14.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              onPressed: () async {
+                                HapticFeedback.lightImpact();
+                                try {
+                                  final result =
+                                      await _userRepo.sendFriendRequest(
+                                    myUid: myUid,
+                                    targetUser: user,
+                                  );
+                                  setSheetState(() {});
+                                  if (!mounted) return;
+                                  AppToast.show(
+                                    context,
+                                    result == 'auto_accepted'
+                                        ? 'Đã trở thành bạn bè!'
+                                        : l10n.friendRequestSent,
+                                    icon: Icons.check_circle_outline_rounded,
+                                  );
+                                } catch (_) {}
+                              },
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -409,8 +958,12 @@ class _GroupChatConversationScreenState
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
-    final myUid = context.read<AuthController>().user?.uid;
-    if (state != AppLifecycleState.resumed) {
+    if (!mounted) return;
+    if (state == AppLifecycleState.resumed) {
+      context.read<ChatController>().setActiveChatGroup(widget.groupId);
+    } else {
+      context.read<ChatController>().setActiveChatGroup(null);
+      final myUid = context.read<AuthController>().user?.uid;
       _stopTypingHeartbeat(myUid);
     }
   }
@@ -442,13 +995,12 @@ class _GroupChatConversationScreenState
   }
 
   void _onTextChanged() {
+    _checkMentionTrigger();
     final rawText = _textController.text;
     final text = rawText.trim();
     final hasNow = text.isNotEmpty;
-    if (hasNow != _hasText) {
-      setState(() {
-        _hasText = hasNow;
-      });
+    if (_hasTextNotifier.value != hasNow) {
+      _hasTextNotifier.value = hasNow;
     }
 
     // Persist draft in local settings
@@ -683,6 +1235,7 @@ class _GroupChatConversationScreenState
 
   @override
   void dispose() {
+    AppRoutes.routeObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     final myUid = context.read<AuthController>().user?.uid;
     _stopTypingHeartbeat(myUid);
@@ -697,13 +1250,53 @@ class _GroupChatConversationScreenState
       context.read<LocalSettingsService>().clearDraft('group_${widget.groupId}');
     }
 
+    _membershipSub?.cancel();
+    _membershipSub = null;
     _textController.removeListener(_onTextChanged);
     _scrollController.removeListener(_onScroll);
     _textFocusNode.removeListener(_onFocusChanged);
     _textController.dispose();
     _scrollController.dispose();
     _textFocusNode.dispose();
+    _mentionNotifier.dispose();
+    _hasTextNotifier.dispose();
     super.dispose();
+  }
+
+  /// Stream the group chat doc to detect if current user has been removed from participants.
+  void _listenToMembership() {
+    final myUid = context.read<AuthController>().user?.uid ?? '';
+    if (myUid.isEmpty) return;
+
+    _membershipSub?.cancel();
+    _membershipSub = FirebaseFirestore.instance
+        .collection('chats')
+        .doc(widget.groupId)
+        .snapshots()
+        .listen((snapshot) {
+      if (!mounted) return;
+      if (!snapshot.exists) return; // Group deleted – handled elsewhere
+
+      final data = snapshot.data();
+      if (data == null) return;
+
+      final participants = (data['participants'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+
+      // Only mark as kicked when participants list is non-empty and does not include us
+      final wasKicked = participants.isNotEmpty &&
+          !participants.contains(myUid);
+
+      if (wasKicked && !_isKickedFromGroup) {
+        setState(() => _isKickedFromGroup = true);
+        // Auto-pop after a short delay so user can see the banner
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) Navigator.of(context).pop();
+        });
+      }
+    });
   }
 
   Color _parseHexColor(String? hex) {
@@ -746,7 +1339,133 @@ class _GroupChatConversationScreenState
     _stopTypingHeartbeat(myUser.uid);
     _textController.clear();
     context.read<LocalSettingsService>().clearDraft('group_${widget.groupId}');
-    _hasText = false;
+    _hasTextNotifier.value = false;
+    setState(() {
+      _replyingToMessage = null;
+      _currentPostReply = null;
+      _currentPostAuthor = null;
+    });
+
+    final myUid = myUser.uid;
+    final userProfile = await userRepo.getUserProfile(myUid);
+    final senderName = userProfile?.name.isNotEmpty == true
+        ? userProfile!.name
+        : (userProfile?.username.isNotEmpty == true
+            ? '@${userProfile!.username}'
+            : 'Thành viên');
+    final senderAvatar = userProfile?.avatarUrl ?? '';
+    final bubbleThemeId = localSettings.chatBubbleTheme;
+
+    String? postAuthorName;
+    String? postAuthorAvatar;
+    String? postAuthorFrame;
+    String? postOwnerId;
+
+    if (postReply != null) {
+      postOwnerId = postReply.userId;
+      UserModel? author = postAuthor ?? _memberCache[postReply.userId];
+      if (author == null) {
+        author = await userRepo.getUserProfile(postReply.userId);
+        if (author != null) {
+          _memberCache[postReply.userId] = author;
+        }
+      }
+      if (author != null) {
+        postAuthorName = author.name.trim().isNotEmpty
+            ? author.name.trim()
+            : (author.username.trim().isNotEmpty ? author.username.trim() : 'Thành viên');
+        postAuthorAvatar = author.avatarUrl;
+        postAuthorFrame = author.avatarFrame;
+      }
+    }
+
+    final taggedUids = Set<String>.from(_selectedTaggedUids);
+    final lowerText = text.toLowerCase();
+    final isTagAll = taggedUids.contains('all') ||
+        lowerText.contains('@all') ||
+        lowerText.contains('@mọi_người') ||
+        lowerText.contains('@mọi người') ||
+        lowerText.contains('@moinguoi') ||
+        lowerText.contains('@everyone');
+
+    if (isTagAll) {
+      for (final member in _allGroupMemberList) {
+        if (member.uid != myUid) taggedUids.add(member.uid);
+      }
+      for (final uid in widget.memberUids ?? <String>[]) {
+        if (uid != myUid) taggedUids.add(uid);
+      }
+    } else {
+      for (final member in _allGroupMemberList) {
+        if (member.username.isNotEmpty && text.contains('@${member.username}')) {
+          taggedUids.add(member.uid);
+        } else if (member.name.isNotEmpty && text.contains('@${member.name}')) {
+          taggedUids.add(member.uid);
+        }
+      }
+    }
+    taggedUids.remove('all');
+    taggedUids.remove(myUid);
+    _selectedTaggedUids.clear();
+
+    final success = await _chatRepo.sendGroupMessage(
+      groupId: widget.groupId,
+      senderId: myUid,
+      senderName: senderName,
+      senderAvatar: senderAvatar,
+      text: text,
+      type: postReply != null ? 'post_reply' : 'text',
+      bubbleTheme: bubbleThemeId,
+      replyToMessageId: replyMsg?.id,
+      replyToText: replyMsg?.text,
+      replyToSenderName: replyMsg?.senderName ??
+          (replyMsg?.senderId == myUid ? 'Bạn' : 'Thành viên'),
+      postId: postReply?.id,
+      postImageUrl: postReply?.displayImageUrl,
+      postCaption: postReply?.caption,
+      postCreatedAt: postReply?.createdAt,
+      postAuthorName: postAuthorName,
+      postAuthorAvatar: postAuthorAvatar,
+      postAuthorFrame: postAuthorFrame,
+      postOwnerId: postOwnerId,
+      taggedUserIds: taggedUids.toList(),
+    );
+
+    if (mounted) {
+      setState(() {
+        _isSending = false;
+      });
+      if (success) {
+        _scrollToBottom();
+      }
+    }
+  }
+
+  Future<void> _sendEmojiDirect(String emoji) async {
+    final myUser = context.read<AuthController>().user;
+    if (myUser == null || _isSending) return;
+
+    HapticFeedback.mediumImpact();
+    setState(() => _showEmojiGrid = false);
+
+    _stopTypingHeartbeat(myUser.uid);
+
+    // Auto-scroll to newest message
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
+    final userRepo = context.read<UserRepository>();
+    final localSettings = context.read<LocalSettingsService>();
+
+    final replyMsg = _replyingToMessage;
+    final postReply = _currentPostReply;
+    final postAuthor = _currentPostAuthor;
+
     setState(() {
       _replyingToMessage = null;
       _currentPostReply = null;
@@ -791,7 +1510,7 @@ class _GroupChatConversationScreenState
       senderId: myUid,
       senderName: senderName,
       senderAvatar: senderAvatar,
-      text: text,
+      text: emoji,
       type: postReply != null ? 'post_reply' : 'text',
       bubbleTheme: bubbleThemeId,
       replyToMessageId: replyMsg?.id,
@@ -806,15 +1525,11 @@ class _GroupChatConversationScreenState
       postAuthorAvatar: postAuthorAvatar,
       postAuthorFrame: postAuthorFrame,
       postOwnerId: postOwnerId,
+      taggedUserIds: [],
     );
 
-    if (mounted) {
-      setState(() {
-        _isSending = false;
-      });
-      if (success) {
-        _scrollToBottom();
-      }
+    if (mounted && success) {
+      _scrollToBottom();
     }
   }
 
@@ -1081,9 +1796,20 @@ class _GroupChatConversationScreenState
       messageId: msg.id,
       userId: myUid,
       emoji: emoji,
-      receiverId: widget.groupId,
+      receiverId: msg.senderId,
       messageText: msg.text,
+      isGroup: true,
+      groupName: widget.groupName,
     );
+  }
+
+  void _unfocusKeyboard() {
+    if (_textFocusNode.hasFocus) {
+      _textFocusNode.unfocus();
+    }
+    if (_showEmojiGrid) {
+      setState(() => _showEmojiGrid = false);
+    }
   }
 
   @override
@@ -1099,8 +1825,11 @@ class _GroupChatConversationScreenState
         child: Column(
           children: [
             Expanded(
-              child: Stack(
-                key: _listStackKey,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onTap: _unfocusKeyboard,
+                child: Stack(
+                  key: _listStackKey,
                 children: [
                   StreamBuilder<Map<String, dynamic>>(
                     stream: _chatRepo.streamTypingStatus(widget.groupId),
@@ -1201,6 +1930,7 @@ class _GroupChatConversationScreenState
                             child: ListView.builder(
                               controller: _scrollController,
                               reverse: true,
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                               physics: const BouncingScrollPhysics(),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -1404,6 +2134,7 @@ class _GroupChatConversationScreenState
                                         onTapPost: (postId) => _navigateToPost(postId),
                                         memberCache: _memberCache,
                                         fetchMemberIfNeeded: _fetchMemberIfNeeded,
+                                        onTapMention: (tag) => _showUserMentionBottomSheet(tag),
                                       ),
                                       // Seen member avatars row (Messenger Group Seen Receipts)
                                       if (seenUids != null && seenUids.isNotEmpty)
@@ -1632,13 +2363,26 @@ class _GroupChatConversationScreenState
                 ],
               ),
             ),
+          ),
 
             // Replying banner
             if (_replyingToMessage != null) _buildReplyBanner(context, isDark),
             if (_currentPostReply != null) _buildPostReplyBanner(context, isDark),
 
-            // Input Bar
-            _buildInputBar(context, isDark),
+            // Mention popup
+            ValueListenableBuilder<_MentionPopupState>(
+              valueListenable: _mentionNotifier,
+              builder: (context, mentionState, _) {
+                if (!mentionState.show) return const SizedBox.shrink();
+                return _buildMentionPopup(context, isDark, mentionState);
+              },
+            ),
+
+            // Input Bar (replaced with kicked banner when user is no longer a member)
+            if (_isKickedFromGroup)
+              _buildKickedBanner(context, isDark)
+            else
+              _buildInputBar(context, isDark),
 
             // Quick Emoji Grid
             if (_showEmojiGrid) _buildEmojiGrid(context, isDark),
@@ -1653,6 +2397,7 @@ class _GroupChatConversationScreenState
     bool isDark,
     Color groupColor,
   ) {
+    final myUid = context.read<AuthController>().user?.uid ?? '';
     return AppBar(
       backgroundColor: AppColors.card(context),
       elevation: 0.5,
@@ -1930,6 +2675,37 @@ class _GroupChatConversationScreenState
         },
       ),
       actions: [
+        StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('chats')
+              .doc(widget.groupId)
+              .snapshots(),
+          builder: (btnCtx, snapshot) {
+            final chatData = snapshot.data?.data();
+            final isMuted = _chatRepo.isChatMuted(chatData, myUid);
+            return IconButton(
+              tooltip: isMuted ? 'Bật thông báo nhóm' : 'Tắt thông báo nhóm',
+              icon: Icon(
+                isMuted
+                    ? Icons.notifications_off_rounded
+                    : Icons.notifications_outlined,
+                color: isMuted
+                    ? const Color(0xFFFF5252)
+                    : AppColors.textPrimary(btnCtx),
+                size: 22,
+              ),
+              onPressed: () {
+                MuteChatSheet.show(
+                  context,
+                  chatId: widget.groupId,
+                  myUid: myUid,
+                  isCurrentlyMuted: isMuted,
+                  isGroup: true,
+                );
+              },
+            );
+          },
+        ),
         IconButton(
           icon: Icon(
             Icons.info_outline_rounded,
@@ -3173,6 +3949,252 @@ class _GroupChatConversationScreenState
     );
   }
 
+  Widget _buildMentionPopup(
+    BuildContext context,
+    bool isDark,
+    _MentionPopupState mentionState,
+  ) {
+    final myUid = context.read<AuthController>().user?.uid ?? '';
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final q = mentionState.query.toLowerCase();
+
+    // Check if query matches "all", "tat ca", "mọi người", "everyone", etc.
+    final bool matchesTagAll = q.isEmpty ||
+        'all'.contains(q) ||
+        'tatca'.contains(q) ||
+        'tất cả'.contains(q) ||
+        'mọi người'.contains(q) ||
+        'moinguoi'.contains(q) ||
+        'mọi'.contains(q) ||
+        'moi'.contains(q) ||
+        'everyone'.contains(q);
+
+    final filteredMembers = _allGroupMemberList.where((member) {
+      if (member.uid == myUid) return false;
+      if (q.isEmpty) return true;
+      final nameMatches = member.name.toLowerCase().contains(q);
+      final usernameMatches = member.username.toLowerCase().contains(q);
+      return nameMatches || usernameMatches;
+    }).toList();
+
+    final int totalCount = (matchesTagAll ? 1 : 0) + filteredMembers.length;
+    if (totalCount == 0) return const SizedBox.shrink();
+
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 220),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E222D) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white12 : Colors.black12,
+          width: 0.8,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, -3),
+          ),
+        ],
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        itemCount: totalCount,
+        separatorBuilder: (_, __) => Divider(
+          height: 1,
+          thickness: 0.5,
+          color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+        ),
+        itemBuilder: (context, index) {
+          if (matchesTagAll && index == 0) {
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (_) => _textFocusNode.requestFocus(),
+              onTap: _selectMentionAll,
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 34,
+                      height: 34,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFFF7A00), Color(0xFFFF006E)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.campaign_rounded,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                isEn ? 'Mention all members' : 'Nhắc tất cả mọi người',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF5252).withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'ALL',
+                                  style: TextStyle(
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFFFF5252),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 1),
+                          Text(
+                            isEn
+                                ? '@all • Notify all group members'
+                                : '@all • Thông báo đến tất cả thành viên',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.primaryBlue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final memberIndex = matchesTagAll ? index - 1 : index;
+          final member = filteredMembers[memberIndex];
+          final displayName =
+              member.name.isNotEmpty ? member.name : member.username;
+          final displayHandle =
+              member.username.isNotEmpty ? '@${member.username}' : '';
+
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (_) => _textFocusNode.requestFocus(),
+            onTap: () => _selectMentionUser(member),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Row(
+                children: [
+                  AvatarWithFrame(
+                    avatarUrl: member.avatarUrl,
+                    frameId: member.avatarFrame,
+                    size: 32,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : Colors.black87,
+                          ),
+                        ),
+                        if (displayHandle.isNotEmpty)
+                          Text(
+                            displayHandle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              color: AppColors.primaryBlue,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildKickedBanner(BuildContext context, bool isDark) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1A1A2E) : const Color(0xFFF5F5F5),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white10 : Colors.black12,
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.block_rounded,
+            size: 18,
+            color: isDark ? Colors.white38 : Colors.black38,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            isEn
+                ? 'You have been removed from this group'
+                : 'Bạn đã bị xoá khỏi nhóm',
+            style: TextStyle(
+              fontSize: 13.5,
+              color: isDark ? Colors.white38 : Colors.black45,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputBar(BuildContext context, bool isDark) {
     final isEn = Localizations.localeOf(context).languageCode == 'en';
     return Container(
@@ -3289,19 +4311,24 @@ class _GroupChatConversationScreenState
             ),
           ),
           const SizedBox(width: 6),
-          AnimatedScale(
-            scale: _hasText ? 1.0 : 0.85,
-            duration: const Duration(milliseconds: 150),
-            child: IconButton(
-              onPressed: _hasText && !_isSending ? _sendMessage : null,
-              icon: Icon(
-                Icons.send_rounded,
-                color: _hasText
-                    ? AppColors.primaryBlue
-                    : AppColors.textSecondary(context).withValues(alpha: 0.35),
-                size: 24,
-              ),
-            ),
+          ValueListenableBuilder<bool>(
+            valueListenable: _hasTextNotifier,
+            builder: (context, hasText, _) {
+              return AnimatedScale(
+                scale: hasText ? 1.0 : 0.85,
+                duration: const Duration(milliseconds: 150),
+                child: IconButton(
+                  onPressed: hasText && !_isSending ? _sendMessage : null,
+                  icon: Icon(
+                    Icons.send_rounded,
+                    color: hasText
+                        ? AppColors.primaryBlue
+                        : AppColors.textSecondary(context).withValues(alpha: 0.35),
+                    size: 24,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -3323,17 +4350,7 @@ class _GroupChatConversationScreenState
         itemBuilder: (context, index) {
           final emoji = emojiList[index];
           return InkWell(
-            onTap: () {
-              final text = _textController.text;
-              final selection = _textController.selection;
-              final newText = selection.textBefore(text) + emoji + selection.textAfter(text);
-              _textController.value = TextEditingValue(
-                text: newText,
-                selection: TextSelection.collapsed(
-                  offset: selection.baseOffset + emoji.length,
-                ),
-              );
-            },
+            onTap: () => _sendEmojiDirect(emoji),
             borderRadius: BorderRadius.circular(10),
             child: Center(
               child: Text(
@@ -3367,6 +4384,7 @@ class _GroupChatMessageBubble extends StatefulWidget {
   final ValueChanged<String>? onTapPost;
   final Map<String, UserModel>? memberCache;
   final ValueChanged<String>? fetchMemberIfNeeded;
+  final ValueChanged<String>? onTapMention;
 
   const _GroupChatMessageBubble({
     super.key,
@@ -3388,6 +4406,7 @@ class _GroupChatMessageBubble extends StatefulWidget {
     this.onTapPost,
     this.memberCache,
     this.fetchMemberIfNeeded,
+    this.onTapMention,
   });
 
   @override
@@ -3395,12 +4414,21 @@ class _GroupChatMessageBubble extends StatefulWidget {
 }
 
 class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final GlobalKey _bubbleContentKey = GlobalKey();
   bool _showDetails = false;
   double _dragOffset = 0.0;
   AnimationController? _animController;
   Animation<double>? _anim;
+
+  // Optimistic UI state for 0ms instant reaction feedback
+  Map<String, String>? _optimisticReactions;
+  AnimationController? _heartAnimController;
+  Animation<double>? _heartScaleAnim;
+  Animation<double>? _heartOpacityAnim;
+
+  Map<String, String> get _effectiveReactions =>
+      _optimisticReactions ?? widget.message.reactions;
 
   @override
   void initState() {
@@ -3409,12 +4437,133 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
       vsync: this,
       duration: const Duration(milliseconds: 180),
     );
+
+    // Heart Burst / Pop Animation on Double-Tap
+    _heartAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _heartScaleAnim = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.35)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.35, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.40)
+            .chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 45,
+      ),
+    ]).animate(_heartAnimController!);
+
+    _heartOpacityAnim = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 15,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.0),
+        weight: 45,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+    ]).animate(_heartAnimController!);
+  }
+
+  @override
+  void didUpdateWidget(_GroupChatMessageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message.reactions != widget.message.reactions) {
+      _optimisticReactions = null;
+    }
   }
 
   @override
   void dispose() {
     _animController?.dispose();
+    _heartAnimController?.dispose();
     super.dispose();
+  }
+
+  void _handleOptimisticReaction(String emoji) {
+    HapticFeedback.lightImpact();
+    final myUid = widget.myUid;
+    final current = Map<String, String>.from(_effectiveReactions);
+    final isHeart = emoji == '❤️';
+
+    if (current[myUid] == emoji) {
+      // Toggle off / remove reaction
+      current.remove(myUid);
+    } else {
+      // Add or change reaction
+      current[myUid] = emoji;
+      if (isHeart) {
+        _heartAnimController?.forward(from: 0.0);
+      }
+    }
+
+    setState(() {
+      _optimisticReactions = current;
+    });
+
+    widget.onReactionTap(emoji);
+  }
+
+  void _handleDoubleTap() {
+    _handleOptimisticReaction('❤️');
+  }
+
+  Widget _buildHeartPopOverlay() {
+    if (_heartAnimController == null) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Center(
+          child: AnimatedBuilder(
+            animation: _heartAnimController!,
+            builder: (context, child) {
+              if (!_heartAnimController!.isAnimating &&
+                  _heartAnimController!.value == 0) {
+                return const SizedBox.shrink();
+              }
+              return Opacity(
+                opacity: (_heartOpacityAnim?.value ?? 0.0).clamp(0.0, 1.0),
+                child: Transform.scale(
+                  scale: _heartScaleAnim?.value ?? 1.0,
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.45),
+                    blurRadius: 20,
+                    spreadRadius: 3,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.favorite_rounded,
+                color: Colors.redAccent,
+                size: 48,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   void _openActionMenu() {
@@ -3423,10 +4572,29 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
       message: widget.message,
       isMe: widget.isMe,
       friend: widget.friend,
+      myReaction: _effectiveReactions[widget.myUid],
       messageKey: _bubbleContentKey,
       messageChild: _buildBubbleContent(context),
-      onSelectReaction: widget.onReactionTap,
+      onSelectReaction: (emoji) {
+        _handleOptimisticReaction(emoji);
+      },
       onSelectAction: widget.onActionSelected,
+    );
+  }
+
+  void _openReactionsDetailSheet() {
+    final gId = widget.message.groupId ??
+        (widget.message.receiverId.isNotEmpty ? widget.message.receiverId : '');
+    MessageReactionsDetailSheet.show(
+      context: context,
+      message: widget.message,
+      myUid: widget.myUid,
+      chatId: gId,
+      isGroup: true,
+      userCache: widget.memberCache,
+      onRemoveReaction: (emoji) async {
+        _handleOptimisticReaction(emoji);
+      },
     );
   }
 
@@ -3859,7 +5027,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
             ),
           _buildQuotedReplyHeader(),
 
-          // Full Rounded Post Preview Card (tap to view post)
+          // Full Rounded Post Preview Card (tap to view post / double tap to heart)
           GestureDetector(
             onTap: () {
               if (widget.message.postId != null &&
@@ -3868,6 +5036,8 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                 widget.onTapPost!(widget.message.postId!);
               }
             },
+            onDoubleTap: _handleDoubleTap,
+            onLongPress: _openActionMenu,
             child: Container(
               margin: EdgeInsets.only(
                 left: widget.isMe ? 0 : 36,
@@ -4014,6 +5184,9 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                           ),
                         ),
                       ),
+
+                    // Heart Pop Animation Overlay
+                    _buildHeartPopOverlay(),
                   ],
                 ),
               ),
@@ -4033,7 +5206,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                 children: [
                   if (_isPureEmoji(widget.message.text) || widget.message.type == 'reaction') ...[
                     GestureDetector(
-                      onDoubleTap: widget.onDoubleTap,
+                      onDoubleTap: _handleDoubleTap,
                       onLongPress: _openActionMenu,
                       child: Text(
                         widget.message.text,
@@ -4043,16 +5216,16 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                   ] else ...[
                     GestureDetector(
                       onTap: () => setState(() => _showDetails = !_showDetails),
-                      onDoubleTap: widget.onDoubleTap,
+                      onDoubleTap: _handleDoubleTap,
                       onLongPress: _openActionMenu,
                       child: (widget.isMe || !currentTheme.isDefault)
                           ? ChatBubbleDecoratedBox(
                               theme: currentTheme,
                               isMe: widget.isMe,
                               customBorderRadius: BorderRadius.circular(20),
-                              child: Text(
+                              child: _buildRichMessageText(
                                 widget.message.text,
-                                style: TextStyle(
+                                TextStyle(
                                   color: currentTheme.textColor,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
@@ -4070,9 +5243,9 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                                     : const Color(0xFFE4E6EB),
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              child: Text(
+                              child: _buildRichMessageText(
                                 widget.message.text,
-                                style: TextStyle(
+                                TextStyle(
                                   color: widget.isDark
                                       ? Colors.white
                                       : const Color(0xFF050505),
@@ -4083,7 +5256,11 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                             ),
                     ),
                   ],
-                  if (widget.message.reactions.isNotEmpty)
+
+                  // Heart Pop Animation Overlay
+                  _buildHeartPopOverlay(),
+
+                  if (_effectiveReactions.isNotEmpty)
                     Positioned(
                       bottom: -10,
                       right: widget.isMe ? 6 : null,
@@ -4097,7 +5274,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
               ),
             ],
           ),
-          if (widget.message.reactions.isNotEmpty) const SizedBox(height: 6),
+          if (_effectiveReactions.isNotEmpty) const SizedBox(height: 6),
           _buildStatusLine(context),
         ],
       );
@@ -4131,14 +5308,18 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                 children: [
                   GestureDetector(
                     onTap: () => setState(() => _showDetails = !_showDetails),
-                    onDoubleTap: widget.onDoubleTap,
+                    onDoubleTap: _handleDoubleTap,
                     onLongPress: _openActionMenu,
                     child: Text(
                       widget.message.text,
                       style: const TextStyle(fontSize: 42),
                     ),
                   ),
-                  if (widget.message.reactions.isNotEmpty)
+
+                  // Heart Pop Animation Overlay
+                  _buildHeartPopOverlay(),
+
+                  if (_effectiveReactions.isNotEmpty)
                     Positioned(
                       bottom: -10,
                       right: widget.isMe ? 2 : null,
@@ -4149,7 +5330,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
               ),
             ],
           ),
-          if (widget.message.reactions.isNotEmpty) const SizedBox(height: 6),
+          if (_effectiveReactions.isNotEmpty) const SizedBox(height: 6),
           _buildStatusLine(context),
         ],
       );
@@ -4188,7 +5369,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                 children: [
                   GestureDetector(
                     onTap: () => setState(() => _showDetails = !_showDetails),
-                    onDoubleTap: widget.onDoubleTap,
+                    onDoubleTap: _handleDoubleTap,
                     onLongPress: _openActionMenu,
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
@@ -4199,17 +5380,15 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                               theme: currentTheme,
                               isMe: widget.isMe,
                               customBorderRadius: _getBubbleBorderRadius(),
-                              child: Text(
+                              child: _buildRichMessageText(
                                 widget.message.text,
-                                style: TextStyle(
+                                TextStyle(
                                   color: currentTheme.textColor,
                                   fontSize: 14.5,
                                   fontWeight: FontWeight.w400,
                                   height: 1.35,
-                                  decoration: isUrl
-                                      ? TextDecoration.underline
-                                      : TextDecoration.none,
                                 ),
+                                isUnderline: isUrl,
                               ),
                             )
                           : Container(
@@ -4223,24 +5402,26 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                                     : const Color(0xFFE4E6EB),
                                 borderRadius: _getBubbleBorderRadius(),
                               ),
-                              child: Text(
+                              child: _buildRichMessageText(
                                 widget.message.text,
-                                style: TextStyle(
+                                TextStyle(
                                   color: widget.isDark
                                       ? Colors.white
                                       : Colors.black87,
                                   fontSize: 14.5,
                                   fontWeight: FontWeight.w400,
                                   height: 1.35,
-                                  decoration: isUrl
-                                      ? TextDecoration.underline
-                                      : TextDecoration.none,
                                 ),
+                                isUnderline: isUrl,
                               ),
                             ),
                     ),
                   ),
-                  if (widget.message.reactions.isNotEmpty)
+
+                  // Heart Pop Animation Overlay
+                  _buildHeartPopOverlay(),
+
+                  if (_effectiveReactions.isNotEmpty)
                     Positioned(
                       bottom: -13,
                       right: widget.isMe ? 6 : null,
@@ -4251,7 +5432,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
               ),
             ],
           ),
-          if (widget.message.reactions.isNotEmpty) const SizedBox(height: 8),
+          if (_effectiveReactions.isNotEmpty) const SizedBox(height: 8),
           _buildStatusLine(context),
         ],
       );
@@ -4259,8 +5440,59 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
     return content;
   }
 
+  Widget _buildRichMessageText(
+    String text,
+    TextStyle baseStyle, {
+    bool isUnderline = false,
+  }) {
+    if (!text.contains('@')) {
+      return Text(
+        text,
+        style: isUnderline
+            ? baseStyle.copyWith(decoration: TextDecoration.underline)
+            : baseStyle,
+      );
+    }
+
+    final List<InlineSpan> spans = [];
+    final regex = RegExp(r'(@[a-zA-Z0-9_\.\u00C0-\u1EF9]+)');
+    int lastIndex = 0;
+
+    for (final match in regex.allMatches(text)) {
+      if (match.start > lastIndex) {
+        spans.add(TextSpan(
+          text: text.substring(lastIndex, match.start),
+          style: baseStyle,
+        ));
+      }
+      final mention = match.group(0)!;
+      spans.add(TextSpan(
+        text: mention,
+        style: baseStyle.copyWith(
+          fontWeight: FontWeight.w900,
+          decoration: TextDecoration.none,
+        ),
+        recognizer: TapGestureRecognizer()
+          ..onTap = () {
+            HapticFeedback.lightImpact();
+            widget.onTapMention?.call(mention);
+          },
+      ));
+      lastIndex = match.end;
+    }
+
+    if (lastIndex < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastIndex),
+        style: baseStyle,
+      ));
+    }
+
+    return RichText(text: TextSpan(children: spans));
+  }
+
   Widget _buildReactionsBadge() {
-    final reactions = widget.message.reactions;
+    final reactions = _effectiveReactions;
     if (reactions.isEmpty) return const SizedBox.shrink();
 
     final counts = <String, int>{};
@@ -4270,7 +5502,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: _openActionMenu,
+      onTap: _openReactionsDetailSheet,
       onLongPress: _openActionMenu,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
@@ -4355,7 +5587,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
   @override
   Widget build(BuildContext context) {
     final isMe = widget.isMe;
-    final hasReactions = widget.message.reactions.isNotEmpty;
+    final hasReactions = _effectiveReactions.isNotEmpty;
     final verticalPadding = widget.isLastInGroup ? 5.0 : 3.0;
     final absOffset = _dragOffset.abs();
 
@@ -4363,7 +5595,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
       onHorizontalDragUpdate: _onHorizontalDragUpdate,
       onHorizontalDragEnd: _onHorizontalDragEnd,
       onLongPress: _openActionMenu,
-      onDoubleTap: widget.onDoubleTap,
+      onDoubleTap: _handleDoubleTap,
       behavior: HitTestBehavior.translucent,
       child: Padding(
         padding: EdgeInsets.only(

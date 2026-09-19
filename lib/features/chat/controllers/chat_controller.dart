@@ -35,10 +35,12 @@ class ChatController extends ChangeNotifier {
 
   void setActiveChatFriend(String? friendUid) {
     _activeChatFriendId = friendUid;
+    InAppNotificationService.instance.setActiveChatFriend(friendUid);
   }
 
   void setActiveChatGroup(String? groupId) {
     _activeChatGroupId = groupId;
+    InAppNotificationService.instance.setActiveChatGroup(groupId);
   }
 
   String? _currentListeningUid;
@@ -63,6 +65,8 @@ class ChatController extends ChangeNotifier {
     _mentionsSub = null;
     _activeChatFriendId = null;
     _activeChatGroupId = null;
+    InAppNotificationService.instance.setActiveChatFriend(null);
+    InAppNotificationService.instance.setActiveChatGroup(null);
     _processedMessageKeys.clear();
     _processedFriendRequestKeys.clear();
     _processedAcceptedFriendKeys.clear();
@@ -127,6 +131,12 @@ class ChatController extends ChangeNotifier {
           continue;
         }
 
+        // Check if user has muted notifications for this chat (indefinite or timed)
+        final isMuted = _chatRepository.isChatMuted(data, myUid);
+        if (isMuted) {
+          continue;
+        }
+
         // Check if user already read the message
         final unreadBy = (data['unreadBy'] as List<dynamic>?)
             ?.map((e) => e.toString())
@@ -150,34 +160,57 @@ class ChatController extends ChangeNotifier {
         }
         _processedMessageKeys.add(messageKey);
 
+        final participants = (data['participants'] as List<dynamic>?)
+            ?.map((e) => e.toString())
+            .toList();
+
         final bool isAppResumed =
             WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
-        final bool isActivelyInThisChat = isAppResumed &&
-            ((isGroup && _activeChatGroupId == groupId) ||
-                (!isGroup && _activeChatFriendId == lastSenderId));
+        final bool isCurrentlyInThisChat =
+            (isGroup && (_activeChatGroupId == groupId || _activeChatGroupId == change.doc.id)) ||
+            (!isGroup && (_activeChatFriendId == lastSenderId ||
+                (participants != null &&
+                    _activeChatFriendId != null &&
+                    participants.contains(_activeChatFriendId))));
 
-        // If user is actively looking at this conversation on screen, don't show popups
-        if (isActivelyInThisChat) {
+        // If user is actively looking at this conversation on screen, don't show notifications or sounds
+        if (isCurrentlyInThisChat) {
           continue;
         }
 
-        // Fetch sender user profile to display in-app banner & system notification
-        final senderUser = await _userRepository.getUserProfile(lastSenderId) ??
-            UserModel.fromMap({
-              'uid': lastSenderId,
-              'name': data['senderName'] ?? (isGroup ? 'Thành viên nhóm' : 'Bạn bè'),
-              'username': data['senderName'] ?? '',
-              'avatarUrl': '',
-            });
+        final bool isSystem = lastType == 'system';
+        final senderUser = isSystem
+            ? UserModel(
+                uid: lastSenderId,
+                name: groupName ?? 'Nhóm',
+                username: groupName ?? 'Nhóm',
+                email: '',
+                avatarUrl: '',
+                currency: 'VND',
+                language: 'vi',
+                themeMode: 'system',
+                currentStreak: 0,
+                bestStreak: 0,
+                createdAt: DateTime.now(),
+                lastActiveDate: DateTime.now(),
+              )
+            : (await _userRepository.getUserProfile(lastSenderId) ??
+                UserModel.fromMap({
+                  'uid': lastSenderId,
+                  'name': data['senderName'] ?? (isGroup ? 'Thành viên nhóm' : 'Bạn bè'),
+                  'username': data['senderName'] ?? '',
+                  'avatarUrl': '',
+                }));
 
         final senderTitle = senderUser.name.isNotEmpty
             ? senderUser.name
             : (senderUser.username.isNotEmpty ? senderUser.username : 'Bạn bè');
 
-        final displayTitle =
-            isGroup && groupName != null && groupName.isNotEmpty
+        final displayTitle = isSystem
+            ? (groupName ?? 'Nhóm')
+            : (isGroup && groupName != null && groupName.isNotEmpty
                 ? '$senderTitle • $groupName'
-                : senderTitle;
+                : senderTitle);
 
         if (isAppResumed) {
           InAppNotificationService.instance.showNotification(
@@ -537,6 +570,10 @@ class ChatController extends ChangeNotifier {
     String? postCaption,
     DateTime? postCreatedAt,
     String? bubbleTheme,
+    String? postAuthorName,
+    String? postAuthorAvatar,
+    String? postAuthorFrame,
+    String? postOwnerId,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return false;
@@ -555,6 +592,10 @@ class ChatController extends ChangeNotifier {
         postCaption: postCaption,
         postCreatedAt: postCreatedAt,
         bubbleTheme: bubbleTheme,
+        postAuthorName: postAuthorName,
+        postAuthorAvatar: postAuthorAvatar,
+        postAuthorFrame: postAuthorFrame,
+        postOwnerId: postOwnerId,
       );
       return success;
     } finally {
@@ -632,8 +673,10 @@ class ChatController extends ChangeNotifier {
     required String messageId,
     required String emoji,
     required String messageText,
+    bool isGroup = false,
+    String? groupName,
   }) async {
-    final chatId = ChatRepository.getChatId(myUid, friendUid);
+    final chatId = isGroup ? friendUid : ChatRepository.getChatId(myUid, friendUid);
     await _chatRepository.toggleMessageReaction(
       chatId: chatId,
       messageId: messageId,
@@ -641,6 +684,8 @@ class ChatController extends ChangeNotifier {
       emoji: emoji,
       receiverId: friendUid,
       messageText: messageText,
+      isGroup: isGroup,
+      groupName: groupName,
     );
   }
 

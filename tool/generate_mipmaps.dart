@@ -14,6 +14,10 @@ void main() {
     'ic_launcher_default': 'assets/icons/memeapp_icon.png',
     'ic_launcher_1': 'assets/icons/memeapp_icon1.png',
     'ic_launcher_2': 'assets/icons/memeapp_icon2.png',
+    'ic_launcher_3': 'assets/icons/memeapp_icon3.png',
+    'ic_launcher_4': 'assets/icons/memeapp_icon4.png',
+    'ic_launcher_5': 'assets/icons/memeapp_icon5.png',
+    'ic_launcher_6': 'assets/icons/memeapp_icon6.png',
   };
 
   final resDir = Directory('android/app/src/main/res');

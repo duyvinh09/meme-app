@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/localization_extension.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/local_settings_service.dart';
 import '../../../core/utils/app_toast.dart';
@@ -14,12 +15,16 @@ import '../../../data/models/chat_bubble_theme.dart';
 import '../../../data/models/chat_message_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/chat_bubble_widget.dart';
 import '../widgets/message_action_menu_overlay.dart';
+import '../widgets/message_reactions_detail_sheet.dart';
+import '../widgets/mute_chat_sheet.dart';
 import '../widgets/typing_indicator_widget.dart';
 
 class ChatConversationScreen extends StatefulWidget {
@@ -37,7 +42,7 @@ class ChatConversationScreen extends StatefulWidget {
 }
 
 class _ChatConversationScreenState extends State<ChatConversationScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _textFocusNode = FocusNode();
@@ -278,6 +283,36 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final modalRoute = ModalRoute.of(context);
+    if (modalRoute is PageRoute) {
+      AppRoutes.routeObserver.subscribe(this, modalRoute);
+    }
+  }
+
+  @override
+  void didPopNext() {
+    if (mounted) {
+      context.read<ChatController>().setActiveChatFriend(widget.friend.uid);
+    }
+  }
+
+  @override
+  void didPushNext() {
+    if (mounted) {
+      context.read<ChatController>().setActiveChatFriend(null);
+    }
+  }
+
+  @override
+  void didPop() {
+    if (mounted) {
+      context.read<ChatController>().setActiveChatFriend(null);
+    }
+  }
+
+  @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (!mounted) return;
     final myUid = context.read<AuthController>().user?.uid;
@@ -286,8 +321,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
       if (_hasText && myUid != null) {
         _onTextChanged();
       }
-    } else {
-      context.read<ChatController>().setActiveChatFriend(null);
+    } else if (state == AppLifecycleState.paused) {
       _stopTypingHeartbeat(myUid);
     }
   }
@@ -342,11 +376,13 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
 
   @override
   void dispose() {
+    AppRoutes.routeObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _presenceTimer?.cancel();
     final myUid = context.read<AuthController>().user?.uid;
     _stopTypingHeartbeat(myUid);
     _floatingDateHideTimer?.cancel();
+    context.read<ChatController>().setActiveChatFriend(null);
 
     // Persist or clean up draft when disposing
     final rawText = _textController.text;
@@ -367,7 +403,6 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
 
   @override
   void deactivate() {
-    context.read<ChatController>().setActiveChatFriend(null);
     final myUid = context.read<AuthController>().user?.uid;
     _stopTypingHeartbeat(myUid);
     super.deactivate();
@@ -406,6 +441,38 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     }
 
     if (_currentPostReply != null) {
+      final postOwnerId = _currentPostReply!.userId;
+      final myProfile = context.read<ProfileController>().user;
+      String? authorName;
+      String? authorAvatar;
+      String? authorFrame;
+
+      if (postOwnerId == myUid) {
+        authorName = (myProfile?.name.trim().isNotEmpty == true)
+            ? myProfile!.name.trim()
+            : (myProfile?.username.trim().isNotEmpty == true
+                ? myProfile!.username.trim()
+                : 'Bạn');
+        authorAvatar = myProfile?.avatarUrl;
+        authorFrame = myProfile?.avatarFrame;
+      } else if (postOwnerId == widget.friend.uid) {
+        authorName = widget.friend.name.trim().isNotEmpty
+            ? widget.friend.name.trim()
+            : widget.friend.username.trim();
+        authorAvatar = widget.friend.avatarUrl;
+        authorFrame = widget.friend.avatarFrame;
+      } else {
+        final author =
+            await context.read<UserRepository>().getUserProfile(postOwnerId);
+        if (author != null) {
+          authorName = author.name.trim().isNotEmpty
+              ? author.name.trim()
+              : author.username.trim();
+          authorAvatar = author.avatarUrl;
+          authorFrame = author.avatarFrame;
+        }
+      }
+
       await chatCtrl.sendPostReply(
         myUid: myUid,
         friendUid: widget.friend.uid,
@@ -415,6 +482,10 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
         postCaption: _currentPostReply!.caption,
         postCreatedAt: _currentPostReply!.createdAt,
         bubbleTheme: bubbleTheme,
+        postAuthorName: authorName,
+        postAuthorAvatar: authorAvatar,
+        postAuthorFrame: authorFrame,
+        postOwnerId: postOwnerId,
       );
       setState(() {
         _currentPostReply = null;
@@ -456,6 +527,38 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     final bubbleTheme = context.read<LocalSettingsService>().chatBubbleTheme;
 
     if (_currentPostReply != null) {
+      final postOwnerId = _currentPostReply!.userId;
+      final myProfile = context.read<ProfileController>().user;
+      String? authorName;
+      String? authorAvatar;
+      String? authorFrame;
+
+      if (postOwnerId == myUid) {
+        authorName = (myProfile?.name.trim().isNotEmpty == true)
+            ? myProfile!.name.trim()
+            : (myProfile?.username.trim().isNotEmpty == true
+                ? myProfile!.username.trim()
+                : 'Bạn');
+        authorAvatar = myProfile?.avatarUrl;
+        authorFrame = myProfile?.avatarFrame;
+      } else if (postOwnerId == widget.friend.uid) {
+        authorName = widget.friend.name.trim().isNotEmpty
+            ? widget.friend.name.trim()
+            : widget.friend.username.trim();
+        authorAvatar = widget.friend.avatarUrl;
+        authorFrame = widget.friend.avatarFrame;
+      } else {
+        final author =
+            await context.read<UserRepository>().getUserProfile(postOwnerId);
+        if (author != null) {
+          authorName = author.name.trim().isNotEmpty
+              ? author.name.trim()
+              : author.username.trim();
+          authorAvatar = author.avatarUrl;
+          authorFrame = author.avatarFrame;
+        }
+      }
+
       await chatCtrl.sendPostReply(
         myUid: myUid,
         friendUid: widget.friend.uid,
@@ -465,6 +568,10 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
         postCaption: _currentPostReply!.caption,
         postCreatedAt: _currentPostReply!.createdAt,
         bubbleTheme: bubbleTheme,
+        postAuthorName: authorName,
+        postAuthorAvatar: authorAvatar,
+        postAuthorFrame: authorFrame,
+        postOwnerId: postOwnerId,
       );
       setState(() => _currentPostReply = null);
     } else {
@@ -474,6 +581,15 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
         text: emoji,
         bubbleTheme: bubbleTheme,
       );
+    }
+  }
+
+  void _unfocusKeyboard() {
+    if (_textFocusNode.hasFocus) {
+      _textFocusNode.unfocus();
+    }
+    if (_showEmojiGrid) {
+      setState(() => _showEmojiGrid = false);
     }
   }
 
@@ -867,6 +983,8 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     final headerColor = isDark ? Colors.black : Colors.white;
 
     final userRepo = context.read<UserRepository>();
+    final chatRepo = context.read<ChatRepository>();
+    final chatId = myUid.isNotEmpty ? ChatRepository.getChatId(myUid, widget.friend.uid) : '';
     final myShowActiveStatus = context.watch<LocalSettingsService>().showActiveStatus;
 
     return StreamBuilder<bool>(
@@ -997,6 +1115,40 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
               ],
             ),
             actions: [
+              // Mute Notification Bell
+              if (chatId.isNotEmpty)
+                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('chats')
+                      .doc(chatId)
+                      .snapshots(),
+                  builder: (btnCtx, snapshot) {
+                    final chatData = snapshot.data?.data();
+                    final isMuted = chatRepo.isChatMuted(chatData, myUid);
+                    return IconButton(
+                      tooltip: isMuted ? 'Bật thông báo' : 'Tắt thông báo',
+                      icon: Icon(
+                        isMuted
+                            ? Icons.notifications_off_rounded
+                            : Icons.notifications_outlined,
+                        color: isMuted
+                            ? const Color(0xFFFF5252)
+                            : (isDark ? Colors.white : Colors.black87),
+                        size: 22,
+                      ),
+                      onPressed: () {
+                        MuteChatSheet.show(
+                          context,
+                          chatId: chatId,
+                          myUid: myUid,
+                          isCurrentlyMuted: isMuted,
+                          isGroup: false,
+                        );
+                      },
+                    );
+                  },
+                ),
+
               // Star (Bạn thân)
               IconButton(
                 icon: Icon(
@@ -1031,159 +1183,163 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
           body: SafeArea(
             child: Column(
               children: [
-                // Message List Area
+                // Message List Area (Tap anywhere outside footer to dismiss virtual keyboard)
                 Expanded(
-                  child: StreamBuilder<bool>(
-                    stream: myUid.isNotEmpty
-                        ? chatCtrl.streamFriendTyping(
-                            myUid: myUid,
-                            friendUid: widget.friend.uid,
-                          )
-                        : const Stream.empty(),
-                    initialData: false,
-                    builder: (context, typingSnapshot) {
-                      final isFriendTyping = typingSnapshot.data == true;
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _unfocusKeyboard,
+                    child: StreamBuilder<bool>(
+                      stream: myUid.isNotEmpty
+                          ? chatCtrl.streamFriendTyping(
+                              myUid: myUid,
+                              friendUid: widget.friend.uid,
+                            )
+                          : const Stream.empty(),
+                      initialData: false,
+                      builder: (context, typingSnapshot) {
+                        final isFriendTyping = typingSnapshot.data == true;
 
-                      return Stack(
-                        key: _listStackKey,
-                        children: [
-                          Positioned.fill(
-                            child: StreamBuilder<List<ChatMessageModel>>(
-                              stream: chatCtrl.messagesStream(
-                                myUid: myUid,
-                                friendUid: widget.friend.uid,
-                              ),
-                              builder: (context, snapshot) {
-                                if (snapshot.connectionState == ConnectionState.waiting &&
-                                    !snapshot.hasData) {
-                                  return const Center(
-                                    child: CircularProgressIndicator(strokeWidth: 2.5),
-                                  );
-                                }
-
-                                final allMessages = snapshot.data ?? [];
-                                final messages = allMessages
-                                    .where((m) => !m.deletedFor.contains(myUid))
-                                    .toList();
-
-                                // Immediately mark incoming unread messages as read in real time
-                                if (messages.isNotEmpty && myUid.isNotEmpty) {
-                                  final hasUnread = messages.any(
-                                    (m) => m.receiverId == myUid && !m.isRead,
-                                  );
-                                  if (hasUnread) {
-                                    chatCtrl.markChatAsRead(
-                                      myUid: myUid,
-                                      friendUid: widget.friend.uid,
+                        return Stack(
+                          key: _listStackKey,
+                          children: [
+                            Positioned.fill(
+                              child: StreamBuilder<List<ChatMessageModel>>(
+                                stream: chatCtrl.messagesStream(
+                                  myUid: myUid,
+                                  friendUid: widget.friend.uid,
+                                ),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState == ConnectionState.waiting &&
+                                      !snapshot.hasData) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(strokeWidth: 2.5),
                                     );
                                   }
-                                }
 
-                                if (messages.isEmpty && !isFriendTyping) {
-                                  return Center(
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          if (liveFriend.avatarUrl.isNotEmpty)
-                                            AvatarWithFrame(
-                                              avatarUrl: liveFriend.avatarUrl,
-                                              frameId: liveFriend.avatarFrame,
-                                              size: 84,
-                                            )
-                                          else
-                                            Container(
-                                              width: 84,
-                                              height: 84,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: isDark
-                                                    ? const Color(0xFF26262B)
-                                                    : const Color(0xFFE5E7EB),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  _getInitials(liveFriend.name),
-                                                  style: TextStyle(
-                                                    color: isDark
-                                                        ? Colors.white
-                                                        : const Color(0xFF111827),
-                                                    fontSize: 28,
-                                                    fontWeight: FontWeight.w800,
+                                  final allMessages = snapshot.data ?? [];
+                                  final messages = allMessages
+                                      .where((m) => !m.deletedFor.contains(myUid))
+                                      .toList();
+
+                                  // Immediately mark incoming unread messages as read in real time
+                                  if (messages.isNotEmpty && myUid.isNotEmpty) {
+                                    final hasUnread = messages.any(
+                                      (m) => m.receiverId == myUid && !m.isRead,
+                                    );
+                                    if (hasUnread) {
+                                      chatCtrl.markChatAsRead(
+                                        myUid: myUid,
+                                        friendUid: widget.friend.uid,
+                                      );
+                                    }
+                                  }
+
+                                  if (messages.isEmpty && !isFriendTyping) {
+                                    return Center(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            if (liveFriend.avatarUrl.isNotEmpty)
+                                              AvatarWithFrame(
+                                                avatarUrl: liveFriend.avatarUrl,
+                                                frameId: liveFriend.avatarFrame,
+                                                size: 84,
+                                              )
+                                            else
+                                              Container(
+                                                width: 84,
+                                                height: 84,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: isDark
+                                                      ? const Color(0xFF26262B)
+                                                      : const Color(0xFFE5E7EB),
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    _getInitials(liveFriend.name),
+                                                    style: TextStyle(
+                                                      color: isDark
+                                                          ? Colors.white
+                                                          : const Color(0xFF111827),
+                                                      fontSize: 28,
+                                                      fontWeight: FontWeight.w800,
+                                                    ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          const SizedBox(height: 16),
-                                          Text(
-                                            liveFriend.name.isNotEmpty
-                                                ? liveFriend.name
-                                                : liveFriend.username,
-                                            style: TextStyle(
-                                              color: isDark ? Colors.white : const Color(0xFF111827),
-                                              fontSize: 19,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            '@${liveFriend.username}',
-                                            style: TextStyle(
-                                              color: isDark ? Colors.white54 : const Color(0xFF6B7280),
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                              vertical: 8,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: isDark
-                                                  ? Colors.white.withValues(alpha: 0.05)
-                                                  : Colors.black.withValues(alpha: 0.04),
-                                              borderRadius: BorderRadius.circular(999),
-                                            ),
-                                            child: Text(
-                                              context.l10n.emptyConversationPrompt,
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              liveFriend.name.isNotEmpty
+                                                  ? liveFriend.name
+                                                  : liveFriend.username,
                                               style: TextStyle(
-                                                color: isDark ? Colors.white70 : const Color(0xFF4B5563),
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w600,
+                                                color: isDark ? Colors.white : const Color(0xFF111827),
+                                                fontSize: 19,
+                                                fontWeight: FontWeight.w800,
                                               ),
                                             ),
-                                          ),
-                                        ],
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '@${liveFriend.username}',
+                                              style: TextStyle(
+                                                color: isDark ? Colors.white54 : const Color(0xFF6B7280),
+                                                fontSize: 13.5,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 16,
+                                                vertical: 8,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: isDark
+                                                    ? Colors.white.withValues(alpha: 0.05)
+                                                    : Colors.black.withValues(alpha: 0.04),
+                                                borderRadius: BorderRadius.circular(999),
+                                              ),
+                                              child: Text(
+                                                context.l10n.emptyConversationPrompt,
+                                                style: TextStyle(
+                                                  color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                    ),
-                                  );
-                                }
+                                    );
+                                  }
 
-                                final lastMyMessageIndex = messages.indexWhere((m) => m.senderId == myUid);
-                                final int totalItemCount = messages.length + (isFriendTyping ? 1 : 0);
+                                  final lastMyMessageIndex = messages.indexWhere((m) => m.senderId == myUid);
+                                  final int totalItemCount = messages.length + (isFriendTyping ? 1 : 0);
 
-                                return NotificationListener<ScrollNotification>(
-                                  onNotification: (notification) {
-                                    if (notification is ScrollUpdateNotification ||
-                                        notification is UserScrollNotification) {
-                                      _updateFloatingHeader(messages);
-                                    } else if (notification is ScrollEndNotification) {
-                                      _startFloatingHeaderTimer();
-                                    }
-                                    return false;
-                                  },
-                                  child: ListView.builder(
-                                    controller: _scrollController,
-                                    reverse: true,
-                                    physics: const BouncingScrollPhysics(),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 10,
-                                    ),
-                                    itemCount: totalItemCount,
+                                  return NotificationListener<ScrollNotification>(
+                                    onNotification: (notification) {
+                                      if (notification is ScrollUpdateNotification ||
+                                          notification is UserScrollNotification) {
+                                        _updateFloatingHeader(messages);
+                                      } else if (notification is ScrollEndNotification) {
+                                        _startFloatingHeaderTimer();
+                                      }
+                                      return false;
+                                    },
+                                    child: ListView.builder(
+                                      controller: _scrollController,
+                                      reverse: true,
+                                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                                      physics: const BouncingScrollPhysics(),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 10,
+                                      ),
+                                      itemCount: totalItemCount,
                                     itemBuilder: (context, index) {
                                       if (isFriendTyping && index == 0) {
                                         return ChatTypingBubble(
@@ -1424,6 +1580,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                     },
                   ),
                 ),
+              ),
 
             // Replying to Message Banner Preview (Swipe to reply)
             if (_replyingToMessage != null)
@@ -1812,12 +1969,21 @@ class _ChatMessageBubble extends StatefulWidget {
 }
 
 class _ChatMessageBubbleState extends State<_ChatMessageBubble>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final GlobalKey _bubbleContentKey = GlobalKey();
   bool _showDetails = false;
   double _dragOffset = 0.0;
   AnimationController? _animController;
   Animation<double>? _anim;
+
+  // Optimistic UI state for 0ms instant reaction feedback
+  Map<String, String>? _optimisticReactions;
+  AnimationController? _heartAnimController;
+  Animation<double>? _heartScaleAnim;
+  Animation<double>? _heartOpacityAnim;
+
+  Map<String, String> get _effectiveReactions =>
+      _optimisticReactions ?? widget.message.reactions;
 
   void _openActionMenu() {
     MessageActionMenuOverlay.show(
@@ -1825,11 +1991,32 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
       message: widget.message,
       isMe: widget.isMe,
       friend: widget.friend,
+      myReaction: _effectiveReactions[widget.myUid],
       messageKey: _bubbleContentKey,
       messageChild: _buildBubbleContent(context),
-      onSelectReaction: widget.onReactionTap,
+      onSelectReaction: (emoji) {
+        _handleOptimisticReaction(emoji);
+      },
       onSelectAction: (action) {
         widget.onActionSelected?.call(action);
+      },
+    );
+  }
+
+  void _openReactionsDetailSheet() {
+    final myUid = context.read<AuthController>().user?.uid ?? '';
+    final chatId = ChatRepository.getChatId(myUid, widget.friend.uid);
+    MessageReactionsDetailSheet.show(
+      context: context,
+      message: widget.message,
+      myUid: myUid,
+      chatId: chatId,
+      isGroup: false,
+      userCache: {
+        widget.friend.uid: widget.friend,
+      },
+      onRemoveReaction: (emoji) async {
+        _handleOptimisticReaction(emoji);
       },
     );
   }
@@ -1841,12 +2028,185 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
       vsync: this,
       duration: const Duration(milliseconds: 180),
     );
+
+    // Heart Burst / Pop Animation on Double-Tap
+    _heartAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
+
+    _heartScaleAnim = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.35)
+            .chain(CurveTween(curve: Curves.easeOutBack)),
+        weight: 35,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.35, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 1.40)
+            .chain(CurveTween(curve: Curves.easeInQuad)),
+        weight: 45,
+      ),
+    ]).animate(_heartAnimController!);
+
+    _heartOpacityAnim = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 0.0, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeIn)),
+        weight: 15,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.0),
+        weight: 45,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: 0.0)
+            .chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+    ]).animate(_heartAnimController!);
+  }
+
+  @override
+  void didUpdateWidget(_ChatMessageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message.reactions != widget.message.reactions) {
+      _optimisticReactions = null;
+    }
   }
 
   @override
   void dispose() {
     _animController?.dispose();
+    _heartAnimController?.dispose();
     super.dispose();
+  }
+
+  void _handleOptimisticReaction(String emoji) {
+    HapticFeedback.lightImpact();
+    final myUid = widget.myUid;
+    final current = Map<String, String>.from(_effectiveReactions);
+    final isHeart = emoji == '❤️';
+
+    if (current[myUid] == emoji) {
+      // Toggle off / remove reaction
+      current.remove(myUid);
+    } else {
+      // Add or change reaction
+      current[myUid] = emoji;
+      if (isHeart) {
+        _heartAnimController?.forward(from: 0.0);
+      }
+    }
+
+    setState(() {
+      _optimisticReactions = current;
+    });
+
+    widget.onReactionTap(emoji);
+  }
+
+  void _handleDoubleTap() {
+    _handleOptimisticReaction('❤️');
+  }
+
+  Widget _buildHeartPopOverlay() {
+    if (_heartAnimController == null) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: Center(
+          child: AnimatedBuilder(
+            animation: _heartAnimController!,
+            builder: (context, child) {
+              if (!_heartAnimController!.isAnimating &&
+                  _heartAnimController!.value == 0) {
+                return const SizedBox.shrink();
+              }
+              return Opacity(
+                opacity: (_heartOpacityAnim?.value ?? 0.0).clamp(0.0, 1.0),
+                child: Transform.scale(
+                  scale: _heartScaleAnim?.value ?? 1.0,
+                  child: child,
+                ),
+              );
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.redAccent.withValues(alpha: 0.45),
+                    blurRadius: 20,
+                    spreadRadius: 3,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.favorite_rounded,
+                color: Colors.redAccent,
+                size: 48,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildReactionsBadge({double bottom = -13, double rightOrLeft = 6}) {
+    final reactions = _effectiveReactions;
+    if (reactions.isEmpty) return const SizedBox.shrink();
+
+    return Positioned(
+      bottom: bottom,
+      right: widget.isMe ? rightOrLeft : null,
+      left: widget.isMe ? null : rightOrLeft,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: _openReactionsDetailSheet,
+        onLongPress: _openActionMenu,
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 5,
+            vertical: 1.5,
+          ),
+          decoration: BoxDecoration(
+            color: widget.isDark
+                ? const Color(0xFF242526)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: widget.isDark
+                  ? Colors.black
+                  : const Color(0xFFE4E6EB),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.18),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: reactions.values
+                .toSet()
+                .take(3)
+                .map((em) => Text(
+                      em,
+                      style: const TextStyle(fontSize: 12),
+                    ))
+                .toList(),
+          ),
+        ),
+      ),
+    );
   }
 
   void _onHorizontalDragUpdate(DragUpdateDetails details) {
@@ -2024,7 +2384,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
               ),
               const SizedBox(width: 4),
               Text(
-                  () {
+                () {
                   final l10n = context.l10n;
                   final friendName = widget.friend.name.isNotEmpty
                       ? widget.friend.name
@@ -2241,152 +2601,212 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
           _buildQuotedReplyHeader(),
 
           // Full Rounded Post Preview Card (aligned to edge)
-          Container(
-            width: cardSize,
-            height: cardSize,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.16),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(28),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.network(
-                    widget.message.postImageUrl!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(color: const Color(0xFF1E2430)),
+          GestureDetector(
+            onDoubleTap: _handleDoubleTap,
+            onLongPress: _openActionMenu,
+            child: Container(
+              width: cardSize,
+              height: cardSize,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.16),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(28),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      widget.message.postImageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          Container(color: const Color(0xFF1E2430)),
+                    ),
 
-                  // Subtle dark gradient from top and bottom for readability
-                  Positioned.fill(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.45),
-                            Colors.transparent,
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.70),
-                          ],
-                          stops: const [0.0, 0.28, 0.65, 1.0],
+                    // Subtle dark gradient from top and bottom for readability
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.45),
+                              Colors.transparent,
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.70),
+                            ],
+                            stops: const [0.0, 0.28, 0.65, 1.0],
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
-                  // Post author avatar + name & time (matching reference UI)
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    right: 10,
-                    child: Row(
-                      children: [
-                        if (widget.friend.avatarUrl.isNotEmpty)
-                          AvatarWithFrame(
-                            avatarUrl: widget.friend.avatarUrl,
-                            frameId: widget.friend.avatarFrame,
-                            size: 24,
-                          )
-                        else
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Color(0xFF374151),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _getInitials(widget.friend.name),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w700,
+                    // Post author avatar + name & time (matching reference UI)
+                    Positioned(
+                      top: 10,
+                      left: 10,
+                      right: 10,
+                      child: Builder(
+                        builder: (context) {
+                          final authUser = context.read<AuthController>().user;
+                          final profileUser = context.read<ProfileController>().user;
+                          final myUid = authUser?.uid ?? '';
+                          final myName = (profileUser?.name.trim().isNotEmpty == true)
+                              ? profileUser!.name.trim()
+                              : (profileUser?.username.trim().isNotEmpty == true
+                                  ? profileUser!.username.trim()
+                                  : (authUser?.displayName?.trim().isNotEmpty == true
+                                      ? authUser!.displayName!.trim()
+                                      : 'Bạn'));
+                          final myAvatar = profileUser?.avatarUrl ?? '';
+                          final myFrame = profileUser?.avatarFrame ?? 'plain';
+
+                          final friendName = widget.friend.name.trim().isNotEmpty
+                              ? widget.friend.name.trim()
+                              : widget.friend.username.trim();
+                          final friendAvatar = widget.friend.avatarUrl;
+                          final friendFrame = widget.friend.avatarFrame;
+
+                          String displayAuthorName;
+                          String displayAuthorAvatar;
+                          String displayAuthorFrame;
+
+                          if (widget.message.postAuthorName != null &&
+                              widget.message.postAuthorName!.trim().isNotEmpty) {
+                            displayAuthorName = widget.message.postAuthorName!.trim();
+                            displayAuthorAvatar = widget.message.postAuthorAvatar ?? '';
+                            displayAuthorFrame = widget.message.postAuthorFrame ?? 'plain';
+                          } else if (widget.message.postOwnerId != null &&
+                              widget.message.postOwnerId!.isNotEmpty) {
+                            if (widget.message.postOwnerId == myUid) {
+                              displayAuthorName = myName;
+                              displayAuthorAvatar = myAvatar;
+                              displayAuthorFrame = myFrame;
+                            } else {
+                              displayAuthorName = friendName;
+                              displayAuthorAvatar = friendAvatar;
+                              displayAuthorFrame = friendFrame;
+                            }
+                          } else {
+                            if (widget.isMe) {
+                              displayAuthorName = friendName;
+                              displayAuthorAvatar = friendAvatar;
+                              displayAuthorFrame = friendFrame;
+                            } else {
+                              displayAuthorName = myName;
+                              displayAuthorAvatar = myAvatar;
+                              displayAuthorFrame = myFrame;
+                            }
+                          }
+
+                          return Row(
+                            children: [
+                              if (displayAuthorAvatar.isNotEmpty)
+                                AvatarWithFrame(
+                                  avatarUrl: displayAuthorAvatar,
+                                  frameId: displayAuthorFrame,
+                                  size: 24,
+                                )
+                              else
+                                Container(
+                                  width: 24,
+                                  height: 24,
+                                  decoration: const BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Color(0xFF374151),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _getInitials(displayAuthorName),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
                                 ),
+                              const SizedBox(width: 7),
+                              Expanded(
+                                child: Text(
+                                  displayAuthorName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    shadows: [
+                                      Shadow(color: Colors.black54, blurRadius: 4),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              if (postTimeAgo.isNotEmpty)
+                                Text(
+                                  postTimeAgo,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.85),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    shadows: const [
+                                      Shadow(color: Colors.black54, blurRadius: 4),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+
+                    // Post caption badge pinned at bottom
+                    if (widget.message.postCaption != null &&
+                        widget.message.postCaption!.isNotEmpty)
+                      Positioned(
+                        left: 12,
+                        right: 12,
+                        bottom: 12,
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.50),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.20),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Text(
+                              widget.message.postCaption!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
-                        const SizedBox(width: 7),
-                        Expanded(
-                          child: Text(
-                            widget.friend.name.isNotEmpty
-                                ? widget.friend.name
-                                : widget.friend.username,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              shadows: [
-                                Shadow(color: Colors.black54, blurRadius: 4),
-                              ],
-                            ),
-                          ),
-                        ),
-                        if (postTimeAgo.isNotEmpty)
-                          Text(
-                            postTimeAgo,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              shadows: const [
-                                Shadow(color: Colors.black54, blurRadius: 4),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-
-                  // Post caption badge pinned at bottom
-                  if (widget.message.postCaption != null &&
-                      widget.message.postCaption!.isNotEmpty)
-                    Positioned(
-                      left: 12,
-                      right: 12,
-                      bottom: 12,
-                      child: Center(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.50),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.20),
-                              width: 0.8,
-                            ),
-                          ),
-                          child: Text(
-                            widget.message.postCaption!,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
                         ),
                       ),
-                    ),
-                ],
+
+                    // Heart Pop Animation Overlay for Post Card
+                    _buildHeartPopOverlay(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -2404,7 +2824,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                 children: [
                   if (_isPureEmoji || widget.message.type == 'reaction') ...[
                     GestureDetector(
-                      onDoubleTap: widget.onDoubleTap,
+                      onDoubleTap: _handleDoubleTap,
                       onLongPress: _openActionMenu,
                       child: Text(
                         widget.message.text,
@@ -2414,7 +2834,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                   ] else ...[
                     GestureDetector(
                       onTap: () => setState(() => _showDetails = !_showDetails),
-                      onDoubleTap: widget.onDoubleTap,
+                      onDoubleTap: _handleDoubleTap,
                       onLongPress: _openActionMenu,
                       child: (widget.isMe || !currentTheme.isDefault)
                           ? ChatBubbleDecoratedBox(
@@ -2445,8 +2865,8 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                                 widget.message.text,
                                 style: TextStyle(
                                   color: widget.isDark
-                                      ? Colors.white
-                                      : const Color(0xFF050505),
+                                  ? Colors.white
+                                  : const Color(0xFF050505),
                                   fontSize: 15,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -2455,58 +2875,17 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                     ),
                   ],
 
+                  // Heart Pop Animation Overlay
+                  _buildHeartPopOverlay(),
+
                   // Reaction Pill Badge docked at bottom
-                  if (widget.message.reactions.isNotEmpty)
-                    Positioned(
-                      bottom: -10,
-                      right: widget.isMe ? 6 : null,
-                      left: widget.isMe ? null : 6,
-                      child: GestureDetector(
-                        onTap: _openActionMenu,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: widget.isDark
-                                ? const Color(0xFF242526)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: widget.isDark
-                                  ? Colors.black
-                                  : const Color(0xFFE4E6EB),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.18),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: widget.message.reactions.values
-                                .toSet()
-                                .take(3)
-                                .map((em) => Text(
-                                      em,
-                                      style: const TextStyle(fontSize: 12),
-                                    ))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ),
+                  _buildReactionsBadge(bottom: -10, rightOrLeft: 6),
                 ],
               ),
             ],
           ),
 
-          if (widget.message.reactions.isNotEmpty) const SizedBox(height: 8),
+          if (_effectiveReactions.isNotEmpty) const SizedBox(height: 8),
 
           _buildStatusLine(context),
         ],
@@ -2528,63 +2907,24 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                 children: [
                   GestureDetector(
                     onTap: () => setState(() => _showDetails = !_showDetails),
-                    onDoubleTap: widget.onDoubleTap,
+                    onDoubleTap: _handleDoubleTap,
                     onLongPress: _openActionMenu,
                     child: Text(
                       widget.message.text,
                       style: const TextStyle(fontSize: 42),
                     ),
                   ),
-                  if (widget.message.reactions.isNotEmpty)
-                    Positioned(
-                      bottom: -10,
-                      right: widget.isMe ? 2 : null,
-                      left: widget.isMe ? null : 2,
-                      child: GestureDetector(
-                        onTap: _openActionMenu,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4.5,
-                            vertical: 1.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: widget.isDark
-                                ? const Color(0xFF242526)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: widget.isDark
-                                  ? Colors.black
-                                  : const Color(0xFFE4E6EB),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.18),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: widget.message.reactions.values
-                                .toSet()
-                                .take(3)
-                                .map((em) => Text(
-                                      em,
-                                      style: const TextStyle(fontSize: 12),
-                                    ))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ),
+
+                  // Heart Pop Animation Overlay
+                  _buildHeartPopOverlay(),
+
+                  // Reaction Pill Badge
+                  _buildReactionsBadge(bottom: -10, rightOrLeft: 2),
                 ],
               ),
             ],
           ),
-          if (widget.message.reactions.isNotEmpty) const SizedBox(height: 6),
+          if (_effectiveReactions.isNotEmpty) const SizedBox(height: 6),
           _buildStatusLine(context),
         ],
       );
@@ -2611,7 +2951,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                 children: [
                   GestureDetector(
                     onTap: () => setState(() => _showDetails = !_showDetails),
-                    onDoubleTap: widget.onDoubleTap,
+                    onDoubleTap: _handleDoubleTap,
                     onLongPress: _openActionMenu,
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
@@ -2664,58 +3004,17 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                     ),
                   ),
 
+                  // Heart Pop Animation Overlay
+                  _buildHeartPopOverlay(),
+
                   // Reaction Pill Badge docked at the bottom corner of the bubble (Messenger Style)
-                  if (widget.message.reactions.isNotEmpty)
-                    Positioned(
-                      bottom: -13,
-                      right: widget.isMe ? 6 : null,
-                      left: widget.isMe ? null : 6,
-                      child: GestureDetector(
-                        onTap: _openActionMenu,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 5,
-                            vertical: 1.5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: widget.isDark
-                                ? const Color(0xFF242526)
-                                : Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: widget.isDark
-                                  ? Colors.black
-                                  : const Color(0xFFE4E6EB),
-                              width: 1.5,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.18),
-                                blurRadius: 4,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: widget.message.reactions.values
-                                .toSet()
-                                .take(3)
-                                .map((em) => Text(
-                                      em,
-                                      style: const TextStyle(fontSize: 12),
-                                    ))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ),
+                  _buildReactionsBadge(bottom: -13, rightOrLeft: 6),
                 ],
               ),
             ],
           ),
 
-          if (widget.message.reactions.isNotEmpty) const SizedBox(height: 8),
+          if (_effectiveReactions.isNotEmpty) const SizedBox(height: 8),
 
           // Status / Seen Receipt line
           _buildStatusLine(context),
@@ -2728,7 +3027,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
 
   @override
   Widget build(BuildContext context) {
-    final hasReactions = widget.message.reactions.isNotEmpty;
+    final hasReactions = _effectiveReactions.isNotEmpty;
     final verticalPadding = widget.isLastInGroup ? 5.0 : 3.0;
     final absOffset = _dragOffset.abs();
 
@@ -2736,7 +3035,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
       onHorizontalDragUpdate: _onHorizontalDragUpdate,
       onHorizontalDragEnd: _onHorizontalDragEnd,
       onLongPress: _openActionMenu,
-      onDoubleTap: widget.onDoubleTap,
+      onDoubleTap: _handleDoubleTap,
       behavior: HitTestBehavior.translucent,
       child: Padding(
         padding: EdgeInsets.only(

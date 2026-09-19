@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -77,7 +78,7 @@ class _CameraScreenState extends State<CameraScreen>
   double _minZoom = 1.0;
   double _baseZoom = 1.0;
 
-  static const Duration _maxRecordDuration = Duration(seconds: 5);
+  static const Duration _maxRecordDuration = Duration(milliseconds: 5000);
   static const Color _cameraPreviewFallback = Color(0xFF1C1C1F);
 
   DateTime? _lastCameraCheck;
@@ -391,9 +392,13 @@ class _CameraScreenState extends State<CameraScreen>
         camera,
         _currentResolutionPreset,
         enableAudio: false,
-        imageFormatGroup: ImageFormatGroup.jpeg,
       );
       await controller.initialize();
+      try {
+        await controller.prepareForVideoRecording();
+      } catch (e) {
+        debugPrint('prepareForVideoRecording warning: $e');
+      }
     } catch (e) {
       await controller?.dispose();
       controller = null;
@@ -402,9 +407,11 @@ class _CameraScreenState extends State<CameraScreen>
           camera,
           ResolutionPreset.medium,
           enableAudio: false,
-          imageFormatGroup: ImageFormatGroup.jpeg,
         );
         await controller.initialize();
+        try {
+          await controller.prepareForVideoRecording();
+        } catch (_) {}
         _currentResolutionPreset = ResolutionPreset.medium;
       } catch (e2) {
         await controller?.dispose();
@@ -466,7 +473,6 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _toggleFlash() async {
     if (_controller == null ||
         !_controller!.value.isInitialized ||
-        _isRecordingVideo ||
         _isStoppingVideo) {
       return;
     }
@@ -487,7 +493,6 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _toggleZoom() async {
     if (_controller == null ||
         !_controller!.value.isInitialized ||
-        _isRecordingVideo ||
         _isStoppingVideo) {
       return;
     }
@@ -519,7 +524,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   void _handleScaleStart(ScaleStartDetails details) {
-    if (_isRecordingVideo || _isStoppingVideo) return;
+    if (_isStoppingVideo) return;
 
     _baseZoom = _zoomLevel;
   }
@@ -527,7 +532,6 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _handleScaleUpdate(ScaleUpdateDetails details) async {
     if (_controller == null ||
         !_controller!.value.isInitialized ||
-        _isRecordingVideo ||
         _isStoppingVideo) {
       return;
     }
@@ -603,7 +607,7 @@ class _CameraScreenState extends State<CameraScreen>
     );
 
     await file.writeAsBytes(
-      img.encodeJpg(cropped, quality: 98),
+      img.encodeJpg(cropped, quality: 85),
       flush: true,
     );
 
@@ -734,6 +738,7 @@ class _CameraScreenState extends State<CameraScreen>
     }
 
     try {
+      HapticFeedback.selectionClick();
       setState(() {
         _isCapturing = true;
       });
@@ -787,8 +792,8 @@ class _CameraScreenState extends State<CameraScreen>
 
       _recordTimer?.cancel();
       _recordTimer = Timer.periodic(
-        const Duration(milliseconds: 40),
-            (_) {
+        const Duration(milliseconds: 30),
+        (_) {
           if (!_isRecordingVideo || _recordStartedAt == null) return;
 
           final elapsed = DateTime.now().difference(_recordStartedAt!);
@@ -841,6 +846,10 @@ class _CameraScreenState extends State<CameraScreen>
           ? null
           : DateTime.now().difference(startedAt).inMilliseconds;
 
+      _controller?.prepareForVideoRecording().catchError((e) {
+        debugPrint('prepareForVideoRecording error: $e');
+      });
+
       if (!mounted) return;
 
       setState(() {
@@ -880,12 +889,13 @@ class _CameraScreenState extends State<CameraScreen>
     _holdStartTimer?.cancel();
 
     _holdStartTimer = Timer(
-      const Duration(milliseconds: 200),
-          () async {
+      const Duration(milliseconds: 150),
+      () async {
         if (!mounted) return;
         if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
         _didStartRecordingFromHold = true;
+        HapticFeedback.heavyImpact();
         await _startVideoRecording();
       },
     );
@@ -993,7 +1003,7 @@ class _CameraScreenState extends State<CameraScreen>
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.72),
+                  color: Colors.white.withValues(alpha: 0.72),
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -1010,7 +1020,7 @@ class _CameraScreenState extends State<CameraScreen>
             children: [
               Icon(
                 Icons.location_on_rounded,
-                color: Colors.white.withOpacity(0.74),
+                color: Colors.white.withValues(alpha: 0.74),
                 size: 16,
               ),
               const SizedBox(width: 5),
@@ -1020,7 +1030,7 @@ class _CameraScreenState extends State<CameraScreen>
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.74),
+                    color: Colors.white.withValues(alpha: 0.74),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1035,7 +1045,7 @@ class _CameraScreenState extends State<CameraScreen>
           children: [
             Icon(
               Icons.location_off_rounded,
-              color: Colors.white.withOpacity(0.45),
+              color: Colors.white.withValues(alpha: 0.45),
               size: 15,
             ),
             const SizedBox(width: 5),
@@ -1044,7 +1054,7 @@ class _CameraScreenState extends State<CameraScreen>
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.45),
+                color: Colors.white.withValues(alpha: 0.45),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -1148,7 +1158,7 @@ class _CameraScreenState extends State<CameraScreen>
                         color: const Color(0xFF333336),
                         borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.12),
+                          color: Colors.white.withValues(alpha: 0.12),
                           width: 1,
                         ),
                       ),

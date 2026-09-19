@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -25,9 +26,12 @@ import 'data/repositories/chat_repository.dart';
 import 'features/feed/controllers/feed_controller.dart';
 import 'features/chat/controllers/chat_controller.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'core/services/app_icon_service.dart';
+import 'core/services/in_app_notification_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/widgets/in_app_notification_host.dart';
 import 'core/services/exchange_rate_service.dart';
+import 'core/services/fcm_push_service.dart';
 import 'core/theme/app_scroll_behavior.dart';
 
 Future<void> main() async {
@@ -36,12 +40,20 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   final localSettings = LocalSettingsService();
   await localSettings.init();
+  await AppIconService.init();
+  await InAppNotificationService.instance.ensureLoaded();
   await ExchangeRateService.init();
   await NotificationService.instance.init();
+  await FcmPushService.instance.init();
 
   runApp(MyApp(localSettings: localSettings));
 }
@@ -133,6 +145,7 @@ class MyApp extends StatelessWidget {
               GlobalCupertinoLocalizations.delegate,
             ],
             navigatorKey: AppRoutes.navigatorKey,
+            navigatorObservers: [AppRoutes.routeObserver],
             onGenerateRoute: AppRoutes.onGenerateRoute,
             initialRoute: RouteNames.splash,
             builder: (context, child) {

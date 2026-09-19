@@ -37,8 +37,8 @@ class RewindScreen extends StatefulWidget {
 class _RewindScreenState extends State<RewindScreen>
     with SingleTickerProviderStateMixin {
   late RewindPeriod _currentPeriod;
-  late RewindData _rewindData;
-  late List<RewindStory> _stories;
+  RewindData? _rewindData;
+  List<RewindStory> _stories = [];
 
   int _currentIndex = 0;
   late AnimationController _progressController;
@@ -46,6 +46,8 @@ class _RewindScreenState extends State<RewindScreen>
   DateTime? _touchDownTime;
   bool _isHolding = false;
   bool _isZoomedIn = false;
+  bool _isLoading = true;
+  HomeController? _homeController;
 
   @override
   void initState() {
@@ -54,15 +56,48 @@ class _RewindScreenState extends State<RewindScreen>
 
     _progressController = AnimationController(vsync: this);
     _progressController.addStatusListener(_onProgressStatusChanged);
+  }
 
-    // Initial aggregation from HomeController
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadDataForPeriod(_currentPeriod);
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newHome = context.read<HomeController>();
+    if (_homeController != newHome) {
+      _homeController?.removeListener(_onHomeUpdated);
+      _homeController = newHome;
+      _homeController?.addListener(_onHomeUpdated);
+    }
+
+    final uid = context.read<AuthController>().user?.uid;
+    if (uid != null &&
+        _homeController != null &&
+        _homeController!.transactions.isEmpty &&
+        !_homeController!.isLoading) {
+      _homeController!.load(uid);
+    }
+
+    _loadDataForPeriod(_currentPeriod);
+  }
+
+  void _onHomeUpdated() {
+    if (!mounted) return;
+    _loadDataForPeriod(_currentPeriod);
   }
 
   void _loadDataForPeriod(RewindPeriod period) {
-    final home = context.read<HomeController>();
+    if (!mounted) return;
+    final home = _homeController ?? context.read<HomeController>();
+
+    // If home is currently loading and hasn't loaded any transactions yet, keep loading spinner
+    if (home.isLoading && home.transactions.isEmpty) {
+      if (!_isLoading) {
+        setState(() {
+          _isLoading = true;
+        });
+      }
+      return;
+    }
+
     final allTransactions = home.transactions;
     final currentStreak = home.profile?.currentStreak ?? 0;
 
@@ -74,14 +109,25 @@ class _RewindScreenState extends State<RewindScreen>
 
     final stories = RewindAggregationService.buildStories(data);
 
+    final bool isDifferentPeriod = _currentPeriod != period;
+    final bool hadNoStories = _stories.isEmpty;
+    final bool transitioningFromEmpty = _stories.isNotEmpty &&
+        _stories.first.type == RewindStoryType.empty &&
+        stories.first.type != RewindStoryType.empty;
+
     setState(() {
       _currentPeriod = period;
       _rewindData = data;
       _stories = stories;
-      _currentIndex = 0;
+      _isLoading = false;
+      if (isDifferentPeriod || hadNoStories || transitioningFromEmpty) {
+        _currentIndex = 0;
+      }
     });
 
-    _startCurrentStory();
+    if (isDifferentPeriod || hadNoStories || transitioningFromEmpty) {
+      _startCurrentStory();
+    }
   }
 
   void _startCurrentStory() {
@@ -158,17 +204,21 @@ class _RewindScreenState extends State<RewindScreen>
 
   @override
   void dispose() {
+    _homeController?.removeListener(_onHomeUpdated);
     _progressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!mounted || _stories.isEmpty) {
+    if (!mounted || _isLoading || _stories.isEmpty || _rewindData == null) {
       return const Scaffold(
         backgroundColor: Colors.black,
         body: Center(
-          child: CircularProgressIndicator(color: Colors.white),
+          child: CircularProgressIndicator(
+            color: Color(0xFF8B5CF6),
+            strokeWidth: 3,
+          ),
         ),
       );
     }
@@ -250,7 +300,7 @@ class _RewindScreenState extends State<RewindScreen>
                   Positioned.fill(
                     child: _buildStoryContent(
                       story: currentStory,
-                      data: _rewindData,
+                      data: _rewindData!,
                       currency: currency,
                       userName: userName,
                     ),

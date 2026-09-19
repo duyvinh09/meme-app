@@ -29,6 +29,7 @@ class ChatMessageModel {
   final String? postAuthorAvatar;
   final String? postAuthorFrame;
   final String? postOwnerId;
+  final List<String> taggedUserIds;
 
   /// Metadata for group expense system messages – used by Nearby Place Suggestions.
   final String? transactionCategory;
@@ -63,6 +64,7 @@ class ChatMessageModel {
     this.postAuthorAvatar,
     this.postAuthorFrame,
     this.postOwnerId,
+    this.taggedUserIds = const [],
     this.transactionCategory,
     this.transactionAmount,
   });
@@ -136,6 +138,7 @@ class ChatMessageModel {
       postAuthorAvatar: data['postAuthorAvatar'],
       postAuthorFrame: data['postAuthorFrame'],
       postOwnerId: data['postOwnerId'],
+      taggedUserIds: parseReadBy(data['taggedUserIds']),
       transactionCategory: data['transactionCategory'] as String?,
       transactionAmount: (data['transactionAmount'] as num?)?.toDouble(),
     );
@@ -167,6 +170,7 @@ class ChatMessageModel {
       if (senderAvatar != null) 'senderAvatar': senderAvatar,
       if (groupId != null) 'groupId': groupId,
       if (readBy.isNotEmpty) 'readBy': readBy,
+      if (taggedUserIds.isNotEmpty) 'taggedUserIds': taggedUserIds,
       if (postAuthorName != null) 'postAuthorName': postAuthorName,
       if (postAuthorAvatar != null) 'postAuthorAvatar': postAuthorAvatar,
       if (postAuthorFrame != null) 'postAuthorFrame': postAuthorFrame,
@@ -201,6 +205,7 @@ class ChatMessageModel {
     String? senderAvatar,
     String? groupId,
     List<String>? readBy,
+    List<String>? taggedUserIds,
     String? postAuthorName,
     String? postAuthorAvatar,
     String? postAuthorFrame,
@@ -233,6 +238,7 @@ class ChatMessageModel {
       senderAvatar: senderAvatar ?? this.senderAvatar,
       groupId: groupId ?? this.groupId,
       readBy: readBy ?? this.readBy,
+      taggedUserIds: taggedUserIds ?? this.taggedUserIds,
       postAuthorName: postAuthorName ?? this.postAuthorName,
       postAuthorAvatar: postAuthorAvatar ?? this.postAuthorAvatar,
       postAuthorFrame: postAuthorFrame ?? this.postAuthorFrame,

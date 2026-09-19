@@ -2,13 +2,14 @@ import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:gal/gal.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:gallery_saver_plus/gallery_saver.dart';
-import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:video_player/video_player.dart';
+import '../../../core/services/video_cache_service.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
@@ -56,6 +57,25 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
     _pageController = PageController(
       initialPage: currentIndex,
     );
+
+    _preloadUpcomingVideos(currentIndex);
+  }
+
+  void _preloadUpcomingVideos(int current) {
+    if (widget.transactions.isEmpty) return;
+    final urlsToPreload = <String>[];
+    for (int offset = -1; offset <= 2; offset++) {
+      final idx = current + offset;
+      if (idx >= 0 && idx < widget.transactions.length) {
+        final tx = widget.transactions[idx];
+        if (tx.isVideo && tx.playableVideoUrl.isNotEmpty) {
+          urlsToPreload.add(tx.playableVideoUrl);
+        }
+      }
+    }
+    if (urlsToPreload.isNotEmpty) {
+      VideoCacheService.instance.preloadBatch(urlsToPreload);
+    }
   }
 
   @override
@@ -270,31 +290,17 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
         final localFile = File(trimmedUrl);
         if (await localFile.exists()) {
           shareFile = localFile;
-        } else if (trimmedUrl.startsWith('http://') ||
-            trimmedUrl.startsWith('https://')) {
-          final uri = Uri.tryParse(trimmedUrl);
-          if (uri != null) {
-            try {
-              final response = await http
-                  .get(uri)
-                  .timeout(const Duration(seconds: 25));
-              if (response.statusCode == 200 &&
-                  response.bodyBytes.isNotEmpty) {
-                final tempDir = await getTemporaryDirectory();
-                final ext = tx.isVideo
-                    ? 'mp4'
-                    : (trimmedUrl.toLowerCase().contains('.png')
-                        ? 'png'
-                        : (trimmedUrl.toLowerCase().contains('.webp')
-                            ? 'webp'
-                            : 'jpg'));
-                final file = File(
-                  '${tempDir.path}/meme_share_${DateTime.now().millisecondsSinceEpoch}.$ext',
-                );
-                shareFile = await file.writeAsBytes(response.bodyBytes);
-              }
-            } catch (e) {
-              debugPrint('Error downloading media for share: $e');
+        } else {
+          // Ưu tiên lấy file từ Cache máy đã có sẵn để chia sẻ tức thì
+          if (tx.isVideo) {
+            shareFile = await VideoCacheService.instance.getCachedFile(trimmedUrl);
+            shareFile ??= await DefaultCacheManager().getSingleFile(trimmedUrl);
+          } else {
+            final fileInfo = await DefaultCacheManager().getFileFromCache(trimmedUrl);
+            if (fileInfo != null && await fileInfo.file.exists()) {
+              shareFile = fileInfo.file;
+            } else {
+              shareFile = await DefaultCacheManager().getSingleFile(trimmedUrl);
             }
           }
         }
@@ -363,28 +369,32 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
         isSavingMedia = true;
       });
 
-      final ok = tx.isVideo
-          ? await GallerySaver.saveVideo(mediaUrl)
-          : await GallerySaver.saveImage(mediaUrl);
+      File? targetFile;
 
-      if (!mounted) return;
+      if (tx.isVideo) {
+        // 1. Lấy file video đã cache sẵn trong máy (từ VideoCacheService hoặc tải nhanh)
+        targetFile = await VideoCacheService.instance.getCachedFile(mediaUrl);
+        targetFile ??= await DefaultCacheManager().getSingleFile(mediaUrl);
+      } else {
+        // 2. Lấy file ảnh đã cache sẵn trong máy (từ DefaultCacheManager)
+        final fileInfo = await DefaultCacheManager().getFileFromCache(mediaUrl);
+        if (fileInfo != null && await fileInfo.file.exists()) {
+          targetFile = fileInfo.file;
+        } else {
+          targetFile = await DefaultCacheManager().getSingleFile(mediaUrl);
+        }
+      }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: AppDurations.snackBar,
-          content: Text(
-            ok == true
-                ? (tx.isVideo
-                    ? l10n.momentViewerSaveVideoSuccess
-                    : l10n.momentViewerSaveImageSuccess)
-                : (tx.isVideo
-                    ? l10n.momentViewerSaveVideoFailed
-                    : l10n.momentViewerSaveImageFailed),
-          ),
-        ),
-      );
-    } catch (e) {
-      debugPrint('Save media error: $e');
+      if (targetFile == null || !await targetFile.exists()) {
+        throw Exception('File does not exist');
+      }
+
+      // 3. Lưu trực tiếp file cục bộ vào Gallery thông qua Gal (tốc độ tức thì)
+      if (tx.isVideo) {
+        await Gal.putVideo(targetFile.path);
+      } else {
+        await Gal.putImage(targetFile.path);
+      }
 
       if (!mounted) return;
 
@@ -393,8 +403,43 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
           duration: AppDurations.snackBar,
           content: Text(
             tx.isVideo
-                ? l10n.momentViewerCannotSaveVideo
-                : l10n.momentViewerCannotSaveImage,
+                ? l10n.momentViewerSaveVideoSuccess
+                : l10n.momentViewerSaveImageSuccess,
+          ),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Save media error: $e');
+
+      // Fallback bằng GallerySaver nếu Gal gặp lỗi quyền
+      try {
+        final ok = tx.isVideo
+            ? await GallerySaver.saveVideo(mediaUrl)
+            : await GallerySaver.saveImage(mediaUrl);
+        if (mounted && ok == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              duration: AppDurations.snackBar,
+              content: Text(
+                tx.isVideo
+                    ? l10n.momentViewerSaveVideoSuccess
+                    : l10n.momentViewerSaveImageSuccess,
+              ),
+            ),
+          );
+          return;
+        }
+      } catch (_) {}
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(
+            tx.isVideo
+                ? l10n.momentViewerSaveVideoFailed
+                : l10n.momentViewerSaveImageFailed,
           ),
         ),
       );
@@ -574,6 +619,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                   setState(() {
                     currentIndex = value;
                   });
+                  _preloadUpcomingVideos(value);
                 },
                 itemBuilder: (context, index) {
                   final item = widget.transactions[index];
@@ -596,6 +642,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                                     primaryText: primaryText,
                                     glassBorder: glassBorder,
                                     overlayCardBg: overlayCardBg,
+                                    isActive: index == currentIndex,
                                   ),
                                 ),
                               ),
@@ -665,6 +712,7 @@ class _MomentMediaCard extends StatelessWidget {
   final Color primaryText;
   final Color glassBorder;
   final Color overlayCardBg;
+  final bool isActive;
 
   const _MomentMediaCard({
     required this.transaction,
@@ -674,6 +722,7 @@ class _MomentMediaCard extends StatelessWidget {
     required this.primaryText,
     required this.glassBorder,
     required this.overlayCardBg,
+    this.isActive = true,
   });
 
   String _localizedCategoryLabel(BuildContext context, String category) {
@@ -733,6 +782,7 @@ class _MomentMediaCard extends StatelessWidget {
               categoryIconCodePoint: transaction.categoryIconCodePoint,
               categoryColorHex: transaction.categoryColorHex,
               isFrontCamera: transaction.isFrontCamera,
+              isActive: isActive,
             )
           else
             TransactionMomentImage(
@@ -902,6 +952,7 @@ class _MomentMutedVideoPlayer extends StatefulWidget {
   final int? categoryIconCodePoint;
   final String? categoryColorHex;
   final bool isFrontCamera;
+  final bool isActive;
 
   const _MomentMutedVideoPlayer({
     required this.videoUrl,
@@ -910,6 +961,7 @@ class _MomentMutedVideoPlayer extends StatefulWidget {
     this.categoryIconCodePoint,
     this.categoryColorHex,
     this.isFrontCamera = false,
+    this.isActive = true,
   });
 
   @override
@@ -933,29 +985,42 @@ class _MomentMutedVideoPlayerState extends State<_MomentMutedVideoPlayer> {
     if (oldWidget.videoUrl != widget.videoUrl) {
       _disposeVideo();
       _setupVideo();
+    } else if (oldWidget.isActive != widget.isActive) {
+      if (widget.isActive) {
+        if (_controller != null && _controller!.value.isInitialized) {
+          _controller!.play();
+        }
+      } else {
+        _controller?.pause();
+      }
     }
   }
 
   Future<void> _setupVideo() async {
-    if (widget.videoUrl.trim().isEmpty) return;
-
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(widget.videoUrl),
-    );
-
-    _controller = controller;
+    final url = widget.videoUrl.trim();
+    if (url.isEmpty) return;
 
     try {
-      await controller.initialize();
-      await controller.setLooping(true);
-      await controller.setVolume(0);
-      await controller.play();
+      final controller = await VideoCacheService.instance.createOptimizedController(
+        url,
+        looping: true,
+        volume: 0,
+      );
 
-      if (!mounted) return;
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+
+      _controller = controller;
 
       setState(() {
         _isReady = true;
       });
+
+      if (widget.isActive) {
+        await controller.play();
+      }
     } catch (e) {
       debugPrint('Moment viewer video error: $e');
     }
@@ -978,7 +1043,7 @@ class _MomentMutedVideoPlayerState extends State<_MomentMutedVideoPlayer> {
     final controller = _controller;
 
     Widget? videoWidget;
-    if (_isReady && controller != null) {
+    if (_isReady && controller != null && controller.value.isInitialized) {
       videoWidget = FittedBox(
         fit: BoxFit.cover,
         child: SizedBox(
@@ -1014,7 +1079,12 @@ class _MomentMutedVideoPlayerState extends State<_MomentMutedVideoPlayer> {
         ),
 
         if (videoWidget != null)
-          videoWidget,
+          AnimatedOpacity(
+            opacity: _isReady ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            child: videoWidget,
+          ),
       ],
     );
   }

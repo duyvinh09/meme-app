@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../../../core/services/video_cache_service.dart';
 
 class FeedController extends ChangeNotifier {
   final TransactionRepository transactionRepository;
@@ -44,10 +45,12 @@ class FeedController extends ChangeNotifier {
   }
 
   StreamSubscription<List<String>>? _friendSub;
+  StreamSubscription<List<Map<String, dynamic>>>? _groupsSub;
   Timer? _pollingTimer;
 
   String? _currentUid;
   List<String> _currentFriendIds = [];
+  List<String> _currentGroupMemberIds = [];
 
   Future<void> load(String uid) async {
     _currentUid = uid;
@@ -57,12 +60,17 @@ class FeedController extends ChangeNotifier {
     notifyListeners();
 
     await _friendSub?.cancel();
+    await _groupsSub?.cancel();
     _pollingTimer?.cancel();
 
     _friendSub = userRepository.streamFriendIds(uid).listen(
       (friendIds) async {
         _currentFriendIds = friendIds;
-        await _fetchFeed(uid: uid, friendIds: friendIds);
+        await _fetchFeed(
+          uid: uid,
+          friendIds: _currentFriendIds,
+          groupMemberIds: _currentGroupMemberIds,
+        );
       },
       onError: (e) {
         debugPrint('Friend stream error: $e');
@@ -73,12 +81,36 @@ class FeedController extends ChangeNotifier {
       },
     );
 
+    _groupsSub = userRepository.streamGroups(uid).listen(
+      (groups) async {
+        final memberIdsSet = <String>{};
+        for (final group in groups) {
+          final members = (group['memberIds'] as List?)
+                  ?.map((e) => e.toString())
+                  .where((e) => e.isNotEmpty) ??
+              const Iterable.empty();
+          memberIdsSet.addAll(members);
+        }
+        _currentGroupMemberIds = memberIdsSet.toList();
+        await _fetchFeed(
+          uid: uid,
+          friendIds: _currentFriendIds,
+          groupMemberIds: _currentGroupMemberIds,
+          showLoading: false,
+        );
+      },
+      onError: (e) {
+        debugPrint('Groups stream error in feed: $e');
+      },
+    );
+
     // Periodically fetch new feed updates in background
     _pollingTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       if (_currentUid != null && !isLoading) {
         _fetchFeed(
           uid: _currentUid!,
           friendIds: _currentFriendIds,
+          groupMemberIds: _currentGroupMemberIds,
           showLoading: false,
         );
       }
@@ -92,6 +124,7 @@ class FeedController extends ChangeNotifier {
     await _fetchFeed(
       uid: uid,
       friendIds: _currentFriendIds,
+      groupMemberIds: _currentGroupMemberIds,
       showLoading: false,
     );
   }
@@ -99,6 +132,7 @@ class FeedController extends ChangeNotifier {
   Future<void> _fetchFeed({
     required String uid,
     required List<String> friendIds,
+    List<String> groupMemberIds = const [],
     bool showLoading = true,
   }) async {
     try {
@@ -108,11 +142,12 @@ class FeedController extends ChangeNotifier {
         notifyListeners();
       }
 
-      final allIds = <String>{uid, ...friendIds}.toList();
+      final allIds = <String>{uid, ...friendIds, ...groupMemberIds}.toList();
 
       final data = await transactionRepository.fetchFeedPosts(
         viewerUid: uid,
         userIds: allIds,
+        friendIds: friendIds,
       );
 
       final Map<String, TransactionModel> dedupMap = {};
@@ -123,6 +158,16 @@ class FeedController extends ChangeNotifier {
       isLoading = false;
       errorMessage = null;
       notifyListeners();
+
+      // Preload ngầm các video gần nhất trong Feed để khi lướt tới hoặc bấm vào là phát tức thì
+      final videoUrls = feedTransactions
+          .where((tx) => tx.isVideo && tx.playableVideoUrl.isNotEmpty)
+          .take(10)
+          .map((tx) => tx.playableVideoUrl)
+          .toList();
+      if (videoUrls.isNotEmpty) {
+        VideoCacheService.instance.preloadBatch(videoUrls);
+      }
     } catch (e) {
       debugPrint('Feed load error: $e');
       feedTransactions = [];
@@ -156,6 +201,10 @@ class FeedController extends ChangeNotifier {
     );
 
     notifyListeners();
+
+    if (transaction.isVideo && transaction.playableVideoUrl.isNotEmpty) {
+      VideoCacheService.instance.preloadVideo(transaction.playableVideoUrl);
+    }
   }
 
   void removeDeletedTransaction(String transactionId) {
@@ -167,6 +216,7 @@ class FeedController extends ChangeNotifier {
   void dispose() {
     _pollingTimer?.cancel();
     _friendSub?.cancel();
+    _groupsSub?.cancel();
     super.dispose();
   }
 }

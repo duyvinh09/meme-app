@@ -20,6 +20,7 @@ class MessageActionMenuOverlay extends StatefulWidget {
   final UserModel friend;
   final Rect messageRect;
   final Widget messageChild;
+  final String? myReaction;
   final ValueChanged<String> onSelectReaction;
   final ValueChanged<MessageMenuAction> onSelectAction;
 
@@ -30,6 +31,7 @@ class MessageActionMenuOverlay extends StatefulWidget {
     required this.friend,
     required this.messageRect,
     required this.messageChild,
+    this.myReaction,
     required this.onSelectReaction,
     required this.onSelectAction,
   });
@@ -41,6 +43,7 @@ class MessageActionMenuOverlay extends StatefulWidget {
     required UserModel friend,
     required GlobalKey messageKey,
     required Widget messageChild,
+    String? myReaction,
     required ValueChanged<String> onSelectReaction,
     required ValueChanged<MessageMenuAction> onSelectAction,
   }) {
@@ -80,6 +83,7 @@ class MessageActionMenuOverlay extends StatefulWidget {
               friend: friend,
               messageRect: rect,
               messageChild: messageChild,
+              myReaction: myReaction,
               onSelectReaction: onSelectReaction,
               onSelectAction: onSelectAction,
             ),
@@ -213,6 +217,7 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
                     itemCount: _allEmojis.length,
                     itemBuilder: (context, index) {
                       final emoji = _allEmojis[index];
+                      final isSelected = widget.myReaction == emoji;
                       return GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
@@ -221,11 +226,37 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
                           Navigator.of(this.context).pop();
                           widget.onSelectReaction(emoji);
                         },
-                        child: Center(
-                          child: Text(
-                            emoji,
-                            style: const TextStyle(fontSize: 32),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 30),
+                            ),
+                            const SizedBox(height: 2),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 4.5,
+                              height: 4.5,
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? const Color(0xFF0084FF)
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
+                                boxShadow: isSelected
+                                    ? [
+                                        BoxShadow(
+                                          color: const Color(0xFF0084FF)
+                                              .withValues(alpha: 0.60),
+                                          blurRadius: 4,
+                                          spreadRadius: 1,
+                                        ),
+                                      ]
+                                    : null,
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     },
@@ -412,6 +443,7 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
           mainAxisSize: MainAxisSize.min,
           children: [
             ..._quickEmojis.map((emoji) {
+              final isMyReaction = widget.myReaction == emoji;
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
@@ -421,9 +453,36 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
                 },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  child: Text(
-                    emoji,
-                    style: const TextStyle(fontSize: 26),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        emoji,
+                        style: const TextStyle(fontSize: 26),
+                      ),
+                      const SizedBox(height: 2),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        width: 4.5,
+                        height: 4.5,
+                        decoration: BoxDecoration(
+                          color: isMyReaction
+                              ? const Color(0xFF0084FF)
+                              : Colors.transparent,
+                          shape: BoxShape.circle,
+                          boxShadow: isMyReaction
+                              ? [
+                                  BoxShadow(
+                                    color: const Color(0xFF0084FF)
+                                        .withValues(alpha: 0.60),
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
+                                  ),
+                                ]
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -438,20 +497,49 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
                 HapticFeedback.selectionClick();
                 _openFullEmojiPicker();
               },
-              child: Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.12),
-                ),
-                child: const Center(
-                  child: Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 19,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: 0.12),
+                    ),
+                    child: const Center(
+                      child: Icon(
+                        Icons.add,
+                        color: Colors.white,
+                        size: 19,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 2),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 4.5,
+                    height: 4.5,
+                    decoration: BoxDecoration(
+                      color: (widget.myReaction != null &&
+                              !_quickEmojis.contains(widget.myReaction))
+                          ? const Color(0xFF0084FF)
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
+                      boxShadow: (widget.myReaction != null &&
+                              !_quickEmojis.contains(widget.myReaction))
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF0084FF)
+                                    .withValues(alpha: 0.60),
+                                blurRadius: 4,
+                                spreadRadius: 1,
+                              ),
+                            ]
+                          : null,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

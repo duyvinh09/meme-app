@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:provider/provider.dart';
 
@@ -11,6 +12,7 @@ import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/meme_logo.dart';
+import '../../../data/models/transaction_model.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../budget/controllers/budget_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
@@ -22,6 +24,14 @@ import '../widgets/calendar_section.dart';
 import '../widgets/recent_transaction_card.dart';
 import '../widgets/streak_card.dart';
 
+enum RecentTxSortFilter {
+  newest,
+  expenseDesc,
+  expenseAsc,
+  incomeDesc,
+  incomeAsc,
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -32,6 +42,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool loaded = false;
   Timer? _timeUpdateTimer;
+  int _recentLimit = 10;
+  RecentTxSortFilter _recentFilter = RecentTxSortFilter.newest;
 
   @override
   void initState() {
@@ -158,6 +170,187 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  String _getFilterLabel(RecentTxSortFilter filter, String lang) {
+    final isVi = lang != 'en';
+    switch (filter) {
+      case RecentTxSortFilter.newest:
+        return isVi ? 'Mới nhất' : 'Newest';
+      case RecentTxSortFilter.expenseDesc:
+        return isVi ? 'Chi nhiều' : 'Top Expense';
+      case RecentTxSortFilter.expenseAsc:
+        return isVi ? 'Chi ít' : 'Low Expense';
+      case RecentTxSortFilter.incomeDesc:
+        return isVi ? 'Thu nhiều' : 'Top Income';
+      case RecentTxSortFilter.incomeAsc:
+        return isVi ? 'Thu ít' : 'Low Income';
+    }
+  }
+
+  Widget _buildLimitSelector() {
+    final limits = [10, 20, 50];
+    final isDark = AppColors.isDark(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+        border: Border.all(
+          color: AppColors.border(context),
+          width: 0.8,
+        ),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: limits.map((limit) {
+          final isSelected = _recentLimit == limit;
+          return GestureDetector(
+            onTap: () {
+              if (_recentLimit != limit) {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _recentLimit = limit;
+                });
+              }
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? (isDark
+                        ? AppColors.primaryBlue.withValues(alpha: 0.28)
+                        : AppColors.primaryBlue.withValues(alpha: 0.16))
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                border: isSelected
+                    ? Border.all(
+                        color: AppColors.primaryBlue.withValues(alpha: 0.4),
+                        width: 0.8,
+                      )
+                    : null,
+              ),
+              child: Text(
+                '$limit',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  color: isSelected
+                      ? (isDark ? Colors.white : AppColors.textPrimary(context))
+                      : AppColors.textSecondary(context),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips(String languageCode) {
+    final filters = [
+      (
+        filter: RecentTxSortFilter.newest,
+        icon: Icons.schedule_rounded,
+        color: AppColors.textPrimary(context),
+      ),
+      (
+        filter: RecentTxSortFilter.expenseDesc,
+        icon: Icons.arrow_downward_rounded,
+        color: AppColors.expense,
+      ),
+      (
+        filter: RecentTxSortFilter.expenseAsc,
+        icon: Icons.arrow_upward_rounded,
+        color: AppColors.expense,
+      ),
+      (
+        filter: RecentTxSortFilter.incomeDesc,
+        icon: Icons.arrow_upward_rounded,
+        color: AppColors.income,
+      ),
+      (
+        filter: RecentTxSortFilter.incomeAsc,
+        icon: Icons.arrow_downward_rounded,
+        color: AppColors.income,
+      ),
+    ];
+
+    final isDark = AppColors.isDark(context);
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none,
+      child: Row(
+        children: filters.map((item) {
+          final isSelected = _recentFilter == item.filter;
+          final label = _getFilterLabel(item.filter, languageCode);
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _recentFilter = item.filter;
+                });
+              },
+              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? item.color.withValues(alpha: isDark ? 0.22 : 0.12)
+                      : AppColors.card(context),
+                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                  border: Border.all(
+                    color: isSelected
+                        ? item.color.withValues(alpha: 0.6)
+                        : AppColors.border(context),
+                    width: isSelected ? 1.2 : 0.8,
+                  ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: item.color.withValues(alpha: 0.15),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      item.icon,
+                      size: 13.5,
+                      color: isSelected ? item.color : AppColors.textSecondary(context),
+                    ),
+                    const SizedBox(width: 4.5),
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected
+                            ? item.color
+                            : AppColors.textSecondary(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final home = context.watch<HomeController>();
@@ -180,9 +373,43 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     final avatarUrl = home.profile?.avatarUrl ?? '';
     final now = DateTime.now();
-    final currentMonthTransactions = home.transactions
-        .where((tx) => tx.createdAt.year == now.year && tx.createdAt.month == now.month)
+    final sevenDaysAgo = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+    final recentTransactions = home.transactions
+        .where((tx) => !tx.createdAt.isBefore(sevenDaysAgo))
         .toList();
+
+    List<TransactionModel> filteredRecent = List.from(recentTransactions);
+    switch (_recentFilter) {
+      case RecentTxSortFilter.newest:
+        filteredRecent.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        break;
+      case RecentTxSortFilter.expenseDesc:
+        filteredRecent = filteredRecent
+            .where((tx) => tx.isPersonalExpense || tx.type == 'expense')
+            .toList()
+          ..sort((a, b) => b.amount.compareTo(a.amount));
+        break;
+      case RecentTxSortFilter.expenseAsc:
+        filteredRecent = filteredRecent
+            .where((tx) => tx.isPersonalExpense || tx.type == 'expense')
+            .toList()
+          ..sort((a, b) => a.amount.compareTo(b.amount));
+        break;
+      case RecentTxSortFilter.incomeDesc:
+        filteredRecent = filteredRecent
+            .where((tx) => tx.isPersonalIncome || tx.type == 'income')
+            .toList()
+          ..sort((a, b) => b.amount.compareTo(a.amount));
+        break;
+      case RecentTxSortFilter.incomeAsc:
+        filteredRecent = filteredRecent
+            .where((tx) => tx.isPersonalIncome || tx.type == 'income')
+            .toList()
+          ..sort((a, b) => a.amount.compareTo(b.amount));
+        break;
+    }
+
+    final displayedTransactions = filteredRecent.take(_recentLimit).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -254,30 +481,44 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 22),
 
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Expanded(
-                  child: Text(
-                    context.l10n.recentTransactions,
-                    style: AppTextStyles.sectionTitle(context),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.recentTransactions,
+                        style: AppTextStyles.sectionTitle(context),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        languageCode == 'vi'
+                            ? 'Hiển thị các giao dịch trong 7 ngày gần đây'
+                            : 'Showing transactions from the last 7 days',
+                        style: AppTextStyles.caption(context).copyWith(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary(context),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                if (currentMonthTransactions.isNotEmpty)
-                  Text(
-                    context.l10n.transactionCount(currentMonthTransactions.length),
-                    style: AppTextStyles.bodySecondary(context).copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
+                _buildLimitSelector(),
               ],
             ),
 
+            const SizedBox(height: 10),
+
+            _buildFilterChips(languageCode),
+
             const SizedBox(height: 12),
 
-            if (currentMonthTransactions.isEmpty)
+            if (displayedTransactions.isEmpty)
               const _EmptyTransactionCard()
             else
-              ...currentMonthTransactions
-                  .take(5)
+              ...displayedTransactions
                   .map((e) => RecentTransactionCard(transaction: e)),
           ],
         ),

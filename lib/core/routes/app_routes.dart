@@ -11,16 +11,19 @@ import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_text_styles.dart';
 import '../extensions/localization_extension.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/budget/screens/budget_screen.dart';
 import '../../features/budget/screens/create_budget_screen.dart';
+import '../../features/budget/controllers/budget_controller.dart';
 import '../../features/capture/screens/camera_screen.dart';
 import '../../features/capture/widgets/quick_voice_expense_sheet.dart';
 import '../../features/feed/controllers/feed_controller.dart';
 import '../../features/feed/screens/feed_screen.dart';
+import '../../features/home/controllers/home_controller.dart';
 import '../../features/home/screens/calendar_screen.dart';
 import '../../features/home/screens/day_detail_screen.dart';
 import '../../features/home/screens/home_screen.dart';
@@ -42,16 +45,22 @@ import '../../features/chat/screens/chat_conversation_screen.dart';
 import '../../features/chat/screens/group_chat_conversation_screen.dart';
 import '../../features/chat/screens/chat_bubble_theme_screen.dart';
 import '../../features/chat/screens/chat_list_screen.dart';
+import '../../features/splash/screens/preloader_screen.dart';
 import '../../features/chat/controllers/chat_controller.dart';
 import '../../features/rewind/screens/rewind_screen.dart';
+import '../../features/rewind/models/rewind_period.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/transaction_model.dart';
 import '../../data/repositories/user_repository.dart';
+import '../../data/repositories/chat_repository.dart';
+import '../services/notification_service.dart';
 import 'route_names.dart';
 
 class AppRoutes {
   static final GlobalKey<NavigatorState> navigatorKey =
       GlobalKey<NavigatorState>();
+  static final RouteObserver<PageRoute> routeObserver =
+      RouteObserver<PageRoute>();
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -214,8 +223,20 @@ class AppRoutes {
         );
 
       case RouteNames.rewind:
+        final args = settings.arguments;
+        RewindPeriod? period;
+        if (args is RewindPeriod) {
+          period = args;
+        } else if (args is Map<String, dynamic>) {
+          final periodType = args['period']?.toString();
+          if (periodType == 'thisMonth' || periodType == 'monthly') {
+            period = RewindPeriod.thisMonth();
+          } else {
+            period = RewindPeriod.thisWeek();
+          }
+        }
         return MaterialPageRoute(
-          builder: (_) => const RewindScreen(),
+          builder: (_) => RewindScreen(initialPeriod: period),
         );
 
       case RouteNames.browseTransactions:
@@ -238,18 +259,83 @@ class AppRoutes {
   }
 }
 
-class SplashGate extends StatelessWidget {
+class SplashGate extends StatefulWidget {
   const SplashGate({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final auth = context.watch<AuthController>();
+  State<SplashGate> createState() => _SplashGateState();
+}
 
-    if (auth.user == null) {
-      return const LoginScreen();
+class _SplashGateState extends State<SplashGate> {
+  bool _preloaderDone = false;
+
+  void _onPreloaderComplete() {
+    if (mounted) {
+      setState(() => _preloaderDone = true);
+    }
+  }
+
+  Future<void> _preloadAppData() async {
+    if (!mounted) return;
+    final auth = context.read<AuthController>();
+    final uid = auth.user?.uid ?? FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid != null) {
+      final homeCtrl = context.read<HomeController>();
+      final budgetCtrl = context.read<BudgetController>();
+      final profileCtrl = context.read<ProfileController>();
+      final userCatCtrl = context.read<UserCategoryController>();
+      final chatCtrl = context.read<ChatController>();
+
+      try {
+        // Kích hoạt nạp dữ liệu song song cho trang chủ và các dịch vụ nền
+        budgetCtrl.load(uid);
+        userCatCtrl.load(uid);
+        chatCtrl.initIncomingMessageListener(uid);
+
+        await Future.wait<dynamic>([
+          homeCtrl.load(uid),
+          profileCtrl.loadUser(uid),
+        ]).timeout(
+          const Duration(milliseconds: 3200),
+          onTimeout: () {
+            debugPrint('Preloading data timeout reached, continuing to main shell');
+            return const [];
+          },
+        );
+      } catch (e) {
+        debugPrint('Error preloading home data during splash: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 350),
+      switchInCurve: Curves.easeIn,
+      switchOutCurve: Curves.easeOut,
+      child: _buildCurrentState(context),
+    );
+  }
+
+  Widget _buildCurrentState(BuildContext context) {
+    // Bước 1: Chạy animation preloader + load data
+    if (!_preloaderDone) {
+      return PreloaderScreen(
+        key: const ValueKey('preloader_screen'),
+        minDisplayDuration: const Duration(milliseconds: 2200),
+        preloadAction: _preloadAppData,
+        onComplete: _onPreloaderComplete,
+      );
     }
 
-    return const MainShell();
+    // Bước 2: Sau khi preloader xong → điều hướng sang MainShell (Home) nếu đã đăng nhập, hoặc LoginScreen nếu chưa đăng nhập
+    final auth = context.watch<AuthController>();
+    if (auth.user == null) {
+      return const LoginScreen(key: ValueKey('login_screen'));
+    }
+    return const MainShell(key: ValueKey('main_shell'));
   }
 }
 
@@ -293,11 +379,14 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
       final uid = context.read<AuthController>().user?.uid;
       if (uid != null) {
+        context.read<HomeController>().load(uid);
+        context.read<BudgetController>().load(uid);
         context.read<ProfileController>().loadUser(uid);
         context.read<UserCategoryController>().load(uid);
         context.read<ChatController>().initIncomingMessageListener(uid);
         _updatePresence(true);
         _startPresenceHeartbeat();
+        NotificationService.instance.checkAndShowInAppRewindNotification();
       }
 
       if (index == 0) {
@@ -311,6 +400,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       _updatePresence(true);
       _startPresenceHeartbeat();
+      NotificationService.instance.checkAndShowInAppRewindNotification();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
@@ -733,9 +823,36 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
     );
   }
 
+  Stream<int>? _unreadStream;
+  String? _lastListeningUid;
+  int _lastKnownUnreadCount = 0;
+
+  @override
+  void reassemble() {
+    super.reassemble();
+    _unreadStream = null;
+    _lastListeningUid = null;
+  }
+
+  void _ensureUnreadStream(String uid, ChatRepository chatRepo) {
+    if (uid.isEmpty) {
+      _unreadStream = null;
+      _lastListeningUid = null;
+      _lastKnownUnreadCount = 0;
+      return;
+    }
+    if (_lastListeningUid != uid || _unreadStream == null) {
+      _lastListeningUid = uid;
+      _unreadStream = chatRepo.streamTotalUnreadCount(uid).distinct();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
+    final myUid = context.watch<AuthController>().user?.uid ?? '';
+    final chatRepo = context.read<ChatRepository>();
+    _ensureUnreadStream(myUid, chatRepo);
 
     return SizedBox(
       width: 170,
@@ -755,37 +872,107 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                     HapticFeedback.selectionClick();
                     widget.onChatTap();
                   },
-                  child: Container(
-                    width: chatFabSize,
-                    height: chatFabSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDark
-                          ? const Color(0xFF262938)
-                          : Colors.white,
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.20)
-                            : AppColors.primaryBlue.withValues(alpha: 0.25),
-                        width: borderWidth,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(
-                            alpha: isDark ? 0.28 : 0.10,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: chatFabSize,
+                        height: chatFabSize,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? const Color(0xFF262938)
+                              : Colors.white,
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.20)
+                                : AppColors.primaryBlue.withValues(alpha: 0.25),
+                            width: borderWidth,
                           ),
-                          blurRadius: 10,
-                          offset: const Offset(0, 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.28 : 0.10,
+                              ),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.chat_bubble_rounded,
-                      color: isDark
-                          ? Colors.white
-                          : AppColors.primaryBlue,
-                      size: 21,
-                    ),
+                        child: Icon(
+                          Icons.chat_bubble_rounded,
+                          color: isDark
+                              ? Colors.white
+                              : AppColors.primaryBlue,
+                          size: 21,
+                        ),
+                      ),
+                      // Realtime Unread Count Badge (filters out muted chats, max 99+)
+                      if (_unreadStream != null)
+                        StreamBuilder<int>(
+                          stream: _unreadStream,
+                          initialData: _lastKnownUnreadCount,
+                          builder: (context, snapshot) {
+                            if (snapshot.hasData) {
+                              _lastKnownUnreadCount = snapshot.data!;
+                            }
+                            final unreadCount =
+                                snapshot.data ?? _lastKnownUnreadCount;
+                            if (unreadCount <= 0) {
+                              return const SizedBox.shrink();
+                            }
+
+                            final String badgeText =
+                                unreadCount > 99 ? '99+' : '$unreadCount';
+
+                            return Positioned(
+                              top: -4,
+                              right: -4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 5,
+                                  vertical: 2,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 20,
+                                  minHeight: 20,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFF3B30),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isDark
+                                        ? const Color(0xFF1E212B)
+                                        : Colors.white,
+                                    width: 1.8,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFF3B30)
+                                          .withValues(alpha: 0.45),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    badgeText,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10.5,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.0,
+                                      letterSpacing: -0.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                    ],
                   ),
                 ),
               );

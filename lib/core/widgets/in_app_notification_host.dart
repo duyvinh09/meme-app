@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../routes/app_routes.dart';
 import '../routes/route_names.dart';
+import '../services/app_icon_service.dart';
 import '../services/in_app_notification_service.dart';
 import '../../features/feed/controllers/feed_controller.dart';
 import '../../features/profile/widgets/avatar_with_frame.dart';
@@ -120,7 +121,13 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
             'targetPostId': item.postId,
           },
         );
-      } else if (item.isGroup || (item.groupId != null && item.groupId!.isNotEmpty)) {
+      } else if (item.type == 'rewind') {
+        final period = item.postId == 'thisMonth' ? 'thisMonth' : 'thisWeek';
+        AppRoutes.navigatorKey.currentState?.pushNamed(
+          RouteNames.rewind,
+          arguments: {'period': period},
+        );
+      } else if (item.type == 'group_transaction' || item.isGroup || (item.groupId != null && item.groupId!.isNotEmpty)) {
         final gId = item.groupId ?? '';
         if (gId.isNotEmpty) {
           AppRoutes.navigatorKey.currentState?.pushNamed(
@@ -155,6 +162,8 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final locale = Localizations.maybeLocaleOf(context);
+    final isEn = locale?.languageCode.toLowerCase() == 'en';
 
     return Stack(
       children: [
@@ -216,6 +225,51 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
                                     frameId: _activeItem!.sender.avatarFrame,
                                     size: 42,
                                   )
+                                else if (_activeItem!.type == 'rewind' ||
+                                    _activeItem!.sender.uid == 'system' ||
+                                    _activeItem!.sender.username == 'Rewind' ||
+                                    _activeItem!.sender.name == 'Meme Rewind' ||
+                                    _activeItem!.sender.name.toLowerCase().contains('meme'))
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF8B5CF6).withValues(alpha: 0.3),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Image.asset(
+                                        AppIconService.currentIconAsset,
+                                        width: 42,
+                                        height: 42,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 42,
+                                          height: 42,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(12),
+                                            gradient: const LinearGradient(
+                                              colors: [Color(0xFF8B5CF6), Color(0xFFEC4899)],
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.movie_filter_rounded,
+                                            color: Colors.white,
+                                            size: 22,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  )
                                 else
                                   Container(
                                     width: 42,
@@ -254,10 +308,10 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
                                               _activeItem!.isGroup &&
                                                       _activeItem!.groupName != null &&
                                                       _activeItem!.groupName!.isNotEmpty
-                                                  ? '${_activeItem!.sender.name.isNotEmpty ? _activeItem!.sender.name : "Thành viên"} • ${_activeItem!.groupName}'
+                                                  ? '${_activeItem!.sender.name.isNotEmpty ? _activeItem!.sender.name : (isEn ? "Member" : "Thành viên")} • ${_activeItem!.groupName}'
                                                   : (_activeItem!.sender.name.isNotEmpty
                                                       ? _activeItem!.sender.name
-                                                      : 'Tin nhắn mới'),
+                                                      : (isEn ? 'New message' : 'Tin nhắn mới')),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               style: TextStyle(
@@ -272,7 +326,7 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
                                           ),
                                           const SizedBox(width: 6),
                                           Text(
-                                            'vừa xong',
+                                            isEn ? 'just now' : 'vừa xong',
                                             style: TextStyle(
                                               color: isDark
                                                   ? Colors.white54
@@ -284,7 +338,7 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
                                         ],
                                       ),
                                       const SizedBox(height: 3),
-                                      _buildMessageSubtitle(isDark),
+                                      _buildMessageSubtitle(isDark, isEn),
                                     ],
                                   ),
                                 ),
@@ -320,7 +374,7 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
     );
   }
 
-  Widget _buildMessageSubtitle(bool isDark) {
+  Widget _buildMessageSubtitle(bool isDark, bool isEn) {
     final subtextColor = isDark ? Colors.white70 : const Color(0xFF4B5563);
     final item = _activeItem!;
 
@@ -335,7 +389,9 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Đã gửi cho bạn lời mời kết bạn! 👋',
+              isEn
+                  ? 'Sent you a friend request! 👋'
+                  : 'Đã gửi cho bạn lời mời kết bạn! 👋',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -360,7 +416,9 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Đã chấp nhận lời mời kết bạn! 🎉',
+              isEn
+                  ? 'Accepted your friend request! 🎉'
+                  : 'Đã chấp nhận lời mời kết bạn! 🎉',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -385,7 +443,9 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Đã trả lời bài viết: ${item.messageText}',
+              isEn
+                  ? 'Replied to post: ${item.messageText}'
+                  : 'Đã trả lời bài viết: ${item.messageText}',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -409,7 +469,9 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
           const SizedBox(width: 4),
           Expanded(
             child: Text(
-              'Đã bày tỏ cảm xúc về tin nhắn của bạn',
+              isEn
+                  ? 'Reacted to your message'
+                  : 'Đã bày tỏ cảm xúc về tin nhắn của bạn',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -425,7 +487,9 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
 
     if (item.type == 'reaction') {
       return Text(
-        'Đã thả cảm xúc: ${item.reactionEmoji ?? item.messageText}',
+        isEn
+            ? 'Reacted: ${item.reactionEmoji ?? item.messageText}'
+            : 'Đã thả cảm xúc: ${item.reactionEmoji ?? item.messageText}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
@@ -436,8 +500,89 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
       );
     }
 
+    if (item.type == 'mention') {
+      return Row(
+        children: [
+          const Icon(
+            Icons.alternate_email_rounded,
+            size: 14,
+            color: Color(0xFF10B981),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              isEn
+                  ? 'Mentioned you in a post'
+                  : 'Đã nhắc đến bạn trong một bài viết',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isDark ? const Color(0xFF34D399) : const Color(0xFF059669),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (item.type == 'rewind') {
+      return Row(
+        children: [
+          const Icon(
+            Icons.movie_filter_rounded,
+            size: 14,
+            color: Color(0xFF8B5CF6),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              item.messageText.isNotEmpty
+                  ? item.messageText
+                  : (isEn ? 'Watch your Rewind highlight!' : 'Xem lại thước phim chi tiêu của bạn!'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: isDark ? const Color(0xFFA78BFA) : const Color(0xFF7C3AED),
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (item.type == 'group_transaction') {
+      return Row(
+        children: [
+          const Icon(
+            Icons.account_balance_wallet_rounded,
+            size: 14,
+            color: Color(0xFF10B981),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              item.messageText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: subtextColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Text(
-      item.messageText,
+      item.messageText.isNotEmpty
+          ? item.messageText
+          : (isEn ? 'Sent a message' : 'Đã gửi một tin nhắn'),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(

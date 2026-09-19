@@ -12,7 +12,11 @@ class MainActivity : FlutterActivity() {
     private val ICONS = listOf(
         "default" to ".MainActivityDefault",
         "icon1" to ".MainActivityIcon1",
-        "icon2" to ".MainActivityIcon2"
+        "icon2" to ".MainActivityIcon2",
+        "icon3" to ".MainActivityIcon3",
+        "icon4" to ".MainActivityIcon4",
+        "icon5" to ".MainActivityIcon5",
+        "icon6" to ".MainActivityIcon6"
     )
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -52,29 +56,36 @@ class MainActivity : FlutterActivity() {
         val pkg = packageName
 
         try {
-            // First enable the target component so launcher never sees 0 enabled activities
             val targetAlias = ICONS.firstOrNull { it.first == targetKey }?.second ?: ".MainActivityDefault"
             val targetComponent = ComponentName(pkg, "$pkg$targetAlias")
+
+            android.util.Log.d("AppIcon", "Switching app icon to: $targetKey ($targetAlias)")
+
+            // 1. Enable target component first
             pm.setComponentEnabledSetting(
                 targetComponent,
                 PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
                 PackageManager.DONT_KILL_APP
             )
 
-            // Then disable all other components
+            // 2. Disable only components that are NOT already disabled
             for ((key, alias) in ICONS) {
                 if (key != targetKey) {
                     val component = ComponentName(pkg, "$pkg$alias")
-                    pm.setComponentEnabledSetting(
-                        component,
-                        PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                        PackageManager.DONT_KILL_APP
-                    )
+                    val state = pm.getComponentEnabledSetting(component)
+                    if (state != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
+                        pm.setComponentEnabledSetting(
+                            component,
+                            PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                            PackageManager.DONT_KILL_APP
+                        )
+                    }
                 }
             }
+            android.util.Log.d("AppIcon", "Successfully switched to: $targetKey")
             return true
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("AppIcon", "Error switching app icon", e)
             return false
         }
     }

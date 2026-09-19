@@ -14,6 +14,10 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
+
+    if (project.name == "light_compressor_v2") {
+        plugins.apply("org.jetbrains.kotlin.android")
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")

@@ -3,7 +3,9 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:light_compressor_v2/light_compressor_v2.dart';
 import 'package:path/path.dart' as p;
 
 import 'locket_config.dart';
@@ -206,46 +208,78 @@ class LocketUploadService {
     throw Exception('Tất cả tài khoản trong Pool đều đăng nhập thất bại hoặc bị Rate Limit');
   }
 
-  void _invalidateCurrentToken() {
-    if (_currentSession != null) {
-      _tokenCache.remove(_currentSession!.email);
-      _currentSession = null;
-    }
-  }
 
-  /// Upload file ảnh/video với cơ chế tự động Retry & Xoay vòng Account nếu gặp lỗi 401/403
+  /// Upload file ảnh/video (thực hiện 1 lần, nếu lỗi thì dừng ngay không lặp lại)
   Future<LocketUploadResult> uploadFile(
       File file, {
         String? forcedFileName,
-        int maxRetries = 3,
       }) async {
     if (!await file.exists()) {
       throw FileSystemException('File không tồn tại', file.path);
     }
 
-    final triedEmails = <String>[];
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        final session = await _getOrRotateSession(excludeEmails: triedEmails);
-        triedEmails.add(session.email);
-
-        return await _executeUpload(file, session, forcedFileName);
-      } catch (e) {
-        final errorMsg = e.toString();
-
-        // Nếu lỗi do Token hết hạn / 401 / 403 -> Hủy session hiện tại và thử lại
-        if (errorMsg.contains('401') || errorMsg.contains('403')) {
-          _invalidateCurrentToken();
-          if (attempt == maxRetries) rethrow;
-          await Future.delayed(const Duration(milliseconds: 500));
-          continue;
-        }
-        rethrow;
-      }
+    File fileToUpload = file;
+    final ext = p.extension(file.path).toLowerCase();
+    final mediaType = _detectMediaType(ext);
+    if (mediaType == 'video') {
+      fileToUpload = await _compressVideoIfNeeded(file);
     }
 
-    throw Exception('Upload thất bại sau $maxRetries lần thử');
+    final session = await _getOrRotateSession();
+    try {
+      return await _executeUpload(fileToUpload, session, forcedFileName);
+    } catch (e) {
+      final errorMsg = e.toString();
+      debugPrint('[LocketUpload] Upload error: $errorMsg');
+
+      if (errorMsg.contains('401') ||
+          errorMsg.contains('403') ||
+          errorMsg.contains('Permission denied')) {
+        _tokenCache.remove(session.email);
+        _currentSession = null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<File> _compressVideoIfNeeded(File file) async {
+    try {
+      final initialBytes = await file.length();
+      final initialMb = initialBytes / (1024 * 1024);
+      debugPrint('[LocketUpload] File ban đầu (video): ${initialMb.toStringAsFixed(2)}MB');
+
+      if (initialMb < 5.5) {
+        return file;
+      }
+
+      debugPrint('[LocketUpload] Video >= 5.5MB (${initialMb.toStringAsFixed(2)}MB) -> Nén nhanh bằng hardware codec (light_compressor)...');
+      final compressor = LightCompressor();
+      final result = await compressor.compressVideo(
+        path: file.path,
+        videoQuality: VideoQuality.medium,
+        isMinBitrateCheckEnabled: false,
+        video: Video(videoName: 'locket_${DateTime.now().millisecondsSinceEpoch}.mp4'),
+        android: AndroidConfig(isSharedStorage: false),
+        ios: IOSConfig(saveInGallery: false),
+      );
+
+      if (result is OnSuccess) {
+        final compressedFile = File(result.destinationPath);
+        if (await compressedFile.exists()) {
+          final compressedSize = await compressedFile.length();
+          final compressedMb = compressedSize / (1024 * 1024);
+          debugPrint('[LocketUpload] Nén thành công: ${initialMb.toStringAsFixed(2)}MB -> ${compressedMb.toStringAsFixed(2)}MB');
+          return compressedFile;
+        }
+      } else if (result is OnFailure) {
+        debugPrint('[LocketUpload] Nén thất bại: ${result.message} -> Dùng file gốc');
+      } else if (result is OnCancelled) {
+        debugPrint('[LocketUpload] Nén bị huỷ -> Dùng file gốc');
+      }
+    } catch (e) {
+      debugPrint('[LocketUpload] Lỗi trong quá trình nén video: $e -> Dùng file gốc');
+    }
+    return file;
   }
 
   Future<LocketUploadResult> uploadPath(String filePath) {
@@ -260,11 +294,14 @@ class LocketUploadService {
       ) async {
     final ext = p.extension(file.path).toLowerCase();
     final mediaType = _detectMediaType(ext);
+
     final targetExt = mediaType == 'image' ? '.webp' : '.mp4';
     final fileName = forcedFileName ?? _generateRandomFileName(targetExt);
 
     final fileBytes = await file.readAsBytes();
     final fileSize = fileBytes.length;
+    debugPrint('[LocketUpload] Bắt đầu upload lên Storage ($mediaType, ${(fileSize / (1024 * 1024)).toStringAsFixed(2)}MB)...');
+
     final md5Hex = md5.convert(fileBytes).toString();
 
     final contentType = mediaType == 'image' ? 'image/webp' : 'video/mp4';
@@ -273,6 +310,18 @@ class LocketUploadService {
 
     final storagePath = 'users/${session.localId}/moments/$folder/$fileName';
     final encodedStoragePath = Uri.encodeComponent(storagePath);
+
+    final uploadMetadata = {
+      'cacheControl': 'public, max-age=604800',
+      'bucket': '',
+      'contentType': contentType,
+      'name': storagePath,
+      'metadata': {
+        'creator': session.localId,
+        'visibility': 'private',
+      },
+    };
+    final metadataBytes = utf8.encode(jsonEncode(uploadMetadata));
 
     // 1. POST Resumable Start
     final startUploadUri = Uri.parse(
@@ -292,19 +341,14 @@ class LocketUploadService {
         'Priority': 'u=3, i',
         'X-Goog-Upload-Content-Length': '$fileSize',
         'Sentry-Trace': LocketConfig.sentryTrace,
-        'X-Firebase-Storage-Version': 'ios/12.12.0',
+        'X-Firebase-Storage-Version': 'ios/10.13.0',
         'Accept-Language': 'vi-VN,vi;q=0.9',
+        'Content-Length': '${metadataBytes.length}',
         'User-Agent': LocketConfig.userAgentStorage,
         'X-Goog-Upload-Content-Type': contentType,
         'X-Firebase-Gmpid': LocketConfig.firebaseGmpId,
       },
-      body: jsonEncode({
-        'metadata': {'creator': session.localId, 'visibility': 'private'},
-        'cacheControl': 'public, max-age=604800',
-        'name': storagePath,
-        'contentType': contentType,
-        'bucket': '',
-      }),
+      body: jsonEncode(uploadMetadata),
     ).timeout(const Duration(seconds: 30));
 
     if (startResponse.statusCode < 200 || startResponse.statusCode >= 300) {
@@ -325,13 +369,10 @@ class LocketUploadService {
         'X-Goog-Upload-Protocol': 'resumable',
         'X-Goog-Upload-Offset': '0',
         'X-Goog-Upload-Command': 'upload, finalize',
-        'Priority': 'u=3, i',
         'X-Goog-Upload-Content-Length': '$fileSize',
-        'Accept-Language': 'vi-VN,vi;q=0.9',
-        'Upload-Draft-Interop-Version': '6',
-        'Content-Length': '$fileSize',
         'User-Agent': LocketConfig.userAgentStorage,
-        'Upload-Complete': '?1',
+        'Upload-Incomplete': '?0',
+        'Upload-Draft-Interop-Version': '3',
       },
       body: fileBytes,
     ).timeout(const Duration(minutes: 3));
@@ -353,7 +394,7 @@ class LocketUploadService {
         'X-Firebase-Appcheck': LocketConfig.firebaseAppCheck,
         'Priority': 'u=3, i',
         'Accept-Language': 'vi-VN,vi;q=0.9',
-        'X-Firebase-Storage-Version': 'ios/12.12.0',
+        'X-Firebase-Storage-Version': 'ios/10.13.1',
         'Sentry-Trace': LocketConfig.sentryTrace,
         'User-Agent': LocketConfig.userAgentClient,
         'X-Firebase-Gmpid': LocketConfig.firebaseGmpId,

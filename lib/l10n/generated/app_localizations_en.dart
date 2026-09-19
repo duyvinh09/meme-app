@@ -1561,6 +1561,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appIconOceanDesc => 'Modern blue tone, fresh and vibrant';
 
   @override
+  String get appIconSketch => 'Sketch Notebook Meme';
+
+  @override
+  String get appIconSketchDesc =>
+      'Cute hand-drawn colored pencil style on notebook paper';
+
+  @override
+  String get appIconLuxury => 'Luxury Gold Meme';
+
+  @override
+  String get appIconLuxuryDesc =>
+      'Premium black leather with metallic gold finish';
+
+  @override
+  String get appIconMinimal => 'Minimal Outline Meme';
+
+  @override
+  String get appIconMinimalDesc =>
+      'Clean and elegant line-art illustration style';
+
+  @override
+  String get appIconModern3D => 'Modern 3D Meme';
+
+  @override
+  String get appIconModern3DDesc =>
+      'Vibrant 3D style featuring the signature meme typography';
+
+  @override
   String get appIconInUse => 'In Use';
 
   @override

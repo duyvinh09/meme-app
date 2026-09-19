@@ -16,6 +16,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../controllers/chat_controller.dart';
+import '../widgets/mute_chat_sheet.dart';
 import 'group_chat_conversation_screen.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../feed/widgets/reaction_flying_animator.dart';
@@ -132,15 +133,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final chatRepo = context.read<ChatRepository>();
     final toastMsg = context.l10n.markAllAsRead;
 
+    final futures = <Future<void>>[];
     for (final doc in chatDocs) {
       final chatId = doc.id;
       final isGroup = doc.data()['isGroup'] == true;
       if (isGroup) {
-        await chatRepo.markGroupChatAsRead(chatId, myUid);
+        futures.add(chatRepo.markGroupChatAsRead(chatId, myUid));
       } else {
-        await chatRepo.markMessagesAsRead(chatId, myUid);
+        futures.add(chatRepo.markMessagesAsRead(chatId, myUid));
       }
     }
+    await Future.wait(futures);
 
     if (!mounted) return;
 
@@ -905,6 +908,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                     final String typingUid =
                                         typingUids.isNotEmpty ? typingUids.first : '';
 
+                                    final bool isGroupMuted =
+                                        chatRepo.isChatMuted(data, myUid);
+
                                     return _GroupConversationItemTile(
                                       key: ValueKey('group_${doc.id}'),
                                       groupId: doc.id,
@@ -918,6 +924,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                       relativeTime: _formatRelativeTime(
                                           updatedAt, currentLocale),
                                       isUnread: isUnread,
+                                      isGroupMuted: isGroupMuted,
                                       isGroupTyping: isGroupTyping,
                                       typingUid: typingUid,
                                       typingCount: typingUids.length,
@@ -967,6 +974,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                           data['lastMessageIsRead'] == false);
 
                                   final isFriend = friendUids.contains(otherUid);
+                                  final bool isDirectMuted =
+                                      chatRepo.isChatMuted(data, myUid);
 
                                   return _ConversationItemTile(
                                     key: ValueKey(doc.id),
@@ -974,6 +983,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                     myUid: myUid,
                                     otherUid: otherUid,
                                     isFriend: isFriend,
+                                    isMuted: isDirectMuted,
                                     lastMessage: lastMessage,
                                     lastSenderId: lastSenderId,
                                     lastType: lastType,
@@ -1086,6 +1096,7 @@ class _ConversationItemTile extends StatelessWidget {
   final UserRepository userRepo;
   final String searchQuery;
   final bool isFriend;
+  final bool isMuted;
 
   const _ConversationItemTile({
     super.key,
@@ -1093,6 +1104,7 @@ class _ConversationItemTile extends StatelessWidget {
     required this.myUid,
     required this.otherUid,
     required this.isFriend,
+    this.isMuted = false,
     required this.lastMessage,
     required this.lastSenderId,
     required this.lastType,
@@ -1228,6 +1240,15 @@ class _ConversationItemTile extends StatelessWidget {
               },
             );
           },
+          onLongPress: () {
+            MuteChatSheet.show(
+              context,
+              chatId: chatId,
+              myUid: myUid,
+              isCurrentlyMuted: isMuted,
+              isGroup: false,
+            );
+          },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 4),
@@ -1332,6 +1353,14 @@ class _ConversationItemTile extends StatelessWidget {
                               ),
                             ),
                           ),
+                          if (isMuted) ...[
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.notifications_off_rounded,
+                              size: 13.5,
+                              color: textSecondary.withValues(alpha: 0.65),
+                            ),
+                          ],
                           if (relativeTime.isNotEmpty) ...[
                             const SizedBox(width: 6),
                             Text(
@@ -1427,6 +1456,7 @@ class _GroupConversationItemTile extends StatelessWidget {
   final DateTime? updatedAt;
   final String relativeTime;
   final bool isUnread;
+  final bool isGroupMuted;
   final bool isGroupTyping;
   final String typingUid;
   final int typingCount;
@@ -1446,6 +1476,7 @@ class _GroupConversationItemTile extends StatelessWidget {
     required this.updatedAt,
     required this.relativeTime,
     required this.isUnread,
+    this.isGroupMuted = false,
     required this.isGroupTyping,
     required this.typingUid,
     this.typingCount = 0,
@@ -1519,6 +1550,15 @@ class _GroupConversationItemTile extends StatelessWidget {
               'groupColor': groupColorHex,
               'memberUids': participants,
             },
+          );
+        },
+        onLongPress: () {
+          MuteChatSheet.show(
+            context,
+            chatId: groupId,
+            myUid: myUid,
+            isCurrentlyMuted: isGroupMuted,
+            isGroup: true,
           );
         },
         borderRadius: BorderRadius.circular(16),
@@ -1648,6 +1688,14 @@ class _GroupConversationItemTile extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (isGroupMuted) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.notifications_off_rounded,
+                            size: 13.5,
+                            color: textSecondary.withValues(alpha: 0.65),
+                          ),
+                        ],
                         if (relativeTime.isNotEmpty) ...[
                           const SizedBox(width: 6),
                           Text(

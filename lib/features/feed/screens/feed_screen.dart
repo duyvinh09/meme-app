@@ -31,6 +31,7 @@ import '../widgets/feed_reaction_input_bar.dart';
 import '../widgets/post_activity_bar.dart';
 import '../widgets/new_post_floating_banner.dart';
 import '../controllers/feed_controller.dart';
+import '../../../core/services/video_cache_service.dart';
 
 class FeedScreen extends StatefulWidget {
   final bool isActive;
@@ -123,6 +124,23 @@ class _FeedScreenState extends State<FeedScreen> {
           userFrame: myFrame,
         );
       }
+    }
+  }
+
+  void _preloadUpcomingVideos(List<TransactionModel> transactions, int currentIndex) {
+    if (transactions.isEmpty) return;
+    final urlsToPreload = <String>[];
+    for (int offset = -1; offset <= 2; offset++) {
+      final targetIndex = currentIndex + offset;
+      if (targetIndex >= 0 && targetIndex < transactions.length) {
+        final tx = transactions[targetIndex];
+        if (tx.isVideo && tx.playableVideoUrl.isNotEmpty) {
+          urlsToPreload.add(tx.playableVideoUrl);
+        }
+      }
+    }
+    if (urlsToPreload.isNotEmpty) {
+      VideoCacheService.instance.preloadBatch(urlsToPreload);
     }
   }
 
@@ -289,97 +307,104 @@ class _FeedScreenState extends State<FeedScreen> {
                   builder: (context, closeFriendSnapshot) {
                     final closeFriendIds = closeFriendSnapshot.data ?? [];
 
-                    return FutureBuilder<List<UserModel>>(
-                      future: _loadFriendProfiles(context, friendIds),
-                      builder: (context, friendProfileSnapshot) {
-                        final friendProfiles = friendProfileSnapshot.data ?? [];
+                    return StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: context.read<UserRepository>().streamGroups(myUid),
+                      builder: (context, groupsSnapshot) {
+                        final userGroups = groupsSnapshot.data ?? [];
 
-                        final validSelectableIds = <String>{
-                          'all',
-                          if (closeFriendIds.isNotEmpty) 'close_friends',
-                          'me',
-                          ...friendProfiles.map((e) => e.uid),
-                        };
+                        return FutureBuilder<List<UserModel>>(
+                          future: _loadFriendProfiles(context, friendIds),
+                          builder: (context, friendProfileSnapshot) {
+                            final friendProfiles = friendProfileSnapshot.data ?? [];
 
-                        if (!validSelectableIds.contains(selectedUserId)) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted) {
-                              setState(() {
-                                selectedUserId = 'all';
+                            final validSelectableIds = <String>{
+                              'all',
+                              'me',
+                              if (closeFriendIds.isNotEmpty) 'close_friends',
+                              ...userGroups.map((g) => 'group:${g['id']}'),
+                              ...friendProfiles.map((e) => e.uid),
+                            };
+
+                            if (!validSelectableIds.contains(selectedUserId)) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted) {
+                                  setState(() {
+                                    selectedUserId = 'all';
+                                  });
+                                }
                               });
                             }
-                          });
-                        }
 
-                        if (feed.scrollToTopTrigger != _lastScrollToTopTrigger) {
-                          _lastScrollToTopTrigger = feed.scrollToTopTrigger;
-                          _currentPageIndex = 0;
-                          _newPostsCount = 0;
-                          selectedUserId = 'all';
-                          _isFilterMenuOpen = false;
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (mounted && _pageController.hasClients) {
-                              _pageController.jumpToPage(0);
+                            if (feed.scrollToTopTrigger != _lastScrollToTopTrigger) {
+                              _lastScrollToTopTrigger = feed.scrollToTopTrigger;
+                              _currentPageIndex = 0;
+                              _newPostsCount = 0;
+                              selectedUserId = 'all';
+                              _isFilterMenuOpen = false;
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted && _pageController.hasClients) {
+                                  _pageController.jumpToPage(0);
+                                }
+                              });
+                              if (feed.feedTransactions.isNotEmpty) {
+                                _topPostId = feed.feedTransactions.first.id;
+                              }
                             }
-                          });
-                          if (feed.feedTransactions.isNotEmpty) {
-                            _topPostId = feed.feedTransactions.first.id;
-                          }
-                        }
 
-                        final filteredTransactions = _filterTransactions(
-                          allTransactions: feed.feedTransactions,
-                          myUid: myUid,
-                          selectedUserId: selectedUserId,
-                          closeFriendIds: closeFriendIds,
-                        );
+                            final filteredTransactions = _filterTransactions(
+                              allTransactions: feed.feedTransactions,
+                              myUid: myUid,
+                              selectedUserId: selectedUserId,
+                              closeFriendIds: closeFriendIds,
+                            );
 
-                        if (feed.isLoading && feed.feedTransactions.isEmpty) {
-                          return const Center(
-                            child: CircularProgressIndicator(),
-                          );
-                        }
+                            if (feed.isLoading && feed.feedTransactions.isEmpty) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            }
 
-                        if (feed.errorMessage != null) {
-                          return Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24),
-                              child: Text(
-                                context.l10n.loadFeedError(feed.errorMessage!),
-                                textAlign: TextAlign.center,
-                                style: AppTextStyles.body(context).copyWith(
-                                  color: palette.textPrimary,
+                            if (feed.errorMessage != null) {
+                              return Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Text(
+                                    context.l10n.loadFeedError(feed.errorMessage!),
+                                    textAlign: TextAlign.center,
+                                    style: AppTextStyles.body(context).copyWith(
+                                      color: palette.textPrimary,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                          );
-                        }
+                              );
+                            }
 
-                        if (feed.feedTransactions.isEmpty) {
-                          return _FeedEmptyState(
-                            palette: palette,
-                          );
-                        }
+                            if (feed.feedTransactions.isEmpty) {
+                              return _FeedEmptyState(
+                                palette: palette,
+                              );
+                            }
 
-                        if (filteredTransactions.isEmpty) {
-                          return _FilteredEmptyFeed(
-                            selectedUserId: selectedUserId,
-                            friendProfiles: friendProfiles,
-                            closeFriendIds: closeFriendIds,
-                            myProfile: myProfile,
-                            selectedUserIdValue: selectedUserId,
-                            feedTransactions: filteredTransactions,
-                            palette: palette,
-                            onSelected: _changeFilter,
-                          );
-                        }
+                            if (filteredTransactions.isEmpty) {
+                              return _FilteredEmptyFeed(
+                                selectedUserId: selectedUserId,
+                                friendProfiles: friendProfiles,
+                                closeFriendIds: closeFriendIds,
+                                userGroups: userGroups,
+                                myProfile: myProfile,
+                                selectedUserIdValue: selectedUserId,
+                                feedTransactions: filteredTransactions,
+                                palette: palette,
+                                onSelected: _changeFilter,
+                              );
+                            }
 
-                    final safeIndex = _currentPageIndex.clamp(
-                      0,
-                      filteredTransactions.isEmpty ? 0 : filteredTransactions.length - 1,
-                    );
-                    final currentTransaction = filteredTransactions.isNotEmpty
-                        ? filteredTransactions[safeIndex]
+                        final safeIndex = _currentPageIndex.clamp(
+                          0,
+                          filteredTransactions.isEmpty ? 0 : filteredTransactions.length - 1,
+                        );
+                        final currentTransaction = filteredTransactions.isNotEmpty
+                            ? filteredTransactions[safeIndex]
                         : null;
                     final isCurrentPostOwner = currentTransaction != null &&
                         currentTransaction.userId == myUid;
@@ -510,6 +535,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                         : null;
                                   }
                                 });
+                                _preloadUpcomingVideos(filteredTransactions, index);
                                 if (widget.isActive && index >= 0 && index < filteredTransactions.length) {
                                   final activeTx = filteredTransactions[index];
                                   _recordViewIfNeeded(activeTx);
@@ -522,6 +548,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 return _FeedPostPage(
                                   transaction: tx,
                                   palette: palette,
+                                  isActive: widget.isActive && (index == _currentPageIndex),
                                 );
                               },
                             ),
@@ -714,6 +741,7 @@ class _FeedScreenState extends State<FeedScreen> {
                                 myProfile: myProfile,
                                 friendProfiles: friendProfiles,
                                 closeFriendIds: closeFriendIds,
+                                userGroups: userGroups,
                                 selectedUserId: selectedUserId,
                                 feedTransactions: filteredTransactions,
                                 isMenuOpen: _isFilterMenuOpen,
@@ -754,11 +782,13 @@ class _FeedScreenState extends State<FeedScreen> {
             },
           );
         },
-      ),
-        ),
-      ),
-    );
-  }
+      );
+    },
+  ),
+),
+),
+);
+}
 
   Future<List<UserModel>> _loadFriendProfiles(
       BuildContext context,
@@ -787,12 +817,17 @@ class _FeedScreenState extends State<FeedScreen> {
       return list;
     }
 
+    if (selectedUserId == 'me') {
+      return list.where((e) => e.userId == myUid).toList();
+    }
+
     if (selectedUserId == 'close_friends') {
       return list.where((e) => closeFriendIds.contains(e.userId)).toList();
     }
 
-    if (selectedUserId == 'me') {
-      return list.where((e) => e.userId == myUid).toList();
+    if (selectedUserId.startsWith('group:')) {
+      final targetGroupId = selectedUserId.substring(6);
+      return list.where((e) => e.groupId == targetGroupId).toList();
     }
 
     return list.where((e) => e.userId == selectedUserId).toList();
@@ -803,6 +838,7 @@ class _FilteredEmptyFeed extends StatefulWidget {
   final String selectedUserId;
   final List<UserModel> friendProfiles;
   final List<String> closeFriendIds;
+  final List<Map<String, dynamic>> userGroups;
   final UserModel? myProfile;
   final String selectedUserIdValue;
   final List<TransactionModel> feedTransactions;
@@ -813,6 +849,7 @@ class _FilteredEmptyFeed extends StatefulWidget {
     required this.selectedUserId,
     required this.friendProfiles,
     required this.closeFriendIds,
+    this.userGroups = const [],
     required this.myProfile,
     required this.selectedUserIdValue,
     required this.feedTransactions,
@@ -1016,10 +1053,12 @@ class _FeedEmptyState extends StatelessWidget {
 class _FeedPostPage extends StatelessWidget {
   final TransactionModel transaction;
   final _FeedPalette palette;
+  final bool isActive;
 
   const _FeedPostPage({
     required this.transaction,
     required this.palette,
+    this.isActive = true,
   });
 
   String _localizedCategoryLabel(BuildContext context, String category) {
@@ -1162,6 +1201,7 @@ class _FeedPostPage extends StatelessWidget {
                         transaction: transaction,
                         palette: palette,
                         isOwner: isOwner,
+                        isActive: isActive,
                       ),
                     ),
                     SizedBox(height: itemGap),
@@ -1237,6 +1277,7 @@ class _FeedHeader extends StatefulWidget {
   final UserModel? myProfile;
   final List<UserModel> friendProfiles;
   final List<String> closeFriendIds;
+  final List<Map<String, dynamic>> userGroups;
   final String selectedUserId;
   final List<TransactionModel> feedTransactions;
   final bool isMenuOpen;
@@ -1250,6 +1291,7 @@ class _FeedHeader extends StatefulWidget {
     required this.myProfile,
     required this.friendProfiles,
     this.closeFriendIds = const [],
+    this.userGroups = const [],
     required this.selectedUserId,
     required this.feedTransactions,
     required this.isMenuOpen,
@@ -1286,10 +1328,47 @@ class _FeedHeaderState extends State<_FeedHeader> {
     return user.name.isNotEmpty ? user.name : user.username;
   }
 
+  Color _parseGroupColor(Map<String, dynamic> group) {
+    final rawColor = group['color'] ?? group['colorHex'] ?? group['groupColor'];
+    if (rawColor == null) return const Color(0xFF79AFFF);
+
+    if (rawColor is int) {
+      return Color(rawColor);
+    }
+
+    final colorStr = rawColor.toString().trim();
+    if (colorStr.isEmpty) return const Color(0xFF79AFFF);
+
+    try {
+      final hex = colorStr.replaceAll('#', '').replaceAll('0x', '');
+      if (hex.length == 6) {
+        return Color(int.parse('FF$hex', radix: 16));
+      } else if (hex.length == 8) {
+        return Color(int.parse(hex, radix: 16));
+      }
+    } catch (_) {}
+
+    return const Color(0xFF79AFFF);
+  }
+
   String _selectedLabel(BuildContext context) {
     if (widget.selectedUserId == 'all') return context.l10n.everyone;
-    if (widget.selectedUserId == 'close_friends') return context.l10n.closeFriends;
     if (widget.selectedUserId == 'me') return context.l10n.you;
+    if (widget.selectedUserId == 'close_friends') return context.l10n.closeFriends;
+
+    if (widget.selectedUserId.startsWith('group:')) {
+      final targetGroupId = widget.selectedUserId.substring(6);
+      final group = widget.userGroups.firstWhere(
+        (g) => (g['id'] ?? '').toString() == targetGroupId,
+        orElse: () => {},
+      );
+      final name = (group['name'] ?? 'Nhóm').toString();
+      return _shortName(
+        context,
+        name,
+        maxLength: 10,
+      );
+    }
 
     UserModel? selectedFriend;
 
@@ -1320,6 +1399,16 @@ class _FeedHeaderState extends State<_FeedHeader> {
       ];
     }
 
+    if (widget.selectedUserId == 'me') {
+      return [
+        Icon(
+          Icons.person_outline_rounded,
+          color: widget.palette.textPrimary,
+          size: 18,
+        ),
+      ];
+    }
+
     if (widget.selectedUserId == 'close_friends') {
       return [
         const Icon(
@@ -1330,12 +1419,30 @@ class _FeedHeaderState extends State<_FeedHeader> {
       ];
     }
 
-    if (widget.selectedUserId == 'me') {
+    if (widget.selectedUserId.startsWith('group:')) {
+      final targetGroupId = widget.selectedUserId.substring(6);
+      final group = widget.userGroups.firstWhere(
+        (g) => (g['id'] ?? '').toString() == targetGroupId,
+        orElse: () => {},
+      );
+      final groupColor = _parseGroupColor(group);
+
       return [
-        Icon(
-          Icons.person_outline_rounded,
-          color: widget.palette.textPrimary,
-          size: 18,
+        Container(
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            color: groupColor.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+            border: Border.all(color: groupColor, width: 1.4),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.groups_rounded,
+              size: 11,
+              color: groupColor,
+            ),
+          ),
         ),
       ];
     }
@@ -1440,7 +1547,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
           child: Container(
             width: screenSize.width * 0.68,
             constraints: BoxConstraints(
-              maxHeight: screenSize.height * 0.42,
+              maxHeight: screenSize.height * 0.46,
             ),
             decoration: BoxDecoration(
               color: widget.palette.pillBackground,
@@ -1474,7 +1581,19 @@ class _FeedHeaderState extends State<_FeedHeader> {
                     onTap: () => _selectUser('all'),
                   ),
 
-                  // 2. Bạn thân (Close Friends) - Only if user has close friends
+                  // 2. Bạn (You)
+                  _menuDivider(),
+                  _menuRow(
+                    leading: Icon(
+                      Icons.person_outline_rounded,
+                      size: 18,
+                      color: widget.palette.textPrimary,
+                    ),
+                    label: context.l10n.you,
+                    onTap: () => _selectUser('me'),
+                  ),
+
+                  // 3. Bạn thân (Close Friends) - Only if user has close friends
                   if (widget.closeFriendIds.isNotEmpty) ...[
                     _menuDivider(),
                     _menuRow(
@@ -1488,75 +1607,110 @@ class _FeedHeaderState extends State<_FeedHeader> {
                     ),
                   ],
 
-                  // 3. Bạn (You)
-                  _menuDivider(),
-                  _menuRow(
-                    leading: Icon(
-                      Icons.person_outline_rounded,
-                      size: 18,
-                      color: widget.palette.textPrimary,
-                    ),
-                    label: context.l10n.you,
-                    onTap: () => _selectUser('me'),
-                  ),
+                  // 4. Nhóm (Groups)
+                  if (widget.userGroups.isNotEmpty) ...[
+                    _menuDivider(),
+                    ...List.generate(widget.userGroups.length, (index) {
+                      final group = widget.userGroups[index];
+                      final gId = (group['id'] ?? '').toString();
+                      final gName = (group['name'] ?? 'Nhóm').toString();
+                      final groupColor = _parseGroupColor(group);
 
-                  // 4. Các bạn bè khác (Friends list)
-                  if (sortedFriends.isNotEmpty) _menuDivider(),
-                  ...List.generate(sortedFriends.length, (index) {
-                    final friend = sortedFriends[index];
-                    final isCloseFriend = widget.closeFriendIds.contains(friend.uid);
-
-                    return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _menuRow(
-                          leading: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              CircleAvatar(
-                                radius: 11,
-                                backgroundColor: widget.palette.avatarBackground,
-                                backgroundImage: friend.avatarUrl.isNotEmpty
-                                    ? NetworkImage(friend.avatarUrl)
-                                    : null,
-                                child: friend.avatarUrl.isEmpty
-                                    ? const Icon(Icons.person, size: 11)
-                                    : null,
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _menuRow(
+                            leading: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                color: groupColor.withValues(alpha: 0.20),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: groupColor,
+                                  width: 1.4,
+                                ),
                               ),
-                              if (isCloseFriend)
-                                Positioned(
-                                  right: -3,
-                                  top: -3,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(1),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: const Color(0xFFFBBF24),
-                                      border: Border.all(
-                                        color: widget.palette.pillBackground,
-                                        width: 1.2,
+                              child: Center(
+                                child: Icon(
+                                  Icons.groups_rounded,
+                                  size: 13,
+                                  color: groupColor,
+                                ),
+                              ),
+                            ),
+                            label: _shortName(
+                              context,
+                              gName,
+                              maxLength: 14,
+                            ),
+                            onTap: () => _selectUser('group:$gId'),
+                          ),
+                          if (index != widget.userGroups.length - 1) _menuDivider(),
+                        ],
+                      );
+                    }),
+                  ],
+
+                  // 5. Bạn bè (Friends)
+                  if (sortedFriends.isNotEmpty) ...[
+                    _menuDivider(),
+                    ...List.generate(sortedFriends.length, (index) {
+                      final friend = sortedFriends[index];
+                      final isCloseFriend = widget.closeFriendIds.contains(friend.uid);
+
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _menuRow(
+                            leading: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                CircleAvatar(
+                                  radius: 11,
+                                  backgroundColor: widget.palette.avatarBackground,
+                                  backgroundImage: friend.avatarUrl.isNotEmpty
+                                      ? NetworkImage(friend.avatarUrl)
+                                      : null,
+                                  child: friend.avatarUrl.isEmpty
+                                      ? const Icon(Icons.person, size: 11)
+                                      : null,
+                                ),
+                                if (isCloseFriend)
+                                  Positioned(
+                                    right: -3,
+                                    top: -3,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(1),
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: const Color(0xFFFBBF24),
+                                        border: Border.all(
+                                          color: widget.palette.pillBackground,
+                                          width: 1.2,
+                                        ),
+                                      ),
+                                      child: const Icon(
+                                        Icons.star_rounded,
+                                        size: 8,
+                                        color: Colors.white,
                                       ),
                                     ),
-                                    child: const Icon(
-                                      Icons.star_rounded,
-                                      size: 8,
-                                      color: Colors.white,
-                                    ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
+                            label: _shortName(
+                              context,
+                              _displayName(friend),
+                              maxLength: 14,
+                            ),
+                            onTap: () => _selectUser(friend.uid),
                           ),
-                          label: _shortName(
-                            context,
-                            _displayName(friend),
-                            maxLength: 14,
-                          ),
-                          onTap: () => _selectUser(friend.uid),
-                        ),
-                        if (index != sortedFriends.length - 1) _menuDivider(),
-                      ],
-                    );
-                  }),
+                          if (index != sortedFriends.length - 1) _menuDivider(),
+                        ],
+                      );
+                    }),
+                  ],
                 ],
               ),
             ),
@@ -1731,11 +1885,13 @@ class _MainSquarePost extends StatelessWidget {
   final TransactionModel transaction;
   final _FeedPalette palette;
   final bool isOwner;
+  final bool isActive;
 
   const _MainSquarePost({
     required this.transaction,
     required this.palette,
     this.isOwner = false,
+    this.isActive = true,
   });
 
   @override
@@ -1759,6 +1915,7 @@ class _MainSquarePost extends StatelessWidget {
               categoryIconCodePoint: transaction.categoryIconCodePoint,
               categoryColorHex: transaction.categoryColorHex,
               isFrontCamera: transaction.isFrontCamera,
+              isActive: isActive,
             )
           else
             TransactionMomentImage(
@@ -2395,6 +2552,7 @@ class _FeedMutedVideoPlayer extends StatefulWidget {
   final int? categoryIconCodePoint;
   final String? categoryColorHex;
   final bool isFrontCamera;
+  final bool isActive;
 
   const _FeedMutedVideoPlayer({
     required this.videoUrl,
@@ -2403,6 +2561,7 @@ class _FeedMutedVideoPlayer extends StatefulWidget {
     this.categoryIconCodePoint,
     this.categoryColorHex,
     this.isFrontCamera = false,
+    this.isActive = true,
   });
 
   @override
@@ -2426,6 +2585,14 @@ class _FeedMutedVideoPlayerState extends State<_FeedMutedVideoPlayer> {
     if (oldWidget.videoUrl != widget.videoUrl) {
       _disposeVideo();
       _setupVideo();
+    } else if (oldWidget.isActive != widget.isActive) {
+      if (widget.isActive) {
+        if (_controller != null && _controller!.value.isInitialized) {
+          _controller!.play();
+        }
+      } else {
+        _controller?.pause();
+      }
     }
   }
 
@@ -2433,29 +2600,27 @@ class _FeedMutedVideoPlayerState extends State<_FeedMutedVideoPlayer> {
     final url = widget.videoUrl.trim();
     if (url.isEmpty) return;
 
-    final controller = VideoPlayerController.networkUrl(
-      Uri.parse(url),
-      videoPlayerOptions: VideoPlayerOptions(
-        mixWithOthers: true,
-        allowBackgroundPlayback: false,
-      ),
-    );
-
-    _controller = controller;
-
     try {
-      await controller.setLooping(true);
-      await controller.setVolume(0);
+      final controller = await VideoCacheService.instance.createOptimizedController(
+        url,
+        looping: true,
+        volume: 0,
+      );
 
-      await controller.initialize();
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
 
-      if (!mounted) return;
+      _controller = controller;
 
       setState(() {
         _isReady = true;
       });
 
-      await controller.play();
+      if (widget.isActive) {
+        await controller.play();
+      }
     } catch (e) {
       debugPrint('Feed video init error: $e');
     }
@@ -2478,7 +2643,7 @@ class _FeedMutedVideoPlayerState extends State<_FeedMutedVideoPlayer> {
     final controller = _controller;
 
     Widget? videoWidget;
-    if (_isReady && controller != null) {
+    if (_isReady && controller != null && controller.value.isInitialized) {
       videoWidget = FittedBox(
         fit: BoxFit.cover,
         child: SizedBox(
@@ -2512,7 +2677,12 @@ class _FeedMutedVideoPlayerState extends State<_FeedMutedVideoPlayer> {
         ),
 
         if (videoWidget != null)
-          videoWidget,
+          AnimatedOpacity(
+            opacity: _isReady ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            child: videoWidget,
+          ),
 
         Positioned.fill(
           child: DecoratedBox(
@@ -2604,6 +2774,14 @@ class FeedGalleryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final videoUrls = transactions
+        .where((tx) => tx.isVideo && tx.playableVideoUrl.isNotEmpty)
+        .map((tx) => tx.playableVideoUrl)
+        .toList();
+    if (videoUrls.isNotEmpty) {
+      VideoCacheService.instance.preloadBatch(videoUrls);
+    }
+
     final imageEntries = transactions.asMap().entries.toList();
 
     return Scaffold(

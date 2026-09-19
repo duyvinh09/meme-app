@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -8,6 +9,8 @@ import 'package:uuid/uuid.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../../core/services/locket/locket_upload_service.dart';
+import '../../core/services/fcm_push_service.dart';
+import '../../core/services/notification_service.dart';
 import '../datasources/remote/transaction_remote_datasource.dart';
 import '../models/transaction_model.dart';
 import 'budget_repository.dart';
@@ -161,6 +164,82 @@ class TransactionRepository {
       );
     }
 
+    // Push notification to group members if this is a group expense or contribution
+    if (transaction.groupId != null && transaction.groupId!.isNotEmpty) {
+      unawaited(() async {
+        try {
+          final userDoc = await _db.collection('users').doc(userId).get();
+          final userData = userDoc.data();
+          final userName =
+              userData?['name'] ?? userData?['username'] ?? 'Thành viên';
+
+          List<String> memberIds = List<String>.from(transaction.groupMemberIds);
+          String gName = transaction.groupName ?? 'Nhóm';
+
+          if (memberIds.isEmpty) {
+            // 1. Check in chats collection
+            final chatDoc = await _db.collection('chats').doc(transaction.groupId).get();
+            if (chatDoc.exists && chatDoc.data() != null) {
+              final cData = chatDoc.data()!;
+              gName = cData['groupName']?.toString() ?? cData['name']?.toString() ?? gName;
+              final rawMembers = cData['participants'] ?? cData['members'] ?? [];
+              if (rawMembers is List) {
+                memberIds = rawMembers.map((e) => e.toString()).toList();
+              }
+            }
+            // 2. Check in user's groups subcollection if still empty
+            if (memberIds.isEmpty) {
+              final userGroupDoc = await _db.collection('users').doc(userId).collection('groups').doc(transaction.groupId).get();
+              if (userGroupDoc.exists && userGroupDoc.data() != null) {
+                final ugData = userGroupDoc.data()!;
+                gName = ugData['name']?.toString() ?? ugData['groupName']?.toString() ?? gName;
+                final rawMembers = ugData['memberIds'] ?? ugData['members'] ?? [];
+                if (rawMembers is List) {
+                  memberIds = rawMembers.map((e) => e.toString()).toList();
+                }
+              }
+            }
+            // 3. Check legacy group_chats
+            if (memberIds.isEmpty) {
+              final groupDoc = await _db.collection('group_chats').doc(transaction.groupId).get();
+              if (groupDoc.exists && groupDoc.data() != null) {
+                final gData = groupDoc.data()!;
+                gName = gData['name'] ?? gName;
+                final rawMembers = gData['members'] ?? gData['participants'] ?? [];
+                if (rawMembers is List) {
+                  memberIds = rawMembers.map((e) => e.toString()).toList();
+                }
+              }
+            }
+          }
+
+          if (memberIds.isNotEmpty) {
+            await FcmPushService.instance.sendGroupTransactionNotification(
+              groupId: transaction.groupId!,
+              groupName: gName,
+              creatorUid: userId,
+              creatorName: userName,
+              amount: transaction.amount,
+              category: transaction.category,
+              caption: transaction.caption,
+              isGroupContribution: transaction.isGroupContribution,
+              memberIds: memberIds,
+              transactionId: transaction.id,
+            );
+          }
+        } catch (e) {
+          debugPrint('Error sending group transaction FCM: $e');
+        }
+      }());
+    }
+
+    // Cancel today's 20:00 reminder since user has recorded an expense today
+    unawaited(() async {
+      try {
+        await NotificationService.instance.onExpenseRecordedToday(uid: userId);
+      } catch (_) {}
+    }());
+
     return transaction;
   }
 
@@ -175,14 +254,42 @@ class TransactionRepository {
 
       final tempDir = await getTemporaryDirectory();
 
-      final thumbnailPath = await VideoThumbnail.thumbnailFile(
-        video: videoFile.path,
-        thumbnailPath: tempDir.path,
-        imageFormat: ImageFormat.JPEG,
-        maxWidth: 720,
-        maxHeight: 720,
-        quality: 82,
-      );
+      // 1. Trích xuất frame ở mốc thời gian ~300ms (hoặc fallback 100ms/0ms)
+      // để tránh bị dính frame đen lúc cảm biến camera/video encoder vừa khởi động.
+      String? thumbnailPath;
+      try {
+        thumbnailPath = await VideoThumbnail.thumbnailFile(
+          video: videoFile.path,
+          thumbnailPath: tempDir.path,
+          imageFormat: ImageFormat.JPEG,
+          timeMs: 300,
+          maxWidth: 1080,
+          maxHeight: 1080,
+          quality: 85,
+        );
+      } catch (_) {
+        // Fallback nếu video quá ngắn hoặc timeMs 300 lỗi
+        try {
+          thumbnailPath = await VideoThumbnail.thumbnailFile(
+            video: videoFile.path,
+            thumbnailPath: tempDir.path,
+            imageFormat: ImageFormat.JPEG,
+            timeMs: 100,
+            maxWidth: 1080,
+            maxHeight: 1080,
+            quality: 85,
+          );
+        } catch (_) {
+          thumbnailPath = await VideoThumbnail.thumbnailFile(
+            video: videoFile.path,
+            thumbnailPath: tempDir.path,
+            imageFormat: ImageFormat.JPEG,
+            maxWidth: 1080,
+            maxHeight: 1080,
+            quality: 85,
+          );
+        }
+      }
 
       if (thumbnailPath == null || thumbnailPath.trim().isEmpty) {
         return null;
@@ -194,27 +301,53 @@ class TransactionRepository {
         return null;
       }
 
-      if (isFrontCamera) {
-        try {
-          final bytes = await thumbnailFile.readAsBytes();
-          var thumbImg = img.decodeImage(bytes);
-          if (thumbImg != null) {
-            thumbImg = img.bakeOrientation(thumbImg);
-            thumbImg = img.copyFlip(thumbImg, direction: img.FlipDirection.horizontal);
-            await thumbnailFile.writeAsBytes(
-              img.encodeJpg(thumbImg, quality: 90),
-              flush: true,
+      // 2. Xử lý ảnh thumbnail y hệt như ảnh chụp thông thường:
+      //    - Chuẩn hóa hướng xoay EXIF (bakeOrientation)
+      //    - Lật gương nếu quay bằng camera trước (copyFlip)
+      //    - Cắt vuông 1:1 từ trung tâm (copyCrop)
+      //    - Lưu lại ảnh JPEG chất lượng cao
+      try {
+        final bytes = await thumbnailFile.readAsBytes();
+        var thumbImg = img.decodeImage(bytes);
+        if (thumbImg != null) {
+          // Chuẩn hóa xoay
+          thumbImg = img.bakeOrientation(thumbImg);
+
+          // Lật gương nếu là camera trước
+          if (isFrontCamera) {
+            thumbImg = img.copyFlip(
+              thumbImg,
+              direction: img.FlipDirection.horizontal,
             );
           }
-        } catch (e) {
-          debugPrint('Thumbnail flip error: $e');
+
+          // Cắt vuông 1:1 từ trung tâm
+          final cropSize = thumbImg.width < thumbImg.height
+              ? thumbImg.width
+              : thumbImg.height;
+          final offsetX = (thumbImg.width - cropSize) ~/ 2;
+          final offsetY = (thumbImg.height - cropSize) ~/ 2;
+
+          final croppedThumb = img.copyCrop(
+            thumbImg,
+            x: offsetX,
+            y: offsetY,
+            width: cropSize,
+            height: cropSize,
+          );
+
+          await thumbnailFile.writeAsBytes(
+            img.encodeJpg(croppedThumb, quality: 85),
+            flush: true,
+          );
         }
+      } catch (e) {
+        debugPrint('Thumbnail crop/process error: $e');
       }
 
       return thumbnailFile;
     } catch (e) {
-      // Nếu tạo thumbnail lỗi thì vẫn cho lưu video,
-      // nhưng Home/Calendar sẽ không có ảnh đại diện video.
+      debugPrint('Video thumbnail creation failed: $e');
       return null;
     }
   }
@@ -361,8 +494,12 @@ class TransactionRepository {
   Future<List<TransactionModel>> fetchFeedPosts({
     required String viewerUid,
     required List<String> userIds,
+    List<String> friendIds = const [],
   }) async {
     if (userIds.isEmpty) return [];
+
+    // Use a Set for O(1) look-up when checking actual friendship
+    final friendIdSet = {...friendIds};
 
     final Map<String, TransactionModel> uniqueMap = {};
 
@@ -394,7 +531,10 @@ class TransactionRepository {
 
           if (tx.sharedToFeed == true) {
             if (tx.privacy == 'friends') {
-              uniqueMap[tx.id] = tx;
+              // Only show if the author is an actual friend (not just a shared group member)
+              if (friendIdSet.isEmpty || friendIdSet.contains(tx.userId)) {
+                uniqueMap[tx.id] = tx;
+              }
             } else if (tx.privacy == 'close_friends') {
               if (tx.closeFriendUids.contains(viewerUid)) {
                 uniqueMap[tx.id] = tx;
@@ -438,6 +578,7 @@ class TransactionRepository {
     all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return all;
   }
+
 
   Future<List<TransactionModel>> fetchFriendsFeed(List<String> friendIds) async {
     if (friendIds.isEmpty) return [];

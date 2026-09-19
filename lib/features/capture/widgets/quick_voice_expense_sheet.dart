@@ -3,11 +3,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_durations.dart';
-import '../../../core/constants/app_sizes.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/services/expense_parser.dart';
 import '../../../core/services/voice_input_service.dart';
@@ -17,7 +16,6 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
-import '../../budget/controllers/budget_controller.dart';
 import '../../feed/controllers/feed_controller.dart';
 import '../../home/widgets/streak_milestone_dialog.dart';
 import '../../profile/controllers/profile_controller.dart';
@@ -189,7 +187,7 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
       _errorMessage = null;
     });
 
-    final defaultCurrency = context.read<ProfileController>().currency;
+    final defaultCurrency = _selectedSpeechLanguage == 'en' ? 'USD' : 'VND';
     final locale = _selectedSpeechLanguage == 'en' ? 'en_US' : 'vi_VN';
 
     final success = await _voiceService.startListening(
@@ -494,7 +492,7 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
 
     if (!mounted) return;
 
-    final defaultCurrency = context.read<ProfileController>().currency;
+    final defaultCurrency = _selectedSpeechLanguage == 'en' ? 'USD' : 'VND';
     final initialParsed = _parsedResult ??
         ExpenseParser.parse(
           _transcript.isNotEmpty ? _transcript : '',
@@ -507,6 +505,7 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
       backgroundColor: Colors.transparent,
       builder: (_) => _VoiceExpenseEditorSheet(
         initial: initialParsed,
+        speechLanguage: _selectedSpeechLanguage,
         autoFocusAmount: promptForAmount,
         initialAudience: _selectedAudience,
         initialSelectedFriendUids: _selectedFriendUids,
@@ -1299,6 +1298,7 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
 
 class _VoiceExpenseEditorSheet extends StatefulWidget {
   final ParsedExpenseResult initial;
+  final String speechLanguage;
   final bool autoFocusAmount;
   final String initialAudience;
   final Set<String> initialSelectedFriendUids;
@@ -1311,6 +1311,7 @@ class _VoiceExpenseEditorSheet extends StatefulWidget {
 
   const _VoiceExpenseEditorSheet({
     required this.initial,
+    this.speechLanguage = 'vi',
     this.autoFocusAmount = false,
     this.initialAudience = 'friends',
     this.initialSelectedFriendUids = const {},
@@ -1370,7 +1371,11 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
     super.initState();
     _captionController = TextEditingController(text: widget.initial.caption);
     _selectedType = widget.initial.type;
-    _selectedCurrency = widget.initial.currency;
+
+    final defaultCur = widget.speechLanguage == 'en' ? 'USD' : 'VND';
+    _selectedCurrency = widget.initial.currency.isNotEmpty
+        ? widget.initial.currency
+        : defaultCur;
 
     _selectedAudience = widget.initialAudience;
     _selectedFriendUids = Set<String>.from(widget.initialSelectedFriendUids);
@@ -1383,12 +1388,66 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
       _selectedCategory = 'Ăn uống';
     }
 
-    final initialAmountStr = widget.initial.amount > 0
-        ? (_selectedCurrency == 'USD'
-            ? widget.initial.amount.toStringAsFixed(widget.initial.amount.truncateToDouble() == widget.initial.amount ? 0 : 2)
-            : widget.initial.amount.toStringAsFixed(0))
-        : '';
+    String initialAmountStr = '';
+    if (widget.initial.amount > 0) {
+      if (_selectedCurrency == 'USD') {
+        initialAmountStr = widget.initial.amount.toStringAsFixed(
+            widget.initial.amount.truncateToDouble() == widget.initial.amount ? 0 : 2);
+      } else {
+        final intVnd = widget.initial.amount.round();
+        initialAmountStr = NumberFormat.decimalPattern('vi_VN').format(intVnd);
+      }
+    }
     _amountController = TextEditingController(text: initialAmountStr);
+  }
+
+  void _onCurrencyChanged(String newCurrency) {
+    if (_selectedCurrency == newCurrency) return;
+    HapticFeedback.selectionClick();
+
+    final currentText = _amountController.text.trim();
+    if (currentText.isEmpty) {
+      setState(() {
+        _selectedCurrency = newCurrency;
+      });
+      return;
+    }
+
+    if (newCurrency == 'USD' && _selectedCurrency == 'VND') {
+      // Convert VND -> USD
+      final vndDigits = currentText.replaceAll(RegExp(r'[^\d]'), '');
+      final vndAmount = double.tryParse(vndDigits) ?? 0;
+      final usdAmount = AppCurrencyFormatter.fromVnd(
+        amountVnd: vndAmount,
+        currency: 'USD',
+      );
+      final formattedUsd = usdAmount > 0
+          ? (usdAmount.truncateToDouble() == usdAmount
+              ? usdAmount.toStringAsFixed(0)
+              : usdAmount.toStringAsFixed(2))
+          : '';
+
+      setState(() {
+        _selectedCurrency = 'USD';
+        _amountController.text = formattedUsd;
+      });
+    } else if (newCurrency == 'VND' && _selectedCurrency == 'USD') {
+      // Convert USD -> VND
+      final cleanUsd = currentText.replaceAll(RegExp(r'[^0-9.]'), '');
+      final usdAmount = double.tryParse(cleanUsd) ?? 0;
+      final vndAmount = AppCurrencyFormatter.toVnd(
+        inputAmount: usdAmount,
+        currency: 'USD',
+      );
+      final formattedVnd = vndAmount > 0
+          ? NumberFormat.decimalPattern('vi_VN').format(vndAmount.round())
+          : '';
+
+      setState(() {
+        _selectedCurrency = 'VND';
+        _amountController.text = formattedVnd;
+      });
+    }
   }
 
   @override
@@ -1603,11 +1662,7 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
                           children: ['VND', 'USD'].map((cur) {
                             final isSelected = cur == _selectedCurrency;
                             return GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCurrency = cur;
-                                });
-                              },
+                              onTap: () => _onCurrencyChanged(cur),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 150),
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),

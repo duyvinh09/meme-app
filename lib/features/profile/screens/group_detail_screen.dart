@@ -13,7 +13,10 @@ import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../core/routes/route_names.dart';
+import '../../../core/utils/app_toast.dart';
+import '../../../data/repositories/chat_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../chat/widgets/mute_chat_sheet.dart';
 import '../../home/screens/moment_viewer_screen.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../capture/screens/camera_screen.dart';
@@ -334,6 +337,8 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                     _GroupOptionsCard(
                       isOwner: isOwner,
                       groupColor: groupColor,
+                      groupId: groupId,
+                      myUid: myUid,
                       onEdit: () async {
                         final changed = await Navigator.push(
                           context,
@@ -2031,18 +2036,25 @@ class _MembersContributionCard extends StatelessWidget {
 class _GroupOptionsCard extends StatelessWidget {
   final bool isOwner;
   final Color groupColor;
+  final String groupId;
+  final String myUid;
   final VoidCallback onEdit;
   final VoidCallback onDeleteOrLeave;
 
   const _GroupOptionsCard({
     required this.isOwner,
     required this.groupColor,
+    required this.groupId,
+    required this.myUid,
     required this.onEdit,
     required this.onDeleteOrLeave,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final chatRepo = ChatRepository();
+
     return _SectionCard(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
       child: Column(
@@ -2053,6 +2065,113 @@ class _GroupOptionsCard extends StatelessWidget {
             style: AppTextStyles.sectionTitle(context),
           ),
           const SizedBox(height: 14),
+          StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection('chats')
+                .doc(groupId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              final chatData = snapshot.data?.data();
+              final isMuted = chatRepo.isChatMuted(chatData, myUid);
+
+              return InkWell(
+                onTap: () {
+                  MuteChatSheet.show(
+                    context,
+                    chatId: groupId,
+                    myUid: myUid,
+                    isCurrentlyMuted: isMuted,
+                    isGroup: true,
+                  );
+                },
+                borderRadius: BorderRadius.circular(22),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface(context),
+                    borderRadius: BorderRadius.circular(22),
+                    border: Border.all(
+                      color: AppColors.innerBorder(context),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: (isMuted ? const Color(0xFFFF5252) : AppColors.primaryBlue)
+                              .withValues(alpha: 0.16),
+                        ),
+                        child: Icon(
+                          isMuted
+                              ? Icons.notifications_off_rounded
+                              : Icons.notifications_active_rounded,
+                          color: isMuted ? const Color(0xFFFF5252) : AppColors.primaryBlue,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isEn ? 'Mute group notifications' : 'Tắt thông báo nhóm',
+                              style: AppTextStyles.body(context).copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              isEn
+                                  ? 'Mute normal messages. You still receive @mentions & system updates.'
+                                  : 'Tắt thông báo tin nhắn thường. Bạn vẫn nhận thông báo khi được tag (@) và cập nhật hệ thống.',
+                              style: AppTextStyles.caption(context).copyWith(
+                                fontSize: 12,
+                                height: 1.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Switch(
+                        value: isMuted,
+                        activeTrackColor: const Color(0xFFFF5252),
+                        activeThumbColor: Colors.white,
+                        onChanged: (val) {
+                          if (val) {
+                            MuteChatSheet.show(
+                              context,
+                              chatId: groupId,
+                              myUid: myUid,
+                              isCurrentlyMuted: false,
+                              isGroup: true,
+                            );
+                          } else {
+                            chatRepo.unmuteChat(chatId: groupId, uid: myUid);
+                            if (context.mounted) {
+                              AppToast.show(
+                                context,
+                                isEn
+                                    ? 'Unmuted group notifications'
+                                    : 'Đã bật thông báo nhóm',
+                                icon: Icons.notifications_active_rounded,
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
           _ActionTile(
             icon: Icons.edit_outlined,
             title: context.l10n.editGroup,

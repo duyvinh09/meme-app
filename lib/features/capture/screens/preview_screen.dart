@@ -118,7 +118,15 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   VideoPlayerController? _videoController;
   bool _isVideoReady = false;
-  bool _isVideoMuted = true;
+
+  int? get _effectiveDurationMs {
+    if (_videoController != null &&
+        _videoController!.value.isInitialized &&
+        _videoController!.value.duration > Duration.zero) {
+      return _videoController!.value.duration.inMilliseconds;
+    }
+    return widget.durationMs;
+  }
 
   List<String> _closeFriendUids = [];
   StreamSubscription<List<Map<String, dynamic>>>? _friendsSub;
@@ -368,26 +376,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       setState(() {
         _isVideoReady = true;
-        _isVideoMuted = true;
       });
     } catch (e) {
       debugPrint('Preview video init error: $e');
     }
-  }
-
-  Future<void> _toggleVideoMute() async {
-    final controller = _videoController;
-    if (controller == null) return;
-
-    final nextMuted = !_isVideoMuted;
-
-    await controller.setVolume(nextMuted ? 0 : 1);
-
-    if (!mounted) return;
-
-    setState(() {
-      _isVideoMuted = nextMuted;
-    });
   }
 
   @override
@@ -673,13 +665,17 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   String _formatDurationLabel() {
-    final duration = widget.durationMs;
+    final duration = _effectiveDurationMs;
 
     if (duration == null || duration <= 0) {
       return 'Video';
     }
 
-    final seconds = (duration / 1000).clamp(0, 5).toStringAsFixed(1);
+    final totalSeconds = duration / 1000.0;
+    if ((totalSeconds - totalSeconds.round()).abs() < 0.08) {
+      return '${totalSeconds.round()}s';
+    }
+    final seconds = totalSeconds.toStringAsFixed(1);
     return '${seconds}s';
   }
 
@@ -860,7 +856,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
     if (isVideo && widget.videoFile != null) {
       capture.setVideo(
         widget.videoFile!,
-        durationMs: widget.durationMs,
+        durationMs: _effectiveDurationMs,
         isFrontCamera: widget.isFrontCamera,
       );
     } else if (widget.imageFile != null) {
@@ -1414,8 +1410,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         controller: _videoController,
                         isReady: _isVideoReady,
                         durationLabel: _formatDurationLabel(),
-                        isMuted: _isVideoMuted,
-                        onToggleMute: _toggleVideoMute,
                         isFrontCamera: widget.isFrontCamera,
                       )
                     : widget.imageFile != null
@@ -1959,16 +1953,12 @@ class _VideoPreviewLayer extends StatelessWidget {
   final VideoPlayerController? controller;
   final bool isReady;
   final String durationLabel;
-  final bool isMuted;
-  final VoidCallback onToggleMute;
   final bool isFrontCamera;
 
   const _VideoPreviewLayer({
     required this.controller,
     required this.isReady,
     required this.durationLabel,
-    required this.isMuted,
-    required this.onToggleMute,
     this.isFrontCamera = false,
   });
 
@@ -2027,40 +2017,46 @@ class _VideoPreviewLayer extends StatelessWidget {
                   size: 14,
                 ),
                 const SizedBox(width: 4),
-                Text(
-                  durationLabel,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                if (videoController != null)
+                  ValueListenableBuilder<VideoPlayerValue>(
+                    valueListenable: videoController,
+                    builder: (context, val, _) {
+                      final label = val.isInitialized && val.duration > Duration.zero
+                          ? _formatDuration(val.duration)
+                          : durationLabel;
+                      return Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      );
+                    },
+                  )
+                else
+                  Text(
+                    durationLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
               ],
-            ),
-          ),
-        ),
-        Positioned(
-          top: 14,
-          right: 14,
-          child: GestureDetector(
-            onTap: onToggleMute,
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.45),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
             ),
           ),
         ),
       ],
     );
+  }
+
+  static String _formatDuration(Duration duration) {
+    final totalSeconds = duration.inMilliseconds / 1000.0;
+    if ((totalSeconds - totalSeconds.round()).abs() < 0.08) {
+      return '${totalSeconds.round()}s';
+    }
+    return '${totalSeconds.toStringAsFixed(1)}s';
   }
 }
 

@@ -53,3 +53,6 @@ SESSION_HANDOFF.md
 .env*.json
 !.env.example.json
 .env*.local
+# Firebase / FCM Service Account Secrets
+/assets/fcm_service_account.json
+*service_account*.json

@@ -34,6 +34,8 @@ class AuthController extends ChangeNotifier {
       if (user != null) {
         userRepository.updateUserPresence(user!.uid, isOnline: true);
         NotificationService.instance.syncTokenForUser(user!.uid);
+        NotificationService.instance
+            .scheduleGenZDailyReminders(checkSpentTodayForUid: user!.uid);
         localSettingsService.setActiveUser(user!.uid);
         userRepository.getUserProfile(user!.uid).then((profile) {
           if (profile != null) {

@@ -1563,6 +1563,34 @@ class AppLocalizationsVi extends AppLocalizations {
       'Tông xanh dương hiện đại, tươi mát và năng động';
 
   @override
+  String get appIconSketch => 'Meme Phác Thảo';
+
+  @override
+  String get appIconSketchDesc =>
+      'Phong cách tranh vẽ chì màu trên sổ tay dễ thương';
+
+  @override
+  String get appIconLuxury => 'Meme Hoàng Kim';
+
+  @override
+  String get appIconLuxuryDesc =>
+      'Chất liệu da đen và kim loại vàng sang trọng';
+
+  @override
+  String get appIconMinimal => 'Meme Tối Giản';
+
+  @override
+  String get appIconMinimalDesc =>
+      'Đường nét nét vẽ tối giản thanh lịch và tinh gọn';
+
+  @override
+  String get appIconModern3D => 'Meme 3D Hiện Đại';
+
+  @override
+  String get appIconModern3DDesc =>
+      'Thiết kế không gian 3D nổi bật với biểu tượng chữ meme';
+
+  @override
   String get appIconInUse => 'Đang dùng';
 
   @override

@@ -2859,6 +2859,54 @@ abstract class AppLocalizations {
   /// **'Tông xanh dương hiện đại, tươi mát và năng động'**
   String get appIconOceanDesc;
 
+  /// No description provided for @appIconSketch.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Phác Thảo'**
+  String get appIconSketch;
+
+  /// No description provided for @appIconSketchDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Phong cách tranh vẽ chì màu trên sổ tay dễ thương'**
+  String get appIconSketchDesc;
+
+  /// No description provided for @appIconLuxury.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Hoàng Kim'**
+  String get appIconLuxury;
+
+  /// No description provided for @appIconLuxuryDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chất liệu da đen và kim loại vàng sang trọng'**
+  String get appIconLuxuryDesc;
+
+  /// No description provided for @appIconMinimal.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme Tối Giản'**
+  String get appIconMinimal;
+
+  /// No description provided for @appIconMinimalDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đường nét nét vẽ tối giản thanh lịch và tinh gọn'**
+  String get appIconMinimalDesc;
+
+  /// No description provided for @appIconModern3D.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme 3D Hiện Đại'**
+  String get appIconModern3D;
+
+  /// No description provided for @appIconModern3DDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thiết kế không gian 3D nổi bật với biểu tượng chữ meme'**
+  String get appIconModern3DDesc;
+
   /// No description provided for @appIconInUse.
   ///
   /// In vi, this message translates to:

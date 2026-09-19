@@ -16,6 +16,7 @@ import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../controllers/home_controller.dart';
 import 'moment_viewer_screen.dart';
+import '../../../core/services/video_cache_service.dart';
 
 class DayDetailScreen extends StatelessWidget {
   final DateTime selectedDate;
@@ -59,6 +60,15 @@ class DayDetailScreen extends StatelessWidget {
       return _sameDate(tx.createdAt, selectedDate);
     }).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // Preload ngay các video của ngày này để khi bấm vào xem chi tiết là video phát ngay tức thì
+    final videoUrls = dayTransactions
+        .where((tx) => tx.isVideo && tx.playableVideoUrl.isNotEmpty)
+        .map((tx) => tx.playableVideoUrl)
+        .toList();
+    if (videoUrls.isNotEmpty) {
+      VideoCacheService.instance.preloadBatch(videoUrls);
+    }
 
     final totalIncome = dayTransactions
         .where((e) => e.isPersonalIncome)

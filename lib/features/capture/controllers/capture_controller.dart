@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -11,6 +12,7 @@ import '../../../data/models/user_model.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../../../core/services/fcm_push_service.dart';
 
 class CaptureController extends ChangeNotifier {
   final TransactionRepository transactionRepository;
@@ -447,6 +449,19 @@ class CaptureController extends ChangeNotifier {
           'createdAt': FieldValue.serverTimestamp(),
           'isRead': false,
         });
+
+        unawaited(() async {
+          try {
+            await FcmPushService.instance.sendMentionNotification(
+              targetUserId: taggedUser.uid,
+              senderUid: authorUid,
+              senderName: authorName,
+              senderAvatar: author?.avatarUrl,
+              postId: postId,
+              caption: caption,
+            );
+          } catch (_) {}
+        }());
       }
     } catch (e) {
       debugPrint('Error notifying mentioned users: $e');

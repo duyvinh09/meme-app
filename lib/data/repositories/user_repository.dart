@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../core/utils/currency_formatter.dart';
+import '../../core/services/fcm_push_service.dart';
 import '../datasources/remote/user_remote_datasource.dart';
 import '../models/user_model.dart';
 import 'chat_repository.dart';
@@ -291,6 +292,19 @@ class UserRepository {
       'createdAt': FieldValue.serverTimestamp(),
     });
 
+    // Send Push Notification directly to target user
+    unawaited(() async {
+      try {
+        final senderName =
+            myProfile.name.isNotEmpty ? myProfile.name : myProfile.username;
+        await FcmPushService.instance.sendFriendRequestNotification(
+          senderId: myProfile.uid,
+          targetUserId: targetUser.uid,
+          senderName: senderName,
+        );
+      } catch (_) {}
+    }());
+
     return null;
   }
 
@@ -357,6 +371,19 @@ class UserRepository {
     batch.delete(sentRef);
 
     await batch.commit();
+
+    // Send Push Notification to friend that request was accepted
+    unawaited(() async {
+      try {
+        final myName =
+            myProfile.name.isNotEmpty ? myProfile.name : myProfile.username;
+        await FcmPushService.instance.sendFriendAcceptedNotification(
+          myUid: myProfile.uid,
+          friendUid: fromProfile.uid,
+          myName: myName,
+        );
+      } catch (_) {}
+    }());
   }
 
   Future<void> rejectFriendRequest({
@@ -511,7 +538,10 @@ class UserRepository {
               final savedAvatarUrl = (data['avatarUrl'] ?? '').toString();
               final savedAvatarFrame = (data['avatarFrame'] ?? 'plain').toString();
 
-              final profile = await getUserProfile(friendUid);
+              final profile = await getUserProfile(friendUid).timeout(
+                const Duration(milliseconds: 2500),
+                onTimeout: () => null,
+              );
 
               final isDeleted = profile?.isDeleted == true;
               if (isDeleted) {

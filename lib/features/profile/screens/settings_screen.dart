@@ -11,6 +11,7 @@ import '../../../core/routes/route_names.dart';
 import '../../../core/services/exchange_rate_service.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../splash/screens/preloader_screen.dart';
 import '../controllers/profile_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -124,6 +125,20 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: l10n.cameraThemeSubtitle,
                   onTap: () {
                     Navigator.pushNamed(context, RouteNames.cameraTheme);
+                  },
+                ),
+                _SettingsActionTile(
+                  icon: Icons.play_circle_outline_rounded,
+                  iconColor: AppColors.income,
+                  title: 'Splash Animation (Preloader)',
+                  subtitle: 'Xem lại màn hình chào mở đầu ứng dụng',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const PreloaderScreen(),
+                      ),
+                    );
                   },
                 ),
               ],

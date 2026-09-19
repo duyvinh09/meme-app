@@ -6,6 +6,7 @@ import '../models/chat_message_model.dart';
 import '../models/note_reaction_model.dart';
 import '../models/post_reaction_model.dart';
 import '../models/post_view_model.dart';
+import '../../core/services/fcm_push_service.dart';
 
 class ChatRepository {
   final FirebaseFirestore _firestore;
@@ -53,6 +54,10 @@ class ChatRepository {
     String? replyToMessageId,
     String? replyToText,
     String? replyToSenderName,
+    String? postAuthorName,
+    String? postAuthorAvatar,
+    String? postAuthorFrame,
+    String? postOwnerId,
   }) async {
     try {
       final chatId = getChatId(senderId, receiverId);
@@ -76,6 +81,10 @@ class ChatRepository {
         replyToMessageId: replyToMessageId,
         replyToText: replyToText,
         replyToSenderName: replyToSenderName,
+        postAuthorName: postAuthorName,
+        postAuthorAvatar: postAuthorAvatar,
+        postAuthorFrame: postAuthorFrame,
+        postOwnerId: postOwnerId,
       );
 
       final batch = _firestore.batch();
@@ -107,6 +116,36 @@ class ChatRepository {
       );
 
       await batch.commit();
+
+      // Trigger FCM Push notification directly
+      unawaited(() async {
+        try {
+          // Check if receiver muted this chat
+          final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+          final chatData = chatDoc.data();
+          if (chatData != null && isChatMuted(chatData, receiverId)) {
+            return;
+          }
+
+          final senderDoc =
+              await _firestore.collection('users').doc(senderId).get();
+          final senderData = senderDoc.data();
+          final senderName =
+              senderData?['name'] ?? senderData?['username'] ?? 'Bạn bè';
+          final senderAvatar = senderData?['avatarUrl']?.toString();
+
+          await FcmPushService.instance.sendChatMessageNotification(
+            senderId: senderId,
+            receiverId: receiverId,
+            senderName: senderName,
+            senderAvatar: senderAvatar,
+            messageText: text,
+            type: type,
+            reactionEmoji: reactionEmoji,
+          );
+        } catch (_) {}
+      }());
+
       return true;
     } catch (_) {
       return false;
@@ -146,6 +185,22 @@ class ChatRepository {
       );
 
       await reactionRef.set(reaction.toMap());
+
+      if (postOwnerId != userId) {
+        unawaited(() async {
+          try {
+            await FcmPushService.instance.sendPostReactionNotification(
+              postId: postId,
+              postOwnerId: postOwnerId,
+              reactorId: userId,
+              reactorName: userName,
+              reactorAvatar: userAvatar,
+              emoji: emoji,
+            );
+          } catch (_) {}
+        }());
+      }
+
       return true;
     } catch (_) {
       return false;
@@ -261,6 +316,18 @@ class ChatRepository {
           replyToSenderName: noteOwnerName,
           reactionEmoji: emoji,
         );
+
+        unawaited(() async {
+          try {
+            await FcmPushService.instance.sendNoteReactionNotification(
+              noteOwnerId: noteOwnerId,
+              reactorId: reactorId,
+              reactorName: reactorName,
+              reactorAvatar: reactorAvatar,
+              emoji: emoji,
+            );
+          } catch (_) {}
+        }());
       }
 
       return true;
@@ -307,32 +374,32 @@ class ChatRepository {
   /// Mark all received messages in a chat as read
   Future<void> markMessagesAsRead(String chatId, String myUid) async {
     try {
-      final unreadDocs = await _firestore
-          .collection('chats')
-          .doc(chatId)
-          .collection('messages')
-          .where('receiverId', isEqualTo: myUid)
-          .where('isRead', isEqualTo: false)
-          .get();
-
-      if (unreadDocs.docs.isEmpty) {
-        await _firestore.collection('chats').doc(chatId).set({
-          'unreadBy': FieldValue.arrayRemove([myUid]),
-          'lastMessageIsRead': true,
-        }, SetOptions(merge: true));
-        return;
-      }
-
-      final batch = _firestore.batch();
-      for (final doc in unreadDocs.docs) {
-        batch.update(doc.reference, {'isRead': true});
-      }
-      batch.set(_firestore.collection('chats').doc(chatId), {
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      await chatRef.set({
         'unreadBy': FieldValue.arrayRemove([myUid]),
         'lastMessageIsRead': true,
       }, SetOptions(merge: true));
 
-      await batch.commit();
+      final unreadDocs = await _firestore
+          .collection('chats')
+          .doc(chatId)
+          .collection('messages')
+          .orderBy('createdAt', descending: true)
+          .limit(50)
+          .get();
+
+      final batch = _firestore.batch();
+      bool hasUpdates = false;
+      for (final doc in unreadDocs.docs) {
+        final data = doc.data();
+        if (data['senderId'] != myUid && data['isRead'] != true) {
+          batch.update(doc.reference, {'isRead': true});
+          hasUpdates = true;
+        }
+      }
+      if (hasUpdates) {
+        await batch.commit();
+      }
     } catch (_) {}
   }
 
@@ -344,6 +411,156 @@ class ChatRepository {
         .snapshots();
   }
 
+  /// Stream total count of all unread individual messages across all unmuted chats & groups
+  Stream<int> streamTotalUnreadCount(String myUid) {
+    if (myUid.isEmpty) return Stream.value(0);
+
+    late StreamController<int> controller;
+    StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? userChatsSub;
+    final Map<String, StreamSubscription<QuerySnapshot<Map<String, dynamic>>>>
+        messageSubs = {};
+    final Map<String, int> chatUnreadCounts = {};
+
+    void updateAndEmitTotal() {
+      if (controller.isClosed) return;
+      int total = 0;
+      for (final count in chatUnreadCounts.values) {
+        total += count;
+      }
+      controller.add(total);
+    }
+
+    void cleanUpSubscriptions() {
+      userChatsSub?.cancel();
+      userChatsSub = null;
+      for (final sub in messageSubs.values) {
+        sub.cancel();
+      }
+      messageSubs.clear();
+      chatUnreadCounts.clear();
+    }
+
+    controller = StreamController<int>(
+      onListen: () {
+        userChatsSub = streamUserChats(myUid).listen(
+          (snapshot) {
+            final activeUnreadChatIds = <String>{};
+
+            for (final doc in snapshot.docs) {
+              final data = doc.data();
+              final chatId = doc.id;
+
+              // 1. Skip if muted
+              if (isChatMuted(data, myUid)) {
+                chatUnreadCounts.remove(chatId);
+                messageSubs.remove(chatId)?.cancel();
+                continue;
+              }
+
+              final isGroup = data['isGroup'] == true;
+              final unreadBy = List<String>.from(data['unreadBy'] ?? []);
+              final lastSenderId = (data['lastSenderId'] ?? '').toString();
+
+              final bool isUnread = isGroup
+                  ? unreadBy.contains(myUid)
+                  : (unreadBy.contains(myUid) ||
+                      (lastSenderId.isNotEmpty &&
+                          lastSenderId != myUid &&
+                          data['lastMessageIsRead'] == false));
+
+              if (!isUnread) {
+                chatUnreadCounts.remove(chatId);
+                messageSubs.remove(chatId)?.cancel();
+                continue;
+              }
+
+              activeUnreadChatIds.add(chatId);
+
+              // If already listening to this chat's messages, keep it
+              if (messageSubs.containsKey(chatId)) {
+                continue;
+              }
+
+              // Listen to messages in this unread chat
+              if (isGroup) {
+                messageSubs[chatId] = _firestore
+                    .collection('chats')
+                    .doc(chatId)
+                    .collection('messages')
+                    .orderBy('createdAt', descending: true)
+                    .limit(100)
+                    .snapshots()
+                    .listen(
+                  (msgSnapshot) {
+                    final count = msgSnapshot.docs.where((mDoc) {
+                      final mData = mDoc.data();
+                      if (mData['senderId'] == myUid) return false;
+                      final readBy =
+                          List<String>.from(mData['readBy'] ?? []);
+                      return !readBy.contains(myUid);
+                    }).length;
+
+                    chatUnreadCounts[chatId] = count > 0 ? count : 1;
+                    updateAndEmitTotal();
+                  },
+                  onError: (_) {
+                    chatUnreadCounts[chatId] = 1;
+                    updateAndEmitTotal();
+                  },
+                );
+              } else {
+                messageSubs[chatId] = _firestore
+                    .collection('chats')
+                    .doc(chatId)
+                    .collection('messages')
+                    .orderBy('createdAt', descending: true)
+                    .limit(100)
+                    .snapshots()
+                    .listen(
+                  (msgSnapshot) {
+                    final count = msgSnapshot.docs.where((mDoc) {
+                      final mData = mDoc.data();
+                      if (mData['senderId'] == myUid) return false;
+                      return mData['isRead'] != true;
+                    }).length;
+
+                    chatUnreadCounts[chatId] = count > 0 ? count : 1;
+                    updateAndEmitTotal();
+                  },
+                  onError: (_) {
+                    chatUnreadCounts[chatId] = 1;
+                    updateAndEmitTotal();
+                  },
+                );
+              }
+            }
+
+            // Remove any message subs for chats that are no longer unread
+            final removedChatIds = messageSubs.keys
+                .where((id) => !activeUnreadChatIds.contains(id))
+                .toList();
+            for (final id in removedChatIds) {
+              messageSubs.remove(id)?.cancel();
+              chatUnreadCounts.remove(id);
+            }
+
+            updateAndEmitTotal();
+          },
+          onError: (err) {
+            if (!controller.isClosed) {
+              controller.addError(err);
+            }
+          },
+        );
+      },
+      onCancel: () {
+        cleanUpSubscriptions();
+      },
+    );
+
+    return controller.stream;
+  }
+
   /// Toggle an emoji reaction on a specific message
   Future<void> toggleMessageReaction({
     required String chatId,
@@ -352,6 +569,8 @@ class ChatRepository {
     required String emoji,
     required String receiverId,
     required String messageText,
+    bool isGroup = false,
+    String? groupName,
   }) async {
     try {
       final msgRef = _firestore
@@ -365,6 +584,7 @@ class ChatRepository {
 
       final data = msgDoc.data() ?? {};
       final reactions = Map<String, dynamic>.from(data['reactions'] ?? {});
+      final isAddingReaction = reactions[userId] != emoji;
 
       if (reactions[userId] == emoji) {
         reactions.remove(userId);
@@ -374,18 +594,55 @@ class ChatRepository {
 
       await msgRef.update({'reactions': reactions});
 
-      // Update parent chat document so in-app notification triggers
-      if (reactions.containsKey(userId) && receiverId.isNotEmpty && receiverId != userId) {
+      // Update parent chat document and dispatch push notification if adding reaction
+      if (isAddingReaction && receiverId.isNotEmpty && receiverId != userId) {
+        final chatDoc = await _firestore.collection('chats').doc(chatId).get();
+        final chatData = chatDoc.data() ?? {};
+        final resolvedGroupName = groupName ?? (chatData['groupName'] as String?) ?? 'Nhóm';
+
         await _firestore.collection('chats').doc(chatId).set({
           'lastMessage': 'Đã bày tỏ cảm xúc $emoji về tin nhắn của bạn',
           'lastSenderId': userId,
-          'lastType': 'message_reaction',
+          'lastType': 'reaction',
           'lastReactionEmoji': emoji,
           'lastReactedMessageText': messageText,
           'updatedAt': FieldValue.serverTimestamp(),
           'unreadBy': [receiverId],
           'lastMessageIsRead': false,
         }, SetOptions(merge: true));
+
+        // Check if recipient muted this chat before dispatching FCM push
+        final isMuted = isChatMuted(chatData, receiverId);
+        if (!isMuted) {
+          unawaited(() async {
+            try {
+              final userDoc = await _firestore.collection('users').doc(userId).get();
+              final senderName = userDoc.data()?['name'] ?? userDoc.data()?['username'] ?? (isGroup ? 'Thành viên nhóm' : 'Bạn bè');
+              final senderAvatar = userDoc.data()?['avatarUrl'] ?? '';
+
+              if (isGroup) {
+                await FcmPushService.instance.sendGroupMessageReactionNotification(
+                  groupId: chatId,
+                  groupName: resolvedGroupName,
+                  senderId: userId,
+                  targetUserId: receiverId,
+                  senderName: senderName,
+                  emoji: emoji,
+                  messageText: messageText,
+                );
+              } else {
+                await FcmPushService.instance.sendMessageReactionNotification(
+                  senderId: userId,
+                  receiverId: receiverId,
+                  senderName: senderName,
+                  senderAvatar: senderAvatar,
+                  emoji: emoji,
+                  messageText: messageText,
+                );
+              }
+            } catch (_) {}
+          }());
+        }
       }
     } catch (_) {}
   }
@@ -582,6 +839,18 @@ class ChatRepository {
       final messageId = _uuid.v4();
       final now = DateTime.now();
 
+      // Fetch group chat doc to retrieve members and group name
+      final groupDoc = await _firestore.collection('chats').doc(groupId).get();
+      final groupData = groupDoc.data() ?? {};
+      final groupName = groupData['groupName']?.toString() ?? 'Nhóm';
+      final rawParticipants = (groupData['participants'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [];
+      final targetMembers = rawParticipants
+          .where((id) => id != actorUid)
+          .toList();
+
       final message = ChatMessageModel(
         id: messageId,
         senderId: actorUid ?? 'system',
@@ -613,15 +882,39 @@ class ChatRepository {
         {
           'isGroup': true,
           'groupId': groupId,
+          'groupName': groupName,
           'lastMessage': systemText,
           'lastSenderId': actorUid ?? 'system',
           'lastType': 'system',
+          'unreadBy': targetMembers,
+          'lastMessageIsRead': false,
           'updatedAt': Timestamp.fromDate(now),
         },
         SetOptions(merge: true),
       );
 
       await batch.commit();
+
+      // Trigger FCM Push notification to group members for system spending events
+      unawaited(() async {
+        try {
+          final activeTargetMembers = targetMembers
+              .where((id) => !isChatMuted(groupData, id))
+              .toList();
+          if (activeTargetMembers.isNotEmpty) {
+            await FcmPushService.instance.sendGroupChatMessageNotification(
+              groupId: groupId,
+              groupName: groupName,
+              senderId: actorUid ?? 'system',
+              senderName: groupName,
+              messageText: systemText,
+              memberIds: activeTargetMembers,
+              isSystem: true,
+            );
+          }
+        } catch (_) {}
+      }());
+
       return true;
     } catch (_) {
       return false;
@@ -648,6 +941,7 @@ class ChatRepository {
     String? postAuthorAvatar,
     String? postAuthorFrame,
     String? postOwnerId,
+    List<String> taggedUserIds = const [],
   }) async {
     try {
       final messageId = _uuid.v4();
@@ -677,13 +971,40 @@ class ChatRepository {
         postAuthorAvatar: postAuthorAvatar,
         postAuthorFrame: postAuthorFrame,
         postOwnerId: postOwnerId,
+        taggedUserIds: taggedUserIds,
       );
 
       final chatDoc = await _firestore.collection('chats').doc(groupId).get();
-      final participants = (chatDoc.data()?['participants'] as List<dynamic>?)
+      final chatData = chatDoc.data() ?? {};
+      var participants = (chatData['participants'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
-          [senderId];
+          [];
+
+      // Fallback: check group document in user's subcollection
+      if (participants.isEmpty || (participants.length == 1 && participants.contains(senderId))) {
+        try {
+          final userGroupDoc = await _firestore
+              .collection('users')
+              .doc(senderId)
+              .collection('groups')
+              .doc(groupId)
+              .get();
+          if (userGroupDoc.exists) {
+            final memberIds = (userGroupDoc.data()?['memberIds'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList();
+            if (memberIds != null && memberIds.isNotEmpty) {
+              participants = memberIds;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // Block sending if the user is no longer a member of this group
+      if (participants.isNotEmpty && !participants.contains(senderId)) {
+        return false;
+      }
 
       final otherMembers = participants.where((id) => id != senderId).toList();
 
@@ -713,9 +1034,156 @@ class ChatRepository {
       );
 
       await batch.commit();
+
+      // Trigger Push notifications
+      if (otherMembers.isNotEmpty) {
+        unawaited(() async {
+          try {
+            final groupName = chatData['groupName']?.toString() ?? 'Nhóm';
+
+            // 1. Send specific Mention Notifications to tagged users (even if muted)
+            final validTaggedMembers = taggedUserIds
+                .where((id) => id != senderId && otherMembers.contains(id))
+                .toList();
+
+            for (final taggedUid in validTaggedMembers) {
+              await FcmPushService.instance.sendGroupMentionNotification(
+                groupId: groupId,
+                groupName: groupName,
+                senderId: senderId,
+                senderName: senderName,
+                messageText: text,
+                targetUserId: taggedUid,
+              );
+            }
+
+            // 2. Send normal group message notifications to unmuted members who are NOT tagged
+            final unmutedOtherMembers = otherMembers.where((id) {
+              final isMuted = isChatMuted(chatData, id);
+              final isTagged = validTaggedMembers.contains(id);
+              return !isMuted && !isTagged;
+            }).toList();
+
+            if (unmutedOtherMembers.isNotEmpty) {
+              await FcmPushService.instance.sendGroupChatMessageNotification(
+                groupId: groupId,
+                groupName: groupName,
+                senderId: senderId,
+                senderName: senderName,
+                messageText: text,
+                memberIds: unmutedOtherMembers,
+              );
+            }
+          } catch (_) {}
+        }());
+      }
+
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Helper to check if a chat is currently muted for a specific user (handles timed mute)
+  bool isChatMuted(Map<String, dynamic>? data, String uid) {
+    if (data == null || uid.isEmpty) return false;
+
+    // 1. Check timed mute map
+    final mutedUntilMap = data['mutedUntil'];
+    if (mutedUntilMap is Map && mutedUntilMap.containsKey(uid)) {
+      final rawUntil = mutedUntilMap[uid];
+      if (rawUntil == null) return true; // muted indefinitely
+      if (rawUntil is Timestamp) {
+        return rawUntil.toDate().isAfter(DateTime.now());
+      }
+    }
+
+    // 2. Check legacy / permanent mutedBy list
+    final mutedBy = data['mutedBy'];
+    if (mutedBy is List && mutedBy.contains(uid)) {
+      if (mutedUntilMap is Map && mutedUntilMap.containsKey(uid)) {
+        final rawUntil = mutedUntilMap[uid];
+        if (rawUntil is Timestamp && rawUntil.toDate().isBefore(DateTime.now())) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    return false;
+  }
+
+  /// Mute chat notifications for a user with optional duration (null = indefinite)
+  Future<void> muteChat({
+    required String chatId,
+    required String uid,
+    Duration? duration,
+  }) async {
+    try {
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      final now = DateTime.now();
+      final untilDate = duration != null ? now.add(duration) : null;
+
+      final updateData = <String, dynamic>{
+        'mutedBy': FieldValue.arrayUnion([uid]),
+      };
+
+      if (untilDate != null) {
+        updateData['mutedUntil.$uid'] = Timestamp.fromDate(untilDate);
+      } else {
+        updateData['mutedUntil.$uid'] = null;
+      }
+
+      await chatRef.update(updateData);
+    } catch (e) {
+      try {
+        final chatRef = _firestore.collection('chats').doc(chatId);
+        final untilDate = duration != null ? DateTime.now().add(duration) : null;
+        await chatRef.set({
+          'mutedBy': FieldValue.arrayUnion([uid]),
+          'mutedUntil': {
+            uid: untilDate != null ? Timestamp.fromDate(untilDate) : null,
+          },
+        }, SetOptions(merge: true));
+      } catch (_) {}
+    }
+  }
+
+  /// Unmute chat notifications for a user
+  Future<void> unmuteChat({
+    required String chatId,
+    required String uid,
+  }) async {
+    try {
+      final chatRef = _firestore.collection('chats').doc(chatId);
+      await chatRef.update({
+        'mutedBy': FieldValue.arrayRemove([uid]),
+        'mutedUntil.$uid': FieldValue.delete(),
+      });
+    } catch (e) {
+      try {
+        final chatRef = _firestore.collection('chats').doc(chatId);
+        await chatRef.set({
+          'mutedBy': FieldValue.arrayRemove([uid]),
+          'mutedUntil': {
+            uid: FieldValue.delete(),
+          },
+        }, SetOptions(merge: true));
+      } catch (_) {}
+    }
+  }
+
+  /// Toggle mute notifications for a group for a specific user (backwards compatible)
+  Future<void> toggleMuteGroup({
+    required String groupId,
+    required String uid,
+    required bool isMuted,
+    Duration? duration,
+  }) async {
+    if (isMuted) {
+      await muteChat(chatId: groupId, uid: uid, duration: duration);
+    } else {
+      await unmuteChat(chatId: groupId, uid: uid);
     }
   }
 
@@ -723,24 +1191,18 @@ class ChatRepository {
   Future<void> markGroupChatAsRead(String groupId, String myUid) async {
     try {
       final chatRef = _firestore.collection('chats').doc(groupId);
-      final chatDoc = await chatRef.get();
-      if (!chatDoc.exists) return;
-
-      final unreadBy = List<String>.from(chatDoc.data()?['unreadBy'] ?? []);
-      if (unreadBy.contains(myUid)) {
-        await chatRef.set({
-          'unreadBy': FieldValue.arrayRemove([myUid]),
-          'lastReadTimestamp': {
-            myUid: FieldValue.serverTimestamp(),
-          },
-        }, SetOptions(merge: true));
-      }
+      await chatRef.set({
+        'unreadBy': FieldValue.arrayRemove([myUid]),
+        'lastReadTimestamp': {
+          myUid: FieldValue.serverTimestamp(),
+        },
+      }, SetOptions(merge: true));
 
       // Update readBy on recent messages
       final recentMessages = await chatRef
           .collection('messages')
           .orderBy('createdAt', descending: true)
-          .limit(30)
+          .limit(50)
           .get();
 
       final batch = _firestore.batch();
