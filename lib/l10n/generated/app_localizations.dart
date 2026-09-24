@@ -1716,8 +1716,38 @@ abstract class AppLocalizations {
   /// No description provided for @leaveGroupConfirmation.
   ///
   /// In vi, this message translates to:
-  /// **'Bạn có chắc muốn rời khỏi nhóm này không?'**
+  /// **'Số tiền bạn đã góp từ đầu sẽ được giữ lại trong quỹ và không hoàn trả sau khi bạn rời đi. Bạn có chắc muốn rời khỏi nhóm này không?'**
   String get leaveGroupConfirmation;
+
+  /// No description provided for @removeMember.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xoá thành viên'**
+  String get removeMember;
+
+  /// No description provided for @removeMemberQuestion.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xoá khỏi nhóm?'**
+  String get removeMemberQuestion;
+
+  /// No description provided for @removeMemberConfirmation.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số tiền thành viên đã góp từ đầu sẽ được giữ lại trong quỹ nhóm. Bạn có chắc muốn xoá \"{name}\" khỏi nhóm không?'**
+  String removeMemberConfirmation(String name);
+
+  /// No description provided for @memberRemoved.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã xoá thành viên khỏi nhóm'**
+  String get memberRemoved;
+
+  /// No description provided for @cannotRemoveMember.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không thể xoá thành viên: {error}'**
+  String cannotRemoveMember(String error);
 
   /// No description provided for @groupDeleted.
   ///
@@ -3597,6 +3627,12 @@ abstract class AppLocalizations {
   /// **'Mở khóa cột mốc mới!'**
   String get streakMilestoneUnlocked;
 
+  /// No description provided for @streakStartedUnlocked.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bắt đầu giữ chuỗi cùng nhau!'**
+  String get streakStartedUnlocked;
+
   /// No description provided for @streakMilestoneDaysLabel.
   ///
   /// In vi, this message translates to:
@@ -3609,6 +3645,12 @@ abstract class AppLocalizations {
   /// **'Tiếp tục'**
   String get streakMilestoneContinue;
 
+  /// No description provided for @streakRewardDay1Hint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chụp ảnh mỗi ngày để duy trì ngọn lửa và mở khóa phần thưởng ở mốc 3 ngày!'**
+  String get streakRewardDay1Hint;
+
   /// No description provided for @streakRewardAvatarFrameHint.
   ///
   /// In vi, this message translates to:
@@ -3618,7 +3660,7 @@ abstract class AppLocalizations {
   /// No description provided for @streakRewardCameraThemeHint.
   ///
   /// In vi, this message translates to:
-  /// **'Mở khóa Khung avatar & Khám phá Chủ đề máy ảnh mới!'**
+  /// **'Mở khóa Khung avatar Gradient & Chủ đề máy ảnh mới!'**
   String get streakRewardCameraThemeHint;
 
   /// No description provided for @today.
@@ -4922,6 +4964,174 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Chi vượt: -{amount}'**
   String groupMemberDeficit(String amount);
+
+  /// No description provided for @editTransaction.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chỉnh sửa chi tiêu'**
+  String get editTransaction;
+
+  /// No description provided for @editTransactionSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã cập nhật chi tiêu thành công'**
+  String get editTransactionSuccess;
+
+  /// No description provided for @editTransactionFailed.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cập nhật chi tiêu thất bại'**
+  String get editTransactionFailed;
+
+  /// No description provided for @photoCaption.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tiêu đề ảnh (Caption)'**
+  String get photoCaption;
+
+  /// No description provided for @photoCaptionHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thêm chữ hiển thị trên ảnh...'**
+  String get photoCaptionHint;
+
+  /// No description provided for @photoCaptionSub.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chữ hiển thị trực tiếp đè lên ảnh khoảnh khắc (hỗ trợ @tag)'**
+  String get photoCaptionSub;
+
+  /// No description provided for @expenseNote.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ghi chú thu chi'**
+  String get expenseNote;
+
+  /// No description provided for @expenseNoteHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ghi chú chi tiết cho sổ thu chi...'**
+  String get expenseNoteHint;
+
+  /// No description provided for @expenseNoteSub.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lưu vào sổ thu chi, không hiển thị đè lên ảnh'**
+  String get expenseNoteSub;
+
+  /// No description provided for @editAmount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số tiền'**
+  String get editAmount;
+
+  /// No description provided for @selectCategory.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn danh mục'**
+  String get selectCategory;
+
+  /// No description provided for @seeMore.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem thêm'**
+  String get seeMore;
+
+  /// No description provided for @collapse.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thu gọn'**
+  String get collapse;
+
+  /// No description provided for @taggedFriendsTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn bè được tag'**
+  String get taggedFriendsTitle;
+
+  /// No description provided for @tagFriendAction.
+  ///
+  /// In vi, this message translates to:
+  /// **'+ Tag bạn'**
+  String get tagFriendAction;
+
+  /// No description provided for @scanReceipt.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quét hoá đơn'**
+  String get scanReceipt;
+
+  /// No description provided for @photoMoment.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khoảnh khắc'**
+  String get photoMoment;
+
+  /// No description provided for @alignReceiptInFrame.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt hoá đơn vào khung hình'**
+  String get alignReceiptInFrame;
+
+  /// No description provided for @scanningReceipt.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang quét hoá đơn...'**
+  String get scanningReceipt;
+
+  /// No description provided for @receiptExtracted.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã trích xuất hoá đơn'**
+  String get receiptExtracted;
+
+  /// No description provided for @receiptSummedNotice.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã tự động cộng tổng từ các món trong hoá đơn'**
+  String get receiptSummedNotice;
+
+  /// No description provided for @viewReceiptDetails.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem chi tiết hoá đơn'**
+  String get viewReceiptDetails;
+
+  /// No description provided for @receiptItemsCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count, plural, other{{count} món}}'**
+  String receiptItemsCount(int count);
+
+  /// No description provided for @merchantStore.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tên quán / Cửa hàng'**
+  String get merchantStore;
+
+  /// No description provided for @lineItemsList.
+  ///
+  /// In vi, this message translates to:
+  /// **'Danh sách món'**
+  String get lineItemsList;
+
+  /// No description provided for @ocrScanButton.
+  ///
+  /// In vi, this message translates to:
+  /// **'Quét Bill OCR'**
+  String get ocrScanButton;
+
+  /// No description provided for @noReceiptDetected.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không nhận diện được nội dung hoá đơn'**
+  String get noReceiptDetected;
+
+  /// No description provided for @receiptSummaryTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi tiết hoá đơn OCR'**
+  String get receiptSummaryTitle;
 }
 
 class _AppLocalizationsDelegate

@@ -12,6 +12,9 @@ class ChatRepository {
   final FirebaseFirestore _firestore;
   final Uuid _uuid;
 
+  /// Cooldown cache to avoid spamming push notifications when a user taps reaction multiple times on a post
+  final Map<String, DateTime> _postReactionNotifSentAt = {};
+
   ChatRepository({
     FirebaseFirestore? firestore,
     Uuid? uuid,
@@ -187,18 +190,40 @@ class ChatRepository {
       await reactionRef.set(reaction.toMap());
 
       if (postOwnerId != userId) {
-        unawaited(() async {
-          try {
-            await FcmPushService.instance.sendPostReactionNotification(
-              postId: postId,
-              postOwnerId: postOwnerId,
-              reactorId: userId,
-              reactorName: userName,
-              reactorAvatar: userAvatar,
-              emoji: emoji,
-            );
-          } catch (_) {}
-        }());
+        final spamKey = '${postId}_$userId';
+        final lastSent = _postReactionNotifSentAt[spamKey];
+
+        // Only send push notification for the first reaction or after a 5-minute cooldown
+        final bool isWithinCooldown =
+            lastSent != null && now.difference(lastSent).inMinutes < 5;
+
+        if (!isWithinCooldown) {
+          _postReactionNotifSentAt[spamKey] = now;
+          unawaited(() async {
+            try {
+              // Double check if this is the first reaction on this post by this user
+              final existingSnap = await _firestore
+                  .collection('transactions')
+                  .doc(postId)
+                  .collection('reactions')
+                  .where('userId', isEqualTo: userId)
+                  .limit(2)
+                  .get();
+
+              // Only dispatch push notification if there is at most 1 reaction (this newly created one)
+              if (existingSnap.docs.length <= 1) {
+                await FcmPushService.instance.sendPostReactionNotification(
+                  postId: postId,
+                  postOwnerId: postOwnerId,
+                  reactorId: userId,
+                  reactorName: userName,
+                  reactorAvatar: userAvatar,
+                  emoji: emoji,
+                );
+              }
+            } catch (_) {}
+          }());
+        }
       }
 
       return true;

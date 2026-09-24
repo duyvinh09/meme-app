@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/streak_milestones.dart';
 import '../../../core/extensions/localization_extension.dart';
+import '../../../core/services/sound_effect_service.dart';
 import 'streak_milestone_painter.dart';
 
 class StreakMilestoneDialog extends StatefulWidget {
@@ -72,6 +73,7 @@ class _StreakMilestoneDialogState extends State<StreakMilestoneDialog>
   @override
   void initState() {
     super.initState();
+    SoundEffectService.instance.playStreakAchieved();
 
     final tier = widget.milestone.tier;
     final introDuration = switch (tier) {
@@ -298,13 +300,17 @@ class _StreakMilestoneDialogState extends State<StreakMilestoneDialog>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.auto_awesome_rounded,
+                                    milestone.days == 1
+                                        ? Icons.local_fire_department_rounded
+                                        : Icons.auto_awesome_rounded,
                                     size: 13,
                                     color: primary,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    context.l10n.streakMilestoneUnlocked,
+                                    milestone.days == 1
+                                        ? context.l10n.streakStartedUnlocked
+                                        : context.l10n.streakMilestoneUnlocked,
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w800,
@@ -520,9 +526,11 @@ class _StreakMilestoneDialogState extends State<StreakMilestoneDialog>
                                               color: primary.withValues(alpha: 0.18),
                                             ),
                                             child: Icon(
-                                              milestone.days == 3
-                                                  ? Icons.photo_camera_rounded
-                                                  : Icons.workspace_premium_rounded,
+                                              milestone.days == 1
+                                                  ? Icons.local_fire_department_rounded
+                                                  : (milestone.days == 3
+                                                      ? Icons.photo_camera_rounded
+                                                      : Icons.workspace_premium_rounded),
                                               size: 16,
                                               color: primary,
                                             ),
@@ -530,9 +538,11 @@ class _StreakMilestoneDialogState extends State<StreakMilestoneDialog>
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Text(
-                                              milestone.days == 3
-                                                  ? context.l10n.streakRewardCameraThemeHint
-                                                  : context.l10n.streakRewardAvatarFrameHint,
+                                              milestone.days == 1
+                                                  ? context.l10n.streakRewardDay1Hint
+                                                  : (milestone.days == 3
+                                                      ? context.l10n.streakRewardCameraThemeHint
+                                                      : context.l10n.streakRewardAvatarFrameHint),
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.w700,

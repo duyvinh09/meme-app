@@ -10,6 +10,7 @@ import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/local_settings_service.dart';
+import '../../../core/services/sound_effect_service.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../data/models/chat_bubble_theme.dart';
 import '../../../data/models/chat_message_model.dart';
@@ -99,6 +100,9 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
           friendUid: widget.friend.uid,
         );
         _loadCloseFriendStatus(myUid);
+      }
+      if (mounted) {
+        _textFocusNode.requestFocus();
       }
     });
 
@@ -418,6 +422,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     _textController.clear();
     context.read<LocalSettingsService>().clearDraft(widget.friend.uid);
     HapticFeedback.lightImpact();
+    SoundEffectService.instance.playMessageSent();
 
     _stopTypingHeartbeat(myUid);
 
@@ -510,6 +515,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     if (myUid == null) return;
 
     HapticFeedback.mediumImpact();
+    SoundEffectService.instance.playMessageSent();
     setState(() => _showEmojiGrid = false);
 
     _stopTypingHeartbeat(myUid);
@@ -585,6 +591,8 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
   }
 
   void _unfocusKeyboard() {
+    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
     if (_textFocusNode.hasFocus) {
       _textFocusNode.unfocus();
     }
@@ -1186,7 +1194,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                 // Message List Area (Tap anywhere outside footer to dismiss virtual keyboard)
                 Expanded(
                   child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
+                    behavior: HitTestBehavior.opaque,
                     onTap: _unfocusKeyboard,
                     child: StreamBuilder<bool>(
                       stream: myUid.isNotEmpty
@@ -1333,7 +1341,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                                     child: ListView.builder(
                                       controller: _scrollController,
                                       reverse: true,
-                                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
                                       physics: const BouncingScrollPhysics(),
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 10,
@@ -1842,6 +1850,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                         child: TextField(
                           controller: _textController,
                           focusNode: _textFocusNode,
+                          autofocus: true,
                           maxLines: 4,
                           minLines: 1,
                           textAlignVertical: TextAlignVertical.center,
@@ -1986,6 +1995,8 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
       _optimisticReactions ?? widget.message.reactions;
 
   void _openActionMenu() {
+    HapticFeedback.heavyImpact();
+    HapticFeedback.vibrate();
     MessageActionMenuOverlay.show(
       context: context,
       message: widget.message,
@@ -2098,6 +2109,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
     } else {
       // Add or change reaction
       current[myUid] = emoji;
+      SoundEffectService.instance.playMessageReaction();
       if (isHeart) {
         _heartAnimController?.forward(from: 0.0);
       }

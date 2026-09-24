@@ -525,7 +525,26 @@
   "deleteGroupSubtitle": "Xoá nhóm này cho tất cả thành viên",
   "leaveGroupSubtitle": "Rời khỏi nhóm này",
   "deleteGroupConfirmation": "Bạn có chắc muốn xoá nhóm này không? Hành động này sẽ xoá nhóm khỏi tất cả thành viên.",
-  "leaveGroupConfirmation": "Bạn có chắc muốn rời khỏi nhóm này không?",
+  "leaveGroupConfirmation": "Số tiền bạn đã góp từ đầu sẽ được giữ lại trong quỹ và không hoàn trả sau khi bạn rời đi. Bạn có chắc muốn rời khỏi nhóm này không?",
+  "removeMember": "Xoá thành viên",
+  "removeMemberQuestion": "Xoá khỏi nhóm?",
+  "removeMemberConfirmation": "Số tiền thành viên đã góp từ đầu sẽ được giữ lại trong quỹ nhóm. Bạn có chắc muốn xoá \"{name}\" khỏi nhóm không?",
+  "@removeMemberConfirmation": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "memberRemoved": "Đã xoá thành viên khỏi nhóm",
+  "cannotRemoveMember": "Không thể xoá thành viên: {error}",
+  "@cannotRemoveMember": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "groupDeleted": "Đã xoá nhóm",
   "youLeftGroup": "Bạn đã rời nhóm",
   "cannotDeleteGroup": "Không thể xoá nhóm: {error}",
@@ -1192,6 +1211,7 @@
     }
   },
   "streakMilestoneUnlocked": "Mở khóa cột mốc mới!",
+  "streakStartedUnlocked": "Bắt đầu giữ chuỗi cùng nhau!",
   "streakMilestoneDaysLabel": "{days} ngày",
   "@streakMilestoneDaysLabel": {
     "placeholders": {
@@ -1201,8 +1221,9 @@
     }
   },
   "streakMilestoneContinue": "Tiếp tục",
+  "streakRewardDay1Hint": "Chụp ảnh mỗi ngày để duy trì ngọn lửa và mở khóa phần thưởng ở mốc 3 ngày!",
   "streakRewardAvatarFrameHint": "Mở mục Chuỗi để nhận & đổi khung avatar mới!",
-  "streakRewardCameraThemeHint": "Mở khóa Khung avatar & Khám phá Chủ đề máy ảnh mới!",
+  "streakRewardCameraThemeHint": "Mở khóa Khung avatar Gradient & Chủ đề máy ảnh mới!",
   "today": "Hôm nay",
   "yesterday": "Hôm qua",
   "generalOverview": "Tổng quan",
@@ -1814,5 +1835,41 @@
         "type": "String"
       }
     }
-  }
+  },
+  "editTransaction": "Chỉnh sửa chi tiêu",
+  "editTransactionSuccess": "Đã cập nhật chi tiêu thành công",
+  "editTransactionFailed": "Cập nhật chi tiêu thất bại",
+  "saveChanges": "Lưu thay đổi",
+  "photoCaption": "Tiêu đề ảnh (Caption)",
+  "photoCaptionHint": "Thêm chữ hiển thị trên ảnh...",
+  "photoCaptionSub": "Chữ hiển thị trực tiếp đè lên ảnh khoảnh khắc (hỗ trợ @tag)",
+  "expenseNote": "Ghi chú thu chi",
+  "expenseNoteHint": "Ghi chú chi tiết cho sổ thu chi...",
+  "expenseNoteSub": "Lưu vào sổ thu chi, không hiển thị đè lên ảnh",
+  "editAmount": "Số tiền",
+  "selectCategory": "Chọn danh mục",
+  "seeMore": "Xem thêm",
+  "collapse": "Thu gọn",
+  "taggedFriendsTitle": "Bạn bè được tag",
+  "tagFriendAction": "+ Tag bạn",
+  "scanReceipt": "Quét hoá đơn",
+  "photoMoment": "Khoảnh khắc",
+  "alignReceiptInFrame": "Đặt hoá đơn vào khung hình",
+  "scanningReceipt": "Đang quét hoá đơn...",
+  "receiptExtracted": "Đã trích xuất hoá đơn",
+  "receiptSummedNotice": "Đã tự động cộng tổng từ các món trong hoá đơn",
+  "viewReceiptDetails": "Xem chi tiết hoá đơn",
+  "receiptItemsCount": "{count, plural, other{{count} món}}",
+  "@receiptItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "merchantStore": "Tên quán / Cửa hàng",
+  "lineItemsList": "Danh sách món",
+  "ocrScanButton": "Quét Bill OCR",
+  "noReceiptDetected": "Không nhận diện được nội dung hoá đơn",
+  "receiptSummaryTitle": "Chi tiết hoá đơn OCR"
 }

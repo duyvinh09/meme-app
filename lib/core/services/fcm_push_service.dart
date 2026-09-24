@@ -78,7 +78,7 @@ class FcmPushService {
     required String bodyVi,
     required String bodyEn,
     required Map<String, dynamic> data,
-    String channelId = 'chat_messages_channel_v2',
+    String channelId = 'chat_messages_channel_v3',
   }) async {
     try {
       final userDoc = await _db.collection('users').doc(targetUserId).get();
@@ -130,7 +130,7 @@ class FcmPushService {
     required String title,
     required String body,
     required Map<String, dynamic> data,
-    String channelId = 'chat_messages_channel_v2',
+    String channelId = 'chat_messages_channel_v3',
   }) async {
     await sendLocalizedNotificationToUser(
       targetUserId: targetUserId,
@@ -151,7 +151,7 @@ class FcmPushService {
     required String bodyVi,
     required String bodyEn,
     required Map<String, dynamic> data,
-    String channelId = 'chat_messages_channel_v2',
+    String channelId = 'chat_messages_channel_v3',
   }) async {
     for (final uid in targetUserIds) {
       await sendLocalizedNotificationToUser(
@@ -172,7 +172,7 @@ class FcmPushService {
     required String title,
     required String body,
     required Map<String, dynamic> data,
-    String channelId = 'chat_messages_channel_v2',
+    String channelId = 'chat_messages_channel_v3',
   }) async {
     for (final uid in targetUserIds) {
       await sendNotificationToUser(
@@ -277,7 +277,7 @@ class FcmPushService {
       titleEn: senderName,
       bodyVi: bodyVi,
       bodyEn: bodyEn,
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'chat',
         'senderUid': senderId,
@@ -335,7 +335,7 @@ class FcmPushService {
       titleEn: groupName,
       bodyVi: bodyVi,
       bodyEn: bodyEn,
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'group_chat',
         'groupId': groupId,
@@ -364,7 +364,7 @@ class FcmPushService {
       titleEn: groupName,
       bodyVi: bodyVi,
       bodyEn: bodyEn,
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'group_chat',
         'groupId': groupId,
@@ -386,7 +386,7 @@ class FcmPushService {
       titleEn: 'New friend request 👋',
       bodyVi: '$senderName vừa gửi cho bạn một lời mời kết bạn!',
       bodyEn: '$senderName sent you a friend request!',
-      channelId: 'friend_requests_channel_v2',
+      channelId: 'friend_requests_channel_v3',
       data: {
         'type': 'friend_request',
         'senderUid': senderId,
@@ -406,7 +406,7 @@ class FcmPushService {
       titleEn: 'Friend request accepted 🎉',
       bodyVi: '$myName đã chấp nhận lời mời kết bạn của bạn!',
       bodyEn: '$myName accepted your friend request!',
-      channelId: 'friend_requests_channel_v2',
+      channelId: 'friend_requests_channel_v3',
       data: {
         'type': 'friend_accepted',
         'senderUid': myUid,
@@ -431,7 +431,7 @@ class FcmPushService {
       titleEn: reactorName,
       bodyVi: '$reactorName đã thả cảm xúc $emoji lên bài viết của bạn',
       bodyEn: '$reactorName reacted $emoji to your post',
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'post_reaction',
         'postId': postId,
@@ -456,7 +456,7 @@ class FcmPushService {
       titleEn: reactorName,
       bodyVi: '$reactorName đã thả cảm xúc $emoji lên ghi chú của bạn',
       bodyEn: '$reactorName reacted $emoji to your note',
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'note_reaction',
         'senderUid': reactorId,
@@ -485,7 +485,7 @@ class FcmPushService {
       titleEn: senderName,
       bodyVi: '$senderName đã nhắc đến bạn trong một bài viết$desc',
       bodyEn: '$senderName mentioned you in a post$desc',
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'mention',
         'postId': postId,
@@ -535,7 +535,7 @@ class FcmPushService {
       titleEn: titleEn,
       bodyVi: bodyVi,
       bodyEn: bodyEn,
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'group_transaction',
         'groupId': groupId,
@@ -578,7 +578,7 @@ class FcmPushService {
       titleEn: senderName,
       bodyVi: bodyVi,
       bodyEn: bodyEn,
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'chat',
         'senderUid': senderId,
@@ -617,7 +617,7 @@ class FcmPushService {
       titleEn: groupName,
       bodyVi: bodyVi,
       bodyEn: bodyEn,
-      channelId: 'chat_messages_channel_v2',
+      channelId: 'chat_messages_channel_v3',
       data: {
         'type': 'group_chat',
         'groupId': groupId,

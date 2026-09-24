@@ -11,6 +11,7 @@ import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/local_settings_service.dart';
+import '../../../core/services/sound_effect_service.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/budget_name_localizer.dart';
@@ -488,6 +489,7 @@ class _GroupChatConversationScreenState
         _markAsRead();
         _fetchMemberProfiles();
         _listenToMembership();
+        _textFocusNode.requestFocus();
       }
     });
   }
@@ -1340,6 +1342,7 @@ class _GroupChatConversationScreenState
     _textController.clear();
     context.read<LocalSettingsService>().clearDraft('group_${widget.groupId}');
     _hasTextNotifier.value = false;
+    SoundEffectService.instance.playMessageSent();
     setState(() {
       _replyingToMessage = null;
       _currentPostReply = null;
@@ -1804,6 +1807,8 @@ class _GroupChatConversationScreenState
   }
 
   void _unfocusKeyboard() {
+    FocusScope.of(context).unfocus();
+    FocusManager.instance.primaryFocus?.unfocus();
     if (_textFocusNode.hasFocus) {
       _textFocusNode.unfocus();
     }
@@ -1826,7 +1831,7 @@ class _GroupChatConversationScreenState
           children: [
             Expanded(
               child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
+                behavior: HitTestBehavior.opaque,
                 onTap: _unfocusKeyboard,
                 child: Stack(
                   key: _listStackKey,
@@ -1930,7 +1935,7 @@ class _GroupChatConversationScreenState
                             child: ListView.builder(
                               controller: _scrollController,
                               reverse: true,
-                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
                               physics: const BouncingScrollPhysics(),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -4275,6 +4280,7 @@ class _GroupChatConversationScreenState
                 child: TextField(
                   controller: _textController,
                   focusNode: _textFocusNode,
+                  autofocus: true,
                   maxLines: 4,
                   minLines: 1,
                   textAlignVertical: TextAlignVertical.center,
@@ -4507,6 +4513,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
     } else {
       // Add or change reaction
       current[myUid] = emoji;
+      SoundEffectService.instance.playMessageReaction();
       if (isHeart) {
         _heartAnimController?.forward(from: 0.0);
       }
@@ -4567,6 +4574,8 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
   }
 
   void _openActionMenu() {
+    HapticFeedback.heavyImpact();
+    HapticFeedback.vibrate();
     MessageActionMenuOverlay.show(
       context: context,
       message: widget.message,

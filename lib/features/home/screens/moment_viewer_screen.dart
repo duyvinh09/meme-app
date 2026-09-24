@@ -4,7 +4,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:gallery_saver_plus/gallery_saver.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -20,6 +19,8 @@ import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
+import '../../auth/controllers/auth_controller.dart';
+import '../../capture/widgets/edit_transaction_sheet.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../feed/controllers/feed_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
@@ -41,6 +42,7 @@ class MomentViewerScreen extends StatefulWidget {
 class _MomentViewerScreenState extends State<MomentViewerScreen> {
   late final PageController _pageController;
   late int currentIndex;
+  late List<TransactionModel> _transactions;
 
   bool isSavingMedia = false;
   bool isSharingMedia = false;
@@ -49,9 +51,11 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   void initState() {
     super.initState();
 
+    _transactions = List.from(widget.transactions);
+
     currentIndex = widget.initialIndex.clamp(
       0,
-      widget.transactions.isEmpty ? 0 : widget.transactions.length - 1,
+      _transactions.isEmpty ? 0 : _transactions.length - 1,
     );
 
     _pageController = PageController(
@@ -62,12 +66,12 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   }
 
   void _preloadUpcomingVideos(int current) {
-    if (widget.transactions.isEmpty) return;
+    if (_transactions.isEmpty) return;
     final urlsToPreload = <String>[];
     for (int offset = -1; offset <= 2; offset++) {
       final idx = current + offset;
-      if (idx >= 0 && idx < widget.transactions.length) {
-        final tx = widget.transactions[idx];
+      if (idx >= 0 && idx < _transactions.length) {
+        final tx = _transactions[idx];
         if (tx.isVideo && tx.playableVideoUrl.isNotEmpty) {
           urlsToPreload.add(tx.playableVideoUrl);
         }
@@ -170,6 +174,9 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
   Future<void> _showMoreMenu(TransactionModel tx) async {
     if (isSavingMedia || isSharingMedia) return;
     final l10n = context.l10n;
+    final myUid = context.read<AuthController>().user?.uid;
+    final isMine = myUid != null && tx.userId == myUid;
+
     final result = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: AppColors.card(context),
@@ -194,6 +201,13 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (isMine)
+                  _BottomSheetActionTile(
+                    icon: Icons.edit_note_rounded,
+                    title: l10n.editTransaction,
+                    color: AppColors.textPrimary(context),
+                    onTap: () => Navigator.pop(sheetContext, 'edit'),
+                  ),
                 _BottomSheetActionTile(
                   icon: Icons.share_rounded,
                   title: l10n.share,
@@ -208,12 +222,13 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                   color: AppColors.textPrimary(context),
                   onTap: () => Navigator.pop(sheetContext, 'save'),
                 ),
-                _BottomSheetActionTile(
-                  icon: Icons.delete_outline_rounded,
-                  title: l10n.momentViewerDeleteTransaction,
-                  color: AppColors.expense,
-                  onTap: () => Navigator.pop(sheetContext, 'delete'),
-                ),
+                if (isMine)
+                  _BottomSheetActionTile(
+                    icon: Icons.delete_outline_rounded,
+                    title: l10n.momentViewerDeleteTransaction,
+                    color: AppColors.expense,
+                    onTap: () => Navigator.pop(sheetContext, 'delete'),
+                  ),
               ],
             ),
           ),
@@ -223,7 +238,17 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
     if (!mounted || result == null) return;
 
-    if (result == 'share') {
+    if (result == 'edit') {
+      final updated = await EditTransactionSheet.show(
+        context,
+        transaction: tx,
+      );
+      if (updated != null && mounted) {
+        setState(() {
+          _transactions[currentIndex] = updated;
+        });
+      }
+    } else if (result == 'share') {
       await _shareTransaction(tx);
     } else if (result == 'save') {
       await _saveMediaToGallery(tx);
@@ -385,7 +410,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
         }
       }
 
-      if (targetFile == null || !await targetFile.exists()) {
+      if (!await targetFile.exists()) {
         throw Exception('File does not exist');
       }
 
@@ -410,26 +435,6 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
       );
     } catch (e) {
       debugPrint('Save media error: $e');
-
-      // Fallback bằng GallerySaver nếu Gal gặp lỗi quyền
-      try {
-        final ok = tx.isVideo
-            ? await GallerySaver.saveVideo(mediaUrl)
-            : await GallerySaver.saveImage(mediaUrl);
-        if (mounted && ok == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              duration: AppDurations.snackBar,
-              content: Text(
-                tx.isVideo
-                    ? l10n.momentViewerSaveVideoSuccess
-                    : l10n.momentViewerSaveImageSuccess,
-              ),
-            ),
-          );
-          return;
-        }
-      } catch (_) {}
 
       if (!mounted) return;
 
@@ -513,7 +518,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.transactions.isEmpty) {
+    if (_transactions.isEmpty) {
       return Scaffold(
         backgroundColor: AppColors.background(context),
         body: SafeArea(
@@ -527,7 +532,8 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
       );
     }
 
-    final tx = widget.transactions[currentIndex];
+    final safeIndex = currentIndex.clamp(0, _transactions.length - 1);
+    final tx = _transactions[safeIndex];
     final currency = context.watch<ProfileController>().currency;
 
     final isDark = AppColors.isDark(context);
@@ -546,6 +552,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
+      resizeToAvoidBottomInset: false,
       body: SafeArea(
         child: Column(
           children: [
@@ -614,7 +621,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
-                itemCount: widget.transactions.length,
+                itemCount: _transactions.length,
                 onPageChanged: (value) {
                   setState(() {
                     currentIndex = value;
@@ -622,7 +629,7 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                   _preloadUpcomingVideos(value);
                 },
                 itemBuilder: (context, index) {
-                  final item = widget.transactions[index];
+                  final item = _transactions[index];
 
                   return Column(
                     children: [
@@ -647,7 +654,46 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                                 ),
                               ),
 
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 14),
+
+                              if (item.note.trim().isNotEmpty) ...[
+                                Container(
+                                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: glassColor,
+                                    borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                                    border: Border.all(color: glassBorder),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.edit_note_rounded,
+                                        size: 19,
+                                        color: secondaryText,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          item.note.trim(),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: primaryText,
+                                            fontSize: 13.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
 
                               if (isSavingMedia || isSharingMedia)
                                 const Padding(

@@ -1468,8 +1468,12 @@ class _CalloutPoint {
   final String label;
   final String percentText;
   final Color color;
+  final double midAngle;
   final Offset startPoint;
   final bool isRightSide;
+  final TextPainter textPainter;
+  final double preferredY;
+  double targetY;
   Offset elbowPoint;
   Offset textAnchor;
 
@@ -1477,8 +1481,12 @@ class _CalloutPoint {
     required this.label,
     required this.percentText,
     required this.color,
+    required this.midAngle,
     required this.startPoint,
     required this.isRightSide,
+    required this.textPainter,
+    required this.preferredY,
+    required this.targetY,
     required this.elbowPoint,
     required this.textAnchor,
   });
@@ -1516,70 +1524,193 @@ class _CategoryLeaderLinePainter extends CustomPainter {
     double currentAngle = -math.pi / 2;
     const double totalAngle = 2 * math.pi;
 
-    final List<_CalloutPoint> points = [];
-
-    // Chỉ hiển thị tối đa 4 đường chỉ cho các danh mục lớn (>= 2.5%) để biểu đồ luôn thoáng mắt, không bị rối
+    // Hiển thị tối đa 4 lát bánh lớn nhất (>= 1.5%) để biểu đồ thoáng mắt và rõ ràng
     final majorEntries =
-        entries.where((e) => getRawPercent(e.value) >= 2.5).take(4).toList();
+        entries.where((e) => getRawPercent(e.value) >= 1.5).take(4).toList();
     final displayedEntries =
         majorEntries.isNotEmpty ? majorEntries : entries.take(3).toList();
 
-    // Chiều dài tia vươn ra ngoài từ mép biểu đồ tròn (thanh mảnh, chừa khoảng đệm rộng rãi 2 bên)
-    const double leaderLength = 10.0;
+    const double clearGap = 8.0; // Khoảng đệm tia hướng tâm ngoài lát bánh
+    final double clearRadius = outerRadius + clearGap;
+    final List<_CalloutPoint> rawPoints = [];
 
     for (int i = 0; i < entries.length; i++) {
       final entry = entries[i];
       final sweep = (entry.value / total) * totalAngle;
-      final midAngle = currentAngle + sweep / 2;
+      final rawMidAngle = currentAngle + sweep / 2;
       final rawPercent = getRawPercent(entry.value);
 
       if (displayedEntries.contains(entry) && rawPercent > 0) {
+        // Chuẩn hoá góc về [-pi, pi]
+        double midAngle = rawMidAngle;
+        while (midAngle > math.pi) {
+          midAngle -= 2 * math.pi;
+        }
+        while (midAngle < -math.pi) {
+          midAngle += 2 * math.pi;
+        }
+
         final color =
             categoryColorMap[entry.key] ?? fallbackColor(entry.key, i);
         final cosVal = math.cos(midAngle);
         final sinVal = math.sin(midAngle);
-        final isRight = cosVal >= 0;
 
-        // 1. Điểm gốc: Dính liền chuẩn xác ngay tại mép ngoài lát bánh tròn
+        // Phân loại bên trái / bên phải cân đối và thông minh
+        final bool isRight = cosVal > 0.02 ||
+            (midAngle >= -math.pi / 2 - 0.20 && midAngle <= math.pi / 2);
+
+        // 1. Điểm bắt đầu: Luôn nằm chính xác trên mép ngoài của lát bánh
         final startPoint = Offset(
           center.dx + outerRadius * cosVal,
           center.dy + outerRadius * sinVal,
         );
 
-        // 2. Điểm gập: Phóng thẳng theo đúng góc tự nhiên của lát đó
-        final elbowPoint = Offset(
-          center.dx + (outerRadius + leaderLength) * cosVal,
-          center.dy + (outerRadius + leaderLength) * sinVal,
+        final preferredY = center.dy + clearRadius * sinVal;
+
+        final textSpan = TextSpan(
+          children: [
+            TextSpan(
+              text: '${localizedCategory(entry.key)}\n',
+              style: TextStyle(
+                color: textPrimary.withValues(alpha: 0.90),
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                height: 1.15,
+              ),
+            ),
+            TextSpan(
+              text: formatPercent(rawPercent),
+              style: TextStyle(
+                color: color,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w900,
+                height: 1.2,
+              ),
+            ),
+          ],
         );
 
-        // 3. Đường gạch vai ngang ngắn hướng về phía đặt chữ
-        final textAnchor = Offset(
-          elbowPoint.dx + (isRight ? 8.0 : -8.0),
-          elbowPoint.dy,
+        final textPainter = TextPainter(
+          text: textSpan,
+          textAlign: isRight ? TextAlign.left : TextAlign.right,
+          textDirection: TextDirection.ltr,
         );
 
-        points.add(_CalloutPoint(
+        textPainter.layout(maxWidth: 95.0);
+
+        rawPoints.add(_CalloutPoint(
           label: localizedCategory(entry.key),
           percentText: formatPercent(rawPercent),
           color: color,
+          midAngle: midAngle,
           startPoint: startPoint,
           isRightSide: isRight,
-          elbowPoint: elbowPoint,
-          textAnchor: textAnchor,
+          textPainter: textPainter,
+          preferredY: preferredY,
+          targetY: preferredY,
+          elbowPoint: Offset.zero,
+          textAnchor: Offset.zero,
         ));
       }
 
       currentAngle += sweep;
     }
 
-    if (points.isEmpty) return;
+    if (rawPoints.isEmpty) return;
 
-    for (final item in points) {
-      _drawCallout(canvas, size, item);
+    // Tách riêng bên trái và bên phải để xử lý giãn cách chống đè chữ
+    final leftPoints = rawPoints.where((p) => !p.isRightSide).toList()
+      ..sort((a, b) => a.preferredY.compareTo(b.preferredY));
+    final rightPoints = rawPoints.where((p) => p.isRightSide).toList()
+      ..sort((a, b) => a.preferredY.compareTo(b.preferredY));
+
+    _resolveVerticalCollisions(leftPoints, size.height);
+    _resolveVerticalCollisions(rightPoints, size.height);
+
+    // Tính toán toạ độ đường nối chạy hoàn toàn bên ngoài chu vi bánh donut
+    for (final item in rawPoints) {
+      final isRight = item.isRightSide;
+      final double normalizedY =
+          ((item.targetY - center.dy) / clearRadius).clamp(-0.95, 0.95);
+
+      final double targetAngle;
+      if (isRight) {
+        targetAngle = math.asin(normalizedY);
+      } else {
+        targetAngle = normalizedY < 0
+            ? -math.pi - math.asin(normalizedY)
+            : math.pi - math.asin(normalizedY);
+      }
+
+      final arcEndPoint = Offset(
+        center.dx + clearRadius * math.cos(targetAngle),
+        center.dy + clearRadius * math.sin(targetAngle),
+      );
+
+      final double elbowX = isRight
+          ? arcEndPoint.dx + 12.0
+          : arcEndPoint.dx - 12.0;
+
+      item.elbowPoint = Offset(elbowX, item.targetY);
+      item.textAnchor = Offset(elbowX + (isRight ? 8.0 : -8.0), item.targetY);
+
+      _drawRoutedCallout(
+        canvas: canvas,
+        size: size,
+        center: center,
+        clearRadius: clearRadius,
+        targetAngle: targetAngle,
+        item: item,
+      );
     }
   }
 
-  void _drawCallout(Canvas canvas, Size size, _CalloutPoint item) {
+  void _resolveVerticalCollisions(List<_CalloutPoint> items, double canvasHeight) {
+    if (items.length <= 1) return;
+
+    const double minGap = 36.0; // Khoảng cách an toàn giữa 2 nhãn chữ
+    const double minY = 20.0;
+    final double maxY = canvasHeight - 20.0;
+
+    // Lượt 1: Đẩy xuống từ trên xuống dưới
+    for (int i = 1; i < items.length; i++) {
+      final requiredY = items[i - 1].targetY + minGap;
+      if (items[i].targetY < requiredY) {
+        items[i].targetY = requiredY;
+      }
+    }
+
+    // Lượt 2: Đẩy ngược lên nếu điểm cuối vượt mép dưới
+    if (items.last.targetY > maxY) {
+      items.last.targetY = maxY;
+      for (int i = items.length - 2; i >= 0; i--) {
+        final requiredY = items[i + 1].targetY - minGap;
+        if (items[i].targetY > requiredY) {
+          items[i].targetY = requiredY;
+        }
+      }
+    }
+
+    // Lượt 3: Đảm bảo điểm đầu không vượt quá mép trên
+    if (items.first.targetY < minY) {
+      items.first.targetY = minY;
+      for (int i = 1; i < items.length; i++) {
+        final requiredY = items[i - 1].targetY + minGap;
+        if (items[i].targetY < requiredY) {
+          items[i].targetY = requiredY;
+        }
+      }
+    }
+  }
+
+  void _drawRoutedCallout({
+    required Canvas canvas,
+    required Size size,
+    required Offset center,
+    required double clearRadius,
+    required double targetAngle,
+    required _CalloutPoint item,
+  }) {
     final linePaint = Paint()
       ..color = item.color
       ..strokeWidth = 1.4
@@ -1593,54 +1724,54 @@ class _CategoryLeaderLinePainter extends CustomPainter {
       ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
-    final path = Path()
-      ..moveTo(item.startPoint.dx, item.startPoint.dy)
+    final path = Path();
+    // 1. Điểm gốc: Từ mép ngoài lát bánh
+    path.moveTo(item.startPoint.dx, item.startPoint.dy);
+
+    // 2. Điểm đệm tia hướng tâm thoát ra ngoài bánh
+    final stemX = center.dx + clearRadius * math.cos(item.midAngle);
+    final stemY = center.dy + clearRadius * math.sin(item.midAngle);
+    path.lineTo(stemX, stemY);
+
+    // 3. Đường uốn lượn chạy quanh chu vi ngoài biểu đồ (không bao giờ xuyên tâm hay cắt lát bánh)
+    double sweep = targetAngle - item.midAngle;
+    while (sweep > math.pi) {
+      sweep -= 2 * math.pi;
+    }
+    while (sweep < -math.pi) {
+      sweep += 2 * math.pi;
+    }
+
+    if (sweep.abs() > 0.06) {
+      final rect = Rect.fromCircle(center: center, radius: clearRadius);
+      path.arcTo(rect, item.midAngle, sweep, false);
+    }
+
+    // 4. Đoạn gấp khúc ngang hướng về nhãn
+    path
       ..lineTo(item.elbowPoint.dx, item.elbowPoint.dy)
       ..lineTo(item.textAnchor.dx, item.textAnchor.dy);
 
     canvas.drawPath(path, linePaint);
     canvas.drawCircle(item.elbowPoint, 2.5, dotPaint);
 
-    final textSpan = TextSpan(
-      children: [
-        TextSpan(
-          text: '${item.label}\n',
-          style: TextStyle(
-            color: textPrimary.withValues(alpha: 0.90),
-            fontSize: 11.5,
-            fontWeight: FontWeight.w700,
-            height: 1.15,
-          ),
-        ),
-        TextSpan(
-          text: item.percentText,
-          style: TextStyle(
-            color: item.color,
-            fontSize: 12.5,
-            fontWeight: FontWeight.w900,
-            height: 1.2,
-          ),
-        ),
-      ],
-    );
+    final textPainter = item.textPainter;
 
-    final textPainter = TextPainter(
-      text: textSpan,
-      textAlign: item.isRightSide ? TextAlign.left : TextAlign.right,
-      textDirection: TextDirection.ltr,
-    );
-
-    final double maxTextWidth = item.isRightSide
-        ? (size.width - item.textAnchor.dx - 6).clamp(50.0, 100.0)
-        : (item.textAnchor.dx - 6).clamp(50.0, 100.0);
-
-    textPainter.layout(maxWidth: maxTextWidth);
-
-    final double textX = item.isRightSide
+    double textX = item.isRightSide
         ? item.textAnchor.dx + 4
         : item.textAnchor.dx - 4 - textPainter.width;
 
-    final double textY = item.textAnchor.dy - (textPainter.height / 2);
+    if (item.isRightSide) {
+      if (textX + textPainter.width > size.width - 2.0) {
+        textX = size.width - 2.0 - textPainter.width;
+      }
+    } else {
+      if (textX < 2.0) {
+        textX = 2.0;
+      }
+    }
+
+    final double textY = item.targetY - (textPainter.height / 2);
 
     textPainter.paint(canvas, Offset(textX, textY));
   }

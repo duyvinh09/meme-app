@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/streak_milestones.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/utils/currency_formatter.dart';
+import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/chat_repository.dart';
 import '../../../data/repositories/transaction_repository.dart';
@@ -194,8 +195,10 @@ class CaptureController extends ChangeNotifier {
     }
 
     final unlocked = List<int>.from(profile.unlockedMilestones);
+    final effectiveOldStreak =
+        (profile.currentStreak == 0 || diff > 1) ? 0 : profile.currentStreak;
     final newlyUnlocked = StreakMilestones.checkNewMilestone(
-      oldStreak: profile.currentStreak,
+      oldStreak: effectiveOldStreak,
       newStreak: newCurrent,
       unlockedMilestones: unlocked,
     );
@@ -215,7 +218,7 @@ class CaptureController extends ChangeNotifier {
     return newlyUnlocked;
   }
 
-  Future<bool> saveTransaction({
+  Future<TransactionModel?> saveTransaction({
     required String userId,
     required double amount,
     required String type,
@@ -261,31 +264,30 @@ class CaptureController extends ChangeNotifier {
           final taggedUser = await userRepository.findUserByUsername(uName);
           if (taggedUser == null || taggedUser.uid == userId) continue;
 
-          // B MUST be a friend of A (author)
-          final isFriend = await userRepository.isFriendWith(userId, taggedUser.uid);
-          if (!isFriend) continue;
-
-          // If close_friends, user MUST be in closeFriendUids
-          if (privacy == 'close_friends' && !closeFriendUids.contains(taggedUser.uid)) {
-            continue;
+          if (privacy == 'friends') {
+            final isFriend = await userRepository.isFriendWith(userId, taggedUser.uid);
+            if (isFriend) validTaggedUsernames.add(uName);
+          } else if (privacy == 'close_friends') {
+            final isFriend = await userRepository.isFriendWith(userId, taggedUser.uid);
+            final isClose = closeFriendUids.contains(taggedUser.uid);
+            if (isFriend && isClose) validTaggedUsernames.add(uName);
+          } else if (privacy == 'group') {
+            final inGroup = groupMemberIds.contains(taggedUser.uid);
+            final isFriend = await userRepository.isFriendWith(userId, taggedUser.uid);
+            if (inGroup && isFriend) validTaggedUsernames.add(uName);
           }
-
-          // If group, user MUST be in groupMemberIds (Members(Group) ∩ Friends(A))
-          if (privacy == 'group' && !groupMemberIds.contains(taggedUser.uid)) {
-            continue;
-          }
-
-          validTaggedUsernames.add(uName);
         }
       }
 
-      final effectiveGroupContribution = (isGroupContribution ?? false) ||
-          (privacy == 'group' &&
-              (type == 'income' ||
-                  category == 'Quỹ nhóm' ||
-                  category == 'Group Fund'));
-      final effectiveGroupExpense =
-          privacy == 'group' && !effectiveGroupContribution;
+      final effectiveGroupExpense = privacy == 'group' &&
+          (isGroupContribution == null || !isGroupContribution) &&
+          groupId != null &&
+          groupId.isNotEmpty;
+
+      final effectiveGroupContribution = isGroupContribution == true &&
+          groupId != null &&
+          groupId.isNotEmpty;
+
       final effectiveType = effectiveGroupContribution ? 'expense' : type;
 
       final savedTx = await transactionRepository.addTransaction(
@@ -398,10 +400,10 @@ class CaptureController extends ChangeNotifier {
       clearMedia();
       clearLocation();
 
-      return true;
+      return savedTx;
     } catch (e) {
       debugPrint('saveTransaction error: $e');
-      return false;
+      return null;
     } finally {
       isSaving = false;
       notifyListeners();

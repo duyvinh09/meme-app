@@ -1334,6 +1334,7 @@ class _CameraScreenState extends State<CameraScreen>
                       ),
                     ),
                   ),
+
                 ],
               ),
             ),
@@ -1513,7 +1514,7 @@ class _CameraScreenState extends State<CameraScreen>
                     children: [
                       _buildSquareCameraPreview(previewSize, theme),
 
-                      SizedBox(height: isShort ? 12 : 18),
+                      SizedBox(height: isShort ? 14 : 20),
 
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: isSmall ? 20 : 34),

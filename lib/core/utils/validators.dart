@@ -54,28 +54,4 @@ class AppValidators {
 
     return null;
   }
-
-  static String? moneyText(String value) {
-    final cleaned = value
-        .trim()
-        .replaceAll('.', '')
-        .replaceAll(',', '')
-        .replaceAll(' ', '');
-
-    final amount = double.tryParse(cleaned);
-
-    if (amount == null || amount <= 0) {
-      return 'Vui lòng nhập số tiền hợp lệ';
-    }
-
-    return null;
-  }
-
-  static String? positiveAmount(double value) {
-    if (value <= 0) {
-      return 'Số tiền phải lớn hơn 0';
-    }
-
-    return null;
-  }
 }

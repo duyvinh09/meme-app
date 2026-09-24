@@ -13,6 +13,7 @@ import firebase_core
 import firebase_messaging
 import flutter_local_notifications
 import gal
+import geocoding_darwin
 import geolocator_apple
 import light_compressor_v2
 import package_info_plus
@@ -33,6 +34,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FLTFirebaseMessagingPlugin.register(with: registry.registrar(forPlugin: "FLTFirebaseMessagingPlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   GalPlugin.register(with: registry.registrar(forPlugin: "GalPlugin"))
+  GeocodingDarwinPlugin.register(with: registry.registrar(forPlugin: "GeocodingDarwinPlugin"))
   GeolocatorPlugin.register(with: registry.registrar(forPlugin: "GeolocatorPlugin"))
   LightCompressorPlugin.register(with: registry.registrar(forPlugin: "LightCompressorPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))

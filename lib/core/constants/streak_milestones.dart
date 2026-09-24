@@ -54,14 +54,27 @@ class StreakMilestones {
   StreakMilestones._();
 
   static const List<StreakMilestone> all = [
+    // 1 Day - Tier 1
+    StreakMilestone(
+      days: 1,
+      tier: MilestoneTier.tier1,
+      titleVi: 'Khởi đầu gắn kết',
+      titleEn: 'Streak Spark',
+      messageVi: 'Bắt đầu giữ chuỗi cùng nhau từ hôm nay nhé!',
+      messageEn: 'We started keeping our streak together today!',
+      primaryColor: Color(0xFFFF9800),
+      secondaryColor: Color(0xFFFFB74D),
+      glowColor: Color(0xFFFF9800),
+    ),
+
     // 3 Days - Tier 1
     StreakMilestone(
       days: 3,
       tier: MilestoneTier.tier1,
       titleVi: 'Khởi đầu rực rỡ',
       titleEn: 'Bright Beginning',
-      messageVi: 'Bạn đã cùng mình đi qua 3 ngày rồi.',
-      messageEn: 'You’ve walked through 3 days with me already.',
+      messageVi: 'Bạn đã cùng mình đi qua 3 ngày rồi. Cùng nhau giữ lửa nhé!',
+      messageEn: 'You’ve walked through 3 days with me already. Let’s keep the flame going!',
       primaryColor: Color(0xFFFF6B4A),
       secondaryColor: Color(0xFFFF9E43),
       glowColor: Color(0xFFFF6B4A),

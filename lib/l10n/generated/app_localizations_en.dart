@@ -502,7 +502,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get name => 'Name';
 
   @override
-  String get saveChanges => 'Save Changes';
+  String get saveChanges => 'Save changes';
 
   @override
   String get profileUpdated => 'Profile updated successfully';
@@ -912,7 +912,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get leaveGroupConfirmation =>
-      'Are you sure you want to leave this group?';
+      'The amount you contributed from the beginning will remain in the group fund and will not be refunded after you leave. Are you sure you want to leave this group?';
+
+  @override
+  String get removeMember => 'Remove Member';
+
+  @override
+  String get removeMemberQuestion => 'Remove from group?';
+
+  @override
+  String removeMemberConfirmation(String name) {
+    return 'The amount contributed by this member from the beginning will remain in the group fund. Are you sure you want to remove \"$name\" from the group?';
+  }
+
+  @override
+  String get memberRemoved => 'Member removed from group';
+
+  @override
+  String cannotRemoveMember(String error) {
+    return 'Could not remove member: $error';
+  }
 
   @override
   String get groupDeleted => 'Group deleted';
@@ -1989,6 +2008,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get streakMilestoneUnlocked => 'New Milestone Unlocked!';
 
   @override
+  String get streakStartedUnlocked => 'Started Keeping Streak Together!';
+
+  @override
   String streakMilestoneDaysLabel(int days) {
     return '$days Days';
   }
@@ -1997,12 +2019,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get streakMilestoneContinue => 'Continue';
 
   @override
+  String get streakRewardDay1Hint =>
+      'Capture moments daily to keep the flame and unlock rewards at 3 days!';
+
+  @override
   String get streakRewardAvatarFrameHint =>
       'Open Streak to claim & equip your new avatar frame!';
 
   @override
   String get streakRewardCameraThemeHint =>
-      'Unlocked new Avatar Frame & Camera Themes to explore!';
+      'Unlocked Gradient Avatar Frame & Camera Themes to explore!';
 
   @override
   String get today => 'Today';
@@ -2807,4 +2833,98 @@ class AppLocalizationsEn extends AppLocalizations {
   String groupMemberDeficit(String amount) {
     return 'Overspent: -$amount';
   }
+
+  @override
+  String get editTransaction => 'Edit transaction';
+
+  @override
+  String get editTransactionSuccess => 'Transaction updated successfully';
+
+  @override
+  String get editTransactionFailed => 'Failed to update transaction';
+
+  @override
+  String get photoCaption => 'Photo caption';
+
+  @override
+  String get photoCaptionHint => 'Add caption to show on photo...';
+
+  @override
+  String get photoCaptionSub =>
+      'Text sticker displayed on moment photo (supports @tag)';
+
+  @override
+  String get expenseNote => 'Transaction note';
+
+  @override
+  String get expenseNoteHint => 'Detailed note for your expense record...';
+
+  @override
+  String get expenseNoteSub =>
+      'Saved in transaction record, not shown on photo';
+
+  @override
+  String get editAmount => 'Amount';
+
+  @override
+  String get selectCategory => 'Select category';
+
+  @override
+  String get seeMore => 'See more';
+
+  @override
+  String get collapse => 'Collapse';
+
+  @override
+  String get taggedFriendsTitle => 'Tagged friends';
+
+  @override
+  String get tagFriendAction => '+ Tag friend';
+
+  @override
+  String get scanReceipt => 'Quét hoá đơn';
+
+  @override
+  String get photoMoment => 'Khoảnh khắc';
+
+  @override
+  String get alignReceiptInFrame => 'Đặt hoá đơn vào khung hình';
+
+  @override
+  String get scanningReceipt => 'Đang quét hoá đơn...';
+
+  @override
+  String get receiptExtracted => 'Đã trích xuất hoá đơn';
+
+  @override
+  String get receiptSummedNotice =>
+      'Đã tự động cộng tổng từ các món trong hoá đơn';
+
+  @override
+  String get viewReceiptDetails => 'Xem chi tiết hoá đơn';
+
+  @override
+  String receiptItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count món',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get merchantStore => 'Tên quán / Cửa hàng';
+
+  @override
+  String get lineItemsList => 'Danh sách món';
+
+  @override
+  String get ocrScanButton => 'Quét Bill OCR';
+
+  @override
+  String get noReceiptDetected => 'Không nhận diện được nội dung hoá đơn';
+
+  @override
+  String get receiptSummaryTitle => 'Chi tiết hoá đơn OCR';
 }

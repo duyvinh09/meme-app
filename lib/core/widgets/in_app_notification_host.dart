@@ -10,6 +10,7 @@ import '../services/app_icon_service.dart';
 import '../services/in_app_notification_service.dart';
 import '../../features/feed/controllers/feed_controller.dart';
 import '../../features/profile/widgets/avatar_with_frame.dart';
+import 'post_publishing_banner.dart';
 
 class InAppNotificationHost extends StatefulWidget {
   final Widget child;
@@ -370,6 +371,9 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
               ),
             ),
           ),
+
+        // Bottom Post Publishing Banner (Đang đăng... / Đã đăng)
+        const PostPublishingBannerHost(),
       ],
     );
   }

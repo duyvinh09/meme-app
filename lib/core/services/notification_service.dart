@@ -32,9 +32,9 @@ class NotificationService {
   bool _isInitialized = false;
 
   // Android Notification Channels
-  static const String chatChannelId = 'chat_messages_channel_v2';
-  static const String friendChannelId = 'friend_requests_channel_v2';
-  static const String reminderChannelId = 'expense_reminders_channel_v2';
+  static const String chatChannelId = 'chat_messages_channel_v3';
+  static const String friendChannelId = 'friend_requests_channel_v3';
+  static const String reminderChannelId = 'expense_reminders_channel_v3';
   static const String customSoundName = 'meme_sound';
 
   Future<void> init() async {
@@ -96,8 +96,11 @@ class NotificationService {
       if (androidPlugin != null) {
         // Clean up legacy channel IDs to ensure custom sound triggers immediately
         await androidPlugin.deleteNotificationChannel(channelId: 'chat_messages_channel');
+        await androidPlugin.deleteNotificationChannel(channelId: 'chat_messages_channel_v2');
         await androidPlugin.deleteNotificationChannel(channelId: 'friend_requests_channel');
+        await androidPlugin.deleteNotificationChannel(channelId: 'friend_requests_channel_v2');
         await androidPlugin.deleteNotificationChannel(channelId: 'expense_reminders_channel');
+        await androidPlugin.deleteNotificationChannel(channelId: 'expense_reminders_channel_v2');
 
         await androidPlugin.createNotificationChannel(chatChannel);
         await androidPlugin.createNotificationChannel(friendChannel);

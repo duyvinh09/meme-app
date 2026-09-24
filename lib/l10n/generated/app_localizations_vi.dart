@@ -913,7 +913,26 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get leaveGroupConfirmation =>
-      'Bạn có chắc muốn rời khỏi nhóm này không?';
+      'Số tiền bạn đã góp từ đầu sẽ được giữ lại trong quỹ và không hoàn trả sau khi bạn rời đi. Bạn có chắc muốn rời khỏi nhóm này không?';
+
+  @override
+  String get removeMember => 'Xoá thành viên';
+
+  @override
+  String get removeMemberQuestion => 'Xoá khỏi nhóm?';
+
+  @override
+  String removeMemberConfirmation(String name) {
+    return 'Số tiền thành viên đã góp từ đầu sẽ được giữ lại trong quỹ nhóm. Bạn có chắc muốn xoá \"$name\" khỏi nhóm không?';
+  }
+
+  @override
+  String get memberRemoved => 'Đã xoá thành viên khỏi nhóm';
+
+  @override
+  String cannotRemoveMember(String error) {
+    return 'Không thể xoá thành viên: $error';
+  }
 
   @override
   String get groupDeleted => 'Đã xoá nhóm';
@@ -1993,6 +2012,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get streakMilestoneUnlocked => 'Mở khóa cột mốc mới!';
 
   @override
+  String get streakStartedUnlocked => 'Bắt đầu giữ chuỗi cùng nhau!';
+
+  @override
   String streakMilestoneDaysLabel(int days) {
     return '$days ngày';
   }
@@ -2001,12 +2023,16 @@ class AppLocalizationsVi extends AppLocalizations {
   String get streakMilestoneContinue => 'Tiếp tục';
 
   @override
+  String get streakRewardDay1Hint =>
+      'Chụp ảnh mỗi ngày để duy trì ngọn lửa và mở khóa phần thưởng ở mốc 3 ngày!';
+
+  @override
   String get streakRewardAvatarFrameHint =>
       'Mở mục Chuỗi để nhận & đổi khung avatar mới!';
 
   @override
   String get streakRewardCameraThemeHint =>
-      'Mở khóa Khung avatar & Khám phá Chủ đề máy ảnh mới!';
+      'Mở khóa Khung avatar Gradient & Chủ đề máy ảnh mới!';
 
   @override
   String get today => 'Hôm nay';
@@ -2810,4 +2836,97 @@ class AppLocalizationsVi extends AppLocalizations {
   String groupMemberDeficit(String amount) {
     return 'Chi vượt: -$amount';
   }
+
+  @override
+  String get editTransaction => 'Chỉnh sửa chi tiêu';
+
+  @override
+  String get editTransactionSuccess => 'Đã cập nhật chi tiêu thành công';
+
+  @override
+  String get editTransactionFailed => 'Cập nhật chi tiêu thất bại';
+
+  @override
+  String get photoCaption => 'Tiêu đề ảnh (Caption)';
+
+  @override
+  String get photoCaptionHint => 'Thêm chữ hiển thị trên ảnh...';
+
+  @override
+  String get photoCaptionSub =>
+      'Chữ hiển thị trực tiếp đè lên ảnh khoảnh khắc (hỗ trợ @tag)';
+
+  @override
+  String get expenseNote => 'Ghi chú thu chi';
+
+  @override
+  String get expenseNoteHint => 'Ghi chú chi tiết cho sổ thu chi...';
+
+  @override
+  String get expenseNoteSub => 'Lưu vào sổ thu chi, không hiển thị đè lên ảnh';
+
+  @override
+  String get editAmount => 'Số tiền';
+
+  @override
+  String get selectCategory => 'Chọn danh mục';
+
+  @override
+  String get seeMore => 'Xem thêm';
+
+  @override
+  String get collapse => 'Thu gọn';
+
+  @override
+  String get taggedFriendsTitle => 'Bạn bè được tag';
+
+  @override
+  String get tagFriendAction => '+ Tag bạn';
+
+  @override
+  String get scanReceipt => 'Quét hoá đơn';
+
+  @override
+  String get photoMoment => 'Khoảnh khắc';
+
+  @override
+  String get alignReceiptInFrame => 'Đặt hoá đơn vào khung hình';
+
+  @override
+  String get scanningReceipt => 'Đang quét hoá đơn...';
+
+  @override
+  String get receiptExtracted => 'Đã trích xuất hoá đơn';
+
+  @override
+  String get receiptSummedNotice =>
+      'Đã tự động cộng tổng từ các món trong hoá đơn';
+
+  @override
+  String get viewReceiptDetails => 'Xem chi tiết hoá đơn';
+
+  @override
+  String receiptItemsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count món',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get merchantStore => 'Tên quán / Cửa hàng';
+
+  @override
+  String get lineItemsList => 'Danh sách món';
+
+  @override
+  String get ocrScanButton => 'Quét Bill OCR';
+
+  @override
+  String get noReceiptDetected => 'Không nhận diện được nội dung hoá đơn';
+
+  @override
+  String get receiptSummaryTitle => 'Chi tiết hoá đơn OCR';
 }

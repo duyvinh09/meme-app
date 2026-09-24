@@ -240,7 +240,7 @@ class TransactionMomentImage extends StatelessWidget {
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(isTiny ? 0.05 : 0.08),
+                  color: Colors.black.withValues(alpha: isTiny ? 0.05 : 0.08),
                 ),
               ),
             ),
@@ -250,9 +250,9 @@ class TransactionMomentImage extends StatelessWidget {
                 height: playSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.black.withOpacity(0.34),
+                  color: Colors.black.withValues(alpha: 0.34),
                   border: Border.all(
-                    color: Colors.white.withOpacity(0.22),
+                    color: Colors.white.withValues(alpha: 0.22),
                     width: isTiny ? 0.7 : 1,
                   ),
                 ),
@@ -263,33 +263,6 @@ class TransactionMomentImage extends StatelessWidget {
                 ),
               ),
             ),
-            if (!isTiny)
-              Positioned(
-                right: isSmall ? 4 : 7,
-                top: isSmall ? 4 : 7,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmall ? 5 : 7,
-                    vertical: isSmall ? 3 : 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.45),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.16),
-                    ),
-                  ),
-                  child: Text(
-                    'VIDEO',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: isSmall ? 8 : 9.5,
-                      fontWeight: FontWeight.w900,
-                      height: 1,
-                    ),
-                  ),
-                ),
-              ),
           ],
         );
       },
@@ -385,8 +358,8 @@ class TransactionMomentImage extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    color.withOpacity(0.96),
-                    color.withOpacity(0.72),
+                    color.withValues(alpha: 0.96),
+                    color.withValues(alpha: 0.72),
                     const Color(0xFF20232C),
                   ],
                 ),
@@ -401,9 +374,9 @@ class TransactionMomentImage extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            Colors.white.withOpacity(0.08),
+                            Colors.white.withValues(alpha: 0.08),
                             Colors.transparent,
-                            Colors.black.withOpacity(0.18),
+                            Colors.black.withValues(alpha: 0.18),
                           ],
                         ),
                       ),
@@ -422,9 +395,9 @@ class TransactionMomentImage extends StatelessWidget {
                               height: iconCircleSize,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.18),
+                                color: Colors.white.withValues(alpha: 0.18),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.24),
+                                  color: Colors.white.withValues(alpha: 0.24),
                                   width: isTiny ? 1.2 : 1.8,
                                 ),
                               ),

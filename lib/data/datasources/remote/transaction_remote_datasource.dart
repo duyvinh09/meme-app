@@ -16,6 +16,12 @@ class TransactionRemoteDataSource {
         .set(transaction.toMap());
   }
 
+  Future<void> updateTransaction(TransactionModel transaction) async {
+    await _collection(transaction.userId)
+        .doc(transaction.id)
+        .set(transaction.toMap(), SetOptions(merge: true));
+  }
+
   Stream<List<TransactionModel>> streamTransactions(String uid) {
     return _collection(uid)
         .orderBy('createdAt', descending: true)

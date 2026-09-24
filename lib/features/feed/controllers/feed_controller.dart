@@ -207,6 +207,14 @@ class FeedController extends ChangeNotifier {
     }
   }
 
+  void updateExistingTransaction(TransactionModel updatedTransaction) {
+    final index = feedTransactions.indexWhere((tx) => tx.id == updatedTransaction.id);
+    if (index != -1) {
+      feedTransactions[index] = updatedTransaction;
+      notifyListeners();
+    }
+  }
+
   void removeDeletedTransaction(String transactionId) {
     feedTransactions.removeWhere((tx) => tx.id == transactionId);
     notifyListeners();

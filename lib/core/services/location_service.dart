@@ -133,24 +133,21 @@ class LocationService {
   }) async {
     // 1. Try native platform geocoder
     try {
-      final places = await placemarkFromCoordinates(
+      final geocoding = Geocoding();
+      final places = await geocoding.placemarkFromCoordinates(
         latitude,
         longitude,
       );
 
       if (places.isNotEmpty) {
         final p = places.first;
-        final parts = [
-          p.name,
-          p.street,
-          p.subLocality,
-          p.locality,
-          p.administrativeArea,
-        ]
-            .where((e) => e != null && e.trim().isNotEmpty)
-            .map((e) => e!.trim())
-            .toSet()
-            .toList();
+        final parts = <String>{
+          if (p.name != null && p.name!.trim().isNotEmpty) p.name!.trim(),
+          if (p.street != null && p.street!.trim().isNotEmpty) p.street!.trim(),
+          if (p.subLocality != null && p.subLocality!.trim().isNotEmpty) p.subLocality!.trim(),
+          if (p.locality != null && p.locality!.trim().isNotEmpty) p.locality!.trim(),
+          if (p.administrativeArea != null && p.administrativeArea!.trim().isNotEmpty) p.administrativeArea!.trim(),
+        }.toList();
 
         final name = parts.join(', ');
         if (name.isNotEmpty) return name;

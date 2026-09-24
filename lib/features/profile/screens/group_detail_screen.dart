@@ -330,6 +330,15 @@ class _GroupDetailScreenState extends State<GroupDetailScreen> {
                       groupColor: groupColor,
                       money: money,
                       toDouble: _toDouble,
+                      isOwner: isOwner,
+                      myUid: myUid,
+                      groupId: groupId,
+                      onMemberKicked: () {
+                        setState(() {
+                          _cachedMemberIdsKey = '';
+                          _cachedMembersFuture = null;
+                        });
+                      },
                     ),
 
                     const SizedBox(height: 18),
@@ -1836,6 +1845,10 @@ class _MembersContributionCard extends StatelessWidget {
   final Color groupColor;
   final String Function(double value) money;
   final double Function(dynamic value) toDouble;
+  final bool isOwner;
+  final String myUid;
+  final String groupId;
+  final VoidCallback? onMemberKicked;
 
   const _MembersContributionCard({
     required this.members,
@@ -1846,6 +1859,10 @@ class _MembersContributionCard extends StatelessWidget {
     required this.groupColor,
     required this.money,
     required this.toDouble,
+    this.isOwner = false,
+    this.myUid = '',
+    this.groupId = '',
+    this.onMemberKicked,
   });
 
   @override
@@ -1930,6 +1947,72 @@ class _MembersContributionCard extends StatelessWidget {
                       fontWeight: FontWeight.w800,
                     ),
                   ),
+                  trailing: (isOwner && memberUid != myUid && memberUid.isNotEmpty)
+                      ? IconButton(
+                          icon: const Icon(
+                            Icons.person_remove_rounded,
+                            size: 20,
+                            color: AppColors.expense,
+                          ),
+                          tooltip: context.l10n.removeMember,
+                          onPressed: () async {
+                            final l10n = context.l10n;
+                            final messenger = ScaffoldMessenger.of(context);
+                            final repo = context.read<UserRepository>();
+
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (dialogCtx) => AlertDialog(
+                                title: Text(l10n.removeMemberQuestion),
+                                content: Text(
+                                  l10n.removeMemberConfirmation(name),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(dialogCtx, false),
+                                    child: Text(l10n.cancel),
+                                  ),
+                                  FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.expense,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                    ),
+                                    onPressed: () => Navigator.pop(dialogCtx, true),
+                                    child: Text(l10n.removeMember),
+                                  ),
+                                ],
+                              ),
+                            );
+
+                            if (ok != true) return;
+
+                            try {
+                              await repo.removeMemberFromGroup(
+                                myUid: myUid,
+                                groupId: groupId,
+                                memberUid: memberUid,
+                              );
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  duration: AppDurations.snackBar,
+                                  content: Text(l10n.memberRemoved),
+                                ),
+                              );
+                              onMemberKicked?.call();
+                            } catch (e) {
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  duration: AppDurations.snackBar,
+                                  content: Text(l10n.cannotRemoveMember(e.toString())),
+                                ),
+                              );
+                            }
+                          },
+                        )
+                      : null,
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

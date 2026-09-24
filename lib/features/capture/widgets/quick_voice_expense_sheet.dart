@@ -63,7 +63,6 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
   String _transcript = '';
   ParsedExpenseResult? _parsedResult;
   VoiceInputStatus _voiceStatus = VoiceInputStatus.idle;
-  double _soundLevel = 0.0;
   double _targetSoundLevel = 0.0;
   double _smoothedSoundLevel = 0.0;
   String? _errorMessage;
@@ -206,7 +205,6 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
       },
       onSoundLevel: (level) {
         if (!mounted) return;
-        _soundLevel = level;
         // Normalize sound level from Android/iOS dB to 0.0 - 1.0 range
         double norm;
         if (level < 0) {
@@ -450,7 +448,7 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
 
       if (!mounted) return;
 
-      if (ok) {
+      if (ok != null) {
         final unlockedMilestone = capture.consumeLastUnlockedMilestone();
         if (unlockedMilestone != null && mounted) {
           await StreakMilestoneDialog.show(
@@ -1478,30 +1476,6 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
       case 'Khác':
       default:
         return Icons.more_horiz_rounded;
-    }
-  }
-
-  Color _colorForCategory(String category) {
-    switch (category) {
-      case 'Ăn uống':
-        return const Color(0xFF59D46F);
-      case 'Mua sắm':
-        return const Color(0xFFFF4D8D);
-      case 'Đi lại':
-        return const Color(0xFF2F9BFF);
-      case 'Giải trí':
-        return const Color(0xFFFFA52F);
-      case 'Học tập':
-        return const Color(0xFF8B7CFF);
-      case 'Lương':
-        return const Color(0xFF10B981);
-      case 'Quà tặng':
-        return const Color(0xFFFF4D4D);
-      case 'Quỹ nhóm':
-        return const Color(0xFF10B981);
-      case 'Khác':
-      default:
-        return const Color(0xFFAAAAAA);
     }
   }
 

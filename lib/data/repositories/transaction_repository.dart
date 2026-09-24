@@ -391,6 +391,80 @@ class TransactionRepository {
     await _remote.deleteTransaction(userId, transactionId);
   }
 
+  Future<void> updateTransaction({
+    required TransactionModel oldTransaction,
+    required TransactionModel newTransaction,
+  }) async {
+    await _remote.updateTransaction(newTransaction);
+
+    if (newTransaction.groupId != null && newTransaction.groupId!.isNotEmpty) {
+      try {
+        await _db
+            .collection('groups')
+            .doc(newTransaction.groupId)
+            .collection('transactions')
+            .doc(newTransaction.id)
+            .set(newTransaction.toMap(), SetOptions(merge: true));
+      } catch (_) {}
+    } else if (oldTransaction.groupId != null &&
+        oldTransaction.groupId!.isNotEmpty &&
+        oldTransaction.groupId != newTransaction.groupId) {
+      try {
+        await _db
+            .collection('groups')
+            .doc(oldTransaction.groupId)
+            .collection('transactions')
+            .doc(oldTransaction.id)
+            .delete();
+      } catch (_) {}
+    }
+
+    final oldWasPersonalExpense = oldTransaction.isPersonalExpense;
+    final newIsPersonalExpense = newTransaction.isPersonalExpense;
+
+    if (oldWasPersonalExpense && newIsPersonalExpense) {
+      if (oldTransaction.category == newTransaction.category) {
+        final diff = newTransaction.amount - oldTransaction.amount;
+        if (diff > 0) {
+          await _budgetRepository.addSpentAmount(
+            uid: newTransaction.userId,
+            budgetName: newTransaction.category,
+            amount: diff,
+          );
+        } else if (diff < 0) {
+          await _budgetRepository.removeSpentAmount(
+            uid: newTransaction.userId,
+            budgetName: newTransaction.category,
+            amount: -diff,
+          );
+        }
+      } else {
+        await _budgetRepository.removeSpentAmount(
+          uid: oldTransaction.userId,
+          budgetName: oldTransaction.category,
+          amount: oldTransaction.amount,
+        );
+        await _budgetRepository.addSpentAmount(
+          uid: newTransaction.userId,
+          budgetName: newTransaction.category,
+          amount: newTransaction.amount,
+        );
+      }
+    } else if (oldWasPersonalExpense && !newIsPersonalExpense) {
+      await _budgetRepository.removeSpentAmount(
+        uid: oldTransaction.userId,
+        budgetName: oldTransaction.category,
+        amount: oldTransaction.amount,
+      );
+    } else if (!oldWasPersonalExpense && newIsPersonalExpense) {
+      await _budgetRepository.addSpentAmount(
+        uid: newTransaction.userId,
+        budgetName: newTransaction.category,
+        amount: newTransaction.amount,
+      );
+    }
+  }
+
   Future<TransactionModel?> fetchTransactionById(
     String transactionId, {
     String? groupId,

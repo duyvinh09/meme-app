@@ -9,6 +9,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:gal/gal.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -20,8 +24,10 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/post_reaction_model.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../capture/widgets/edit_transaction_sheet.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
@@ -289,6 +295,7 @@ class _FeedScreenState extends State<FeedScreen> {
 
     return Scaffold(
       backgroundColor: palette.background,
+      resizeToAvoidBottomInset: false,
       body: ReactionFlyingOverlay(
         key: _flyingOverlayKey,
         child: SafeArea(
@@ -1898,9 +1905,11 @@ class _MainSquarePost extends StatelessWidget {
   Widget build(BuildContext context) {
     final captionText = transaction.caption.trim();
     final isGroupPost = transaction.privacy == 'group';
+    final isCloseFriendsPost = transaction.privacy == 'close_friends';
+    final isPrivatePost = transaction.privacy == 'private';
     final groupName = (transaction.groupName?.trim().isNotEmpty == true)
         ? transaction.groupName!.trim()
-        : (isGroupPost ? 'Nhóm' : null);
+        : (isGroupPost ? (context.l10n.groupBadge) : null);
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(56),
@@ -1947,7 +1956,7 @@ class _MainSquarePost extends StatelessWidget {
             ),
           ),
 
-          // Badge nhóm nằm trên ảnh ở góc trên tay trái
+          // Badge Nhóm / Bạn thân / Riêng tư nằm trên ảnh ở góc trên tay trái
           if (isGroupPost && groupName != null)
             Positioned(
               top: 18,
@@ -1955,16 +1964,16 @@ class _MainSquarePost extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.46),
+                  color: Colors.black.withValues(alpha: 0.32),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.20),
+                    color: Colors.white.withValues(alpha: 0.18),
                     width: 0.8,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.22),
-                      blurRadius: 8,
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
                   ],
@@ -1995,49 +2004,140 @@ class _MainSquarePost extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-
-          // Badge Voice chỉ hiển thị cho chủ nhân bài viết (isOwner == true)
-          if (transaction.isVoiceExpense && isOwner)
+            )
+          else if (isCloseFriendsPost)
             Positioned(
               top: 18,
-              right: 20,
+              left: 20,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.52),
-                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.black.withValues(alpha: 0.32),
+                  shape: BoxShape.circle,
                   border: Border.all(
-                    color: AppColors.primaryBlue.withValues(alpha: 0.70),
-                    width: 1.0,
+                    color: Colors.white.withValues(alpha: 0.18),
+                    width: 0.8,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.primaryBlue.withValues(alpha: 0.25),
-                      blurRadius: 8,
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.mic_rounded,
-                      size: 13,
-                      color: AppColors.primaryBlue,
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Voice',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: -0.2,
-                      ),
+                child: const Center(
+                  child: Icon(
+                    Icons.star_rounded,
+                    size: 17,
+                    color: Color(0xFFFBBF24),
+                  ),
+                ),
+              ),
+            )
+          else if (isPrivatePost)
+            Positioned(
+              top: 18,
+              left: 20,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.32),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
                   ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.lock_rounded,
+                    size: 15,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+
+          // Badge Voice chỉ hiển thị cho chủ nhân bài viết (isOwner == true)
+          // Tinh giản chỉ giữ lại icon voice, nền trong suốt nhẹ nhàng
+          if (transaction.isVoiceExpense && isOwner)
+            Positioned(
+              top: 18,
+              right: 56,
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.32),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: AppColors.primaryBlue.withValues(alpha: 0.50),
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.mic_rounded,
+                    size: 16,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+              ),
+            ),
+
+          // Nút tuỳ chọn 3 chấm (Sửa chi tiêu, Chia sẻ, Lưu, Xoá) cho chủ nhân bài viết
+          if (isOwner)
+            Positioned(
+              top: 18,
+              right: 18,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  _showPostOptionsMenu(context);
+                },
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.32),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      width: 0.8,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.more_horiz_rounded,
+                      size: 18,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -2211,6 +2311,306 @@ class _MainSquarePost extends StatelessWidget {
       builder: (bottomSheetContext) {
         return _MentionedUserProfileSheet(user: user);
       },
+    );
+  }
+
+  Future<void> _showPostOptionsMenu(BuildContext context) async {
+    final l10n = context.l10n;
+    final isDark = AppColors.isDark(context);
+
+    final result = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E212B) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(10, 12, 10, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _FeedActionTile(
+                  icon: Icons.edit_note_rounded,
+                  title: l10n.editTransaction,
+                  color: isDark ? Colors.white : const Color(0xFF111827),
+                  onTap: () => Navigator.pop(sheetContext, 'edit'),
+                ),
+                _FeedActionTile(
+                  icon: Icons.share_rounded,
+                  title: l10n.share,
+                  color: isDark ? Colors.white : const Color(0xFF111827),
+                  onTap: () => Navigator.pop(sheetContext, 'share'),
+                ),
+                _FeedActionTile(
+                  icon: Icons.download_rounded,
+                  title: transaction.isVideo
+                      ? l10n.momentViewerSaveVideo
+                      : l10n.momentViewerSaveImage,
+                  color: isDark ? Colors.white : const Color(0xFF111827),
+                  onTap: () => Navigator.pop(sheetContext, 'save'),
+                ),
+                _FeedActionTile(
+                  icon: Icons.delete_outline_rounded,
+                  title: l10n.momentViewerDeleteTransaction,
+                  color: AppColors.expense,
+                  onTap: () => Navigator.pop(sheetContext, 'delete'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!context.mounted || result == null) return;
+
+    if (result == 'edit') {
+      await EditTransactionSheet.show(context, transaction: transaction);
+    } else if (result == 'share') {
+      _sharePost(context);
+    } else if (result == 'save') {
+      _savePostMedia(context);
+    } else if (result == 'delete') {
+      _deletePost(context);
+    }
+  }
+
+  Future<void> _deletePost(BuildContext context) async {
+    final l10n = context.l10n;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(l10n.momentViewerDeleteConfirmTitle),
+          content: Text(l10n.momentViewerDeleteConfirmMessage),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(
+                l10n.delete,
+                style: const TextStyle(color: AppColors.expense),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    try {
+      await context.read<TransactionRepository>().deleteTransaction(
+        userId: transaction.userId,
+        transactionId: transaction.id,
+      );
+
+      if (!context.mounted) return;
+
+      context.read<FeedController>().removeDeletedTransaction(transaction.id);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.momentViewerDeleted),
+        ),
+      );
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.momentViewerDeleteFailed),
+        ),
+      );
+    }
+  }
+
+  Future<void> _savePostMedia(BuildContext context) async {
+    final l10n = context.l10n;
+    final url = transaction.isVideo ? transaction.playableVideoUrl : transaction.displayImageUrl;
+    if (url.isEmpty || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(
+            transaction.isVideo
+                ? l10n.momentViewerVideoNoLink
+                : l10n.momentViewerImageNoLink,
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final file = await DefaultCacheManager().getSingleFile(url);
+      if (transaction.isVideo) {
+        await Gal.putVideo(file.path);
+      } else {
+        await Gal.putImage(file.path);
+      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(
+            transaction.isVideo
+                ? l10n.momentViewerSaveVideoSuccess
+                : l10n.momentViewerSaveImageSuccess,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(
+            transaction.isVideo
+                ? l10n.momentViewerSaveVideoFailed
+                : l10n.momentViewerSaveImageFailed,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _sharePost(BuildContext context) async {
+    final l10n = context.l10n;
+    final currency = context.read<ProfileController>().currency;
+    final isContribution = transaction.isGroupContribution ||
+        (transaction.privacy == 'group' &&
+            (transaction.category == 'Quỹ nhóm' || transaction.category == 'Group Fund'));
+    final amountText = AppCurrencyFormatter.formatFromVnd(
+      amountVnd: transaction.amount.abs(),
+      currency: currency,
+    );
+
+    final privacyText = transaction.privacy == 'private'
+        ? l10n.private
+        : (transaction.privacy == 'close_friends'
+            ? l10n.closeFriends
+            : (transaction.privacy == 'group'
+                ? (transaction.groupName ?? l10n.groupBadge)
+                : l10n.everyone));
+
+    final shareText = StringBuffer()
+      ..writeln('Meme')
+      ..writeln()
+      ..writeln(l10n.shareType(isContribution
+          ? l10n.groupFundDeposit
+          : (transaction.type == 'expense' ? l10n.expense : l10n.income)))
+      ..writeln(l10n.shareCategory(
+          BudgetNameLocalizer.display(context, transaction.category)));
+
+    if (transaction.amount != 0) {
+      shareText.writeln(l10n.shareAmount(
+          '${(isContribution ? '+' : (transaction.type == 'expense' ? '-' : '+'))}$amountText'));
+    }
+
+    final details = transaction.caption.trim().isNotEmpty
+        ? transaction.caption.trim()
+        : transaction.note.trim();
+    if (details.isNotEmpty) {
+      shareText.writeln(l10n.shareDetails(details));
+    }
+
+    shareText.writeln(l10n.sharePrivacy(privacyText));
+
+    final text = shareText.toString().trim();
+    final url = transaction.isVideo ? transaction.playableVideoUrl : transaction.displayImageUrl;
+
+    try {
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        final file = await DefaultCacheManager().getSingleFile(url);
+        await Share.shareXFiles(
+          [XFile(file.path)],
+          text: text,
+        );
+      } else {
+        await Share.share(text);
+      }
+    } catch (_) {
+      try {
+        await Share.share(text);
+      } catch (_) {}
+    }
+  }
+}
+
+class _FeedActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _FeedActionTile({
+    required this.icon,
+    required this.title,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : Colors.black.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 15.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: color.withValues(alpha: 0.4),
+              size: 20,
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/extensions/localization_extension.dart';
+import '../../../core/services/sound_effect_service.dart';
 import '../../../data/models/chat_message_model.dart';
 import '../../../data/models/user_model.dart';
 
@@ -66,7 +67,9 @@ class MessageActionMenuOverlay extends StatefulWidget {
       );
     }
 
-    HapticFeedback.mediumImpact();
+    HapticFeedback.heavyImpact();
+    HapticFeedback.vibrate();
+    SoundEffectService.instance.playOpenReactionMenu();
 
     return Navigator.of(context).push(
       PageRouteBuilder(
@@ -222,6 +225,7 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
                         behavior: HitTestBehavior.opaque,
                         onTap: () {
                           HapticFeedback.mediumImpact();
+                          SoundEffectService.instance.playMessageReaction();
                           Navigator.of(sheetCtx).pop();
                           Navigator.of(this.context).pop();
                           widget.onSelectReaction(emoji);
@@ -281,7 +285,8 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
 
     const reactionPillHeight = 52.0;
     const menuWidth = 220.0;
-    const gap = 10.0;
+    const reactionGap = 20.0; // Nhích thanh emoji lên thêm 10px để không che nội dung chat
+    const menuGap = 10.0;
     final isText = widget.message.type == 'text' || widget.message.type.isEmpty;
 
     final isRecalled = widget.message.isRecalled;
@@ -300,13 +305,13 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
 
     // Calculate required upward shift if message is near the bottom
     final double requiredBottom = screenSize.height - bottomSafePadding - 16.0;
-    final double idealMenuBottom = rect.bottom + gap + menuHeight;
+    final double idealMenuBottom = rect.bottom + menuGap + menuHeight;
     double targetShiftY = 0.0;
 
     if (idealMenuBottom > requiredBottom) {
       targetShiftY = idealMenuBottom - requiredBottom;
       // Ensure shift doesn't push reaction pill off the top
-      final double maxShift = rect.top - reactionPillHeight - gap - topSafePadding - 12.0;
+      final double maxShift = rect.top - reactionPillHeight - reactionGap - topSafePadding - 12.0;
       if (maxShift > 0 && targetShiftY > maxShift) {
         targetShiftY = maxShift;
       }
@@ -345,8 +350,8 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
             builder: (context, child) {
               final double currentShiftY = targetShiftY * _shiftAnimation.value;
               final double currentMessageTop = rect.top - currentShiftY;
-              final double currentReactionTop = currentMessageTop - reactionPillHeight - gap;
-              final double currentMenuTop = currentMessageTop + rect.height + gap;
+              final double currentReactionTop = currentMessageTop - reactionPillHeight - reactionGap;
+              final double currentMenuTop = currentMessageTop + rect.height + menuGap;
 
               return Stack(
                 fit: StackFit.expand,
@@ -448,6 +453,7 @@ class _MessageActionMenuOverlayState extends State<MessageActionMenuOverlay>
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
                   HapticFeedback.mediumImpact();
+                  SoundEffectService.instance.playMessageReaction();
                   Navigator.of(context).pop();
                   widget.onSelectReaction(emoji);
                 },

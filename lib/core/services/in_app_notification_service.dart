@@ -1,7 +1,7 @@
-import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/user_model.dart';
+import 'sound_effect_service.dart';
 
 class InAppNotificationItem {
   final String id;
@@ -39,7 +39,6 @@ class InAppNotificationService extends ChangeNotifier {
   InAppNotificationItem? _currentNotification;
   InAppNotificationItem? get currentNotification => _currentNotification;
 
-  final AudioPlayer _audioPlayer = AudioPlayer();
   final Set<String> _shownNotificationIds = {};
   bool _isLoadedFromPrefs = false;
 
@@ -135,15 +134,7 @@ class InAppNotificationService extends ChangeNotifier {
   }
 
   Future<void> playNotificationSound() async {
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(
-        AssetSource('sounds/meme_sound.mp3'),
-        mode: PlayerMode.lowLatency,
-      );
-    } catch (e) {
-      debugPrint('InAppNotificationService play sound error: $e');
-    }
+    await SoundEffectService.instance.playMessageReceived();
   }
 
   void dismiss() {

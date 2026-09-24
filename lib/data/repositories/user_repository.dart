@@ -953,10 +953,10 @@ class UserRepository {
       data['memberContributions'] ?? {},
     );
 
-    final safeContributions = <String, dynamic>{};
+    final safeContributions = Map<String, dynamic>.from(oldContributions);
 
     for (final uid in newMemberIds) {
-      safeContributions[uid] = oldContributions[uid] ?? 0;
+      safeContributions.putIfAbsent(uid, () => 0);
     }
 
     final updatedData = {
@@ -1055,6 +1055,87 @@ class UserRepository {
     } catch (_) {}
   }
 
+  Future<void> removeMemberFromGroup({
+    required String myUid,
+    required String groupId,
+    required String memberUid,
+  }) async {
+    final myGroupRef = _db
+        .collection('users')
+        .doc(myUid)
+        .collection('groups')
+        .doc(groupId);
+
+    final snapshot = await myGroupRef.get();
+    if (!snapshot.exists) return;
+
+    final data = snapshot.data() ?? {};
+    final ownerUid = (data['ownerUid'] ?? '').toString();
+    if (ownerUid != myUid) {
+      throw Exception('Chỉ chủ nhóm mới có thể xoá thành viên khỏi nhóm');
+    }
+
+    final currentMembers =
+        (data['memberIds'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+    if (!currentMembers.contains(memberUid)) return;
+    if (memberUid == ownerUid) {
+      throw Exception('Không thể xoá chủ nhóm khỏi nhóm');
+    }
+
+    final remainingMembers = [...currentMembers]..remove(memberUid);
+
+    final oldContributions = Map<String, dynamic>.from(
+      data['memberContributions'] ?? {},
+    );
+
+    final updatedData = {
+      ...data,
+      'memberIds': remainingMembers,
+      'memberCount': remainingMembers.length,
+      'memberContributions': oldContributions,
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    final batch = _db.batch();
+
+    for (final uid in remainingMembers) {
+      final ref = _db.collection('users').doc(uid).collection('groups').doc(groupId);
+      batch.set(ref, updatedData);
+    }
+
+    final kickedGroupRef = _db
+        .collection('users')
+        .doc(memberUid)
+        .collection('groups')
+        .doc(groupId);
+    batch.delete(kickedGroupRef);
+
+    await batch.commit();
+
+    try {
+      final owner = await getUserProfile(myUid);
+      final member = await getUserProfile(memberUid);
+      final ownerName = owner?.name.isNotEmpty == true
+          ? owner!.name
+          : (owner?.username.isNotEmpty == true ? '@${owner!.username}' : 'Chủ nhóm');
+      final memberName = member?.name.isNotEmpty == true
+          ? member!.name
+          : (member?.username.isNotEmpty == true ? '@${member!.username}' : 'Thành viên');
+
+      await ChatRepository().sendGroupSystemMessage(
+        groupId: groupId,
+        systemText: '$ownerName đã xoá $memberName khỏi nhóm',
+        actorUid: myUid,
+      );
+
+      await ChatRepository().updateGroupChatMetadata(
+        groupId: groupId,
+        participants: remainingMembers,
+      );
+    } catch (_) {}
+  }
+
   Future<void> leaveGroup({
     required String myUid,
     required String groupId,
@@ -1090,11 +1171,10 @@ class UserRepository {
       nextOwnerUid = remainingMembers.first;
     }
 
+    // Retain memberContributions so contributed funds remain in the group fund
     final oldContributions = Map<String, dynamic>.from(
       data['memberContributions'] ?? {},
     );
-
-    oldContributions.remove(myUid);
 
     final updatedData = {
       ...data,

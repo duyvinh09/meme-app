@@ -14,7 +14,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_icon_registry.dart';
 import '../../../core/constants/app_sizes.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/routes/route_names.dart';
+import '../../../core/services/post_publishing_service.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -24,7 +26,6 @@ import '../../auth/controllers/auth_controller.dart';
 import '../../budget/controllers/budget_controller.dart';
 import '../../budget/services/budget_cycle_helper.dart';
 import '../../profile/controllers/user_category_controller.dart';
-import '../../feed/controllers/feed_controller.dart';
 import '../../home/widgets/streak_milestone_dialog.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
@@ -875,7 +876,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
         '#${selectedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
 
     final location = capture.selectedLocation;
-
     final effectiveType = isContribution ? 'expense' : type;
 
     // Resolve effective privacy, close friends, and group
@@ -908,86 +908,60 @@ class _PreviewScreenState extends State<PreviewScreen> {
       effectiveCloseFriends = _selectedFriendUids.toList();
     }
 
-    final ok = await capture.saveTransaction(
-      userId: uid,
-      amount: amountValue,
-      type: effectiveType,
-      category: isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category),
-      caption: captionController.text.trim(),
-      note: '',
-      sharedToFeed: effectiveSharedToFeed,
-      privacy: effectivePrivacy,
-      closeFriendUids: effectiveCloseFriends,
-      groupId: effectiveGroupId,
-      groupName: effectiveGroupName,
-      groupMemberIds: effectiveGroupMemberIds,
-      categoryIconCodePoint: selectedIcon.codePoint,
-      categoryColorHex: selectedColorHex,
-      locationName: location?.locationName ?? '',
-      latitude: location?.latitude,
-      longitude: location?.longitude,
-      isGroupContribution: isContribution,
-      isFrontCamera: widget.isFrontCamera,
+    final currentCaption = captionController.text.trim();
+    final canonicalCategory = isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category);
+    final mediaFile = widget.imageFile ?? widget.videoFile;
+
+    // Launch background post publish
+    PostPublishingService.instance.publishPost(
+      mediaFile: mediaFile,
+      isVideo: isVideo,
+      uploadTask: () async {
+        final savedTx = await capture.saveTransaction(
+          userId: uid,
+          amount: amountValue,
+          type: effectiveType,
+          category: canonicalCategory,
+          caption: currentCaption,
+          note: '',
+          sharedToFeed: effectiveSharedToFeed,
+          privacy: effectivePrivacy,
+          closeFriendUids: effectiveCloseFriends,
+          groupId: effectiveGroupId,
+          groupName: effectiveGroupName,
+          groupMemberIds: effectiveGroupMemberIds,
+          categoryIconCodePoint: selectedIcon.codePoint,
+          categoryColorHex: selectedColorHex,
+          locationName: location?.locationName ?? '',
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          isGroupContribution: isContribution,
+          isFrontCamera: widget.isFrontCamera,
+        );
+
+        if (savedTx != null) {
+          final unlockedMilestone = capture.consumeLastUnlockedMilestone();
+          if (unlockedMilestone != null) {
+            final navContext = AppRoutes.navigatorKey.currentContext;
+            if (navContext != null) {
+              unawaited(StreakMilestoneDialog.show(
+                navContext,
+                milestone: unlockedMilestone,
+              ));
+            }
+          }
+        }
+        return savedTx;
+      },
     );
 
-    if (!mounted) return;
-
-    if (ok) {
-      final unlockedMilestone = capture.consumeLastUnlockedMilestone();
-      if (unlockedMilestone != null && mounted) {
-        await StreakMilestoneDialog.show(
-          context,
-          milestone: unlockedMilestone,
-        );
-      }
-      if (!mounted) return;
-
-      final budgetCtrl = context.read<BudgetController>();
-      final budget = budgetCtrl.findApplicableBudgetForExpense(category: category) ??
-          budgetCtrl.findBudgetByName(category);
-
-      if (budget != null && type == 'expense' && privacy != 'group') {
-        final nextSpent = budget.spentAmount + amountValue;
-
-        if (budget.limitAmount > 0 && nextSpent > budget.limitAmount) {
-          AppToast.show(
-            context,
-            context.l10n.savedWithOverLimit(
-              _localizedCategoryLabel(category),
-            ),
-          );
-        } else {
-          AppToast.show(
-            context,
-            context.l10n.transactionSavedSuccessfully,
-          );
-        }
-      } else {
-        AppToast.show(
-          context,
-          context.l10n.transactionSavedSuccessfully,
-        );
-      }
-
-      await context.read<FeedController>().refresh();
-
-      if (!mounted) return;
-
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context, true);
-      } else {
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          RouteNames.mainShell,
-          (route) => false,
-        );
-      }
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context, true);
     } else {
-      if (mounted) {
-        AppToast.show(
-          context,
-          context.l10n.transactionSaveFailed,
-        );
-      }
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        RouteNames.mainShell,
+        (route) => false,
+      );
     }
   }
 
@@ -1844,8 +1818,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
               Positioned(
                 top: 8,
                 left: isSmall ? 12 : 16,
-                child: _CancelButton(
-                  onTap: _closeCaptureFlow,
+                right: isSmall ? 12 : 16,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _CancelButton(
+                      onTap: _closeCaptureFlow,
+                    ),
+                  ],
                 ),
               ),
             ],
