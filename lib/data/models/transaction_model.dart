@@ -39,6 +39,7 @@ class TransactionModel {
   final bool isGroupExpense;
   final bool isGroupContribution;
   final bool isFrontCamera;
+  final bool isFailed;
 
   TransactionModel({
     required this.id,
@@ -70,6 +71,7 @@ class TransactionModel {
     bool? isGroupExpense,
     bool? isGroupContribution,
     this.isFrontCamera = false,
+    this.isFailed = false,
   })  : mediaUrl = mediaUrl ?? imageUrl,
         thumbnailUrl = thumbnailUrl ?? imageUrl,
         isGroupContribution = isGroupContribution ??
@@ -257,6 +259,7 @@ class TransactionModel {
       isGroupExpense: rawIsExpense,
       isGroupContribution: rawIsContribution,
       isFrontCamera: map['isFrontCamera'] == true,
+      isFailed: map['isFailed'] == true,
     );
   }
 
@@ -296,6 +299,7 @@ class TransactionModel {
       'isGroupExpense': isGroupExpense,
       'isGroupContribution': isGroupContribution,
       'isFrontCamera': isFrontCamera,
+      'isFailed': isFailed,
     };
   }
 
@@ -329,6 +333,7 @@ class TransactionModel {
     bool? isGroupExpense,
     bool? isGroupContribution,
     bool? isFrontCamera,
+    bool? isFailed,
   }) {
     return TransactionModel(
       id: id ?? this.id,
@@ -360,6 +365,7 @@ class TransactionModel {
       isGroupExpense: isGroupExpense ?? this.isGroupExpense,
       isGroupContribution: isGroupContribution ?? this.isGroupContribution,
       isFrontCamera: isFrontCamera ?? this.isFrontCamera,
+      isFailed: isFailed ?? this.isFailed,
     );
   }
 }

@@ -64,6 +64,12 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
   final GlobalKey _listStackKey = GlobalKey();
   final Map<String, GlobalKey> _itemKeys = {};
 
+  static const int _initialMessageLimit = 40;
+  static const int _messageLimitIncrement = 40;
+  int _messageLimit = _initialMessageLimit;
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+
   static const List<String> emojiList = [
     '🤣', '🥺', '😱', '🔥', '❤️', '👏', '😍', '🎉',
     '😎', '💯', '👀', '💀', '😭', '🤯', '🥳', '✨',
@@ -117,6 +123,22 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
     if (shouldShow != _showScrollToBottom) {
       setState(() {
         _showScrollToBottom = shouldShow;
+      });
+    }
+    _checkLoadMore();
+  }
+
+  void _checkLoadMore() {
+    if (!_scrollController.hasClients) return;
+    if (!_hasMoreMessages || _isLoadingMore) return;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+
+    if (maxScroll > 0 && currentScroll >= maxScroll - 250) {
+      setState(() {
+        _isLoadingMore = true;
+        _messageLimit += _messageLimitIncrement;
       });
     }
   }
@@ -1215,6 +1237,7 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                                 stream: chatCtrl.messagesStream(
                                   myUid: myUid,
                                   friendUid: widget.friend.uid,
+                                  limit: _messageLimit,
                                 ),
                                 builder: (context, snapshot) {
                                   if (snapshot.connectionState == ConnectionState.waiting &&
@@ -1225,6 +1248,13 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                                   }
 
                                   final allMessages = snapshot.data ?? [];
+                                  if (snapshot.hasData) {
+                                    if (allMessages.length < _messageLimit) {
+                                      _hasMoreMessages = false;
+                                    }
+                                    _isLoadingMore = false;
+                                  }
+
                                   final messages = allMessages
                                       .where((m) => !m.deletedFor.contains(myUid))
                                       .toList();
@@ -1326,15 +1356,20 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                                   }
 
                                   final lastMyMessageIndex = messages.indexWhere((m) => m.senderId == myUid);
-                                  final int totalItemCount = messages.length + (isFriendTyping ? 1 : 0);
+                                  final bool showTopLoading = _isLoadingMore && _hasMoreMessages;
+                                  final int totalItemCount = messages.length +
+                                      (isFriendTyping ? 1 : 0) +
+                                      (showTopLoading ? 1 : 0);
 
                                   return NotificationListener<ScrollNotification>(
                                     onNotification: (notification) {
                                       if (notification is ScrollUpdateNotification ||
                                           notification is UserScrollNotification) {
                                         _updateFloatingHeader(messages);
+                                        _checkLoadMore();
                                       } else if (notification is ScrollEndNotification) {
                                         _startFloatingHeaderTimer();
+                                        _checkLoadMore();
                                       }
                                       return false;
                                     },
@@ -1357,6 +1392,20 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                                       }
 
                                       final msgIndex = isFriendTyping ? index - 1 : index;
+
+                                      if (showTopLoading && msgIndex == messages.length) {
+                                        return const Padding(
+                                          padding: EdgeInsets.symmetric(vertical: 16),
+                                          child: Center(
+                                            child: SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(strokeWidth: 2.2),
+                                            ),
+                                          ),
+                                        );
+                                      }
+
                                       final msg = messages[msgIndex];
                                       final isMe = msg.senderId == myUid;
                                       final isLatestMyMessage = isMe && msgIndex == lastMyMessageIndex;

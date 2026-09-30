@@ -5,7 +5,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter/rendering.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
@@ -356,12 +355,23 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   late int index;
   bool isRefreshingFeed = false;
+  bool isNavbarCollapsed = false;
 
   bool showCaptureFab = true;
   bool isFabMenuOpen = false;
 
   Timer? _captureFabTimer;
   Timer? _presenceHeartbeatTimer;
+  DateTime _lastExpandedAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  void _expandNavbar() {
+    _lastExpandedAt = DateTime.now();
+    if (isNavbarCollapsed && mounted) {
+      setState(() {
+        isNavbarCollapsed = false;
+      });
+    }
+  }
 
   @override
   void initState() {
@@ -462,10 +472,19 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   }
 
   Future<void> _onNavTap(BuildContext context, int value) async {
+    // Chặn bấm nhầm vào các tab khi navbar đang trong hiệu ứng mở rộng từ thu gọn
+    if (DateTime.now().difference(_lastExpandedAt).inMilliseconds < 300) {
+      return;
+    }
+
     if (isFabMenuOpen) {
       setState(() {
         isFabMenuOpen = false;
       });
+    }
+
+    if (isNavbarCollapsed) {
+      _expandNavbar();
     }
 
     // Nếu bấm lại tab Bạn bè thì refresh feed.
@@ -514,16 +533,6 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
     }
   }
 
-  void _hideCaptureFabNow() {
-    _captureFabTimer?.cancel();
-    if (showCaptureFab && mounted) {
-      setState(() {
-        showCaptureFab = false;
-        isFabMenuOpen = false;
-      });
-    }
-  }
-
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -544,18 +553,30 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
           Positioned.fill(
             child: NotificationListener<ScrollNotification>(
               onNotification: (notification) {
-                if (index != 0 || notification.depth != 0) {
+                // Không áp dụng tính năng thu gọn cho tab Feed (index == 2)
+                if (index == 2 || notification.depth != 0) {
                   return false;
                 }
 
-                if (notification is UserScrollNotification) {
-                  final direction = notification.direction;
-                  if (direction == ScrollDirection.reverse) {
-                    // Scrolling DOWN: Slide down & hide FAB group
-                    _hideCaptureFabNow();
-                  } else if (direction == ScrollDirection.forward) {
-                    // Scrolling UP: Slide up & restore FAB group immediately
-                    _showCaptureFabNow();
+                final metrics = notification.metrics;
+                final isAtTop = metrics.pixels <= metrics.minScrollExtent || metrics.extentBefore <= 0;
+
+                // 1. CHỈ khi cuộn lên HẾT CỠ ĐẦU TRANG -> Mới mở rộng lại Navbar
+                if (isAtTop ||
+                    (notification is OverscrollNotification &&
+                        notification.overscroll < 0)) {
+                  _expandNavbar();
+                }
+                // 2. Khi cuộn màn hình đi xuống -> Thu gọn Navbar
+                else if (notification is ScrollUpdateNotification) {
+                  final delta = notification.scrollDelta ?? 0;
+                  if (delta > 2 && !isAtTop) {
+                    if (!isNavbarCollapsed && mounted) {
+                      setState(() {
+                        isNavbarCollapsed = true;
+                        isFabMenuOpen = false;
+                      });
+                    }
                   }
                 }
                 return false;
@@ -589,56 +610,59 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               ),
             ),
 
-          Positioned(
+          AnimatedPositioned(
+            duration: Duration(milliseconds: isNavbarCollapsed ? 280 : 240),
+            curve: isNavbarCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
             left: AppSizes.pagePadding,
-            right: AppSizes.pagePadding,
             bottom: 24,
+            width: isNavbarCollapsed
+                ? 50.0
+                : (MediaQuery.sizeOf(context).width - AppSizes.pagePadding * 2),
+            height: isNavbarCollapsed ? 50.0 : AppSizes.navbarHeight,
             child: _FloatingGlassNavbar(
               currentIndex: index,
               isRefreshingFeed: isRefreshingFeed,
-              onTap: (value) => _onNavTap(context, value),
+              isCollapsed: isNavbarCollapsed,
+              onTap: (value) {
+                if (isNavbarCollapsed) {
+                  HapticFeedback.selectionClick();
+                  _expandNavbar();
+                } else {
+                  _onNavTap(context, value);
+                }
+              },
             ),
           ),
 
           if (index == 0)
-            Positioned(
+            AnimatedPositioned(
+              duration: Duration(milliseconds: isNavbarCollapsed ? 280 : 240),
+              curve: isNavbarCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
               right: 20,
-              bottom: 104,
-              child: IgnorePointer(
-                ignoring: !showCaptureFab,
-                child: AnimatedSlide(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  offset: showCaptureFab ? Offset.zero : const Offset(0, 0.40),
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOutCubic,
-                    opacity: showCaptureFab ? 1.0 : 0.0,
-                    child: _GenZExpandableFab(
-                      isOpen: isFabMenuOpen,
-                      onToggle: () {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          isFabMenuOpen = !isFabMenuOpen;
-                        });
-                      },
-                      onVoiceTap: () {
-                        setState(() => isFabMenuOpen = false);
-                        QuickVoiceExpenseSheet.show(context);
-                      },
-                      onCameraTap: () {
-                        setState(() => isFabMenuOpen = false);
-                        Navigator.pushNamed(context, RouteNames.addTransaction);
-                      },
-                      onChatTap: () {
-                        if (isFabMenuOpen) {
-                          setState(() => isFabMenuOpen = false);
-                        }
-                        Navigator.pushNamed(context, RouteNames.chatList);
-                      },
-                    ),
-                  ),
-                ),
+              bottom: isNavbarCollapsed ? 24 : 104,
+              child: _GenZExpandableFab(
+                isOpen: isFabMenuOpen,
+                isCollapsed: isNavbarCollapsed,
+                onToggle: () {
+                  HapticFeedback.selectionClick();
+                  setState(() {
+                    isFabMenuOpen = !isFabMenuOpen;
+                  });
+                },
+                onVoiceTap: () {
+                  setState(() => isFabMenuOpen = false);
+                  QuickVoiceExpenseSheet.show(context);
+                },
+                onCameraTap: () {
+                  setState(() => isFabMenuOpen = false);
+                  Navigator.pushNamed(context, RouteNames.addTransaction);
+                },
+                onChatTap: () {
+                  if (isFabMenuOpen) {
+                    setState(() => isFabMenuOpen = false);
+                  }
+                  Navigator.pushNamed(context, RouteNames.chatList);
+                },
               ),
             ),
         ],
@@ -649,6 +673,7 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
 class _GenZExpandableFab extends StatefulWidget {
   final bool isOpen;
+  final bool isCollapsed;
   final VoidCallback onToggle;
   final VoidCallback onVoiceTap;
   final VoidCallback onCameraTap;
@@ -656,6 +681,7 @@ class _GenZExpandableFab extends StatefulWidget {
 
   const _GenZExpandableFab({
     required this.isOpen,
+    required this.isCollapsed,
     required this.onToggle,
     required this.onVoiceTap,
     required this.onCameraTap,
@@ -997,12 +1023,14 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
             isDark: isDark,
           ),
 
-          // 4. Nút chính + (Xoay 45° thành × khi mở, xoay ngược lại khi đóng)
+          // 4. Nút chính + (Xoay 45° thành × khi mở, xoay ngược lại khi đóng, thu nhỏ 55x55 khi navbar thu gọn)
           GestureDetector(
             onTap: widget.onToggle,
-            child: Container(
-              width: mainFabSize,
-              height: mainFabSize,
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: widget.isCollapsed ? 280 : 240),
+              curve: widget.isCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
+              width: widget.isCollapsed ? 55.0 : mainFabSize,
+              height: widget.isCollapsed ? 55.0 : mainFabSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: widget.isOpen
@@ -1030,10 +1058,10 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                 builder: (context, child) {
                   return Transform.rotate(
                     angle: _rotationAnimation.value * 2 * math.pi,
-                    child: const Icon(
+                    child: Icon(
                       Icons.add_rounded,
                       color: Colors.white,
-                      size: 30,
+                      size: widget.isCollapsed ? 27.0 : 30.0,
                     ),
                   );
                 },
@@ -1049,11 +1077,13 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
 class _FloatingGlassNavbar extends StatelessWidget {
   final int currentIndex;
   final bool isRefreshingFeed;
+  final bool isCollapsed;
   final ValueChanged<int> onTap;
 
   const _FloatingGlassNavbar({
     required this.currentIndex,
     required this.isRefreshingFeed,
+    required this.isCollapsed,
     required this.onTap,
   });
 
@@ -1097,18 +1127,26 @@ class _FloatingGlassNavbar extends StatelessWidget {
       ),
     ];
 
+    final activeItem = items[currentIndex.clamp(0, items.length - 1)];
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final fullWidth = screenWidth - AppSizes.pagePadding * 2;
+
+    const double navHorizontalPadding = 12.0;
+    final double availableWidth = fullWidth - navHorizontalPadding * 2;
+    final double tabWidth = availableWidth / items.length;
+    const double extraPillWidth = 16.0;
+    final double pillWidth = tabWidth + extraPillWidth;
+    final double pillLeft = navHorizontalPadding +
+        (currentIndex.clamp(0, items.length - 1)) * tabWidth -
+        (extraPillWidth / 2);
+
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
+      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
         child: Container(
-          height: AppSizes.navbarHeight,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 10,
-            vertical: 8,
-          ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
+            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             color: AppColors.glassBackground(context),
             border: Border.all(
               color: AppColors.glassBorder(context),
@@ -1117,93 +1155,208 @@ class _FloatingGlassNavbar extends StatelessWidget {
             boxShadow: [
               BoxShadow(
                 color: isDark
-                    ? Colors.black.withValues(alpha: 0.24)
-                    : Colors.black.withValues(alpha: 0.10),
-                blurRadius: 20,
+                    ? Colors.black.withValues(alpha: 0.28)
+                    : Colors.black.withValues(alpha: 0.12),
+                blurRadius: 18,
                 spreadRadius: 1,
-                offset: const Offset(0, 6),
+                offset: const Offset(0, 5),
               ),
             ],
           ),
-          child: Row(
-            children: List.generate(items.length, (i) {
-              final item = items[i];
-              final selected = i == currentIndex;
-
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => onTap(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: Center(
-                    child: SizedBox(
-                      width: 72,
-                      height: 68,
-                      child: Center(
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOut,
-                          width: selected ? 80 : 58,
-                          height: selected ? 78 : 56,
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? selectedColor.withValues(
-                                    alpha: isDark ? 0.18 : 0.14,
-                                  )
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(
-                              AppSizes.radiusLarge,
+          child: Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.hardEdge,
+            children: [
+              // 1. Layer đầy đủ 5 tab khi mở rộng (Smooth Fade & Scale)
+              AnimatedOpacity(
+                duration: Duration(milliseconds: isCollapsed ? 120 : 180),
+                curve: Curves.easeInOut,
+                opacity: isCollapsed ? 0.0 : 1.0,
+                child: AnimatedScale(
+                  duration: Duration(milliseconds: isCollapsed ? 160 : 200),
+                  curve: Curves.easeOutCubic,
+                  scale: isCollapsed ? 0.8 : 1.0,
+                  child: IgnorePointer(
+                    ignoring: isCollapsed,
+                    child: OverflowBox(
+                      alignment: Alignment.center,
+                      minWidth: fullWidth,
+                      maxWidth: fullWidth,
+                      minHeight: AppSizes.navbarHeight,
+                      maxHeight: AppSizes.navbarHeight,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          // 1. Sliding Active Pill Indicator (Dáng viên thuốc dài, trượt ngang mượt mà)
+                          AnimatedPositioned(
+                            duration: const Duration(milliseconds: 280),
+                            curve: Curves.easeOutCubic,
+                            left: pillLeft,
+                            top: 4.0,
+                            width: pillWidth,
+                            height: AppSizes.navbarHeight - 8.0,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: selectedColor.withValues(
+                                  alpha: isDark ? 0.25 : 0.15,
+                                ),
+                                borderRadius: BorderRadius.circular(
+                                  AppSizes.radiusPill,
+                                ),
+                                border: Border.all(
+                                  color: selectedColor.withValues(
+                                    alpha: isDark ? 0.35 : 0.22,
+                                  ),
+                                  width: 1.0,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: selectedColor.withValues(
+                                      alpha: isDark ? 0.15 : 0.08,
+                                    ),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              if (i == 2)
-                                _SpinningFeedIcon(
-                                  spinning:
-                                  isRefreshingFeed && currentIndex == 2,
-                                  icon: selected
-                                      ? item.activeIcon
-                                      : item.icon,
-                                  size: selected ? 33 : 29,
-                                  color: selected
-                                      ? selectedColor
-                                      : unselectedColor,
-                                )
-                              else
-                                Icon(
-                                  selected ? item.activeIcon : item.icon,
-                                  size: selected ? 33 : 29,
-                                  color: selected
-                                      ? selectedColor
-                                      : unselectedColor,
-                                ),
-                              const SizedBox(height: 3),
-                              Flexible(
-                                child: Text(
-                                  i == 2 && isRefreshingFeed
-                                      ? l10n.tabLoading
-                                      : item.label,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  softWrap: false,
-                                  textAlign: TextAlign.center,
-                                  style: AppTextStyles.navLabel(
-                                    selected: selected,
-                                    color: selected
-                                        ? selectedColor
-                                        : unselectedColor,
+
+                          // 2. Row chứa 5 Tabs (Đẩy lùi 2 icon đầu và cuối vào trong)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: navHorizontalPadding,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              children: List.generate(items.length, (i) {
+                                final item = items[i];
+                                final selected = i == currentIndex;
+
+                                return Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => onTap(i),
+                                    behavior: HitTestBehavior.opaque,
+                                    child: Container(
+                                      color: Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                      child: Builder(
+                                        builder: (context) {
+                                          final iconSize = selected ? 35.0 : 32.0;
+
+                                          return Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              if (i == 2)
+                                                _SpinningFeedIcon(
+                                                  spinning: isRefreshingFeed && currentIndex == 2,
+                                                  icon: selected
+                                                      ? item.activeIcon
+                                                      : item.icon,
+                                                  size: iconSize,
+                                                  color: selected
+                                                      ? selectedColor
+                                                      : unselectedColor,
+                                                )
+                                              else
+                                                AnimatedSwitcher(
+                                                  duration: const Duration(milliseconds: 200),
+                                                  transitionBuilder: (child, anim) => FadeTransition(
+                                                    opacity: anim,
+                                                    child: child,
+                                                  ),
+                                                  child: Icon(
+                                                    selected ? item.activeIcon : item.icon,
+                                                    key: ValueKey('${item.label}_$selected'),
+                                                    size: iconSize,
+                                                    color: selected
+                                                      ? selectedColor
+                                                      : unselectedColor,
+                                                  ),
+                                                ),
+                                              const SizedBox(height: 1.5),
+                                              Flexible(
+                                                child: AnimatedDefaultTextStyle(
+                                                  duration: const Duration(milliseconds: 200),
+                                                  style: AppTextStyles.navLabel(
+                                                    selected: selected,
+                                                    color: selected
+                                                        ? selectedColor
+                                                        : unselectedColor,
+                                                  ),
+                                                  child: Text(
+                                                    i == 2 && isRefreshingFeed
+                                                        ? l10n.tabLoading
+                                                        : item.label,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    softWrap: false,
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            ],
+                                );
+                              }),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+              // 2. Layer nút tròn thu gọn (Smooth Fade & Spring Bounce Pop)
+              AnimatedOpacity(
+                duration: Duration(milliseconds: isCollapsed ? 180 : 100),
+                curve: Curves.easeInOut,
+                opacity: isCollapsed ? 1.0 : 0.0,
+                child: AnimatedScale(
+                  duration: Duration(milliseconds: isCollapsed ? 240 : 140),
+                  curve: isCollapsed ? Curves.easeOutBack : Curves.easeInCubic,
+                  scale: isCollapsed ? 1.0 : 0.35,
+                  child: IgnorePointer(
+                    ignoring: !isCollapsed,
+                    child: GestureDetector(
+                      onTap: () => onTap(currentIndex),
+                      behavior: HitTestBehavior.opaque,
+                      child: Center(
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: selectedColor.withValues(
+                              alpha: isDark ? 0.25 : 0.16,
+                            ),
+                          ),
+                          child: Center(
+                            child: currentIndex == 2
+                                ? _SpinningFeedIcon(
+                                    spinning: isRefreshingFeed,
+                                    icon: activeItem.activeIcon,
+                                    size: 26,
+                                    color: selectedColor,
+                                  )
+                                : Icon(
+                                    activeItem.activeIcon,
+                                    size: 26,
+                                    color: selectedColor,
+                                  ),
                           ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              );
-            }),
+              ),
+            ],
           ),
         ),
       ),

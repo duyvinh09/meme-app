@@ -6,6 +6,7 @@ import '../../../data/models/transaction_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../core/services/video_cache_service.dart';
+import '../../../core/services/failed_post_service.dart';
 
 class FeedController extends ChangeNotifier {
   final TransactionRepository transactionRepository;
@@ -150,11 +151,23 @@ class FeedController extends ChangeNotifier {
         friendIds: friendIds,
       );
 
+      final failedPosts = await FailedPostService.instance.getFailedPosts(uid);
+      final failedTxs = failedPosts.map((f) => f.toTransactionModel()).toList();
+
       final Map<String, TransactionModel> dedupMap = {};
+      for (final tx in failedTxs) {
+        dedupMap[tx.id] = tx;
+      }
       for (final tx in data) {
         dedupMap[tx.id] = tx;
       }
       feedTransactions = dedupMap.values.toList();
+      feedTransactions.sort((a, b) {
+        if (a.isFailed && !b.isFailed) return -1;
+        if (!a.isFailed && b.isFailed) return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
       isLoading = false;
       errorMessage = null;
       notifyListeners();
@@ -197,7 +210,11 @@ class FeedController extends ChangeNotifier {
     feedTransactions.insert(0, transaction);
 
     feedTransactions.sort(
-          (a, b) => b.createdAt.compareTo(a.createdAt),
+      (a, b) {
+        if (a.isFailed && !b.isFailed) return -1;
+        if (!a.isFailed && b.isFailed) return 1;
+        return b.createdAt.compareTo(a.createdAt);
+      },
     );
 
     notifyListeners();

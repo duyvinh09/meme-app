@@ -24,6 +24,7 @@ import '../../capture/widgets/edit_transaction_sheet.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../feed/controllers/feed_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../../../core/services/failed_post_service.dart';
 
 class MomentViewerScreen extends StatefulWidget {
   final List<TransactionModel> transactions;
@@ -485,6 +486,20 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
     );
 
     if (confirm != true || !mounted) return;
+
+    if (tx.isFailed) {
+      await FailedPostService.instance.deleteFailedPost(tx.id);
+      if (!mounted) return;
+      context.read<FeedController>().removeDeletedTransaction(tx.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(l10n.momentViewerDeleted),
+        ),
+      );
+      Navigator.pop(context, true);
+      return;
+    }
 
     try {
       await context.read<TransactionRepository>().deleteTransaction(

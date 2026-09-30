@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
@@ -145,6 +146,13 @@ class TransactionMomentImage extends StatelessWidget {
     final radius = borderRadius ?? BorderRadius.circular(20);
     final trimmedImageUrl = imageUrl.trim();
 
+    final isLocal = trimmedImageUrl.isNotEmpty &&
+        (!trimmedImageUrl.startsWith('http://') && !trimmedImageUrl.startsWith('https://')) &&
+        (File(trimmedImageUrl.replaceFirst('file://', '')).existsSync() ||
+            trimmedImageUrl.startsWith('/') ||
+            trimmedImageUrl.contains(':\\') ||
+            trimmedImageUrl.startsWith('file:'));
+
     final content = trimmedImageUrl.isEmpty
         ? _withVideoOverlay(
       radius: radius,
@@ -155,37 +163,49 @@ class TransactionMomentImage extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          CachedNetworkImage(
-            imageUrl: trimmedImageUrl,
-            width: width,
-            height: height,
-            fit: fit,
-            alignment: Alignment.center,
-            memCacheWidth: _cacheSize(width),
-            memCacheHeight: _cacheSize(height),
-            maxWidthDiskCache: _cacheSize(width),
-            maxHeightDiskCache: _cacheSize(height),
-            fadeInDuration: const Duration(milliseconds: 120),
-            fadeOutDuration: const Duration(milliseconds: 80),
-            useOldImageOnUrlChange: true,
-            filterQuality: FilterQuality.low,
-            placeholder: (context, url) {
-              return _buildGeneratedMoment(
-                radius,
-                centerChild: const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.4,
-                    color: Colors.white,
+          if (isLocal)
+            Image.file(
+              File(trimmedImageUrl.replaceFirst('file://', '')),
+              width: width,
+              height: height,
+              fit: fit,
+              alignment: Alignment.center,
+              errorBuilder: (context, error, stackTrace) {
+                return _buildGeneratedMoment(radius);
+              },
+            )
+          else
+            CachedNetworkImage(
+              imageUrl: trimmedImageUrl,
+              width: width,
+              height: height,
+              fit: fit,
+              alignment: Alignment.center,
+              memCacheWidth: _cacheSize(width),
+              memCacheHeight: _cacheSize(height),
+              maxWidthDiskCache: _cacheSize(width),
+              maxHeightDiskCache: _cacheSize(height),
+              fadeInDuration: const Duration(milliseconds: 120),
+              fadeOutDuration: const Duration(milliseconds: 80),
+              useOldImageOnUrlChange: true,
+              filterQuality: FilterQuality.low,
+              placeholder: (context, url) {
+                return _buildGeneratedMoment(
+                  radius,
+                  centerChild: const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
-              );
-            },
-            errorWidget: (context, url, error) {
-              return _buildGeneratedMoment(radius);
-            },
-          ),
+                );
+              },
+              errorWidget: (context, url, error) {
+                return _buildGeneratedMoment(radius);
+              },
+            ),
           if (isVideo && showVideoBadge) _buildVideoOverlay(),
         ],
       ),

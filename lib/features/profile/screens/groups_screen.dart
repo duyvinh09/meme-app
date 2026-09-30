@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
@@ -1032,7 +1033,7 @@ class _SelectableFriendTile extends StatelessWidget {
         leading: CircleAvatar(
           radius: 24,
           backgroundColor: AppColors.card(context),
-          backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+          backgroundImage: avatarUrl.isNotEmpty ? CachedNetworkImageProvider(avatarUrl) : null,
           child: avatarUrl.isEmpty
               ? Icon(
             Icons.person,

@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:gal/gal.dart';
 import 'package:share_plus/share_plus.dart';
@@ -38,6 +39,7 @@ import '../widgets/post_activity_bar.dart';
 import '../widgets/new_post_floating_banner.dart';
 import '../controllers/feed_controller.dart';
 import '../../../core/services/video_cache_service.dart';
+import '../../../core/services/failed_post_service.dart';
 
 class FeedScreen extends StatefulWidget {
   final bool isActive;
@@ -1138,6 +1140,47 @@ class _FeedPostPage extends StatelessWidget {
     return DateFormat('d MMM, y', 'en').format(createdAt);
   }
 
+  Future<void> _deleteFailedPostHelper(BuildContext context, TransactionModel transaction) async {
+    final l10n = context.l10n;
+    final isEn = context.read<ProfileController>().languageCode == 'en';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: Text(l10n.momentViewerDeleteConfirmTitle),
+          content: Text(isEn
+              ? 'Are you sure you want to delete this failed post and remove cached media?'
+              : 'Bạn có chắc muốn xoá bài viết này và xoá bộ nhớ tạm của ảnh?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.cancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(
+                l10n.delete,
+                style: const TextStyle(color: AppColors.expense),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    await FailedPostService.instance.deleteFailedPost(transaction.id);
+    if (!context.mounted) return;
+    context.read<FeedController>().removeDeletedTransaction(transaction.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: AppDurations.snackBar,
+        content: Text(isEn ? 'Deleted post' : 'Đã xoá bài viết'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final viewerUid = context.read<AuthController>().user?.uid;
@@ -1212,61 +1255,73 @@ class _FeedPostPage extends StatelessWidget {
                       ),
                     ),
                     SizedBox(height: itemGap),
-                    _UploaderInfo(
-                      user: user,
-                      timeText: _formatFeedTime(context, transaction.createdAt),
-                      palette: palette,
-                      isPrivate: transaction.privacy == 'private',
-                      isOwner: isOwner,
-                    ),
-                    if (hasNote) ...[
-                      SizedBox(height: itemGap * 0.6),
+                    if (transaction.isFailed)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Text(
-                          transaction.note.trim(),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.bodySecondary(context).copyWith(
-                            color: palette.textSecondary,
-                            fontSize: isShort ? 13 : 14,
-                            height: 1.35,
+                        padding: const EdgeInsets.only(top: 4.0),
+                        child: _FailedPostActionBar(
+                          key: ValueKey('failed_bar_${transaction.id}'),
+                          transaction: transaction,
+                          onRetry: () => FailedPostService.instance.retryPost(context, transaction.id),
+                          onDelete: () => _deleteFailedPostHelper(context, transaction),
+                        ),
+                      )
+                    else ...[
+                      _UploaderInfo(
+                        user: user,
+                        timeText: _formatFeedTime(context, transaction.createdAt),
+                        palette: palette,
+                        isPrivate: transaction.privacy == 'private',
+                        isOwner: isOwner,
+                      ),
+                      if (hasAmount) ...[
+                        SizedBox(height: itemGap * 0.6),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Builder(
+                            builder: (context) {
+                              final isGroupDeposit = transaction.isGroupContribution ||
+                                  (transaction.privacy == 'group' &&
+                                      (transaction.category == 'Quỹ nhóm' ||
+                                          transaction.category == 'Group Fund'));
+
+                              final isExpense = transaction.type == 'expense' && !isGroupDeposit;
+                              final prefix = isExpense ? '-' : '+';
+                              final amountColor = isExpense
+                                  ? AppColors.expense
+                                  : AppColors.income;
+
+                              return Text(
+                                '$prefix$amountText • $localizedCategory',
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: amountColor,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: isShort ? 14 : 15,
+                                ),
+                              );
+                            },
                           ),
                         ),
-                      ),
-                    ],
-                    if (hasAmount) ...[
-                      SizedBox(height: itemGap * 0.6),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        child: Builder(
-                          builder: (context) {
-                            final isGroupDeposit = transaction.isGroupContribution ||
-                                (transaction.privacy == 'group' &&
-                                    (transaction.category == 'Quỹ nhóm' ||
-                                        transaction.category == 'Group Fund'));
-
-                            final isExpense = transaction.type == 'expense' && !isGroupDeposit;
-                            final prefix = isExpense ? '-' : '+';
-                            final amountColor = isExpense
-                                ? AppColors.expense
-                                : AppColors.income;
-
-                            return Text(
-                              '$prefix$amountText • $localizedCategory',
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: amountColor,
-                                fontWeight: FontWeight.w800,
-                                fontSize: isShort ? 14 : 15,
-                              ),
-                            );
-                          },
+                      ],
+                      if (hasNote) ...[
+                        SizedBox(height: itemGap * 0.6),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: Text(
+                            transaction.note.trim(),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.bodySecondary(context).copyWith(
+                              color: palette.textSecondary,
+                              fontSize: isShort ? 13 : 14,
+                              height: 1.35,
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                     const Spacer(),
                   ],
@@ -1478,7 +1533,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
         radius: 10,
         backgroundColor: widget.palette.avatarBackground,
         backgroundImage: selectedFriend.avatarUrl.isNotEmpty
-            ? NetworkImage(selectedFriend.avatarUrl)
+            ? CachedNetworkImageProvider(selectedFriend.avatarUrl)
             : null,
         child: selectedFriend.avatarUrl.isEmpty
             ? const Icon(Icons.person, size: 12)
@@ -1677,7 +1732,7 @@ class _FeedHeaderState extends State<_FeedHeader> {
                                   radius: 11,
                                   backgroundColor: widget.palette.avatarBackground,
                                   backgroundImage: friend.avatarUrl.isNotEmpty
-                                      ? NetworkImage(friend.avatarUrl)
+                                      ? CachedNetworkImageProvider(friend.avatarUrl)
                                       : null,
                                   child: friend.avatarUrl.isEmpty
                                       ? const Icon(Icons.person, size: 11)
@@ -2317,6 +2372,7 @@ class _MainSquarePost extends StatelessWidget {
   Future<void> _showPostOptionsMenu(BuildContext context) async {
     final l10n = context.l10n;
     final isDark = AppColors.isDark(context);
+    final isEn = context.read<ProfileController>().languageCode == 'en';
 
     final result = await showModalBottomSheet<String>(
       context: context,
@@ -2340,32 +2396,47 @@ class _MainSquarePost extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _FeedActionTile(
-                  icon: Icons.edit_note_rounded,
-                  title: l10n.editTransaction,
-                  color: isDark ? Colors.white : const Color(0xFF111827),
-                  onTap: () => Navigator.pop(sheetContext, 'edit'),
-                ),
-                _FeedActionTile(
-                  icon: Icons.share_rounded,
-                  title: l10n.share,
-                  color: isDark ? Colors.white : const Color(0xFF111827),
-                  onTap: () => Navigator.pop(sheetContext, 'share'),
-                ),
-                _FeedActionTile(
-                  icon: Icons.download_rounded,
-                  title: transaction.isVideo
-                      ? l10n.momentViewerSaveVideo
-                      : l10n.momentViewerSaveImage,
-                  color: isDark ? Colors.white : const Color(0xFF111827),
-                  onTap: () => Navigator.pop(sheetContext, 'save'),
-                ),
-                _FeedActionTile(
-                  icon: Icons.delete_outline_rounded,
-                  title: l10n.momentViewerDeleteTransaction,
-                  color: AppColors.expense,
-                  onTap: () => Navigator.pop(sheetContext, 'delete'),
-                ),
+                if (transaction.isFailed) ...[
+                  _FeedActionTile(
+                    icon: Icons.replay_rounded,
+                    title: isEn ? 'Retry upload' : 'Thử lại',
+                    color: const Color(0xFFDC2626),
+                    onTap: () => Navigator.pop(sheetContext, 'retry'),
+                  ),
+                  _FeedActionTile(
+                    icon: Icons.delete_outline_rounded,
+                    title: isEn ? 'Delete failed post' : 'Xoá bài đăng',
+                    color: AppColors.expense,
+                    onTap: () => Navigator.pop(sheetContext, 'delete'),
+                  ),
+                ] else ...[
+                  _FeedActionTile(
+                    icon: Icons.edit_note_rounded,
+                    title: l10n.editTransaction,
+                    color: isDark ? Colors.white : const Color(0xFF111827),
+                    onTap: () => Navigator.pop(sheetContext, 'edit'),
+                  ),
+                  _FeedActionTile(
+                    icon: Icons.share_rounded,
+                    title: l10n.share,
+                    color: isDark ? Colors.white : const Color(0xFF111827),
+                    onTap: () => Navigator.pop(sheetContext, 'share'),
+                  ),
+                  _FeedActionTile(
+                    icon: Icons.download_rounded,
+                    title: transaction.isVideo
+                        ? l10n.momentViewerSaveVideo
+                        : l10n.momentViewerSaveImage,
+                    color: isDark ? Colors.white : const Color(0xFF111827),
+                    onTap: () => Navigator.pop(sheetContext, 'save'),
+                  ),
+                  _FeedActionTile(
+                    icon: Icons.delete_outline_rounded,
+                    title: l10n.momentViewerDeleteTransaction,
+                    color: AppColors.expense,
+                    onTap: () => Navigator.pop(sheetContext, 'delete'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2375,7 +2446,9 @@ class _MainSquarePost extends StatelessWidget {
 
     if (!context.mounted || result == null) return;
 
-    if (result == 'edit') {
+    if (result == 'retry') {
+      FailedPostService.instance.retryPost(context, transaction.id);
+    } else if (result == 'edit') {
       await EditTransactionSheet.show(context, transaction: transaction);
     } else if (result == 'share') {
       _sharePost(context);
@@ -2388,12 +2461,17 @@ class _MainSquarePost extends StatelessWidget {
 
   Future<void> _deletePost(BuildContext context) async {
     final l10n = context.l10n;
+    final isEn = context.read<ProfileController>().languageCode == 'en';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
           title: Text(l10n.momentViewerDeleteConfirmTitle),
-          content: Text(l10n.momentViewerDeleteConfirmMessage),
+          content: Text(transaction.isFailed
+              ? (isEn
+                  ? 'Are you sure you want to delete this failed post and remove cached media?'
+                  : 'Bạn có chắc muốn xoá bài viết này và xoá bộ nhớ tạm của ảnh?')
+              : l10n.momentViewerDeleteConfirmMessage),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -2412,6 +2490,19 @@ class _MainSquarePost extends StatelessWidget {
     );
 
     if (confirm != true || !context.mounted) return;
+
+    if (transaction.isFailed) {
+      await FailedPostService.instance.deleteFailedPost(transaction.id);
+      if (!context.mounted) return;
+      context.read<FeedController>().removeDeletedTransaction(transaction.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: AppDurations.snackBar,
+          content: Text(isEn ? 'Deleted post' : 'Đã xoá bài viết'),
+        ),
+      );
+      return;
+    }
 
     try {
       await context.read<TransactionRepository>().deleteTransaction(
@@ -3407,6 +3498,151 @@ class _FeedPalette {
       imageFallback: AppColors.lightSurface,
       captionBackground: const Color(0xFF8A4D16).withOpacity(0.90),
       avatarBackground: Colors.black.withOpacity(0.06),
+    );
+  }
+}
+
+class _FailedPostActionBar extends StatelessWidget {
+  final TransactionModel transaction;
+  final VoidCallback onRetry;
+  final VoidCallback onDelete;
+
+  const _FailedPostActionBar({
+    super.key,
+    required this.transaction,
+    required this.onRetry,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isEn = context.watch<ProfileController>().languageCode == 'en';
+    final retryText = isEn ? 'Retry' : 'Thử lại';
+    final isDark = AppColors.isDark(context);
+
+    return AnimatedBuilder(
+      animation: FailedPostService.instance,
+      builder: (context, _) {
+        final isRetrying = FailedPostService.instance.isRetrying(transaction.id);
+
+        if (isRetrying) {
+          return SizedBox(
+            height: 48,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      isDark ? Colors.white.withValues(alpha: 0.85) : const Color(0xFF374151),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  isEn ? 'Sending...' : 'Đang gửi...',
+                  style: TextStyle(
+                    color: isDark ? Colors.white.withValues(alpha: 0.90) : const Color(0xFF1F2937),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 1. Red Pill "Thử lại" Button matching screenshot
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                onRetry();
+              },
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFDC2626), // Saturated vibrant red
+                  borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.28),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.replay_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      retryText,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 14),
+
+            // 2. Dark Circular Trash / Delete Button matching screenshot
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onDelete();
+              },
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.20),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.delete_outline_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

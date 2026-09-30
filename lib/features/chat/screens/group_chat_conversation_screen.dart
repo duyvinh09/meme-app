@@ -388,6 +388,12 @@ class _GroupChatConversationScreenState
   final GlobalKey _listStackKey = GlobalKey();
   final Map<String, GlobalKey> _itemKeys = {};
 
+  static const int _initialMessageLimit = 40;
+  static const int _messageLimitIncrement = 40;
+  int _messageLimit = _initialMessageLimit;
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+
   final Map<String, String> _senderBubbleThemeCache = {};
   final Map<String, UserModel> _memberCache = {};
   final List<UserModel> _allGroupMemberList = [];
@@ -1051,6 +1057,22 @@ class _GroupChatConversationScreenState
     if (shouldShow != _showScrollToBottom) {
       setState(() {
         _showScrollToBottom = shouldShow;
+      });
+    }
+    _checkLoadMore();
+  }
+
+  void _checkLoadMore() {
+    if (!_scrollController.hasClients) return;
+    if (!_hasMoreMessages || _isLoadingMore) return;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+
+    if (maxScroll > 0 && currentScroll >= maxScroll - 250) {
+      setState(() {
+        _isLoadingMore = true;
+        _messageLimit += _messageLimitIncrement;
       });
     }
   }
@@ -1879,7 +1901,8 @@ class _GroupChatConversationScreenState
                       }
 
                       return StreamBuilder<List<ChatMessageModel>>(
-                        stream: _chatRepo.getMessagesStream(widget.groupId),
+                        stream: _chatRepo.getMessagesStream(widget.groupId,
+                            limit: _messageLimit),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState ==
                                   ConnectionState.waiting &&
@@ -1890,6 +1913,13 @@ class _GroupChatConversationScreenState
                           }
 
                           final allMessages = snapshot.data ?? [];
+                          if (snapshot.hasData) {
+                            if (allMessages.length < _messageLimit) {
+                              _hasMoreMessages = false;
+                            }
+                            _isLoadingMore = false;
+                          }
+
                           final messages = allMessages
                               .where((m) => !m.deletedFor.contains(myUid))
                               .toList();
@@ -1922,20 +1952,29 @@ class _GroupChatConversationScreenState
                             }
                           }
 
-                          final totalItemCount =
-                              messages.length + (isSomeoneTyping ? 1 : 0);
+                          final bool showTopLoading =
+                              _isLoadingMore && _hasMoreMessages;
+                          final totalItemCount = messages.length +
+                              (isSomeoneTyping ? 1 : 0) +
+                              (showTopLoading ? 1 : 0);
 
                           return NotificationListener<ScrollNotification>(
                             onNotification: (notification) {
-                              if (notification is ScrollUpdateNotification) {
+                              if (notification is ScrollUpdateNotification ||
+                                  notification is UserScrollNotification) {
                                 _updateFloatingHeader(messages);
+                                _checkLoadMore();
+                              } else if (notification
+                                  is ScrollEndNotification) {
+                                _checkLoadMore();
                               }
                               return false;
                             },
                             child: ListView.builder(
                               controller: _scrollController,
                               reverse: true,
-                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.manual,
                               physics: const BouncingScrollPhysics(),
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
@@ -1952,6 +1991,22 @@ class _GroupChatConversationScreenState
 
                                 final msgIndex =
                                     isSomeoneTyping ? index - 1 : index;
+
+                                if (showTopLoading &&
+                                    msgIndex == messages.length) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Center(
+                                      child: SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2.2),
+                                      ),
+                                    ),
+                                  );
+                                }
+
                                 final msg = messages[msgIndex];
                                 final key = _itemKeys.putIfAbsent(
                                   msg.id,

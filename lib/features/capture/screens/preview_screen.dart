@@ -20,7 +20,6 @@ import '../../../core/services/post_publishing_service.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
-import '../../../core/utils/money_input_formatter.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../budget/controllers/budget_controller.dart';
@@ -29,7 +28,10 @@ import '../../profile/controllers/user_category_controller.dart';
 import '../../home/widgets/streak_milestone_dialog.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
+import '../../../core/services/failed_post_service.dart';
+import '../../../data/models/failed_post_model.dart';
 import '../controllers/capture_controller.dart';
+import '../widgets/amount_calculator_keypad_sheet.dart';
 import 'camera_screen.dart';
 
 class PreviewScreen extends StatefulWidget {
@@ -111,9 +113,36 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   bool categoryOpen = false;
+  bool _isKeypadOpen = false;
+  final ScrollController _previewScrollController = ScrollController();
   bool _loadedBudgets = false;
   bool _loadedUserCategories = false;
   bool _submitTapBusy = false;
+
+  void _openCalculatorKeypad() {
+    FocusScope.of(context).unfocus();
+    if (!_isKeypadOpen) {
+      setState(() {
+        _isKeypadOpen = true;
+        if (categoryOpen) categoryOpen = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_previewScrollController.hasClients) {
+          _previewScrollController.animateTo(
+            0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    }
+  }
+
+  void _closeCalculatorKeypad() {
+    if (_isKeypadOpen) {
+      setState(() => _isKeypadOpen = false);
+    }
+  }
 
   double amountValue = 0;
 
@@ -410,6 +439,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   @override
   void dispose() {
+    _previewScrollController.dispose();
     _hasAmountNotifier.dispose();
     _friendsSub?.cancel();
     _closeFriendsSub?.cancel();
@@ -912,6 +942,40 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final canonicalCategory = isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category);
     final mediaFile = widget.imageFile ?? widget.videoFile;
 
+    // Create draft failed post in local persistent storage so it persists if offline/error
+    FailedPostModel? draftFailedPost;
+    if (mediaFile != null) {
+      try {
+        draftFailedPost = await FailedPostService.instance.saveFailedPost(
+          userId: uid,
+          amount: amountValue,
+          type: effectiveType,
+          category: canonicalCategory,
+          caption: currentCaption,
+          note: '',
+          mediaFile: mediaFile,
+          mediaType: isVideo ? 'video' : 'image',
+          durationMs: widget.durationMs,
+          sharedToFeed: effectiveSharedToFeed,
+          privacy: effectivePrivacy,
+          closeFriendUids: effectiveCloseFriends,
+          groupId: effectiveGroupId,
+          groupName: effectiveGroupName,
+          groupMemberIds: effectiveGroupMemberIds,
+          categoryIconCodePoint: selectedIcon.codePoint,
+          categoryColorHex: selectedColorHex,
+          locationName: location?.locationName ?? '',
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          isGroupContribution: isContribution,
+          isGroupExpense: effectivePrivacy == 'group' && !isContribution && effectiveGroupId != null,
+          isFrontCamera: widget.isFrontCamera,
+        );
+      } catch (e) {
+        debugPrint('Failed to save draft failed post: $e');
+      }
+    }
+
     // Launch background post publish
     PostPublishingService.instance.publishPost(
       mediaFile: mediaFile,
@@ -940,6 +1004,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
         );
 
         if (savedTx != null) {
+          if (draftFailedPost != null) {
+            await FailedPostService.instance.deleteFailedPost(draftFailedPost.id);
+          }
           final unlockedMilestone = capture.consumeLastUnlockedMilestone();
           if (unlockedMilestone != null) {
             final navContext = AppRoutes.navigatorKey.currentContext;
@@ -1428,6 +1495,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     captionController: captionController,
                     amountPrefix: isContribution ? '+' : (type == 'expense' ? '-' : '+'),
                     currency: currency,
+                    onTapAmount: _openCalculatorKeypad,
+                    onTapCaption: _closeCalculatorKeypad,
                     onAmountChanged: _onAmountChanged,
                     onMaxDigitsExceeded: _showMaxDigitsWarning,
                     myUid: context.read<AuthController>().user?.uid ?? '',
@@ -1628,187 +1697,202 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final maxPreviewHeight = screenHeight - (isShort ? 250 : 285);
     final previewSize = screenWidth.clamp(220.0, maxPreviewHeight);
     final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final currency = context.watch<ProfileController>().currency;
+    final viewInsetsBottom = MediaQuery.viewInsetsOf(context).bottom;
 
-    return Scaffold(
-      backgroundColor: _captureBackground,
-      body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: () {
-            FocusScope.of(context).unfocus();
-
-            if (categoryOpen) {
-              setState(() {
-                categoryOpen = false;
-              });
-            }
-          },
+    return PopScope(
+      canPop: !_isKeypadOpen && !categoryOpen,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (categoryOpen) {
+          setState(() => categoryOpen = false);
+        } else if (_isKeypadOpen) {
+          setState(() => _isKeypadOpen = false);
+        }
+      },
+      child: Scaffold(
+        resizeToAvoidBottomInset: true,
+        backgroundColor: _captureBackground,
+        body: SafeArea(
           child: Stack(
             children: [
-              // 1. Scrollable body tràn lên toàn màn hình
+              // 1. Scrollable body
               Positioned.fill(
-                child: SingleChildScrollView(
-                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                  physics: const BouncingScrollPhysics(),
-                  padding: EdgeInsets.fromLTRB(
-                    0,
-                    isShort ? 46 : 52,
-                    0,
-                    24,
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildPreviewMedia(previewSize),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                    if (_isKeypadOpen) {
+                      setState(() => _isKeypadOpen = false);
+                    }
+                    if (categoryOpen) {
+                      setState(() => categoryOpen = false);
+                    }
+                  },
+                  child: SingleChildScrollView(
+                    controller: _previewScrollController,
+                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    physics: const BouncingScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(
+                      0,
+                      isShort ? 46 : 52,
+                      0,
+                      _isKeypadOpen ? 340 : 24,
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildPreviewMedia(previewSize),
 
-                        SizedBox(height: isShort ? 10 : 14),
+                          SizedBox(height: isShort ? 10 : 14),
 
-                        // 1. Dòng chuyển chi tiêu và thu nhập
-                        Center(
-                          child: _typeSwitch(),
-                        ),
-
-                        SizedBox(height: isShort ? 10 : 14),
-
-                        // 2. Dòng chọn đối tượng (Riêng tư, Tất cả, Bạn thân, Nhóm, Bạn bè...)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: _CaptureAudienceSelectorRow(
-                            selectedAudience: privacy,
-                            selectedFriendUids: _selectedFriendUids,
-                            selectedGroupId: _selectedGroupId,
-                            friends: _friends,
-                            closeFriendUids: _closeFriendUids,
-                            userGroups: _userGroups,
-                            onPrivateSelected: () {
-                              setState(() {
-                                privacy = 'private';
-                                _selectedFriendUids.clear();
-                                _selectedGroupId = null;
-                                _selectedGroupName = null;
-                                _selectedGroupMemberIds = [];
-                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
-                                  category = 'Ăn uống';
-                                }
-                              });
-                              _notifyPrivacyTagAdjustmentIfNeeded('private');
-                            },
-                            onAllFriendsSelected: () {
-                              setState(() {
-                                privacy = 'friends';
-                                _selectedFriendUids.clear();
-                                _selectedGroupId = null;
-                                _selectedGroupName = null;
-                                _selectedGroupMemberIds = [];
-                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
-                                  category = 'Ăn uống';
-                                }
-                              });
-                              _notifyPrivacyTagAdjustmentIfNeeded('friends');
-                            },
-                            onCloseFriendsSelected: () {
-                              setState(() {
-                                privacy = 'close_friends';
-                                _selectedGroupId = null;
-                                _selectedGroupName = null;
-                                _selectedGroupMemberIds = [];
-                                _selectedFriendUids.clear();
-                                _selectedFriendUids.addAll(_closeFriendUids);
-                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
-                                  category = 'Ăn uống';
-                                }
-                              });
-                              _notifyPrivacyTagAdjustmentIfNeeded('close_friends');
-                            },
-                            onGroupSelected: (group) {
-                              final gId = (group['id'] ?? group['groupId'] ?? '').toString();
-                              final gName = (group['name'] ?? 'Nhóm').toString();
-                              final gMembers = (group['memberIds'] as List<dynamic>?)
-                                      ?.map((e) => e.toString())
-                                      .toList() ??
-                                  <String>[];
-                              setState(() {
-                                privacy = 'group';
-                                _selectedGroupId = gId;
-                                _selectedGroupName = gName;
-                                _selectedGroupMemberIds = gMembers;
-                                _selectedFriendUids.clear();
-                              });
-                              _notifyPrivacyTagAdjustmentIfNeeded('group');
-                            },
-                            onFriendToggled: (friend) {
-                              final fUid = (friend['uid'] ?? '').toString();
-                              setState(() {
-                                _selectedGroupId = null;
-                                _selectedGroupName = null;
-                                _selectedGroupMemberIds = [];
-
-                                if (_selectedFriendUids.contains(fUid)) {
-                                  _selectedFriendUids.remove(fUid);
-                                  if (_selectedFriendUids.isEmpty) {
-                                    privacy = 'friends';
-                                  }
-                                } else {
-                                  _selectedFriendUids.add(fUid);
-                                  privacy = 'friends_custom';
-                                }
-
-                                if (category == 'Quỹ nhóm' || category == 'Group Fund') {
-                                  category = 'Ăn uống';
-                                }
-                              });
-                              _notifyPrivacyTagAdjustmentIfNeeded(privacy);
-                            },
-                            isDark: true,
-                            isEnUI: isEn,
+                          // 1. Dòng chuyển chi tiêu và thu nhập
+                          Center(
+                            child: _typeSwitch(),
                           ),
-                        ),
 
-                        SizedBox(height: isShort ? 14 : 20),
+                          SizedBox(height: isShort ? 10 : 14),
 
-                        // 3. Hàng nút hành động dưới cùng
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
-                            children: [
-                              _bottomAction(
-                                icon: Icons.photo_camera_back_outlined,
-                                label: context.l10n.retake,
-                                onTap: () {
-                                  if (Navigator.canPop(context)) {
-                                    Navigator.pop(context);
+                          // 2. Dòng chọn đối tượng (Riêng tư, Tất cả, Bạn thân, Nhóm, Bạn bè...)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: _CaptureAudienceSelectorRow(
+                              selectedAudience: privacy,
+                              selectedFriendUids: _selectedFriendUids,
+                              selectedGroupId: _selectedGroupId,
+                              friends: _friends,
+                              closeFriendUids: _closeFriendUids,
+                              userGroups: _userGroups,
+                              onPrivateSelected: () {
+                                setState(() {
+                                  privacy = 'private';
+                                  _selectedFriendUids.clear();
+                                  _selectedGroupId = null;
+                                  _selectedGroupName = null;
+                                  _selectedGroupMemberIds = [];
+                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                    category = 'Ăn uống';
+                                  }
+                                });
+                                _notifyPrivacyTagAdjustmentIfNeeded('private');
+                              },
+                              onAllFriendsSelected: () {
+                                setState(() {
+                                  privacy = 'friends';
+                                  _selectedFriendUids.clear();
+                                  _selectedGroupId = null;
+                                  _selectedGroupName = null;
+                                  _selectedGroupMemberIds = [];
+                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                    category = 'Ăn uống';
+                                  }
+                                });
+                                _notifyPrivacyTagAdjustmentIfNeeded('friends');
+                              },
+                              onCloseFriendsSelected: () {
+                                setState(() {
+                                  privacy = 'close_friends';
+                                  _selectedGroupId = null;
+                                  _selectedGroupName = null;
+                                  _selectedGroupMemberIds = [];
+                                  _selectedFriendUids.clear();
+                                  _selectedFriendUids.addAll(_closeFriendUids);
+                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                    category = 'Ăn uống';
+                                  }
+                                });
+                                _notifyPrivacyTagAdjustmentIfNeeded('close_friends');
+                              },
+                              onGroupSelected: (group) {
+                                final gId = (group['id'] ?? group['groupId'] ?? '').toString();
+                                final gName = (group['name'] ?? 'Nhóm').toString();
+                                final gMembers = (group['memberIds'] as List<dynamic>?)
+                                        ?.map((e) => e.toString())
+                                        .toList() ??
+                                    <String>[];
+                                setState(() {
+                                  privacy = 'group';
+                                  _selectedGroupId = gId;
+                                  _selectedGroupName = gName;
+                                  _selectedGroupMemberIds = gMembers;
+                                  _selectedFriendUids.clear();
+                                });
+                                _notifyPrivacyTagAdjustmentIfNeeded('group');
+                              },
+                              onFriendToggled: (friend) {
+                                final fUid = (friend['uid'] ?? '').toString();
+                                setState(() {
+                                  _selectedGroupId = null;
+                                  _selectedGroupName = null;
+                                  _selectedGroupMemberIds = [];
+
+                                  if (_selectedFriendUids.contains(fUid)) {
+                                    _selectedFriendUids.remove(fUid);
+                                    if (_selectedFriendUids.isEmpty) {
+                                      privacy = 'friends';
+                                    }
                                   } else {
-                                    Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const CameraScreen(),
-                                      ),
-                                    );
+                                    _selectedFriendUids.add(fUid);
+                                    privacy = 'friends_custom';
                                   }
-                                },
-                              ),
 
-                              _buildSubmitButton(
-                                controllerSaving: isSaving,
-                              ),
-
-                              if (hasMedia)
-                                _bottomAction(
-                                  icon: Icons.ios_share_rounded,
-                                  label: context.l10n.share,
-                                  onTap: _shareMoment,
-                                )
-                              else
-                                const SizedBox(
-                                  width: 58,
-                                  height: 78,
-                                ),
-                            ],
+                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                    category = 'Ăn uống';
+                                  }
+                                });
+                                _notifyPrivacyTagAdjustmentIfNeeded(privacy);
+                              },
+                              isDark: true,
+                              isEnUI: isEn,
+                            ),
                           ),
-                        ),
-                      ],
+
+                          SizedBox(height: isShort ? 14 : 20),
+
+                          // 3. Hàng nút hành động dưới cùng
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _bottomAction(
+                                  icon: Icons.photo_camera_back_outlined,
+                                  label: context.l10n.retake,
+                                  onTap: () {
+                                    if (Navigator.canPop(context)) {
+                                      Navigator.pop(context);
+                                    } else {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => const CameraScreen(),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
+
+                                _buildSubmitButton(
+                                  controllerSaving: isSaving,
+                                ),
+
+                                if (hasMedia)
+                                  _bottomAction(
+                                    icon: Icons.ios_share_rounded,
+                                    label: context.l10n.share,
+                                    onTap: _shareMoment,
+                                  )
+                                else
+                                  const SizedBox(
+                                    width: 58,
+                                    height: 78,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1826,6 +1910,36 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       onTap: _closeCaptureFlow,
                     ),
                   ],
+                ),
+              ),
+
+              // 3. Docked Calculator Keypad with smooth slide animation
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: -viewInsetsBottom,
+                child: AnimatedSlide(
+                  offset: _isKeypadOpen ? Offset.zero : const Offset(0, 1.1),
+                  duration: const Duration(milliseconds: 240),
+                  curve: Curves.easeOutCubic,
+                  child: IgnorePointer(
+                    ignoring: !_isKeypadOpen,
+                    child: AmountCalculatorKeypadSheet(
+                      key: const ValueKey('calc_keypad_docked'),
+                      initialAmount: amountController.text,
+                      currency: currency,
+                      amountPrefix: isContribution ? '+' : (type == 'expense' ? '-' : '+'),
+                      accentColor: accentColor,
+                      onAmountChanged: (val) {
+                        amountController.text = val;
+                        _onAmountChanged(val);
+                      },
+                      onConfirm: () {
+                        setState(() => _isKeypadOpen = false);
+                      },
+                      onMaxDigitsExceeded: _showMaxDigitsWarning,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -2046,6 +2160,8 @@ class _InputOverlayCard extends StatefulWidget {
   final TextEditingController captionController;
   final String amountPrefix;
   final String currency;
+  final VoidCallback onTapAmount;
+  final VoidCallback? onTapCaption;
   final ValueChanged<String> onAmountChanged;
   final VoidCallback onMaxDigitsExceeded;
   final String myUid;
@@ -2060,6 +2176,8 @@ class _InputOverlayCard extends StatefulWidget {
     required this.captionController,
     required this.amountPrefix,
     required this.currency,
+    required this.onTapAmount,
+    this.onTapCaption,
     required this.onAmountChanged,
     required this.onMaxDigitsExceeded,
     required this.myUid,
@@ -2094,6 +2212,12 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
     if (mounted) {
       setState(() {});
     }
+  }
+
+  void _openCalculatorKeypad() {
+    HapticFeedback.selectionClick();
+    FocusScope.of(context).unfocus();
+    widget.onTapAmount();
   }
 
   void _checkMentionQuery() {
@@ -2154,8 +2278,6 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
 
   @override
   Widget build(BuildContext context) {
-    final allowDecimal = widget.currency == 'USD';
-
     final rawDigits = widget.currency == 'USD'
         ? widget.amountController.text.replaceAll(RegExp(r'[^0-9.]'), '')
         : widget.amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
@@ -2223,68 +2345,56 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              TextField(
-                controller: widget.amountController,
-                keyboardType: TextInputType.numberWithOptions(
-                  decimal: allowDecimal,
-                ),
-                inputFormatters: [
-                  MoneyInputFormatter(
-                    maxDigits: _PreviewScreenState.kMaxAmountDigits,
-                    allowDecimal: allowDecimal,
-                    onMaxDigitsExceeded: widget.onMaxDigitsExceeded,
-                  ),
-                ],
-                onChanged: widget.onAmountChanged,
-                textAlign: TextAlign.center,
-                cursorColor: Colors.white,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.w900,
-                  height: 1.0,
-                ),
-                decoration: InputDecoration(
-                  isDense: true,
-                  hintText: AppCurrencyFormatter.formatInputHint(widget.currency),
-                  hintStyle: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                  ),
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.only(
-                      left: 8,
-                      top: 4,
-                    ),
-                    child: Text(
-                      widget.amountPrefix,
-                      style: TextStyle(
-                        color: isAtMaxDigits ? const Color(0xFFFF5252) : widget.accentColor,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
+              Center(
+                child: InkWell(
+                  onTap: _openCalculatorKeypad,
+                  borderRadius: BorderRadius.circular(18),
+                  splashColor: widget.accentColor.withValues(alpha: 0.20),
+                  highlightColor: widget.accentColor.withValues(alpha: 0.10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
+                        children: [
+                          Text(
+                            widget.amountPrefix,
+                            style: TextStyle(
+                              color: isAtMaxDigits ? const Color(0xFFFF5252) : widget.accentColor,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            widget.amountController.text.isEmpty
+                                ? AppCurrencyFormatter.formatInputHint(widget.currency)
+                                : widget.amountController.text,
+                            style: TextStyle(
+                              color: widget.amountController.text.isEmpty
+                                  ? Colors.white70
+                                  : Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            AppCurrencyFormatter.symbol(widget.currency),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                  prefixIconConstraints: const BoxConstraints(
-                    minWidth: 0,
-                    minHeight: 0,
-                  ),
-                  suffixText: AppCurrencyFormatter.symbol(widget.currency),
-                  suffixStyle: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                  ),
-                  filled: false,
-                  fillColor: Colors.transparent,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
                 ),
               ),
 
@@ -2378,6 +2488,7 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
 
                     TextField(
                       controller: widget.captionController,
+                      onTap: widget.onTapCaption,
                       textAlign: TextAlign.center,
                       textAlignVertical: TextAlignVertical.center,
                       cursorColor: Colors.white,
@@ -2754,7 +2865,25 @@ class _CaptureAudienceSelectorRow extends StatelessWidget {
             ),
             primaryColor: primaryColor,
           ),
-          const SizedBox(width: 10),
+
+          // Divider phân cách Riêng tư với các nhóm/đối tượng chia sẻ
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                  width: 1.5,
+                  height: 38,
+                  margin: const EdgeInsets.only(top: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
           // 2. Tất cả (All Friends)
           _buildItem(

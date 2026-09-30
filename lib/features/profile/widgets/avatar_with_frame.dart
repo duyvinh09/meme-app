@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -86,7 +87,7 @@ class AvatarWithFrame extends StatelessWidget {
           child: CircleAvatar(
             backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.12),
             backgroundImage: avatarUrl.trim().isNotEmpty
-                ? NetworkImage(avatarUrl.trim())
+                ? CachedNetworkImageProvider(avatarUrl.trim())
                 : null,
             child: avatarUrl.trim().isEmpty
                 ? Icon(

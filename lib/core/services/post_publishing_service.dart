@@ -108,6 +108,13 @@ class PostPublishingService extends ChangeNotifier {
           _status = PostPublishStatus.error;
           _errorMessage = 'Đăng bài thất bại';
           notifyListeners();
+          final navContext = AppRoutes.navigatorKey.currentContext;
+          if (navContext != null) {
+            final uid = navContext.read<AuthController>().user?.uid;
+            if (uid != null) {
+              unawaited(navContext.read<FeedController>().refresh());
+            }
+          }
           _startAutoDismissTimer(const Duration(seconds: 4));
         }
       } catch (e) {
@@ -115,6 +122,13 @@ class PostPublishingService extends ChangeNotifier {
         _status = PostPublishStatus.error;
         _errorMessage = 'Đăng bài thất bại';
         notifyListeners();
+        final navContext = AppRoutes.navigatorKey.currentContext;
+        if (navContext != null) {
+          final uid = navContext.read<AuthController>().user?.uid;
+          if (uid != null) {
+            unawaited(navContext.read<FeedController>().refresh());
+          }
+        }
         _startAutoDismissTimer(const Duration(seconds: 4));
       }
     }());

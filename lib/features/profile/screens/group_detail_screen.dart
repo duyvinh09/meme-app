@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -1738,7 +1739,7 @@ class _GroupTransactionActivitySectionState
                                               radius: 8,
                                               backgroundColor: AppColors.card(context),
                                               backgroundImage: actorAvatar.isNotEmpty
-                                                  ? NetworkImage(actorAvatar)
+                                                  ? CachedNetworkImageProvider(actorAvatar)
                                                   : null,
                                               child: actorAvatar.isEmpty
                                                   ? const Icon(Icons.person, size: 9)
@@ -1931,7 +1932,7 @@ class _MembersContributionCard extends StatelessWidget {
                     radius: 24,
                     backgroundColor: AppColors.card(context),
                     backgroundImage:
-                        avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                        avatarUrl.isNotEmpty ? CachedNetworkImageProvider(avatarUrl) : null,
                     child: avatarUrl.isEmpty
                         ? Icon(
                             Icons.person,

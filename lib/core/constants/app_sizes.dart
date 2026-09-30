@@ -23,7 +23,7 @@ class AppSizes {
 
   static const double inputHeight = 56;
   static const double buttonHeight = 54;
-  static const double navbarHeight = 74;
+  static const double navbarHeight = 66;
   static const double captureFabSize = 68;
 
   static const double bottomNavSafePadding = 130;

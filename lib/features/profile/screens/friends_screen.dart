@@ -26,9 +26,14 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   String _activeTab = 'all'; // 'all', 'close', 'requests'
   String _requestSortOrder = 'default'; // 'default', 'newest', 'oldest'
+
+  static const int _pageSize = 25;
+  int _displayedCount = _pageSize;
+  int _totalFilteredCount = 0;
 
   static String _removeVietnameseDiacritics(String str) {
     const withDia =
@@ -48,13 +53,29 @@ class _FriendsScreenState extends State<FriendsScreen> {
     _searchController.addListener(() {
       setState(() {
         _searchQuery = _searchController.text.trim();
+        _displayedCount = _pageSize;
       });
     });
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (_displayedCount < _totalFilteredCount) {
+        setState(() {
+          _displayedCount =
+              (_displayedCount + _pageSize).clamp(0, _totalFilteredCount);
+        });
+      }
+    }
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -1093,7 +1114,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 label: context.l10n.friendsTabAll,
                                 isSelected: _activeTab == 'all',
                                 onTap: () =>
-                                    setState(() => _activeTab = 'all'),
+                                    setState(() {
+                                      _activeTab = 'all';
+                                      _displayedCount = _pageSize;
+                                    }),
                               ),
                               const SizedBox(width: 8),
                               _buildFilterPill(
@@ -1102,7 +1126,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 iconColor: const Color(0xFFF59E0B),
                                 isSelected: _activeTab == 'close',
                                 onTap: () =>
-                                    setState(() => _activeTab = 'close'),
+                                    setState(() {
+                                      _activeTab = 'close';
+                                      _displayedCount = _pageSize;
+                                    }),
                               ),
                               const SizedBox(width: 8),
                               _buildFilterPill(
@@ -1110,7 +1137,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 badgeCount: pendingCount,
                                 isSelected: _activeTab == 'requests',
                                 onTap: () =>
-                                    setState(() => _activeTab = 'requests'),
+                                    setState(() {
+                                      _activeTab = 'requests';
+                                      _displayedCount = _pageSize;
+                                    }),
                               ),
                             ],
                           ),
@@ -1254,76 +1284,116 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                     ))
                               : (filteredFriends.isEmpty
                                   ? _buildEmptyState(context)
-                                  : ListView.separated(
-                                      cacheExtent: 800,
-                                      padding: const EdgeInsets.fromLTRB(
-                                        20,
-                                        4,
-                                        20,
-                                        24,
-                                      ),
-                                      itemCount: filteredFriends.length,
-                                      separatorBuilder: (_, __) =>
-                                          const SizedBox(height: 10),
-                                      itemBuilder: (context, index) {
-                                        final item = filteredFriends[index];
-
-                                        final friendUid =
-                                            (item['uid'] ?? '').toString();
-                                        final friendName =
-                                            (item['name'] ?? '').toString();
-                                        final friendUsername =
-                                            (item['username'] ?? '').toString();
-                                        final avatarUrl =
-                                            (item['avatarUrl'] ?? '').toString();
-                                        final avatarFrame =
-                                            (item['avatarFrame'] ?? 'plain')
-                                                .toString();
-                                        final isCloseFriend =
-                                            item['isCloseFriend'] == true;
-                                        final isOnline = myShowActiveStatus &&
-                                            item['isOnline'] == true &&
-                                            item['showActiveStatus'] != false;
-
-                                        return _FriendCardItem(
-                                          friendUid: friendUid,
-                                          friendName: friendName.isEmpty
-                                              ? 'Người dùng'
-                                              : friendName,
-                                          friendUsername: friendUsername,
-                                          avatarUrl: avatarUrl,
-                                          avatarFrame: avatarFrame,
-                                          isCloseFriend: isCloseFriend,
-                                          isOnline: isOnline,
-                                          onOpenChat: () =>
-                                              Navigator.pushNamed(
-                                            context,
-                                            RouteNames.chatConversation,
-                                            arguments: {
-                                              'friend':
-                                                  UserModel.fromMap(item),
-                                            },
-                                          ),
-                                          onToggleClose: () =>
-                                              _toggleCloseFriend(
-                                            myUid: uid,
-                                            friendUid: friendUid,
-                                            currentStatus: isCloseFriend,
-                                            friendName: friendName,
-                                          ),
-                                          onOpenOptions: () =>
-                                              _showFriendOptionsModal(
-                                            context: context,
-                                            myUid: uid,
-                                            friendUid: friendUid,
-                                            friendName: friendName,
-                                            friendUsername: friendUsername,
-                                            avatarUrl: avatarUrl,
-                                            avatarFrame: avatarFrame,
-                                            isCloseFriend: isCloseFriend,
-                                          ),
-                                        );
+                                  : RefreshIndicator(
+                                      onRefresh: () async {
+                                        await repo.refreshFriends(uid);
                                       },
+                                      child: Builder(
+                                        builder: (context) {
+                                          _totalFilteredCount = filteredFriends.length;
+                                          final displayedFriends = filteredFriends
+                                              .take(_displayedCount)
+                                              .toList();
+                                          final bool hasMore =
+                                              _displayedCount < filteredFriends.length;
+                                          final int totalItems = displayedFriends.length +
+                                              (hasMore ? 1 : 0);
+
+                                          return ListView.separated(
+                                            controller: _scrollController,
+                                            physics:
+                                                const AlwaysScrollableScrollPhysics(
+                                              parent: BouncingScrollPhysics(),
+                                            ),
+                                            cacheExtent: 800,
+                                            padding: const EdgeInsets.fromLTRB(
+                                              20,
+                                              4,
+                                              20,
+                                              24,
+                                            ),
+                                            itemCount: totalItems,
+                                            separatorBuilder: (_, __) =>
+                                                const SizedBox(height: 10),
+                                            itemBuilder: (context, index) {
+                                              if (hasMore &&
+                                                  index == displayedFriends.length) {
+                                                return const Padding(
+                                                  padding: EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                                  child: Center(
+                                                    child: SizedBox(
+                                                      width: 22,
+                                                      height: 22,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                              strokeWidth: 2.2),
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+
+                                              final item = displayedFriends[index];
+
+                                              final friendUid =
+                                                  (item['uid'] ?? '').toString();
+                                              final friendName =
+                                                  (item['name'] ?? '').toString();
+                                              final friendUsername =
+                                                  (item['username'] ?? '').toString();
+                                              final avatarUrl =
+                                                  (item['avatarUrl'] ?? '').toString();
+                                              final avatarFrame =
+                                                  (item['avatarFrame'] ?? 'plain')
+                                                      .toString();
+                                              final isCloseFriend =
+                                                  item['isCloseFriend'] == true;
+                                              final isOnline = myShowActiveStatus &&
+                                                  item['isOnline'] == true &&
+                                                  item['showActiveStatus'] != false;
+
+                                              return _FriendCardItem(
+                                                friendUid: friendUid,
+                                                friendName: friendName.isEmpty
+                                                    ? 'Người dùng'
+                                                    : friendName,
+                                                friendUsername: friendUsername,
+                                                avatarUrl: avatarUrl,
+                                                avatarFrame: avatarFrame,
+                                                isCloseFriend: isCloseFriend,
+                                                isOnline: isOnline,
+                                                onOpenChat: () =>
+                                                    Navigator.pushNamed(
+                                                  context,
+                                                  RouteNames.chatConversation,
+                                                  arguments: {
+                                                    'friend':
+                                                        UserModel.fromMap(item),
+                                                  },
+                                                ),
+                                                onToggleClose: () =>
+                                                    _toggleCloseFriend(
+                                                  myUid: uid,
+                                                  friendUid: friendUid,
+                                                  currentStatus: isCloseFriend,
+                                                  friendName: friendName,
+                                                ),
+                                                onOpenOptions: () =>
+                                                    _showFriendOptionsModal(
+                                                  context: context,
+                                                  myUid: uid,
+                                                  friendUid: friendUid,
+                                                  friendName: friendName,
+                                                  friendUsername: friendUsername,
+                                                  avatarUrl: avatarUrl,
+                                                  avatarFrame: avatarFrame,
+                                                  isCloseFriend: isCloseFriend,
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
                                     )),
                         ),
                       ],

@@ -42,7 +42,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool loaded = false;
   Timer? _timeUpdateTimer;
-  int _recentLimit = 10;
+  static const int _pageSize = 10;
+  int _currentPage = 1;
   RecentTxSortFilter _recentFilter = RecentTxSortFilter.newest;
 
   @override
@@ -186,65 +187,151 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Widget _buildLimitSelector() {
-    final limits = [10, 20, 50];
+  Widget _buildPaginationControls({
+    required int currentPage,
+    required int totalPages,
+    required int totalItems,
+    required String languageCode,
+  }) {
     final isDark = AppColors.isDark(context);
+    final isVi = languageCode == 'vi';
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.black.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-        border: Border.all(
-          color: AppColors.border(context),
-          width: 0.8,
-        ),
-      ),
-      padding: const EdgeInsets.all(3),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: limits.map((limit) {
-          final isSelected = _recentLimit == limit;
-          return GestureDetector(
-            onTap: () {
-              if (_recentLimit != limit) {
-                HapticFeedback.selectionClick();
-                setState(() {
-                  _recentLimit = limit;
-                });
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? (isDark
-                        ? AppColors.primaryBlue.withValues(alpha: 0.28)
-                        : AppColors.primaryBlue.withValues(alpha: 0.16))
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                border: isSelected
-                    ? Border.all(
-                        color: AppColors.primaryBlue.withValues(alpha: 0.4),
-                        width: 0.8,
-                      )
-                    : null,
-              ),
-              child: Text(
-                '$limit',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-                  color: isSelected
-                      ? (isDark ? Colors.white : AppColors.textPrimary(context))
-                      : AppColors.textSecondary(context),
+    final List<dynamic> pages = [];
+    if (totalPages <= 5) {
+      for (int i = 1; i <= totalPages; i++) {
+        pages.add(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        pages.addAll([1, 2, 3, '...', totalPages]);
+      } else if (currentPage >= totalPages - 2) {
+        pages.addAll([1, '...', totalPages - 2, totalPages - 1, totalPages]);
+      } else {
+        pages.addAll([1, '...', currentPage, '...', totalPages]);
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10, bottom: 4),
+      child: Column(
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _PaginationArrowButton(
+                  icon: Icons.chevron_left_rounded,
+                  enabled: currentPage > 1,
+                  onTap: () {
+                    if (currentPage > 1) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _currentPage = currentPage - 1;
+                      });
+                    }
+                  },
                 ),
-              ),
+                const SizedBox(width: 4),
+                ...pages.map((p) {
+                  if (p is String) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Text(
+                        '...',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary(context),
+                        ),
+                      ),
+                    );
+                  }
+                  final pageNum = p as int;
+                  final isSelected = pageNum == currentPage;
+
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                    child: InkWell(
+                      onTap: () {
+                        if (!isSelected) {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _currentPage = pageNum;
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        width: 34,
+                        height: 34,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.primaryBlue
+                              : (isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : Colors.black.withValues(alpha: 0.04)),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.primaryBlue
+                                : AppColors.border(context),
+                            width: isSelected ? 1.2 : 0.8,
+                          ),
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: AppColors.primaryBlue.withValues(alpha: 0.35),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ]
+                              : null,
+                        ),
+                        child: Text(
+                          '$pageNum',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : AppColors.textPrimary(context),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                const SizedBox(width: 4),
+                _PaginationArrowButton(
+                  icon: Icons.chevron_right_rounded,
+                  enabled: currentPage < totalPages,
+                  onTap: () {
+                    if (currentPage < totalPages) {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        _currentPage = currentPage + 1;
+                      });
+                    }
+                  },
+                ),
+              ],
             ),
-          );
-        }).toList(),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            isVi
+                ? 'Trang $currentPage / $totalPages ($totalItems giao dịch)'
+                : 'Page $currentPage of $totalPages ($totalItems transactions)',
+            style: AppTextStyles.caption(context).copyWith(
+              fontSize: 11.5,
+              fontWeight: FontWeight.w500,
+              color: AppColors.textSecondary(context).withValues(alpha: 0.8),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -295,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 HapticFeedback.selectionClick();
                 setState(() {
                   _recentFilter = item.filter;
+                  _currentPage = 1;
                 });
               },
               borderRadius: BorderRadius.circular(AppSizes.radiusPill),
@@ -409,7 +497,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         break;
     }
 
-    final displayedTransactions = filteredRecent.take(_recentLimit).toList();
+    final isDark = AppColors.isDark(context);
+    final totalItems = filteredRecent.length;
+    final totalPages = (totalItems / _pageSize).ceil().clamp(1, 999999).toInt();
+    if (_currentPage > totalPages) {
+      _currentPage = totalPages;
+    }
+    final startIndex = (_currentPage - 1) * _pageSize;
+    final displayedTransactions = filteredRecent
+        .skip(startIndex)
+        .take(_pageSize)
+        .toList();
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
@@ -505,7 +603,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ],
                   ),
                 ),
-                _buildLimitSelector(),
+                if (filteredRecent.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? AppColors.primaryBlue.withValues(alpha: 0.18)
+                          : AppColors.primaryBlue.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                      border: Border.all(
+                        color: AppColors.primaryBlue.withValues(alpha: 0.3),
+                        width: 0.8,
+                      ),
+                    ),
+                    child: Text(
+                      languageCode == 'vi'
+                          ? '$totalItems giao dịch'
+                          : '$totalItems txs',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                  ),
               ],
             ),
 
@@ -517,9 +641,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
             if (displayedTransactions.isEmpty)
               const _EmptyTransactionCard()
-            else
+            else ...[
               ...displayedTransactions
                   .map((e) => RecentTransactionCard(transaction: e)),
+              if (totalPages > 1)
+                _buildPaginationControls(
+                  currentPage: _currentPage,
+                  totalPages: totalPages,
+                  totalItems: totalItems,
+                  languageCode: languageCode,
+                ),
+            ],
           ],
         ),
       ),
@@ -781,6 +913,57 @@ class _SummaryChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PaginationArrowButton extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _PaginationArrowButton({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        width: 34,
+        height: 34,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: enabled
+              ? (isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : Colors.black.withValues(alpha: 0.04))
+              : (isDark
+                  ? Colors.white.withValues(alpha: 0.02)
+                  : Colors.black.withValues(alpha: 0.02)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: enabled
+                ? AppColors.border(context)
+                : AppColors.border(context).withValues(alpha: 0.3),
+            width: 0.8,
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 19,
+          color: enabled
+              ? AppColors.textPrimary(context)
+              : AppColors.textSecondary(context).withValues(alpha: 0.35),
+        ),
       ),
     );
   }

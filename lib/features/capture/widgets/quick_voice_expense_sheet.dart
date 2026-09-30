@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/localization_extension.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/services/expense_parser.dart';
 import '../../../core/services/voice_input_service.dart';
 import '../../../core/utils/app_toast.dart';
@@ -16,7 +17,6 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../core/utils/money_input_formatter.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
-import '../../feed/controllers/feed_controller.dart';
 import '../../home/widgets/streak_milestone_dialog.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../controllers/capture_controller.dart';
@@ -67,6 +67,7 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
   double _smoothedSoundLevel = 0.0;
   String? _errorMessage;
   String _selectedSpeechLanguage = 'vi'; // 'vi' or 'en'
+  bool _isSaving = false;
 
   // Audience & Privacy State
   String _selectedAudience = 'friends'; // 'private', 'friends', 'close_friends', 'group', 'friends_custom'
@@ -82,8 +83,6 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
   StreamSubscription<List<Map<String, dynamic>>>? _friendsSub;
   StreamSubscription<List<String>>? _closeFriendsSub;
   StreamSubscription<List<Map<String, dynamic>>>? _groupsSub;
-
-  bool _isSaving = false;
 
   late AnimationController _pulseController;
   late AnimationController _waveController;
@@ -429,7 +428,7 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
         effectiveCloseFriends = _selectedFriendUids.toList();
       }
 
-      final ok = await capture.saveTransaction(
+      final savedTx = await capture.saveTransaction(
         userId: uid,
         amount: effectiveVndAmount,
         type: parsed.type,
@@ -448,31 +447,37 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
 
       if (!mounted) return;
 
-      if (ok != null) {
-        final unlockedMilestone = capture.consumeLastUnlockedMilestone();
-        if (unlockedMilestone != null && mounted) {
-          await StreakMilestoneDialog.show(
-            context,
-            milestone: unlockedMilestone,
-          );
-        }
+      if (savedTx != null) {
+        final isEnUI = context.read<ProfileController>().languageCode == 'en';
+        AppToast.show(
+          context,
+          isEnUI ? 'Expense saved successfully!' : 'Đã lưu chi tiêu thành công!',
+        );
 
-        if (mounted) {
-          final isEnUI = context.read<ProfileController>().languageCode == 'en';
-          AppToast.show(
-            context,
-            isEnUI ? 'Expense saved successfully! 🎉' : 'Đã lưu chi tiêu thành công! 🎉',
-          );
-          await context.read<FeedController>().refresh();
-          Navigator.of(context).pop(true);
+        final unlockedMilestone = capture.consumeLastUnlockedMilestone();
+        Navigator.of(context).pop(true);
+
+        if (unlockedMilestone != null) {
+          final navContext = AppRoutes.navigatorKey.currentContext;
+          if (navContext != null) {
+            unawaited(StreakMilestoneDialog.show(
+              navContext,
+              milestone: unlockedMilestone,
+            ));
+          }
         }
       } else {
-        AppToast.show(context, 'Lưu chi tiêu không thành công.');
+        final isEnUI = context.read<ProfileController>().languageCode == 'en';
+        AppToast.show(
+          context,
+          isEnUI ? 'Failed to save expense.' : 'Không thể lưu chi tiêu.',
+        );
       }
     } catch (e) {
       debugPrint('Voice expense save error: $e');
       if (mounted) {
-        AppToast.show(context, 'Error: $e');
+        final isEnUI = context.read<ProfileController>().languageCode == 'en';
+        AppToast.show(context, isEnUI ? 'Save error: $e' : 'Lỗi lưu chi tiêu: $e');
       }
     } finally {
       if (mounted) {
@@ -1338,7 +1343,7 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
   late String? _selectedGroupName;
   late List<String> _selectedGroupMemberIds;
 
-  List<String> get _allCategories {
+  List<String> get _expenseCategories {
     if (_selectedAudience == 'group') {
       return const [
         'Quỹ nhóm',
@@ -1347,8 +1352,6 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
         'Đi lại',
         'Giải trí',
         'Học tập',
-        'Lương',
-        'Quà tặng',
         'Khác',
       ];
     }
@@ -1358,11 +1361,15 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
       'Đi lại',
       'Giải trí',
       'Học tập',
-      'Lương',
-      'Quà tặng',
       'Khác',
     ];
   }
+
+  List<String> get _incomeCategories => const [
+    'Lương',
+    'Quà tặng',
+    'Khác',
+  ];
 
   @override
   void initState() {
@@ -1382,6 +1389,12 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
     _selectedGroupMemberIds = List<String>.from(widget.initialGroupMemberIds);
 
     _selectedCategory = widget.initial.category;
+    if (_selectedCategory == 'Lương' || _selectedCategory == 'Quà tặng') {
+      _selectedType = 'income';
+    } else if (_selectedCategory != 'Khác') {
+      _selectedType = 'expense';
+    }
+
     if (_selectedAudience != 'group' && _selectedCategory == 'Quỹ nhóm') {
       _selectedCategory = 'Ăn uống';
     }
@@ -1694,30 +1707,106 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
 
                   const SizedBox(height: 14),
 
-                  // Category Selector
-                  Text(
-                    isEnUI ? 'Category' : 'Danh mục',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: isDark ? Colors.white70 : const Color(0xFF4B5563),
-                    ),
+                  // Category & Type Selector
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isEnUI ? 'Category' : 'Danh mục',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white70 : const Color(0xFF4B5563),
+                        ),
+                      ),
+
+                      // Chi tiêu / Thu nhập Pill Switcher
+                      Container(
+                        decoration: BoxDecoration(
+                          color: inputBg,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              onTap: () {
+                                if (_selectedType == 'expense') return;
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  _selectedType = 'expense';
+                                  if (_selectedCategory != 'Khác' && !_expenseCategories.contains(_selectedCategory)) {
+                                    _selectedCategory = _expenseCategories.first;
+                                  }
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _selectedType == 'expense' ? const Color(0xFFFF5252) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isEnUI ? 'Expense' : 'Chi tiêu',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: _selectedType == 'expense'
+                                        ? Colors.white
+                                        : (isDark ? Colors.white60 : const Color(0xFF6B7280)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                if (_selectedType == 'income') return;
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  _selectedType = 'income';
+                                  if (_selectedCategory != 'Khác' && !_incomeCategories.contains(_selectedCategory)) {
+                                    _selectedCategory = _incomeCategories.first;
+                                  }
+                                });
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 150),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: _selectedType == 'income' ? const Color(0xFF10B981) : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  isEnUI ? 'Income' : 'Thu nhập',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: _selectedType == 'income'
+                                        ? Colors.white
+                                        : (isDark ? Colors.white60 : const Color(0xFF6B7280)),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _allCategories.map((cat) {
+                    children: (_selectedType == 'income' ? _incomeCategories : _expenseCategories).map((cat) {
                       final isSelected = cat == _selectedCategory;
+                      final typeHighlightColor = _selectedType == 'income' ? const Color(0xFF10B981) : primaryColor;
                       return GestureDetector(
                         onTap: () {
+                          HapticFeedback.selectionClick();
                           setState(() {
                             _selectedCategory = cat;
-                            if (cat == 'Lương') {
-                              _selectedType = 'income';
-                            } else {
-                              _selectedType = 'expense';
-                            }
                           });
                         },
                         child: AnimatedContainer(
@@ -1725,7 +1814,7 @@ class _VoiceExpenseEditorSheetState extends State<_VoiceExpenseEditorSheet> {
                           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? primaryColor
+                                ? typeHighlightColor
                                 : (isDark ? const Color(0xFF2C303E) : const Color(0xFFEBF0ED)),
                             borderRadius: BorderRadius.circular(12),
                           ),

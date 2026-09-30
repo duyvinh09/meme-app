@@ -32,6 +32,7 @@ class ChatListScreen extends StatefulWidget {
 
 class _ChatListScreenState extends State<ChatListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   String _searchQuery = '';
   String _selectedTab = 'all'; // 'all' | 'unread' | 'groups'
   Timer? _activeStoriesTicker;
@@ -45,6 +46,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
         _searchQuery = _searchController.text.trim().toLowerCase();
       });
     });
+    _searchFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
     _activeStoriesTicker = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
@@ -54,6 +58,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   void dispose() {
     _activeStoriesTicker?.cancel();
     _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -638,9 +643,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ),
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: Column(
+            children: [
             // TOP APP BAR
             Padding(
               padding: const EdgeInsets.fromLTRB(
@@ -741,18 +749,24 @@ class _ChatListScreenState extends State<ChatListScreen> {
             // SEARCH BAR
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: Container(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E212B) : const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : const Color(0xFFE2E8F0),
+                    color: _searchFocusNode.hasFocus
+                        ? AppColors.primaryBlue.withValues(alpha: 0.6)
+                        : (isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : const Color(0xFFE2E8F0)),
+                    width: _searchFocusNode.hasFocus ? 1.2 : 1.0,
                   ),
                 ),
                 child: TextField(
                   controller: _searchController,
+                  focusNode: _searchFocusNode,
+                  textAlignVertical: TextAlignVertical.center,
                   style: TextStyle(
                     color: textPrimary,
                     fontSize: 14.5,
@@ -766,7 +780,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     ),
                     prefixIcon: Icon(
                       Icons.search_rounded,
-                      color: textSecondary,
+                      color: _searchFocusNode.hasFocus
+                          ? AppColors.primaryBlue
+                          : textSecondary,
                       size: 22,
                     ),
                     suffixIcon: _searchQuery.isNotEmpty
@@ -782,6 +798,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           )
                         : null,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    filled: false,
+                    fillColor: Colors.transparent,
+                    isDense: true,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 12,
@@ -858,6 +882,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         child: filteredDocs.isEmpty
                             ? _buildEmptyState(context, myUid)
                             : ListView.separated(
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
                                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
                                 itemCount: filteredDocs.length,
                                 separatorBuilder: (_, __) => Divider(
@@ -1009,8 +1035,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildEmptyState(BuildContext context, String myUid) {
     return Center(
@@ -1866,94 +1893,106 @@ class _NewChatFriendsSheetState extends State<_NewChatFriendsSheet> {
           ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 38,
-              height: 4.5,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.white24 : Colors.black26,
-                borderRadius: BorderRadius.circular(99),
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 38,
+                height: 4.5,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black26,
+                  borderRadius: BorderRadius.circular(99),
+                ),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-            // Sheet Header
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.edit_square,
-                    color: AppColors.primaryBlue,
-                    size: 22,
+              // Sheet Header
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.edit_square,
+                      color: AppColors.primaryBlue,
+                      size: 22,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        context.l10n.newMessage,
+                        style: TextStyle(
+                          fontSize: 18.5,
+                          fontWeight: FontWeight.w800,
+                          color: textPrimary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: textSecondary,
+                        size: 22,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Search Bar
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF262938) : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE2E8F0),
+                    ),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      context.l10n.newMessage,
-                      style: TextStyle(
-                        fontSize: 18.5,
-                        fontWeight: FontWeight.w800,
-                        color: textPrimary,
+                  child: TextField(
+                    controller: _searchCtrl,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: context.l10n.searchInFriends,
+                      hintStyle: TextStyle(
+                        color: textSecondary.withValues(alpha: 0.8),
+                        fontSize: 14,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: textSecondary,
+                        size: 20,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      disabledBorder: InputBorder.none,
+                      errorBorder: InputBorder.none,
+                      focusedErrorBorder: InputBorder.none,
+                      filled: false,
+                      fillColor: Colors.transparent,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 11,
                       ),
                     ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      Icons.close_rounded,
-                      color: textSecondary,
-                      size: 22,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF262938) : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  style: TextStyle(
-                    color: textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: context.l10n.searchInFriends,
-                    hintStyle: TextStyle(
-                      color: textSecondary.withValues(alpha: 0.8),
-                      fontSize: 14,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: textSecondary,
-                      size: 20,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 11,
-                    ),
-                  ),
                 ),
               ),
-            ),
 
             Divider(
               height: 1,
@@ -2084,8 +2123,9 @@ class _NewChatFriendsSheetState extends State<_NewChatFriendsSheet> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _ActiveStatusHeaderPill extends StatelessWidget {

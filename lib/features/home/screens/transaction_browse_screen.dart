@@ -484,9 +484,12 @@ class _TransactionBrowseScreenState extends State<TransactionBrowseScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      body: SafeArea(
-        child: Column(
-          children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: Column(
+            children: [
             // Top Bar: [X] Button + "Duyệt giao dịch" Title
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1027,8 +1030,9 @@ class _TransactionBrowseScreenState extends State<TransactionBrowseScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   String _formatBigAmount(double net, String currency) {
     final absFormatted = AppCurrencyFormatter.formatFromVnd(

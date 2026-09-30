@@ -81,37 +81,54 @@ class VideoCacheService {
       throw ArgumentError('Video URL cannot be empty');
     }
 
+    final isLocalFile = (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) &&
+        (File(cleanUrl.replaceFirst('file://', '')).existsSync() ||
+            cleanUrl.startsWith('/') ||
+            cleanUrl.contains(':\\') ||
+            cleanUrl.startsWith('file:'));
+
     VideoPlayerController controller;
 
-    // 1. Kiểm tra xem đã có file trong cache chưa
-    File? cachedFile;
-    try {
-      final fileInfo = await _cacheManager.getFileFromCache(cleanUrl);
-      if (fileInfo != null && await fileInfo.file.exists()) {
-        cachedFile = fileInfo.file;
-      }
-    } catch (_) {}
-
-    if (cachedFile != null) {
-      // Khởi tạo trực tiếp từ file trên ổ đĩa -> Tốc độ phản hồi cực nhanh (gần như tức thì)
+    if (isLocalFile) {
+      final file = File(cleanUrl.replaceFirst('file://', ''));
       controller = VideoPlayerController.file(
-        cachedFile,
+        file,
         videoPlayerOptions: VideoPlayerOptions(
           mixWithOthers: true,
           allowBackgroundPlayback: false,
         ),
       );
     } else {
-      // Nếu chưa có file cục bộ, khởi tạo từ Network đồng thời kích hoạt tải ngầm vào cache
-      controller = VideoPlayerController.networkUrl(
-        Uri.parse(cleanUrl),
-        videoPlayerOptions: VideoPlayerOptions(
-          mixWithOthers: true,
-          allowBackgroundPlayback: false,
-        ),
-      );
-      // Tải ngầm lưu cache cho những lần xem sau
-      preloadVideo(cleanUrl);
+      // 1. Kiểm tra xem đã có file trong cache chưa
+      File? cachedFile;
+      try {
+        final fileInfo = await _cacheManager.getFileFromCache(cleanUrl);
+        if (fileInfo != null && await fileInfo.file.exists()) {
+          cachedFile = fileInfo.file;
+        }
+      } catch (_) {}
+
+      if (cachedFile != null) {
+        // Khởi tạo trực tiếp từ file trên ổ đĩa -> Tốc độ phản hồi cực nhanh (gần như tức thì)
+        controller = VideoPlayerController.file(
+          cachedFile,
+          videoPlayerOptions: VideoPlayerOptions(
+            mixWithOthers: true,
+            allowBackgroundPlayback: false,
+          ),
+        );
+      } else {
+        // Nếu chưa có file cục bộ, khởi tạo từ Network đồng thời kích hoạt tải ngầm vào cache
+        controller = VideoPlayerController.networkUrl(
+          Uri.parse(cleanUrl),
+          videoPlayerOptions: VideoPlayerOptions(
+            mixWithOthers: true,
+            allowBackgroundPlayback: false,
+          ),
+        );
+        // Tải ngầm lưu cache cho những lần xem sau
+        preloadVideo(cleanUrl);
+      }
     }
 
     await controller.setLooping(looping);

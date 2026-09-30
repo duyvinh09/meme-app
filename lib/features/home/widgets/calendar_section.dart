@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
@@ -21,6 +22,60 @@ class CalendarSection extends StatefulWidget {
 
 class _CalendarSectionState extends State<CalendarSection> {
   DateTime currentMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  late DateTime currentWeekStart;
+  bool _isWeekView = false;
+
+  @override
+  void initState() {
+    super.initState();
+    currentWeekStart = _startOfWeek(DateTime.now());
+  }
+
+  DateTime _startOfWeek(DateTime date) {
+    final d = DateTime(date.year, date.month, date.day);
+    final daysToSubtract = d.weekday - DateTime.monday;
+    return d.subtract(Duration(days: daysToSubtract));
+  }
+
+  List<DateTime> _daysInWeek(DateTime weekStart) {
+    return List.generate(
+      7,
+      (i) => DateTime(weekStart.year, weekStart.month, weekStart.day + i),
+    );
+  }
+
+  DateTime _monthForWeek(DateTime weekStart, DateTime activeMonth) {
+    final weekDays = _daysInWeek(weekStart);
+    final now = DateTime.now();
+
+    // 1. Nếu tuần chứa ngày hôm nay và hôm nay thuộc tuần này, ưu tiên tháng hiện tại của hôm nay
+    if (weekDays.any((d) => _sameDate(d, now))) {
+      return DateTime(now.year, now.month);
+    }
+
+    // 2. Nếu tuần chứa ngày thuộc activeMonth, giữ nguyên activeMonth
+    if (weekDays.any((d) => d.year == activeMonth.year && d.month == activeMonth.month)) {
+      return activeMonth;
+    }
+
+    // 3. Nếu tuần hoàn toàn thuộc tháng khác, chọn tháng có nhiều ngày nhất trong tuần
+    int countStart = 0;
+    int countEnd = 0;
+    final startMonth = weekDays.first.month;
+    for (final d in weekDays) {
+      if (d.month == startMonth) {
+        countStart++;
+      } else {
+        countEnd++;
+      }
+    }
+
+    if (countStart >= countEnd) {
+      return DateTime(weekDays.first.year, weekDays.first.month);
+    } else {
+      return DateTime(weekDays.last.year, weekDays.last.month);
+    }
+  }
 
   bool _sameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -102,6 +157,9 @@ class _CalendarSectionState extends State<CalendarSection> {
     if (picked != null && mounted) {
       setState(() {
         currentMonth = DateTime(picked.year, picked.month);
+        if (_isWeekView) {
+          currentWeekStart = _startOfWeek(DateTime(picked.year, picked.month, 1));
+        }
       });
     }
   }
@@ -109,12 +167,17 @@ class _CalendarSectionState extends State<CalendarSection> {
   @override
   Widget build(BuildContext context) {
     final home = context.watch<HomeController>();
-    final days = _daysInMonth(currentMonth);
+    final days = _isWeekView
+        ? _daysInWeek(currentWeekStart)
+        : _daysInMonth(currentMonth);
     final weekdayLabels = _weekdayLabels(context);
 
     final now = DateTime.now();
     final isCurrentMonth =
         currentMonth.year == now.year && currentMonth.month == now.month;
+    final isCurrentWeek = _sameDate(currentWeekStart, _startOfWeek(now));
+    final isCurrentPeriod = _isWeekView ? isCurrentWeek : isCurrentMonth;
+
     final monthTitle =
         context.l10n.monthYear(currentMonth.month, currentMonth.year);
 
@@ -136,10 +199,7 @@ class _CalendarSectionState extends State<CalendarSection> {
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 12,
-        ),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
         child: Column(
           children: [
             Row(
@@ -148,10 +208,16 @@ class _CalendarSectionState extends State<CalendarSection> {
                   icon: Icons.chevron_left_rounded,
                   onTap: () {
                     setState(() {
-                      currentMonth = DateTime(
-                        currentMonth.year,
-                        currentMonth.month - 1,
-                      );
+                      if (_isWeekView) {
+                        currentWeekStart = currentWeekStart.subtract(const Duration(days: 7));
+                        currentMonth = _monthForWeek(currentWeekStart, currentMonth);
+                      } else {
+                        currentMonth = DateTime(
+                          currentMonth.year,
+                          currentMonth.month - 1,
+                        );
+                        currentWeekStart = _startOfWeek(DateTime(currentMonth.year, currentMonth.month, 1));
+                      }
                     });
                   },
                 ),
@@ -191,7 +257,7 @@ class _CalendarSectionState extends State<CalendarSection> {
                     ),
                   ),
                 ),
-                if (!isCurrentMonth) ...[
+                if (!isCurrentPeriod) ...[
                   _MiniNavButton(
                     icon: Icons.today_rounded,
                     iconColor: AppColors.primaryBlue,
@@ -202,6 +268,7 @@ class _CalendarSectionState extends State<CalendarSection> {
                     onTap: () {
                       setState(() {
                         currentMonth = DateTime(now.year, now.month);
+                        currentWeekStart = _startOfWeek(now);
                       });
                     },
                   ),
@@ -209,14 +276,23 @@ class _CalendarSectionState extends State<CalendarSection> {
                 ],
                 _MiniNavButton(
                   icon: Icons.chevron_right_rounded,
-                  onTap: isCurrentMonth
+                  onTap: isCurrentPeriod
                       ? null
                       : () {
                           setState(() {
-                            currentMonth = DateTime(
-                              currentMonth.year,
-                              currentMonth.month + 1,
-                            );
+                            if (_isWeekView) {
+                              final nextWeek = currentWeekStart.add(const Duration(days: 7));
+                              if (!nextWeek.isAfter(_startOfWeek(now))) {
+                                currentWeekStart = nextWeek;
+                                currentMonth = _monthForWeek(currentWeekStart, currentMonth);
+                              }
+                            } else {
+                              currentMonth = DateTime(
+                                currentMonth.year,
+                                currentMonth.month + 1,
+                              );
+                              currentWeekStart = _startOfWeek(DateTime(currentMonth.year, currentMonth.month, 1));
+                            }
                           });
                         },
                 ),
@@ -253,52 +329,91 @@ class _CalendarSectionState extends State<CalendarSection> {
               ),
             ),
             const SizedBox(height: 12),
-            GridView.builder(
-              itemCount: days.length,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7,
-                crossAxisSpacing: 7,
-                mainAxisSpacing: 4,
-                childAspectRatio: 0.62,
-              ),
-              itemBuilder: (context, index) {
-                final date = days[index];
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOutCubic,
+              child: GridView.builder(
+                key: ValueKey(
+                  _isWeekView
+                      ? 'week_${currentWeekStart.millisecondsSinceEpoch}'
+                      : 'month_${currentMonth.millisecondsSinceEpoch}',
+                ),
+                itemCount: days.length,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7,
+                  crossAxisSpacing: 7,
+                  mainAxisSpacing: 4,
+                  childAspectRatio: 0.62,
+                ),
+                itemBuilder: (context, index) {
+                  final date = days[index];
 
-                if (date == null) {
-                  return const SizedBox.shrink();
-                }
-
-                final txs = _transactionsOfDay(home.transactions, date);
-                final imageTxs = _previewTransactionsOfDay(txs);
-
-                final hasData = txs.isNotEmpty;
-                final hasImage = imageTxs.isNotEmpty;
-                final isToday = _sameDate(date, DateTime.now());
-                final isPast = _isBeforeToday(date);
-                final isFuture = _isAfterToday(date);
-
-                return _CalendarStickerCell(
-                  date: date,
-                  isPast: isPast,
-                  isFuture: isFuture,
-                  hasData: hasData,
-                  hasImage: hasImage,
-                  imageTransactions: imageTxs,
-                  totalCount: txs.length,
-                  isToday: isToday,
-                  onTap: hasData
-                      ? () {
-                    Navigator.pushNamed(
-                      context,
-                      RouteNames.dayDetail,
-                      arguments: date,
-                    );
+                  if (date == null) {
+                    return const SizedBox.shrink();
                   }
-                      : null,
-                );
-              },
+
+                  final txs = _transactionsOfDay(home.transactions, date);
+                  final imageTxs = _previewTransactionsOfDay(txs);
+
+                  final hasData = txs.isNotEmpty;
+                  final hasImage = imageTxs.isNotEmpty;
+                  final isToday = _sameDate(date, DateTime.now());
+                  final isPast = _isBeforeToday(date);
+                  final isFuture = _isAfterToday(date);
+
+                  return _CalendarStickerCell(
+                    date: date,
+                    isPast: isPast,
+                    isFuture: isFuture,
+                    hasData: hasData,
+                    hasImage: hasImage,
+                    imageTransactions: imageTxs,
+                    totalCount: txs.length,
+                    isToday: isToday,
+                    onTap: hasData
+                        ? () {
+                      Navigator.pushNamed(
+                        context,
+                        RouteNames.dayDetail,
+                        arguments: date,
+                      );
+                    }
+                        : null,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 2),
+            Center(
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  setState(() {
+                    _isWeekView = !_isWeekView;
+                    if (_isWeekView) {
+                      final isSameMonthAsNow = currentMonth.year == now.year && currentMonth.month == now.month;
+                      if (isSameMonthAsNow) {
+                        currentWeekStart = _startOfWeek(now);
+                      } else {
+                        currentWeekStart = _startOfWeek(DateTime(currentMonth.year, currentMonth.month, 1));
+                      }
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
+                  child: Icon(
+                    _isWeekView
+                        ? Icons.keyboard_arrow_down_rounded
+                        : Icons.keyboard_arrow_up_rounded,
+                    size: 18,
+                    color: AppColors.textSecondary(context).withValues(alpha: 0.65),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

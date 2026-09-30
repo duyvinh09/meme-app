@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -906,7 +907,7 @@ class _MemberSelectTile extends StatelessWidget {
           radius: 23,
           backgroundColor: AppColors.card(context),
           backgroundImage: avatarUrl.trim().isNotEmpty
-              ? NetworkImage(avatarUrl.trim())
+              ? CachedNetworkImageProvider(avatarUrl.trim())
               : null,
           child: avatarUrl.trim().isEmpty
               ? Icon(

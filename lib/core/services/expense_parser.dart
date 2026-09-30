@@ -999,7 +999,7 @@ class ExpenseParser {
       );
     }
 
-    // 3. Quà tặng (gift)
+    // 3. Quà tặng (gift) -> income
     final giftKeywords = [
       'quà', 'quà tặng', 'mua quà', 'tặng quà', 'đặt quà', 'gửi quà', 'biếu quà', 'biếu', 'phần quà',
       'sinh nhật', 'quà sinh nhật', 'tặng sinh nhật', 'mừng sinh nhật', 'tiền sinh nhật',
@@ -1014,6 +1014,14 @@ class ExpenseParser {
       'valentine gift', 'christmas gift', 'holiday gift', 'donations', 'fundraiser', 'được cho', 'cho', 'gửi', 'gửi cho'
     ];
     final int giftScore = _keywordScore(paddedText, tokensSet, giftKeywords);
+    if (giftScore > 0) {
+      return _CategoryClassification(
+        category: 'Quà tặng',
+        type: 'income',
+        hasCategory: true,
+        matchCount: giftScore,
+      );
+    }
 
     // 4. Giáo dục / Học tập (education)
     final educationKeywords = [
@@ -1129,20 +1137,27 @@ class ExpenseParser {
     ];
     final int shoppingScore = _keywordScore(paddedText, tokensSet, shoppingKeywords);
 
+    // Explicit income keywords helper for Khác or fallback
+    final incomeHelperKeywords = [
+      'thu', 'thu nhập', 'nhận', 'nhận được', 'tiền vào', 'thu về', 'kiếm được', 'nạp tiền', 'cộng tiền', 'thu khác', 'thu nhập khác',
+      'income', 'received', 'got', 'earned', 'gain', 'plus', 'revenue'
+    ];
+    final bool isIncomeIntent = _keywordScore(paddedText, tokensSet, incomeHelperKeywords) > 0;
+
     // 9. Khác (other)
-    final otherKeywords = ['khác', 'chi khác', 'khoản khác', 'tiền khác', 'other', 'misc', 'miscellaneous', 'others'];
+    final otherKeywords = ['khác', 'chi khác', 'khoản khác', 'tiền khác', 'thu khác', 'thu nhập khác', 'other', 'misc', 'miscellaneous', 'others'];
     final int otherScore = _keywordScore(paddedText, tokensSet, otherKeywords);
     if (otherScore > 0) {
+      final isIncomeOther = paddedText.contains('thu khác') || paddedText.contains('thu nhập khác') || isIncomeIntent;
       return _CategoryClassification(
         category: 'Khác',
-        type: 'expense',
+        type: isIncomeOther ? 'income' : 'expense',
         hasCategory: true,
         matchCount: otherScore,
       );
     }
 
     final scores = <String, int>{
-      'Quà tặng': giftScore,
       'Học tập': educationScore,
       'Giải trí': entertainmentScore,
       'Đi lại': transportScore,
@@ -1168,9 +1183,9 @@ class ExpenseParser {
       );
     }
 
-    return const _CategoryClassification(
+    return _CategoryClassification(
       category: 'Khác',
-      type: 'expense',
+      type: isIncomeIntent ? 'income' : 'expense',
       hasCategory: false,
       matchCount: 0,
     );

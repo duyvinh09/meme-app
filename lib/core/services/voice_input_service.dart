@@ -38,9 +38,9 @@ class VoiceInputService {
   Timer? _silenceTimer;
 
   // Timeout configurations:
-  // 1. Initial silence timeout: 3s (Tự động tắt sau 3s nếu người dùng không nói gì từ đầu)
-  // 2. Silence timeout after speaking: 2s (Tự động tắt sau 2s khi người dùng ngừng nói)
-  static const Duration initialSilenceDuration = Duration(seconds: 3);
+  // 1. Initial silence timeout: 5s (Tự động tắt sau 5s nếu người dùng không nói gì từ đầu)
+  // 2. Silence timeout after speaking: 2s (Tự động tắt sau 2s khi người dùng thực sự ngừng nói)
+  static const Duration initialSilenceDuration = Duration(seconds: 5);
   static const Duration postSpeechSilenceDuration = Duration(seconds: 2);
 
   void Function(String words, bool isFinal)? onTranscriptUpdate;
@@ -136,10 +136,10 @@ class VoiceInputService {
 
     final effectiveLocale = localeId ?? _vietnameseLocaleId ?? 'vi_VN';
 
-    // 2. Bắt đầu Timer 5s: Nếu người dùng không nói gì ngay từ đầu -> ngắt sau 5s
+    // 2. Bắt đầu Timer 10s: Nếu người dùng không nói gì ngay từ đầu -> ngắt sau 10s
     _initialSilenceTimer = Timer(initialSilenceDuration, () {
       if (currentSession == _activeSessionId && !_hasSpoken && _status == VoiceInputStatus.listening) {
-        debugPrint('[VoiceInputService] 5s initial silence timeout reached. Auto stopping.');
+        debugPrint('[VoiceInputService] 10s initial silence timeout reached. Auto stopping.');
         stopListening();
       }
     });
@@ -160,7 +160,8 @@ class VoiceInputService {
           listenMode: ListenMode.dictation,
           cancelOnError: false,
           partialResults: true,
-          pauseFor: postSpeechSilenceDuration,
+          pauseFor: const Duration(seconds: 5),
+          listenFor: const Duration(seconds: 60),
           localeId: effectiveLocale,
         ),
       );
@@ -208,12 +209,6 @@ class VoiceInputService {
       words,
       result.finalResult,
     );
-
-    if (result.finalResult) {
-      _cancelTimers();
-      _status = VoiceInputStatus.stopped;
-      onStatusUpdate?.call(_status);
-    }
   }
 
   void _handleSoundLevel(double level, int sessionId) {
@@ -221,8 +216,8 @@ class VoiceInputService {
     _soundLevel = level;
     onSoundLevelUpdate?.call(level);
 
-    // Phát hiện mức âm thanh có tiếng nói
-    final isVoiceLevel = (level > 2.0) || (level > -25.0 && level < 0);
+    // Phát hiện mức âm thanh có tiếng nói để reset timer tránh ngắt giữa chừng
+    final isVoiceLevel = level > 0.5 || (level > -45.0 && level < 0);
     if (isVoiceLevel && _hasSpoken) {
       _resetSilenceTimer(sessionId);
     }
@@ -244,10 +239,10 @@ class VoiceInputService {
     if (sessionId != _activeSessionId || _status != VoiceInputStatus.listening) return;
 
     _silenceTimer?.cancel();
-    // 3. Khi người dùng đang nói mà bỗng dưng ngừng voice thì sau 3s sẽ tự động tắt voice
+    // Khi người dùng ngừng nói hẳn sau 4s thì mới tự động dừng session
     _silenceTimer = Timer(postSpeechSilenceDuration, () {
       if (sessionId == _activeSessionId && _status == VoiceInputStatus.listening) {
-        debugPrint('[VoiceInputService] 3s silence after speech reached. Auto stopping.');
+        debugPrint('[VoiceInputService] 4s silence after speech reached. Auto stopping.');
         stopListening();
       }
     });

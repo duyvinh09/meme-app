@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/utils/currency_formatter.dart';
 import '../../core/services/fcm_push_service.dart';
@@ -21,12 +23,91 @@ class UserRepository {
   final UserRemoteDataSource _remote = UserRemoteDataSource();
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
+  static final Map<String, UserModel> _userProfileMemoryCache = {};
+  static final Map<String, DateTime> _userProfileCacheTime = {};
+  static final Map<String, List<Map<String, dynamic>>> _friendsMemoryCache = {};
+  static final Map<String, DateTime> _friendsCacheTime = {};
+  static const Duration cacheTtl = Duration(hours: 1);
+
+  void invalidateFriendsCache(String uid) {
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return;
+    _friendsMemoryCache.remove(cleanUid);
+    _friendsCacheTime.remove(cleanUid);
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('cached_friends_$cleanUid');
+      prefs.remove('cached_friends_time_$cleanUid');
+    }).catchError((_) {});
+  }
+
+  void invalidateUserProfileCache(String uid) {
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return;
+    _userProfileMemoryCache.remove(cleanUid);
+    _userProfileCacheTime.remove(cleanUid);
+    SharedPreferences.getInstance().then((prefs) {
+      prefs.remove('cached_user_profile_$cleanUid');
+      prefs.remove('cached_user_profile_time_$cleanUid');
+    }).catchError((_) {});
+  }
+
   Future<void> createUserProfile(UserModel user) {
+    invalidateUserProfileCache(user.uid);
     return _remote.createUserProfile(user);
   }
 
-  Future<UserModel?> getUserProfile(String uid) {
-    return _remote.getUserProfile(uid);
+  Future<UserModel?> getUserProfile(String uid, {bool forceRefresh = false}) async {
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return null;
+
+    final now = DateTime.now();
+
+    // 1. In-memory check
+    if (!forceRefresh && _userProfileMemoryCache.containsKey(cleanUid)) {
+      final cachedTime = _userProfileCacheTime[cleanUid];
+      if (cachedTime != null && now.difference(cachedTime) < cacheTtl) {
+        return _userProfileMemoryCache[cleanUid];
+      }
+    }
+
+    // 2. Persistent disk check
+    if (!forceRefresh) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final rawJson = prefs.getString('cached_user_profile_$cleanUid');
+        final rawTime = prefs.getInt('cached_user_profile_time_$cleanUid');
+        if (rawJson != null && rawTime != null) {
+          final cachedTime = DateTime.fromMillisecondsSinceEpoch(rawTime);
+          final userMap = jsonDecode(rawJson) as Map<String, dynamic>;
+          final user = UserModel.fromMap(userMap);
+          _userProfileMemoryCache[cleanUid] = user;
+          _userProfileCacheTime[cleanUid] = cachedTime;
+          if (now.difference(cachedTime) < cacheTtl) {
+            return user;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Remote fetch
+    try {
+      final remoteUser = await _remote.getUserProfile(cleanUid);
+      if (remoteUser != null) {
+        _userProfileMemoryCache[cleanUid] = remoteUser;
+        _userProfileCacheTime[cleanUid] = now;
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.setString('cached_user_profile_$cleanUid', jsonEncode(remoteUser.toMap()));
+          prefs.setInt('cached_user_profile_time_$cleanUid', now.millisecondsSinceEpoch);
+        }).catchError((_) {});
+        return remoteUser;
+      }
+    } catch (_) {
+      if (_userProfileMemoryCache.containsKey(cleanUid)) {
+        return _userProfileMemoryCache[cleanUid];
+      }
+    }
+
+    return _userProfileMemoryCache[cleanUid];
   }
 
   Stream<UserModel?> streamUserProfile(String uid) {
@@ -371,6 +452,8 @@ class UserRepository {
     batch.delete(sentRef);
 
     await batch.commit();
+    invalidateFriendsCache(myUid);
+    invalidateFriendsCache(fromUid);
 
     // Send Push Notification to friend that request was accepted
     unawaited(() async {
@@ -514,99 +597,193 @@ class UserRepository {
     }
   }
 
-  Stream<List<Map<String, dynamic>>> streamFriends(String uid) {
-    if (uid.trim().isEmpty) return Stream.value([]);
-    return _db
-        .collection('users')
-        .doc(uid)
-        .collection('friends')
-        .snapshots()
-        .asyncMap((snapshot) async {
+  Future<List<Map<String, dynamic>>> getFriends(
+    String uid, {
+    bool forceRefresh = false,
+  }) async {
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return [];
+
+    final now = DateTime.now();
+
+    // 1. In-memory cache check
+    if (!forceRefresh && _friendsMemoryCache.containsKey(cleanUid)) {
+      final cachedTime = _friendsCacheTime[cleanUid];
+      if (cachedTime != null && now.difference(cachedTime) < cacheTtl) {
+        return _friendsMemoryCache[cleanUid]!;
+      }
+    }
+
+    // 2. Persistent disk cache check (SharedPreferences)
+    if (!forceRefresh) {
       try {
-        final docs = snapshot.docs;
+        final prefs = await SharedPreferences.getInstance();
+        final rawJson = prefs.getString('cached_friends_$cleanUid');
+        final rawTime = prefs.getInt('cached_friends_time_$cleanUid');
+        if (rawJson != null && rawTime != null) {
+          final cachedTime = DateTime.fromMillisecondsSinceEpoch(rawTime);
+          final decoded = (jsonDecode(rawJson) as List<dynamic>)
+              .map((e) => Map<String, dynamic>.from(e as Map))
+              .toList();
+          _friendsMemoryCache[cleanUid] = decoded;
+          _friendsCacheTime[cleanUid] = cachedTime;
+          if (now.difference(cachedTime) < cacheTtl) {
+            return decoded;
+          }
+        }
+      } catch (_) {}
+    }
 
-        final items = await Future.wait(
-          docs.map((doc) async {
-            try {
-              final data = doc.data();
-              final rawUid = (data['uid'] ?? '').toString().trim();
-              final friendUid = rawUid.isNotEmpty ? rawUid : doc.id;
-              if (friendUid.isEmpty) return null;
+    // 3. Fetch fresh from Firestore
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(cleanUid)
+          .collection('friends')
+          .get();
 
-              final savedUsername = (data['username'] ?? '').toString();
-              final savedName = (data['name'] ?? '').toString();
-              final savedAvatarUrl = (data['avatarUrl'] ?? '').toString();
-              final savedAvatarFrame = (data['avatarFrame'] ?? 'plain').toString();
+      final docs = snapshot.docs;
+      final items = await Future.wait(
+        docs.map((doc) async {
+          try {
+            final data = doc.data();
+            final rawUid = (data['uid'] ?? '').toString().trim();
+            final friendUid = rawUid.isNotEmpty ? rawUid : doc.id;
+            if (friendUid.isEmpty) return null;
 
-              final profile = await getUserProfile(friendUid).timeout(
-                const Duration(milliseconds: 2500),
-                onTimeout: () => null,
-              );
+            final savedUsername = (data['username'] ?? '').toString();
+            final savedName = (data['name'] ?? '').toString();
+            final savedAvatarUrl = (data['avatarUrl'] ?? '').toString();
+            final savedAvatarFrame =
+                (data['avatarFrame'] ?? 'plain').toString();
 
-              final isDeleted = profile?.isDeleted == true;
-              if (isDeleted) {
-                return null;
-              }
+            final profile = await getUserProfile(friendUid);
 
-              final isOnline = profile?.isCurrentlyOnline ?? false;
-              final showActiveStatus = profile?.showActiveStatus ?? true;
-
-              return {
-                'uid': friendUid,
-                'username': profile?.username.isNotEmpty == true
-                    ? profile!.username
-                    : (savedUsername.isNotEmpty ? savedUsername : friendUid),
-                'name': profile?.name.isNotEmpty == true
-                    ? profile!.name
-                    : (savedName.isNotEmpty ? savedName : 'Người dùng'),
-                'avatarUrl': profile?.avatarUrl ?? savedAvatarUrl,
-                'avatarFrame': profile?.avatarFrame ?? savedAvatarFrame,
-                'isCloseFriend': data['isCloseFriend'] == true,
-                'isDeleted': false,
-                'isOnline': isOnline,
-                'showActiveStatus': showActiveStatus,
-                'userNote': profile?.userNote,
-                'userNoteCreatedAt': profile?.userNoteCreatedAt,
-                'hasActiveNote': profile?.hasActiveNote ?? false,
-                'addedAt': data['addedAt'],
-              };
-            } catch (e) {
-              debugPrint('Error processing friend item: $e');
+            if (profile?.isDeleted == true) {
               return null;
             }
-          }),
-        );
 
-        final validItems = items.whereType<Map<String, dynamic>>().toList();
+            final isOnline = profile?.isCurrentlyOnline ?? false;
+            final showActiveStatus = profile?.showActiveStatus ?? true;
 
-        validItems.sort((a, b) {
-          final aTime = a['addedAt'];
-          final bTime = b['addedAt'];
+            return {
+              'uid': friendUid,
+              'username': profile?.username.isNotEmpty == true
+                  ? profile!.username
+                  : (savedUsername.isNotEmpty ? savedUsername : friendUid),
+              'name': profile?.name.isNotEmpty == true
+                  ? profile!.name
+                  : (savedName.isNotEmpty ? savedName : 'Người dùng'),
+              'avatarUrl': profile?.avatarUrl ?? savedAvatarUrl,
+              'avatarFrame': profile?.avatarFrame ?? savedAvatarFrame,
+              'isCloseFriend': data['isCloseFriend'] == true,
+              'isDeleted': false,
+              'isOnline': isOnline,
+              'showActiveStatus': showActiveStatus,
+              'userNote': profile?.userNote,
+              'userNoteCreatedAt': profile?.userNoteCreatedAt?.toIso8601String(),
+              'hasActiveNote': profile?.hasActiveNote ?? false,
+              'addedAt': data['addedAt'] is Timestamp
+                  ? (data['addedAt'] as Timestamp)
+                      .toDate()
+                      .toIso8601String()
+                  : data['addedAt']?.toString(),
+            };
+          } catch (e) {
+            return null;
+          }
+        }),
+      );
 
-          if (aTime == null && bTime == null) return 0;
-          if (aTime == null) return 1;
-          if (bTime == null) return -1;
+      final validItems = items.whereType<Map<String, dynamic>>().toList();
+      validItems.sort((a, b) {
+        final aTime = a['addedAt']?.toString() ?? '';
+        final bTime = b['addedAt']?.toString() ?? '';
+        return bTime.compareTo(aTime);
+      });
 
-          DateTime? aDt = aTime is Timestamp
-              ? aTime.toDate()
-              : (aTime is DateTime ? aTime : null);
-          DateTime? bDt = bTime is Timestamp
-              ? bTime.toDate()
-              : (bTime is DateTime ? bTime : null);
+      _friendsMemoryCache[cleanUid] = validItems;
+      _friendsCacheTime[cleanUid] = now;
 
-          if (aDt == null && bDt == null) return 0;
-          if (aDt == null) return 1;
-          if (bDt == null) return -1;
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString('cached_friends_$cleanUid', jsonEncode(validItems));
+        prefs.setInt(
+            'cached_friends_time_$cleanUid', now.millisecondsSinceEpoch);
+      }).catchError((_) {});
 
-          return bDt.compareTo(aDt);
-        });
-
-        return validItems;
-      } catch (e) {
-        debugPrint('Error in streamFriends asyncMap: $e');
-        return [];
+      return validItems;
+    } catch (_) {
+      if (_friendsMemoryCache.containsKey(cleanUid)) {
+        return _friendsMemoryCache[cleanUid]!;
       }
+      return [];
+    }
+  }
+
+  Future<void> refreshFriends(String uid) async {
+    invalidateFriendsCache(uid);
+    await getFriends(uid, forceRefresh: true);
+  }
+
+  Stream<List<Map<String, dynamic>>> streamFriends(String uid) {
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return Stream.value([]);
+
+    final controller =
+        StreamController<List<Map<String, dynamic>>>.broadcast();
+
+    // 1. Immediately emit memory or persistent cache for offline-first instant display
+    if (_friendsMemoryCache.containsKey(cleanUid)) {
+      controller.add(_friendsMemoryCache[cleanUid]!);
+    } else {
+      SharedPreferences.getInstance().then((prefs) {
+        final rawJson = prefs.getString('cached_friends_$cleanUid');
+        if (rawJson != null && !controller.isClosed) {
+          try {
+            final decoded = (jsonDecode(rawJson) as List<dynamic>)
+                .map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+            _friendsMemoryCache[cleanUid] = decoded;
+            controller.add(decoded);
+          } catch (_) {}
+        }
+      }).catchError((_) {});
+    }
+
+    // 2. Refresh if expired (> 1 hour) or no cache
+    final cachedTime = _friendsCacheTime[cleanUid];
+    final bool isExpired = cachedTime == null ||
+        DateTime.now().difference(cachedTime) >= cacheTtl;
+
+    if (isExpired) {
+      getFriends(cleanUid, forceRefresh: true).then((freshFriends) {
+        if (!controller.isClosed) {
+          controller.add(freshFriends);
+        }
+      }).catchError((_) {});
+    }
+
+    // 3. Listen to friend changes from Firestore
+    final sub = _db
+        .collection('users')
+        .doc(cleanUid)
+        .collection('friends')
+        .snapshots()
+        .listen((snapshot) {
+      getFriends(cleanUid).then((updatedFriends) {
+        if (!controller.isClosed) {
+          controller.add(updatedFriends);
+        }
+      }).catchError((_) {});
+    }, onError: (_) {
+      // Offline fallback: ignore connection error, cached data remains active
     });
+
+    controller.onCancel = () {
+      sub.cancel();
+    };
+
+    return controller.stream;
   }
 
   static final Map<String, Stream<List<Map<String, dynamic>>>>
@@ -821,6 +998,7 @@ class UserRepository {
         .set({
       'isCloseFriend': isCloseFriend,
     }, SetOptions(merge: true));
+    invalidateFriendsCache(myUid);
   }
 
   Future<void> updateUserChatBubbleTheme({
@@ -1267,6 +1445,8 @@ class UserRepository {
     batch.delete(friendRef);
 
     await batch.commit();
+    invalidateFriendsCache(myUid);
+    invalidateFriendsCache(friendUid);
   }
 
   Future<void> createGroup({

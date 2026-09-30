@@ -27,7 +27,7 @@ class ChatRepository {
   }
 
   /// Listen to real-time messages in a specific chat
-  Stream<List<ChatMessageModel>> getMessagesStream(String chatId, {int limit = 100}) {
+  Stream<List<ChatMessageModel>> getMessagesStream(String chatId, {int limit = 40}) {
     return _firestore
         .collection('chats')
         .doc(chatId)

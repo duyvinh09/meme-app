@@ -524,7 +524,7 @@ class _StatsScreenState extends State<StatsScreen> {
 
             final years = List.generate(
               12,
-                  (index) => startYear + index,
+              (index) => startYear + index,
             );
 
             return SafeArea(
@@ -977,180 +977,23 @@ class _StatsScreenState extends State<StatsScreen> {
                     .whereType<TransactionModel>()
                     .toList(),
               )
-            else Container(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-              decoration: BoxDecoration(
-                color: palette.cardBackground,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: palette.cardBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(
-                      Theme.of(context).brightness == Brightness.dark ? 0.18 : 0.045,
-                    ),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
+            else
+              _InteractiveStatsPieChartCard(
+                categoryEntries: categoryEntries,
+                categoryColorMap: categoryColorMap,
+                fallbackCategoryColor: _fallbackCategoryColor,
+                localizedCategoryLabel: _localizedCategoryLabel,
+                getRawPercent: (val) => _getRawPercent(val, categoryEntries),
+                formatPercent: _formatPercent,
+                money: money,
+                isExpense: isExpense,
+                currentTotal: currentTotal,
+                mainColor: mainColor,
+                palette: palette,
+                chartTitle: _getChartTitle(),
+                periodTitle: _formatPeriodTitle(),
+                emptyChartText: _getEmptyChartText(),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _getChartTitle(),
-                          style: TextStyle(
-                            color: palette.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: mainColor.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: mainColor.withOpacity(0.18),
-                          ),
-                        ),
-                        child: Text(
-                          _formatPeriodTitle(),
-                          style: TextStyle(
-                            color: mainColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
-
-                  if (categoryEntries.isEmpty)
-                    SizedBox(
-                      height: 260,
-                      child: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 72,
-                              height: 72,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: palette.innerTileBackground,
-                                border: Border.all(color: palette.innerTileBorder),
-                              ),
-                              child: Icon(
-                                Icons.pie_chart_outline_rounded,
-                                color: palette.textSecondary,
-                                size: 34,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Text(
-                              _getEmptyChartText(),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: palette.textSecondary,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                                height: 1.4,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else ...[
-                    SizedBox(
-                      height: 300,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.center,
-                        children: [
-                          PieChart(
-                            PieChartData(
-                              centerSpaceRadius: 60,
-                              sectionsSpace: 3,
-                              startDegreeOffset: -90,
-                              borderData: FlBorderData(show: false),
-                              pieTouchData: PieTouchData(enabled: true),
-                              sections: categoryEntries.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final item = entry.value;
-                                final color = categoryColorMap[item.key] ??
-                                    _fallbackCategoryColor(item.key, index);
-
-                                return PieChartSectionData(
-                                  value: item.value,
-                                  color: color,
-                                  radius: 35,
-                                  showTitle: false,
-                                );
-                              }).toList(),
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: IgnorePointer(
-                              child: CustomPaint(
-                                painter: _CategoryLeaderLinePainter(
-                                  entries: categoryEntries,
-                                  categoryColorMap: categoryColorMap,
-                                  fallbackColor: _fallbackCategoryColor,
-                                  localizedCategory: _localizedCategoryLabel,
-                                  getRawPercent: (val) =>
-                                      _getRawPercent(val, categoryEntries),
-                                  formatPercent: _formatPercent,
-                                  textPrimary: palette.textPrimary,
-                                  outerRadius: 95,
-                                ),
-                              ),
-                            ),
-                          ),
-                          _ChartCenterInfo(
-                            title: isExpense
-                                ? context.l10n.totalExpenseLabel
-                                : context.l10n.totalIncomeLabel,
-                            amount: money(currentTotal),
-                            accent: mainColor,
-                            palette: palette,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 8),
-
-                    Column(
-                      children: categoryEntries.asMap().entries.map((entry) {
-                        final index = entry.key;
-                        final item = entry.value;
-                        final rawPercent =
-                            _getRawPercent(item.value, categoryEntries);
-                        final percentText = _formatPercent(rawPercent);
-
-                        final color = categoryColorMap[item.key] ??
-                            _fallbackCategoryColor(item.key, index);
-
-                        return _ChartLegendTile(
-                          color: color,
-                          title: _localizedCategoryLabel(item.key),
-                          percentText: percentText,
-                          rawPercent: rawPercent,
-                          amount: money(item.value),
-                          palette: palette,
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ],
-              ),
-            ),
 
             const SizedBox(height: 18),
 
@@ -1398,54 +1241,515 @@ class _SafeMapPanel extends StatelessWidget {
   }
 }
 
-class _ChartCenterInfo extends StatelessWidget {
-  final String title;
-  final String amount;
-  final Color accent;
+class _InteractiveStatsPieChartCard extends StatefulWidget {
+  final List<MapEntry<String, double>> categoryEntries;
+  final Map<String, Color> categoryColorMap;
+  final Color Function(String, int) fallbackCategoryColor;
+  final String Function(String) localizedCategoryLabel;
+  final double Function(double) getRawPercent;
+  final String Function(double) formatPercent;
+  final String Function(double) money;
+  final bool isExpense;
+  final double currentTotal;
+  final Color mainColor;
   final _StatsPalette palette;
+  final String chartTitle;
+  final String periodTitle;
+  final String emptyChartText;
 
-  const _ChartCenterInfo({
-    required this.title,
-    required this.amount,
-    required this.accent,
+  const _InteractiveStatsPieChartCard({
+    required this.categoryEntries,
+    required this.categoryColorMap,
+    required this.fallbackCategoryColor,
+    required this.localizedCategoryLabel,
+    required this.getRawPercent,
+    required this.formatPercent,
+    required this.money,
+    required this.isExpense,
+    required this.currentTotal,
+    required this.mainColor,
     required this.palette,
+    required this.chartTitle,
+    required this.periodTitle,
+    required this.emptyChartText,
   });
 
   @override
+  State<_InteractiveStatsPieChartCard> createState() =>
+      _InteractiveStatsPieChartCardState();
+}
+
+class _InteractiveStatsPieChartCardState
+    extends State<_InteractiveStatsPieChartCard>
+    with SingleTickerProviderStateMixin {
+  int _touchedPieIndex = -1;
+  late AnimationController _lineAnimController;
+  late Animation<double> _lineAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _lineAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
+    );
+    _lineAnimation = CurvedAnimation(
+      parent: _lineAnimController,
+      curve: Curves.easeOutCubic,
+    );
+    _lineAnimController.forward();
+  }
+
+  bool _areEntriesEqual(
+    List<MapEntry<String, double>> a,
+    List<MapEntry<String, double>> b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].key != b[i].key || (a[i].value - b[i].value).abs() > 0.001) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  @override
+  void didUpdateWidget(covariant _InteractiveStatsPieChartCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!_areEntriesEqual(oldWidget.categoryEntries, widget.categoryEntries) ||
+        oldWidget.isExpense != widget.isExpense ||
+        oldWidget.periodTitle != widget.periodTitle) {
+      _touchedPieIndex = -1;
+      _lineAnimController.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _lineAnimController.dispose();
+    super.dispose();
+  }
+
+  void _handleSectionTap(int index) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_touchedPieIndex == index) {
+        _touchedPieIndex = -1;
+        _lineAnimController.forward(from: 0.0);
+      } else {
+        _touchedPieIndex = index;
+        _lineAnimController.forward(from: 0.0);
+      }
+    });
+  }
+
+  void _resetSelection() {
+    if (_touchedPieIndex != -1) {
+      HapticFeedback.selectionClick();
+      setState(() {
+        _touchedPieIndex = -1;
+        _lineAnimController.forward(from: 0.0);
+      });
+    }
+  }
+
+  void _processDirectTap(
+    Offset localPosition,
+    Offset center,
+    List<MapEntry<String, double>> entries,
+  ) {
+    final dx = localPosition.dx - center.dx;
+    final dy = localPosition.dy - center.dy;
+    final distance = math.sqrt(dx * dx + dy * dy);
+
+    // Chạm vào tâm lỗ tròn (< 48px) -> reset về mặc định
+    if (distance < 48) {
+      _resetSelection();
+      return;
+    }
+
+    // Chạm vào vành bánh hoặc vùng nhãn (48px -> 140px)
+    if (distance >= 48 && distance <= 140) {
+      double angle = math.atan2(dy, dx);
+      double normalizedAngle = angle - (-math.pi / 2);
+      while (normalizedAngle < 0) {
+        normalizedAngle += 2 * math.pi;
+      }
+      while (normalizedAngle >= 2 * math.pi) {
+        normalizedAngle -= 2 * math.pi;
+      }
+
+      final total = entries.fold<double>(0, (sum, e) => sum + e.value);
+      if (total > 0) {
+        double accum = 0;
+        for (int i = 0; i < entries.length; i++) {
+          final sweep = (entries[i].value / total) * (2 * math.pi);
+          if (normalizedAngle >= accum && normalizedAngle < accum + sweep) {
+            _handleSectionTap(i);
+            return;
+          }
+          accum += sweep;
+        }
+      }
+    } else {
+      _resetSelection();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final palette = widget.palette;
+    final entries = widget.categoryEntries;
+    final colorMap = widget.categoryColorMap;
+    final fallbackColor = widget.fallbackCategoryColor;
+    final localized = widget.localizedCategoryLabel;
+    final isExpense = widget.isExpense;
+    final mainColor = widget.mainColor;
+
     return Container(
-      width: 112,
-      height: 112,
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
         color: palette.cardBackground,
-        border: Border.all(
-          color: accent.withValues(alpha: 0.16),
-          width: 1.2,
-        ),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: palette.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: accent.withValues(alpha: 0.08),
+            color: Colors.black.withValues(
+              alpha: Theme.of(context).brightness == Brightness.dark ? 0.18 : 0.045,
+            ),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  widget.chartTitle,
+                  style: TextStyle(
+                    color: palette.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: mainColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(
+                    color: mainColor.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Text(
+                  widget.periodTitle,
+                  style: TextStyle(
+                    color: mainColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+
+          if (entries.isEmpty)
+            SizedBox(
+              height: 260,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 72,
+                      height: 72,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: palette.innerTileBackground,
+                        border: Border.all(color: palette.innerTileBorder),
+                      ),
+                      child: Icon(
+                        Icons.pie_chart_outline_rounded,
+                        color: palette.textSecondary,
+                        size: 34,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      widget.emptyChartText,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: palette.textSecondary,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
+            SizedBox(
+              height: 280,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final center = Offset(constraints.maxWidth / 2, 140.0);
+                  return GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTapDown: (details) => _processDirectTap(
+                      details.localPosition,
+                      center,
+                      entries,
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        PieChart(
+                          PieChartData(
+                            centerSpaceRadius: 52,
+                            sectionsSpace: 3,
+                            startDegreeOffset: -90,
+                            borderData: FlBorderData(show: false),
+                            pieTouchData: PieTouchData(
+                              enabled: true,
+                              touchCallback: (event, pieTouchResponse) {
+                                if (!event.isInterestedForInteractions) return;
+                                if (event is FlTapUpEvent ||
+                                    event is FlTapDownEvent) {
+                                  if (pieTouchResponse != null &&
+                                      pieTouchResponse.touchedSection != null) {
+                                    final touchedIndex = pieTouchResponse
+                                        .touchedSection!.touchedSectionIndex;
+                                    if (touchedIndex >= 0 &&
+                                        touchedIndex < entries.length) {
+                                      _handleSectionTap(touchedIndex);
+                                    }
+                                  }
+                                }
+                              },
+                            ),
+                            sections: entries.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final item = entry.value;
+                              final color = colorMap[item.key] ??
+                                  fallbackColor(item.key, index);
+
+                              final isSelected = _touchedPieIndex == index;
+                              final isAnySelected = _touchedPieIndex != -1;
+
+                              final double radius;
+                              final Color sectionColor;
+                              final BorderSide borderSide;
+
+                              if (isSelected) {
+                                radius = 40;
+                                sectionColor = color;
+                                borderSide = const BorderSide(
+                                  color: Colors.white,
+                                  width: 2.5,
+                                );
+                              } else if (isAnySelected) {
+                                radius = 26;
+                                sectionColor = color.withValues(alpha: 0.22);
+                                borderSide = BorderSide.none;
+                              } else {
+                                radius = 30;
+                                sectionColor = color;
+                                borderSide = BorderSide.none;
+                              }
+
+                              return PieChartSectionData(
+                                value: item.value,
+                                color: sectionColor,
+                                radius: radius,
+                                borderSide: borderSide,
+                                showTitle: false,
+                              );
+                            }).toList(),
+                          ),
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutCubic,
+                        ),
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: AnimatedBuilder(
+                              animation: _lineAnimation,
+                              builder: (context, child) {
+                                return CustomPaint(
+                                  painter: _CategoryLeaderLinePainter(
+                                    entries: entries,
+                                    categoryColorMap: colorMap,
+                                    fallbackColor: fallbackColor,
+                                    localizedCategory: localized,
+                                    getRawPercent: widget.getRawPercent,
+                                    formatPercent: widget.formatPercent,
+                                    textPrimary: palette.textPrimary,
+                                    outerRadius: 82,
+                                    animationProgress: _lineAnimation.value,
+                                    selectedCategoryKey: (_touchedPieIndex >=
+                                                0 &&
+                                            _touchedPieIndex < entries.length)
+                                        ? entries[_touchedPieIndex].key
+                                        : null,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                        IgnorePointer(
+                          child: _ChartCenterInfo(
+                            title: (_touchedPieIndex >= 0 &&
+                                    _touchedPieIndex < entries.length)
+                                ? localized(entries[_touchedPieIndex].key)
+                                : (isExpense
+                                    ? context.l10n.totalExpenseLabel
+                                    : context.l10n.totalIncomeLabel),
+                            amount: (_touchedPieIndex >= 0 &&
+                                    _touchedPieIndex < entries.length)
+                                ? widget.money(entries[_touchedPieIndex].value)
+                                : widget.money(widget.currentTotal),
+                            percentText: (_touchedPieIndex >= 0 &&
+                                    _touchedPieIndex < entries.length)
+                                ? widget.formatPercent(widget.getRawPercent(
+                                    entries[_touchedPieIndex].value,
+                                  ))
+                                : null,
+                            accent: (_touchedPieIndex >= 0 &&
+                                    _touchedPieIndex < entries.length)
+                                ? (colorMap[entries[_touchedPieIndex].key] ??
+                                    fallbackColor(
+                                        entries[_touchedPieIndex].key,
+                                        _touchedPieIndex))
+                                : mainColor,
+                            palette: palette,
+                            isSelected: _touchedPieIndex >= 0 &&
+                                _touchedPieIndex < entries.length,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Column(
+              children: entries.asMap().entries.map((entry) {
+                final index = entry.key;
+                final item = entry.value;
+                final rawPercent = widget.getRawPercent(item.value);
+                final percentText = widget.formatPercent(rawPercent);
+
+                final color =
+                    colorMap[item.key] ?? fallbackColor(item.key, index);
+
+                return _ChartLegendTile(
+                  color: color,
+                  title: localized(item.key),
+                  percentText: percentText,
+                  rawPercent: rawPercent,
+                  amount: widget.money(item.value),
+                  palette: palette,
+                  isSelected: _touchedPieIndex == index,
+                  isAnySelected: _touchedPieIndex != -1,
+                  onTap: () => _handleSectionTap(index),
+                );
+              }).toList(),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartCenterInfo extends StatelessWidget {
+  final String title;
+  final String amount;
+  final String? percentText;
+  final Color accent;
+  final _StatsPalette palette;
+  final bool isSelected;
+
+  const _ChartCenterInfo({
+    required this.title,
+    required this.amount,
+    this.percentText,
+    required this.accent,
+    required this.palette,
+    this.isSelected = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      width: 98,
+      height: 98,
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: palette.cardBackground,
+        border: Border.all(
+          color: isSelected
+              ? accent.withValues(alpha: 0.85)
+              : accent.withValues(alpha: 0.16),
+          width: isSelected ? 2.0 : 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: isSelected ? 0.20 : 0.08),
+            blurRadius: isSelected ? 18 : 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          if (isSelected && percentText != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                percentText!,
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+          ],
           Text(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
-              color: palette.textSecondary,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
+              color: isSelected ? accent : palette.textSecondary,
+              fontSize: isSelected ? 11.0 : 10.5,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
             ),
           ),
-          const SizedBox(height: 3),
+          const SizedBox(height: 1),
           Text(
             amount,
             maxLines: 2,
@@ -1453,11 +1757,20 @@ class _ChartCenterInfo extends StatelessWidget {
             textAlign: TextAlign.center,
             style: TextStyle(
               color: palette.textPrimary,
-              fontSize: 13,
+              fontSize: isSelected ? 11.5 : 12.0,
               fontWeight: FontWeight.w900,
               height: 1.15,
             ),
           ),
+          if (isSelected)
+            Padding(
+              padding: const EdgeInsets.only(top: 1),
+              child: Icon(
+                Icons.close_rounded,
+                size: 10,
+                color: palette.textSecondary.withValues(alpha: 0.6),
+              ),
+            ),
         ],
       ),
     );
@@ -1501,6 +1814,8 @@ class _CategoryLeaderLinePainter extends CustomPainter {
   final String Function(double) formatPercent;
   final Color textPrimary;
   final double outerRadius;
+  final double animationProgress;
+  final String? selectedCategoryKey;
 
   _CategoryLeaderLinePainter({
     required this.entries,
@@ -1511,11 +1826,13 @@ class _CategoryLeaderLinePainter extends CustomPainter {
     required this.formatPercent,
     required this.textPrimary,
     required this.outerRadius,
+    this.animationProgress = 1.0,
+    this.selectedCategoryKey,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (entries.isEmpty) return;
+    if (entries.isEmpty || animationProgress <= 0.0) return;
 
     final center = Offset(size.width / 2, size.height / 2);
     final total = entries.fold<double>(0, (sum, e) => sum + e.value);
@@ -1524,14 +1841,20 @@ class _CategoryLeaderLinePainter extends CustomPainter {
     double currentAngle = -math.pi / 2;
     const double totalAngle = 2 * math.pi;
 
-    // Hiển thị tối đa 4 lát bánh lớn nhất (>= 1.5%) để biểu đồ thoáng mắt và rõ ràng
-    final majorEntries =
-        entries.where((e) => getRawPercent(e.value) >= 1.5).take(4).toList();
-    final displayedEntries =
-        majorEntries.isNotEmpty ? majorEntries : entries.take(3).toList();
+    // Nếu có lát đang được chọn: CHỈ hiển thị và chạy hiệu ứng cho riêng lát đó
+    // Nếu ở chế độ mặc định: hiển thị tối đa 4 lát bánh lớn nhất
+    final List<MapEntry<String, double>> displayedEntries;
+    if (selectedCategoryKey != null) {
+      displayedEntries =
+          entries.where((e) => e.key == selectedCategoryKey).toList();
+    } else {
+      final majorEntries =
+          entries.where((e) => getRawPercent(e.value) >= 1.5).take(4).toList();
+      displayedEntries =
+          List.from(majorEntries.isNotEmpty ? majorEntries : entries.take(3));
+    }
 
-    const double clearGap = 8.0; // Khoảng đệm tia hướng tâm ngoài lát bánh
-    final double clearRadius = outerRadius + clearGap;
+    final double clearRadius = outerRadius + 6.0;
     final List<_CalloutPoint> rawPoints = [];
 
     for (int i = 0; i < entries.length; i++) {
@@ -1555,26 +1878,28 @@ class _CategoryLeaderLinePainter extends CustomPainter {
         final cosVal = math.cos(midAngle);
         final sinVal = math.sin(midAngle);
 
-        // Phân loại bên trái / bên phải cân đối và thông minh
-        final bool isRight = cosVal > 0.02 ||
-            (midAngle >= -math.pi / 2 - 0.20 && midAngle <= math.pi / 2);
+        final bool isRight = cosVal >= 0;
+        final bool isSelected = selectedCategoryKey != null &&
+            entry.key == selectedCategoryKey;
 
-        // 1. Điểm bắt đầu: Luôn nằm chính xác trên mép ngoài của lát bánh
+        final double sliceOuterRadius = isSelected ? outerRadius + 6 : outerRadius;
         final startPoint = Offset(
-          center.dx + outerRadius * cosVal,
-          center.dy + outerRadius * sinVal,
+          center.dx + sliceOuterRadius * cosVal,
+          center.dy + sliceOuterRadius * sinVal,
         );
 
-        final preferredY = center.dy + clearRadius * sinVal;
+        final preferredY = center.dy + (clearRadius + 4) * sinVal;
 
         final textSpan = TextSpan(
           children: [
             TextSpan(
               text: '${localizedCategory(entry.key)}\n',
               style: TextStyle(
-                color: textPrimary.withValues(alpha: 0.90),
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
+                color: isSelected
+                    ? color
+                    : textPrimary.withValues(alpha: 0.90),
+                fontSize: 11.0,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w700,
                 height: 1.15,
               ),
             ),
@@ -1582,7 +1907,7 @@ class _CategoryLeaderLinePainter extends CustomPainter {
               text: formatPercent(rawPercent),
               style: TextStyle(
                 color: color,
-                fontSize: 12.5,
+                fontSize: isSelected ? 12.0 : 11.0,
                 fontWeight: FontWeight.w900,
                 height: 1.2,
               ),
@@ -1596,7 +1921,7 @@ class _CategoryLeaderLinePainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         );
 
-        textPainter.layout(maxWidth: 95.0);
+        textPainter.layout(maxWidth: 80.0);
 
         rawPoints.add(_CalloutPoint(
           label: localizedCategory(entry.key),
@@ -1627,40 +1952,28 @@ class _CategoryLeaderLinePainter extends CustomPainter {
     _resolveVerticalCollisions(leftPoints, size.height);
     _resolveVerticalCollisions(rightPoints, size.height);
 
-    // Tính toán toạ độ đường nối chạy hoàn toàn bên ngoài chu vi bánh donut
     for (final item in rawPoints) {
       final isRight = item.isRightSide;
-      final double normalizedY =
-          ((item.targetY - center.dy) / clearRadius).clamp(-0.95, 0.95);
-
-      final double targetAngle;
-      if (isRight) {
-        targetAngle = math.asin(normalizedY);
-      } else {
-        targetAngle = normalizedY < 0
-            ? -math.pi - math.asin(normalizedY)
-            : math.pi - math.asin(normalizedY);
-      }
-
-      final arcEndPoint = Offset(
-        center.dx + clearRadius * math.cos(targetAngle),
-        center.dy + clearRadius * math.sin(targetAngle),
-      );
-
       final double elbowX = isRight
-          ? arcEndPoint.dx + 12.0
-          : arcEndPoint.dx - 12.0;
+          ? math.min(center.dx + 96.0, size.width - 64.0)
+          : math.max(center.dx - 96.0, 64.0);
 
       item.elbowPoint = Offset(elbowX, item.targetY);
-      item.textAnchor = Offset(elbowX + (isRight ? 8.0 : -8.0), item.targetY);
+      item.textAnchor = Offset(elbowX + (isRight ? 6.0 : -6.0), item.targetY);
+
+      final bool isSelected = selectedCategoryKey != null &&
+          item.label == localizedCategory(selectedCategoryKey!);
+      final bool isDimmed =
+          selectedCategoryKey != null && !isSelected;
 
       _drawRoutedCallout(
         canvas: canvas,
         size: size,
         center: center,
         clearRadius: clearRadius,
-        targetAngle: targetAngle,
         item: item,
+        isSelected: isSelected,
+        isDimmed: isDimmed,
       );
     }
   }
@@ -1668,9 +1981,9 @@ class _CategoryLeaderLinePainter extends CustomPainter {
   void _resolveVerticalCollisions(List<_CalloutPoint> items, double canvasHeight) {
     if (items.length <= 1) return;
 
-    const double minGap = 36.0; // Khoảng cách an toàn giữa 2 nhãn chữ
-    const double minY = 20.0;
-    final double maxY = canvasHeight - 20.0;
+    const double minGap = 34.0; // Khoảng cách an toàn giữa 2 nhãn chữ
+    const double minY = 18.0;
+    final double maxY = canvasHeight - 18.0;
 
     // Lượt 1: Đẩy xuống từ trên xuống dưới
     for (int i = 1; i < items.length; i++) {
@@ -1708,20 +2021,20 @@ class _CategoryLeaderLinePainter extends CustomPainter {
     required Size size,
     required Offset center,
     required double clearRadius,
-    required double targetAngle,
     required _CalloutPoint item,
+    required bool isSelected,
+    required bool isDimmed,
   }) {
+    if (animationProgress <= 0.0) return;
+
+    final double lineOpacity = (isDimmed ? 0.20 : 1.0).clamp(0.0, 1.0);
+
     final linePaint = Paint()
-      ..color = item.color
-      ..strokeWidth = 1.4
+      ..color = item.color.withValues(alpha: lineOpacity)
+      ..strokeWidth = isSelected ? 2.0 : 1.3
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..isAntiAlias = true;
-
-    final dotPaint = Paint()
-      ..color = item.color
-      ..style = PaintingStyle.fill
       ..isAntiAlias = true;
 
     final path = Path();
@@ -1733,54 +2046,95 @@ class _CategoryLeaderLinePainter extends CustomPainter {
     final stemY = center.dy + clearRadius * math.sin(item.midAngle);
     path.lineTo(stemX, stemY);
 
-    // 3. Đường uốn lượn chạy quanh chu vi ngoài biểu đồ (không bao giờ xuyên tâm hay cắt lát bánh)
-    double sweep = targetAngle - item.midAngle;
-    while (sweep > math.pi) {
-      sweep -= 2 * math.pi;
-    }
-    while (sweep < -math.pi) {
-      sweep += 2 * math.pi;
-    }
-
-    if (sweep.abs() > 0.06) {
-      final rect = Rect.fromCircle(center: center, radius: clearRadius);
-      path.arcTo(rect, item.midAngle, sweep, false);
-    }
-
-    // 4. Đoạn gấp khúc ngang hướng về nhãn
+    // 3. Đoạn gấp khúc ngang hướng về nhãn
     path
       ..lineTo(item.elbowPoint.dx, item.elbowPoint.dy)
       ..lineTo(item.textAnchor.dx, item.textAnchor.dy);
 
-    canvas.drawPath(path, linePaint);
-    canvas.drawCircle(item.elbowPoint, 2.5, dotPaint);
-
-    final textPainter = item.textPainter;
-
-    double textX = item.isRightSide
-        ? item.textAnchor.dx + 4
-        : item.textAnchor.dx - 4 - textPainter.width;
-
-    if (item.isRightSide) {
-      if (textX + textPainter.width > size.width - 2.0) {
-        textX = size.width - 2.0 - textPainter.width;
-      }
-    } else {
-      if (textX < 2.0) {
-        textX = 2.0;
+    // Giai đoạn 1: Vẽ thân đường dẫn (0.0 -> 0.65)
+    final double lineProgress = (animationProgress / 0.65).clamp(0.0, 1.0);
+    if (lineProgress > 0.01) {
+      if (lineProgress < 0.999) {
+        for (final metric in path.computeMetrics()) {
+          final extractLen = metric.length * lineProgress;
+          final animatedSubPath = metric.extractPath(0, extractLen);
+          canvas.drawPath(animatedSubPath, linePaint);
+        }
+      } else {
+        canvas.drawPath(path, linePaint);
       }
     }
 
-    final double textY = item.targetY - (textPainter.height / 2);
+    // Giai đoạn 2: Chấm tròn elbow dot mọc ra và bung nở (0.30 -> 0.70)
+    if (animationProgress > 0.30) {
+      final dotProgress = ((animationProgress - 0.30) / 0.40).clamp(0.0, 1.0);
+      final double dotRadius = (isSelected ? 3.6 : 2.4) * dotProgress;
+      final dotPaint = Paint()
+        ..color = item.color.withValues(alpha: lineOpacity * dotProgress)
+        ..style = PaintingStyle.fill
+        ..isAntiAlias = true;
+      canvas.drawCircle(item.elbowPoint, dotRadius, dotPaint);
 
-    textPainter.paint(canvas, Offset(textX, textY));
+      if (isSelected) {
+        final ringPaint = Paint()
+          ..color = item.color.withValues(alpha: 0.35 * dotProgress)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..isAntiAlias = true;
+        canvas.drawCircle(item.elbowPoint, dotRadius + 3.0, ringPaint);
+      }
+    }
+
+    // Giai đoạn 3: Nhãn chữ (Text + %) trượt nhẹ từ tâm ra và mờ dần vào vị trí (0.45 -> 1.0)
+    if (animationProgress > 0.45) {
+      final textProgress = ((animationProgress - 0.45) / 0.55).clamp(0.0, 1.0);
+      final textPainter = item.textPainter;
+
+      final double slideOffset =
+          (1.0 - textProgress) * (item.isRightSide ? -6.0 : 6.0);
+
+      double textX = item.isRightSide
+          ? item.textAnchor.dx + 4 + slideOffset
+          : item.textAnchor.dx - 4 - textPainter.width + slideOffset;
+
+      if (item.isRightSide) {
+        if (textX + textPainter.width > size.width - 2.0) {
+          textX = size.width - 2.0 - textPainter.width;
+        }
+      } else {
+        if (textX < 2.0) {
+          textX = 2.0;
+        }
+      }
+
+      final double textY = item.targetY - (textPainter.height / 2);
+      final effectiveTextAlpha = (isDimmed ? 0.22 : 1.0) * textProgress;
+
+      if (effectiveTextAlpha < 0.99) {
+        canvas.saveLayer(
+          Rect.fromLTWH(
+            textX - 2,
+            textY - 2,
+            textPainter.width + 4,
+            textPainter.height + 4,
+          ),
+          Paint()..color = Color.fromRGBO(255, 255, 255, effectiveTextAlpha),
+        );
+        textPainter.paint(canvas, Offset(textX, textY));
+        canvas.restore();
+      } else {
+        textPainter.paint(canvas, Offset(textX, textY));
+      }
+    }
   }
 
   @override
   bool shouldRepaint(covariant _CategoryLeaderLinePainter oldDelegate) {
     return oldDelegate.entries != entries ||
         oldDelegate.categoryColorMap != categoryColorMap ||
-        oldDelegate.textPrimary != textPrimary;
+        oldDelegate.textPrimary != textPrimary ||
+        oldDelegate.animationProgress != animationProgress ||
+        oldDelegate.selectedCategoryKey != selectedCategoryKey;
   }
 }
 
@@ -1791,6 +2145,9 @@ class _ChartLegendTile extends StatelessWidget {
   final double rawPercent;
   final String amount;
   final _StatsPalette palette;
+  final bool isSelected;
+  final bool isAnySelected;
+  final VoidCallback? onTap;
 
   const _ChartLegendTile({
     required this.color,
@@ -1799,92 +2156,112 @@ class _ChartLegendTile extends StatelessWidget {
     required this.rawPercent,
     required this.amount,
     required this.palette,
+    this.isSelected = false,
+    this.isAnySelected = false,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      decoration: BoxDecoration(
-        color: palette.innerTileBackground,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.innerTileBorder),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.14),
-              shape: BoxShape.circle,
+    final double opacity = (isAnySelected && !isSelected) ? 0.45 : 1.0;
+
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: opacity,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withValues(alpha: 0.10)
+                : palette.innerTileBackground,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: isSelected
+                  ? color.withValues(alpha: 0.60)
+                  : palette.innerTileBorder,
+              width: isSelected ? 1.5 : 1.0,
             ),
-            child: Center(
-              child: Container(
-                width: 13,
-                height: 13,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
-                  color: color,
+                  color: color.withOpacity(0.14),
                   shape: BoxShape.circle,
                 ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: palette.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
+                child: Center(
+                  child: Container(
+                    width: 13,
+                    height: 13,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 5),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    value: (rawPercent / 100).clamp(0.0, 1.0),
-                    minHeight: 5,
-                    backgroundColor: color.withOpacity(0.10),
-                    valueColor: AlwaysStoppedAnimation<Color>(color),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                percentText,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w900,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: palette.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: (rawPercent / 100).clamp(0.0, 1.0),
+                        minHeight: 5,
+                        backgroundColor: color.withOpacity(0.10),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                amount,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: palette.textSecondary,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    percentText,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    amount,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: palette.textSecondary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }

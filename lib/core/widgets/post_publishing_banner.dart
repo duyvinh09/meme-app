@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/post_publishing_service.dart';
@@ -11,11 +10,10 @@ class PostPublishingBannerHost extends StatefulWidget {
 }
 
 class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _animController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
-  late AnimationController _progressController;
 
   @override
   void initState() {
@@ -23,11 +21,6 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 360),
-    );
-
-    _progressController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3200),
     );
 
     _slideAnimation = Tween<Offset>(
@@ -50,7 +43,6 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
   void dispose() {
     PostPublishingService.instance.removeListener(_handleStateChange);
     _animController.dispose();
-    _progressController.dispose();
     super.dispose();
   }
 
@@ -64,27 +56,11 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
         HapticFeedback.lightImpact();
         _animController.forward();
       }
-
-      if (service.isUploading) {
-        _progressController.reset();
-        _progressController.animateTo(
-          0.88,
-          duration: const Duration(milliseconds: 3200),
-          curve: Curves.easeOutCubic,
-        );
-      } else if (service.isSuccess) {
-        _progressController.animateTo(
-          1.0,
-          duration: const Duration(milliseconds: 350),
-          curve: Curves.easeOut,
-        );
-      }
       setState(() {});
     } else {
       if (_animController.isCompleted || _animController.isAnimating) {
         _animController.reverse().then((_) {
           if (mounted) {
-            _progressController.reset();
             setState(() {});
           }
         });
@@ -142,77 +118,52 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(25),
-                  child: Stack(
-                    children: [
-                      // Full background progress bar fill during upload & success
-                      if (service.isUploading || service.isSuccess)
-                        Positioned.fill(
-                          child: AnimatedBuilder(
-                            animation: _progressController,
-                            builder: (context, _) {
-                              return FractionallySizedBox(
-                                alignment: Alignment.centerLeft,
-                                widthFactor: _progressController.value.clamp(0.0, 1.0),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: isDark
-                                        ? const Color(0xFF383C4A).withValues(alpha: 0.65)
-                                        : const Color(0xFF333846).withValues(alpha: 0.70),
-                                  ),
-                                ),
-                              );
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        // Status Icon & Status Text
+                        Expanded(
+                          child: _buildStatusSection(service, isEn),
+                        ),
+
+                        const SizedBox(width: 12),
+
+                        // Media Thumbnail with Paperclip
+                        _buildMediaThumbnailWithClip(service),
+
+                        // "Xem" action button when success
+                        if (service.isSuccess) ...[
+                          const SizedBox(width: 14),
+                          GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              service.viewPost();
                             },
-                          ),
-                        ),
-
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          children: [
-                            // Status Icon & Status Text
-                            Expanded(
-                              child: _buildStatusSection(service, isEn),
-                            ),
-
-                            const SizedBox(width: 12),
-
-                            // Media Thumbnail with Paperclip
-                            _buildMediaThumbnailWithClip(service),
-
-                            // "Xem" action button when success
-                            if (service.isSuccess) ...[
-                              const SizedBox(width: 14),
-                              GestureDetector(
-                                onTap: () {
-                                  HapticFeedback.selectionClick();
-                                  service.viewPost();
-                                },
-                                behavior: HitTestBehavior.opaque,
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 4,
-                                    vertical: 6,
-                                  ),
-                                  child: Text(
-                                    isEn ? 'View' : 'Xem',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w700,
-                                      letterSpacing: -0.2,
-                                    ),
-                                  ),
+                            behavior: HitTestBehavior.opaque,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                                vertical: 6,
+                              ),
+                              child: Text(
+                                isEn ? 'View' : 'Xem',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.2,
                                 ),
                               ),
-                              const SizedBox(width: 2),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                        ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -229,7 +180,14 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const _RotatingSpinnerIcon(size: 20),
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
             const SizedBox(width: 12),
             Flexible(
               child: Text(
@@ -249,7 +207,14 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _RotatingSpinnerIcon(size: 20),
+          const SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -431,81 +396,6 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
       ),
     );
   }
-}
-
-class _RotatingSpinnerIcon extends StatefulWidget {
-  final double size;
-  const _RotatingSpinnerIcon({this.size = 20});
-
-  @override
-  State<_RotatingSpinnerIcon> createState() => _RotatingSpinnerIconState();
-}
-
-class _RotatingSpinnerIconState extends State<_RotatingSpinnerIcon>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _spinnerController;
-
-  @override
-  void initState() {
-    super.initState();
-    _spinnerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _spinnerController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RotationTransition(
-      turns: _spinnerController,
-      child: CustomPaint(
-        size: Size(widget.size, widget.size),
-        painter: _SpinnerArcPainter(),
-      ),
-    );
-  }
-}
-
-class _SpinnerArcPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width - 3.5) / 2;
-
-    final backgroundPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.18)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.4;
-
-    canvas.drawCircle(center, radius, backgroundPaint);
-
-    final sweepGradient = SweepGradient(
-      colors: [
-        Colors.white.withValues(alpha: 0.0),
-        Colors.white.withValues(alpha: 0.6),
-        Colors.white,
-      ],
-      stops: const [0.0, 0.6, 1.0],
-    );
-
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    final arcPaint = Paint()
-      ..shader = sweepGradient.createShader(rect)
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = 2.4;
-
-    canvas.drawArc(rect, 0.0, math.pi * 1.5, false, arcPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class PaperclipWidget extends StatelessWidget {

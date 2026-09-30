@@ -495,9 +495,10 @@ class ChatController extends ChangeNotifier {
   Stream<List<ChatMessageModel>> messagesStream({
     required String myUid,
     required String friendUid,
+    int limit = 40,
   }) {
     final chatId = ChatRepository.getChatId(myUid, friendUid);
-    return _chatRepository.getMessagesStream(chatId);
+    return _chatRepository.getMessagesStream(chatId, limit: limit);
   }
 
   Stream<List<PostReactionModel>> postReactionsStream(String postId) {
