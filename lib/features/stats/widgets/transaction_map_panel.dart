@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,8 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
+
+import '../screens/transaction_map_screen.dart';
 
 String _localizedTransactionCategory(BuildContext context, String category) {
   final l10n = context.l10n;
@@ -49,10 +52,18 @@ String _localizedTransactionCategory(BuildContext context, String category) {
 
 class TransactionMapPanel extends StatefulWidget {
   final List<TransactionModel> transactions;
+  final bool isFullScreen;
+  final String? title;
+  final VoidCallback? onBack;
+  final bool showFullScreenButton;
 
   const TransactionMapPanel({
     super.key,
     required this.transactions,
+    this.isFullScreen = false,
+    this.title,
+    this.onBack,
+    this.showFullScreenButton = true,
   });
 
   @override
@@ -161,12 +172,35 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
     }
   }
 
+  void _zoomIn() {
+    final currentZoom = _mapController.camera.zoom;
+    final targetZoom = (currentZoom + 1.0).clamp(3.0, 18.0);
+    _mapController.move(_mapController.camera.center, targetZoom);
+  }
+
+  void _zoomOut() {
+    final currentZoom = _mapController.camera.zoom;
+    final targetZoom = (currentZoom - 1.0).clamp(3.0, 18.0);
+    _mapController.move(_mapController.camera.center, targetZoom);
+  }
+
+  void _openFullScreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TransactionMapScreen(
+          transactions: widget.transactions,
+          title: widget.title,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = locatedTransactions;
 
     if (items.isEmpty) {
-      return Container(
+      final emptyWidget = Container(
         padding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 34,
@@ -179,6 +213,7 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
           ),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.map_outlined,
@@ -207,6 +242,64 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
           ],
         ),
       );
+
+      if (widget.isFullScreen) {
+        return SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        if (widget.onBack != null) {
+                          widget.onBack!();
+                        } else {
+                          Navigator.maybePop(context);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: AppColors.card(context),
+                          border: Border.all(color: AppColors.border(context)),
+                        ),
+                        child: Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: AppColors.textPrimary(context),
+                          size: 19,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Text(
+                      widget.title ?? context.l10n.transactionMap,
+                      style: AppTextStyles.sectionTitle(context).copyWith(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: emptyWidget,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+
+      return emptyWidget;
     }
 
     final groups = _groupTransactionsByLocation(items);
@@ -216,10 +309,441 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
     final initialCameraFit = points.length > 1
         ? CameraFit.bounds(
             bounds: LatLngBounds.fromPoints(points),
-            padding: const EdgeInsets.fromLTRB(45, 45, 45, 100),
+            padding: widget.isFullScreen
+                ? const EdgeInsets.fromLTRB(45, 90, 45, 120)
+                : const EdgeInsets.fromLTRB(45, 45, 45, 100),
             maxZoom: 15.0,
           )
         : null;
+
+    final mapContent = Stack(
+      children: [
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCameraFit: initialCameraFit,
+            initialCenter: center,
+            initialZoom: 14.0,
+            minZoom: 3,
+            maxZoom: 18,
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all,
+            ),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.duyvinh09.memeapp',
+            ),
+            MarkerLayer(
+              markers: groups.map((group) {
+                return Marker(
+                  point: LatLng(group.latitude, group.longitude),
+                  width: group.count > 1 ? 92 : 68,
+                  height: group.count > 1 ? 82 : 68,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (group.count == 1) {
+                        _showTransactionBottomSheet(
+                          context,
+                          group.transactions.first,
+                        );
+                      } else {
+                        _showLocationGroupBottomSheet(context, group);
+                      }
+                    },
+                    child: group.count == 1
+                        ? _MapMomentMarker(
+                            transaction: group.transactions.first,
+                          )
+                        : _MapMomentClusterMarker(
+                            group: group,
+                          ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+
+        // Full Screen mode overlays: Top Header Bar & Side Zoom controls
+        if (widget.isFullScreen) ...[
+          // Top Bar with Back Button, Title, and Recenter action
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: Row(
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          if (widget.onBack != null) {
+                            widget.onBack!();
+                          } else {
+                            Navigator.maybePop(context);
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.60),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.22),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            color: Colors.white,
+                            size: 19,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 11,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.60),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.22),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.25),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.map_rounded,
+                              color: Colors.white,
+                              size: 19,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                widget.title ?? context.l10n.transactionMap,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _fitAllMarkers,
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.black.withValues(alpha: 0.60),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.22),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.center_focus_strong_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Floating Zoom Controls on Right Side
+          Positioned(
+            right: 16,
+            bottom: 96,
+            child: SafeArea(
+              top: false,
+              left: false,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.60),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.22),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _zoomIn,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(11),
+                          child: Icon(
+                            Icons.add_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      height: 1,
+                      width: 32,
+                      color: Colors.white.withValues(alpha: 0.15),
+                    ),
+                    Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _zoomOut,
+                        borderRadius: const BorderRadius.vertical(
+                          bottom: Radius.circular(16),
+                        ),
+                        child: const Padding(
+                          padding: EdgeInsets.all(11),
+                          child: Icon(
+                            Icons.remove_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+
+        // Embedded mode Fullscreen button inside the map (top-right)
+        if (!widget.isFullScreen && widget.showFullScreenButton)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _openFullScreen(context),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.60),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.22),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.22),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.fullscreen_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+        // Bottom Summary Pill (compact in embedded mode, roomy in full screen mode)
+        if (widget.isFullScreen)
+          Positioned(
+            left: 14,
+            right: 14,
+            bottom: 20,
+            child: SafeArea(
+              top: false,
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _fitAllMarkers,
+                  borderRadius: BorderRadius.circular(22),
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.60),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.22),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.22),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            context.l10n.mapSummary(items.length, groups.length),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (groups.length > 1) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.center_focus_strong_rounded,
+                              color: Colors.white,
+                              size: 14,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 8,
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _fitAllMarkers,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.60),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.20),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.18),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.location_on_outlined,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          context.l10n.mapSummary(items.length, groups.length),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (groups.length > 1) ...[
+                          const SizedBox(width: 5),
+                          const Icon(
+                            Icons.center_focus_strong_rounded,
+                            color: Colors.white70,
+                            size: 11,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+
+    if (widget.isFullScreen) {
+      return SizedBox.expand(
+        child: mapContent,
+      );
+    }
 
     return Container(
       height: 430,
@@ -231,120 +755,7 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
         ),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCameraFit: initialCameraFit,
-              initialCenter: center,
-              initialZoom: 14.0,
-              minZoom: 3,
-              maxZoom: 18,
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.duyvinh09.memeapp',
-              ),
-              MarkerLayer(
-                markers: groups.map((group) {
-                  return Marker(
-                    point: LatLng(group.latitude, group.longitude),
-                    width: group.count > 1 ? 92 : 68,
-                    height: group.count > 1 ? 82 : 68,
-                    child: GestureDetector(
-                      onTap: () {
-                        if (group.count == 1) {
-                          _showTransactionBottomSheet(
-                            context,
-                            group.transactions.first,
-                          );
-                        } else {
-                          _showLocationGroupBottomSheet(context, group);
-                        }
-                      },
-                      child: group.count == 1
-                          ? _MapMomentMarker(
-                              transaction: group.transactions.first,
-                            )
-                          : _MapMomentClusterMarker(
-                              group: group,
-                            ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ],
-          ),
-
-          // Bottom Summary Pill (tapping it fits all markers!)
-          Positioned(
-            left: 14,
-            right: 14,
-            bottom: 24,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: _fitAllMarkers,
-                borderRadius: BorderRadius.circular(22),
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.20),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.location_on_outlined,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          context.l10n.mapSummary(items.length, groups.length),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      if (groups.length > 1) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.center_focus_strong_rounded,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: mapContent,
     );
   }
 
@@ -853,41 +1264,47 @@ class _LocationTransactionTile extends StatelessWidget {
           color: AppColors.innerBorder(context),
         ),
       ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 7,
-        ),
-        leading: TransactionMomentImage(
-          imageUrl: transaction.imageUrl,
-          category: transaction.category,
-          categoryIconCodePoint: transaction.categoryIconCodePoint,
-          categoryColorHex: transaction.categoryColorHex,
-          width: 52,
-          height: 52,
-          fit: BoxFit.cover,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        title: Text(
-          titleText,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.cardTitle(context).copyWith(
-            fontWeight: FontWeight.w800,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-        subtitle: Text(
-          localizedCategory,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: AppTextStyles.caption(context),
-        ),
-        trailing: Text(
-          '$sign$amountText',
-          style: TextStyle(
-            color: isExpense ? AppColors.expense : AppColors.income,
-            fontWeight: FontWeight.w900,
+          onTap: onTap,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 7,
+          ),
+          leading: TransactionMomentImage(
+            imageUrl: transaction.imageUrl,
+            category: transaction.category,
+            categoryIconCodePoint: transaction.categoryIconCodePoint,
+            categoryColorHex: transaction.categoryColorHex,
+            width: 52,
+            height: 52,
+            fit: BoxFit.cover,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: Text(
+            titleText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.cardTitle(context).copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          subtitle: Text(
+            localizedCategory,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption(context),
+          ),
+          trailing: Text(
+            '$sign$amountText',
+            style: TextStyle(
+              color: isExpense ? AppColors.expense : AppColors.income,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ),

@@ -26,6 +26,7 @@ class FriendsScreen extends StatefulWidget {
 
 class _FriendsScreenState extends State<FriendsScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
   String _activeTab = 'all'; // 'all', 'close', 'requests'
@@ -56,6 +57,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
         _displayedCount = _pageSize;
       });
     });
+    _searchFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
     _scrollController.addListener(_onScroll);
   }
 
@@ -75,6 +79,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _searchFocusNode.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -861,10 +866,13 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      body: SafeArea(
-        child: StreamBuilder<List<Map<String, dynamic>>>(
-          stream: repo.streamFriends(uid),
-          builder: (context, friendsSnapshot) {
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: StreamBuilder<List<Map<String, dynamic>>>(
+            stream: repo.streamFriends(uid),
+            builder: (context, friendsSnapshot) {
             final allFriends = friendsSnapshot.data ?? [];
 
             return StreamBuilder<List<Map<String, dynamic>>>(
@@ -1048,7 +1056,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                         // Search Bar
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: Container(
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
                             height: 48,
                             decoration: BoxDecoration(
                               color: isDark
@@ -1056,12 +1065,17 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                   : AppColors.card(context),
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: AppColors.border(context),
-                                width: 1.2,
+                                color: _searchFocusNode.hasFocus
+                                    ? AppColors.primaryBlue
+                                    : AppColors.border(context),
+                                width: _searchFocusNode.hasFocus ? 1.4 : 1.2,
                               ),
                             ),
                             child: TextField(
                               controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              cursorColor: AppColors.primaryBlue,
+                              textAlignVertical: TextAlignVertical.center,
                               style: TextStyle(
                                 color: textPrimary,
                                 fontSize: 14.5,
@@ -1077,7 +1091,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                 ),
                                 prefixIcon: Icon(
                                   Icons.search_rounded,
-                                  color: textSecondary.withValues(alpha: 0.70),
+                                  color: _searchFocusNode.hasFocus
+                                      ? AppColors.primaryBlue
+                                      : textSecondary.withValues(alpha: 0.70),
                                   size: 22,
                                 ),
                                 suffixIcon: _searchQuery.isNotEmpty
@@ -1093,6 +1109,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
                                       )
                                     : null,
                                 border: InputBorder.none,
+                                enabledBorder: InputBorder.none,
+                                focusedBorder: InputBorder.none,
+                                disabledBorder: InputBorder.none,
+                                errorBorder: InputBorder.none,
+                                focusedErrorBorder: InputBorder.none,
+                                filled: false,
+                                fillColor: Colors.transparent,
+                                isDense: true,
                                 contentPadding: const EdgeInsets.symmetric(
                                   vertical: 12,
                                 ),
@@ -1253,6 +1277,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
                               ? (filteredRequests.isEmpty
                                   ? _buildEmptyState(context)
                                   : ListView.separated(
+                                      keyboardDismissBehavior:
+                                          ScrollViewKeyboardDismissBehavior.onDrag,
                                       cacheExtent: 800,
                                       padding: const EdgeInsets.fromLTRB(
                                         20,
@@ -1301,6 +1327,8 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
                                           return ListView.separated(
                                             controller: _scrollController,
+                                            keyboardDismissBehavior:
+                                                ScrollViewKeyboardDismissBehavior.onDrag,
                                             physics:
                                                 const AlwaysScrollableScrollPhysics(
                                               parent: BouncingScrollPhysics(),
@@ -1405,8 +1433,9 @@ class _FriendsScreenState extends State<FriendsScreen> {
           },
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildFilterPill({
     required String label,

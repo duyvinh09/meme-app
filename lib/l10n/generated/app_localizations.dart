@@ -1257,6 +1257,36 @@ abstract class AppLocalizations {
   /// **'Không tìm thấy người dùng'**
   String get noUsersFound;
 
+  /// No description provided for @searchUserError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Có lỗi khi tìm kiếm'**
+  String get searchUserError;
+
+  /// No description provided for @sendFriendRequestFailed.
+  ///
+  /// In vi, this message translates to:
+  /// **'Gửi lời mời thất bại'**
+  String get sendFriendRequestFailed;
+
+  /// No description provided for @addFriendHintFind.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm bạn bè bằng username để kết nối'**
+  String get addFriendHintFind;
+
+  /// No description provided for @addFriendHintExactUsername.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhập đúng username của người bạn muốn thêm'**
+  String get addFriendHintExactUsername;
+
+  /// No description provided for @addFriendHintTrackExpense.
+  ///
+  /// In vi, this message translates to:
+  /// **'Kết nối và theo dõi chi tiêu chung'**
+  String get addFriendHintTrackExpense;
+
   /// No description provided for @sendFriendRequest.
   ///
   /// In vi, this message translates to:
@@ -1616,6 +1646,42 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Xác nhận'**
   String get confirm;
+
+  /// No description provided for @birthday.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngày sinh'**
+  String get birthday;
+
+  /// No description provided for @birthdayOptional.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngày sinh (tuỳ chọn)'**
+  String get birthdayOptional;
+
+  /// No description provided for @selectBirthday.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn ngày sinh'**
+  String get selectBirthday;
+
+  /// No description provided for @birthdayUpdatedSuccess.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã cập nhật ngày sinh thành công!'**
+  String get birthdayUpdatedSuccess;
+
+  /// No description provided for @notSet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa thiết lập'**
+  String get notSet;
+
+  /// No description provided for @setBirthday.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thiết lập'**
+  String get setBirthday;
 
   /// No description provided for @groupNotFound.
   ///
@@ -2288,6 +2354,24 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Bản đồ giao dịch'**
   String get transactionMap;
+
+  /// No description provided for @fullScreen.
+  ///
+  /// In vi, this message translates to:
+  /// **'Toàn màn hình'**
+  String get fullScreen;
+
+  /// No description provided for @openFullScreen.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mở toàn màn hình'**
+  String get openFullScreen;
+
+  /// No description provided for @fitAllMarkers.
+  ///
+  /// In vi, this message translates to:
+  /// **'Căn chỉnh bản đồ'**
+  String get fitAllMarkers;
 
   /// No description provided for @mapControl.
   ///
@@ -3542,6 +3626,18 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Bộ sưu tập'**
   String get avatarCollection;
+
+  /// No description provided for @daysUnit.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ngày'**
+  String get daysUnit;
+
+  /// No description provided for @framesUnit.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khung'**
+  String get framesUnit;
 
   /// No description provided for @framesCount.
   ///
@@ -5132,6 +5228,132 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Chi tiết hoá đơn OCR'**
   String get receiptSummaryTitle;
+
+  /// No description provided for @confirmPassword.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhập lại mật khẩu'**
+  String get confirmPassword;
+
+  /// No description provided for @passwordRequirementHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mật khẩu tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt.'**
+  String get passwordRequirementHint;
+
+  /// No description provided for @passwordNeedsLetterAndNumber.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mật khẩu cần tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt'**
+  String get passwordNeedsLetterAndNumber;
+
+  /// No description provided for @pleaseConfirmPassword.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vui lòng nhập lại mật khẩu'**
+  String get pleaseConfirmPassword;
+
+  /// No description provided for @passwordsDoNotMatch.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mật khẩu nhập lại không khớp'**
+  String get passwordsDoNotMatch;
+
+  /// No description provided for @passwordStrengthTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Độ mạnh mật khẩu: {label}'**
+  String passwordStrengthTitle(String label);
+
+  /// No description provided for @passwordStrengthNone.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa nhập mật khẩu'**
+  String get passwordStrengthNone;
+
+  /// No description provided for @passwordStrengthWeak.
+  ///
+  /// In vi, this message translates to:
+  /// **'Yếu'**
+  String get passwordStrengthWeak;
+
+  /// No description provided for @passwordStrengthMedium.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vừa'**
+  String get passwordStrengthMedium;
+
+  /// No description provided for @passwordStrengthStrong.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mạnh'**
+  String get passwordStrengthStrong;
+
+  /// No description provided for @passwordDescEmpty.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mật khẩu cần chữ thường, chữ hoa, số và ký tự đặc biệt.'**
+  String get passwordDescEmpty;
+
+  /// No description provided for @passwordDescTooShort.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt.'**
+  String get passwordDescTooShort;
+
+  /// No description provided for @passwordDescMedium.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mật khẩu hợp lệ. Thêm độ dài (từ 8 ký tự) để mạnh hơn.'**
+  String get passwordDescMedium;
+
+  /// No description provided for @passwordDescStrong.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mật khẩu rất mạnh, đầy đủ chữ hoa, thường, số và ký tự đặc biệt.'**
+  String get passwordDescStrong;
+
+  /// No description provided for @passwordDescNeedBoth.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cần có đủ chữ thường, chữ hoa, số và ký tự đặc biệt.'**
+  String get passwordDescNeedBoth;
+
+  /// No description provided for @showPassword.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hiện mật khẩu'**
+  String get showPassword;
+
+  /// No description provided for @hidePassword.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ẩn mật khẩu'**
+  String get hidePassword;
+
+  /// No description provided for @pleaseEnterEmail.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vui lòng nhập email'**
+  String get pleaseEnterEmail;
+
+  /// No description provided for @pleaseEnterUsername.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vui lòng nhập username'**
+  String get pleaseEnterUsername;
+
+  /// No description provided for @invalidUsername.
+  ///
+  /// In vi, this message translates to:
+  /// **'Username chỉ gồm chữ thường, số, dấu chấm hoặc gạch dưới, từ 3-20 ký tự'**
+  String get invalidUsername;
+
+  /// No description provided for @passwordMinLength.
+  ///
+  /// In vi, this message translates to:
+  /// **'Mật khẩu phải có ít nhất 6 ký tự'**
+  String get passwordMinLength;
 }
 
 class _AppLocalizationsDelegate

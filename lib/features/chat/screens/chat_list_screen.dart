@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -336,6 +337,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       );
                     }
                   },
+                  hoverColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
                     width: 82,
@@ -416,6 +420,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     );
                   }
                 },
+                hoverColor: Colors.transparent,
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   width: 82,
@@ -539,7 +546,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
       child: Row(
         children: [
           ...tabs.map((tab) {
@@ -553,12 +560,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                     _selectedTab = tab['key']!;
                   });
                 },
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 7.5,
+                    horizontal: 14,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: isSelected
@@ -566,7 +573,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         : (isDark
                             ? const Color(0xFF1E2430)
                             : const Color(0xFFE2E8F0)),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected
                           ? const Color(0xFF0084FF)
@@ -582,7 +589,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       color: isSelected
                           ? Colors.white
                           : (isDark ? Colors.white70 : const Color(0xFF0F172A)),
-                      fontSize: 13.5,
+                      fontSize: 12.5,
                       fontWeight:
                           isSelected ? FontWeight.w800 : FontWeight.w700,
                     ),
@@ -815,11 +822,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               ),
             ),
 
-            // STORIES / ACTIVE FRIENDS BAR
-            if (_searchQuery.isEmpty)
-              _buildActiveStoriesBar(context, myUid, isDark, userRepo),
-
-            // CONVERSATIONS STREAM
+            // SCROLLABLE AREA (Starts directly after search bar)
             Expanded(
               child: StreamBuilder<List<Map<String, dynamic>>>(
                 stream: userRepo.streamFriends(myUid),
@@ -833,205 +836,235 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: chatRepo.streamUserChats(myUid),
                     builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting &&
-                      !snapshot.hasData) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
-                  }
+                      if (snapshot.connectionState == ConnectionState.waiting &&
+                          !snapshot.hasData) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
 
-                  final docs = snapshot.data?.docs ?? [];
+                      final docs = snapshot.data?.docs ?? [];
 
-                  // Sort conversations by latest message timestamp descending
-                  final sortedDocs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(docs)
-                    ..sort((a, b) {
-                      final aTime = (a.data()['updatedAt'] as Timestamp?)?.toDate() ??
-                          DateTime.fromMillisecondsSinceEpoch(0);
-                      final bTime = (b.data()['updatedAt'] as Timestamp?)?.toDate() ??
-                          DateTime.fromMillisecondsSinceEpoch(0);
-                      return bTime.compareTo(aTime);
-                    });
+                      // Sort conversations by latest message timestamp descending
+                      final sortedDocs = List<QueryDocumentSnapshot<Map<String, dynamic>>>.from(docs)
+                        ..sort((a, b) {
+                          final aTime = (a.data()['updatedAt'] as Timestamp?)?.toDate() ??
+                              DateTime.fromMillisecondsSinceEpoch(0);
+                          final bTime = (b.data()['updatedAt'] as Timestamp?)?.toDate() ??
+                              DateTime.fromMillisecondsSinceEpoch(0);
+                          return bTime.compareTo(aTime);
+                        });
 
-                  // Filter by tab
-                  final filteredDocs = sortedDocs.where((doc) {
-                    final data = doc.data();
-                    final isGroup = data['isGroup'] == true;
-                    final unreadBy = List<String>.from(data['unreadBy'] ?? []);
-                    final lastSenderId = (data['lastSenderId'] ?? '').toString();
-                    final bool isUnread = isGroup
-                        ? unreadBy.contains(myUid)
-                        : (unreadBy.contains(myUid) ||
-                            (lastSenderId.isNotEmpty &&
-                                lastSenderId != myUid &&
-                                data['lastMessageIsRead'] == false));
+                      // Filter by tab
+                      final filteredDocs = sortedDocs.where((doc) {
+                        final data = doc.data();
+                        final isGroup = data['isGroup'] == true;
+                        final unreadBy = List<String>.from(data['unreadBy'] ?? []);
+                        final lastSenderId = (data['lastSenderId'] ?? '').toString();
+                        final bool isUnread = isGroup
+                            ? unreadBy.contains(myUid)
+                            : (unreadBy.contains(myUid) ||
+                                (lastSenderId.isNotEmpty &&
+                                    lastSenderId != myUid &&
+                                    data['lastMessageIsRead'] == false));
 
-                    if (_selectedTab == 'unread') {
-                      return isUnread;
-                    } else if (_selectedTab == 'groups') {
-                      return isGroup;
-                    }
-                    return true;
-                  }).toList();
+                        if (_selectedTab == 'unread') {
+                          return isUnread;
+                        } else if (_selectedTab == 'groups') {
+                          return isGroup;
+                        }
+                        return true;
+                      }).toList();
 
-                  return Column(
-                    children: [
-                      // Filter Tabs Row
-                      _buildFilterTabs(context, isDark),
+                      return CustomScrollView(
+                        keyboardDismissBehavior:
+                            ScrollViewKeyboardDismissBehavior.onDrag,
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        slivers: [
+                          // 1. Stories / Active Friends Bar (Scrolls with page)
+                          if (_searchQuery.isEmpty)
+                            SliverToBoxAdapter(
+                              child: _buildActiveStoriesBar(
+                                context,
+                                myUid,
+                                isDark,
+                                userRepo,
+                              ),
+                            ),
 
-                      Expanded(
-                        child: filteredDocs.isEmpty
-                            ? _buildEmptyState(context, myUid)
-                            : ListView.separated(
-                                keyboardDismissBehavior:
-                                    ScrollViewKeyboardDismissBehavior.onDrag,
-                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                                itemCount: filteredDocs.length,
-                                separatorBuilder: (_, __) => Divider(
-                                  height: 1,
-                                  indent: 74,
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.06)
-                                      : Colors.black.withValues(alpha: 0.05),
-                                ),
-                                itemBuilder: (context, index) {
-                                  final doc = filteredDocs[index];
-                                  final data = doc.data();
-                                  final participants =
-                                      List<String>.from(data['participants'] ?? []);
+                          // 2. Filter Tabs Row (Scrolls with page)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 2, bottom: 4),
+                              child: _buildFilterTabs(context, isDark),
+                            ),
+                          ),
 
-                                  final isGroup = data['isGroup'] == true;
-                                  if (isGroup) {
-                                    final groupName =
-                                        (data['groupName'] as String?)?.trim() ??
-                                            'Nhóm chi tiêu';
-                                    final groupColorHex =
-                                        (data['groupColor'] as String?) ?? '#79AFFF';
+                          // 3. Conversation List or Empty State
+                          if (filteredDocs.isEmpty)
+                            SliverFillRemaining(
+                              hasScrollBody: false,
+                              child: _buildEmptyState(context, myUid),
+                            )
+                          else
+                            SliverPadding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
+                              sliver: SliverList(
+                                delegate: SliverChildBuilderDelegate(
+                                  (context, index) {
+                                    final itemIndex = index ~/ 2;
+                                    if (index.isOdd) {
+                                      return Divider(
+                                        height: 1,
+                                        indent: 74,
+                                        color: isDark
+                                            ? Colors.white.withValues(alpha: 0.06)
+                                            : Colors.black.withValues(alpha: 0.05),
+                                      );
+                                    }
+
+                                    final doc = filteredDocs[itemIndex];
+                                    final data = doc.data();
+                                    final participants =
+                                        List<String>.from(data['participants'] ?? []);
+
+                                    final isGroup = data['isGroup'] == true;
+                                    if (isGroup) {
+                                      final groupName =
+                                          (data['groupName'] as String?)?.trim() ??
+                                              'Nhóm chi tiêu';
+                                      final groupColorHex =
+                                          (data['groupColor'] as String?) ?? '#79AFFF';
+                                      final lastMessage =
+                                          (data['lastMessage'] ?? '').toString();
+                                      final lastSenderId =
+                                          (data['lastSenderId'] ?? '').toString();
+                                      final updatedAt =
+                                          (data['updatedAt'] as Timestamp?)?.toDate();
+                                      final unreadBy =
+                                          List<String>.from(data['unreadBy'] ?? []);
+                                      final bool isUnread = unreadBy.contains(myUid);
+
+                                      // Group Typing detection
+                                      final List<String> typingUids = [];
+                                      final typingData =
+                                          data['typing'] as Map<String, dynamic>?;
+                                      if (typingData != null) {
+                                        for (final entry in typingData.entries) {
+                                          if (entry.key != myUid) {
+                                            final val = entry.value;
+                                            if (val == true || val is Timestamp) {
+                                              typingUids.add(entry.key);
+                                            }
+                                          }
+                                        }
+                                      }
+                                      final bool isGroupTyping = typingUids.isNotEmpty;
+                                      final String typingUid =
+                                          typingUids.isNotEmpty ? typingUids.first : '';
+
+                                      final bool isGroupMuted =
+                                          chatRepo.isChatMuted(data, myUid);
+
+                                      return _GroupConversationItemTile(
+                                        key: ValueKey('group_${doc.id}'),
+                                        groupId: doc.id,
+                                        myUid: myUid,
+                                        groupName: groupName,
+                                        groupColorHex: groupColorHex,
+                                        participants: participants,
+                                        lastMessage: lastMessage,
+                                        lastSenderId: lastSenderId,
+                                        updatedAt: updatedAt,
+                                        relativeTime: _formatRelativeTime(
+                                            updatedAt, currentLocale),
+                                        isUnread: isUnread,
+                                        isGroupMuted: isGroupMuted,
+                                        isGroupTyping: isGroupTyping,
+                                        typingUid: typingUid,
+                                        typingCount: typingUids.length,
+                                        userRepo: userRepo,
+                                        chatRepo: chatRepo,
+                                        searchQuery: _searchQuery,
+                                      );
+                                    }
+
+                                    final otherUid = participants.firstWhere(
+                                      (id) => id != myUid,
+                                      orElse: () => '',
+                                    );
+
+                                    if (otherUid.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+
                                     final lastMessage =
                                         (data['lastMessage'] ?? '').toString();
                                     final lastSenderId =
                                         (data['lastSenderId'] ?? '').toString();
+                                    final lastType =
+                                        (data['lastType'] ?? 'text').toString();
+                                    final lastReactionEmoji =
+                                        (data['lastReactionEmoji'] ?? '').toString();
                                     final updatedAt =
                                         (data['updatedAt'] as Timestamp?)?.toDate();
-                                    final unreadBy =
-                                        List<String>.from(data['unreadBy'] ?? []);
-                                    final bool isUnread = unreadBy.contains(myUid);
 
-                                    // Group Typing detection
-                                    final List<String> typingUids = [];
+                                    // Typing detection
+                                    bool isOtherTyping = false;
                                     final typingData =
                                         data['typing'] as Map<String, dynamic>?;
-                                    if (typingData != null) {
-                                      for (final entry in typingData.entries) {
-                                        if (entry.key != myUid) {
-                                          final val = entry.value;
-                                          if (val == true || val is Timestamp) {
-                                            typingUids.add(entry.key);
-                                          }
-                                        }
-                                      }
+                                    if (typingData != null &&
+                                        typingData.containsKey(otherUid)) {
+                                      final val = typingData[otherUid];
+                                      isOtherTyping =
+                                          val == true || val is Timestamp;
                                     }
-                                    final bool isGroupTyping = typingUids.isNotEmpty;
-                                    final String typingUid =
-                                        typingUids.isNotEmpty ? typingUids.first : '';
 
-                                    final bool isGroupMuted =
+                                    // Unread detection
+                                    final unreadBy =
+                                        List<String>.from(data['unreadBy'] ?? []);
+                                    final bool isUnread = unreadBy.contains(myUid) ||
+                                        (lastSenderId.isNotEmpty &&
+                                            lastSenderId != myUid &&
+                                            data['lastMessageIsRead'] == false);
+
+                                    final isFriend = friendUids.contains(otherUid);
+                                    final bool isDirectMuted =
                                         chatRepo.isChatMuted(data, myUid);
 
-                                    return _GroupConversationItemTile(
-                                      key: ValueKey('group_${doc.id}'),
-                                      groupId: doc.id,
+                                    return _ConversationItemTile(
+                                      key: ValueKey(doc.id),
+                                      chatId: doc.id,
                                       myUid: myUid,
-                                      groupName: groupName,
-                                      groupColorHex: groupColorHex,
-                                      participants: participants,
+                                      otherUid: otherUid,
+                                      isFriend: isFriend,
+                                      isMuted: isDirectMuted,
                                       lastMessage: lastMessage,
                                       lastSenderId: lastSenderId,
+                                      lastType: lastType,
+                                      lastReactionEmoji: lastReactionEmoji,
                                       updatedAt: updatedAt,
                                       relativeTime: _formatRelativeTime(
                                           updatedAt, currentLocale),
+                                      isOtherTyping: isOtherTyping,
                                       isUnread: isUnread,
-                                      isGroupMuted: isGroupMuted,
-                                      isGroupTyping: isGroupTyping,
-                                      typingUid: typingUid,
-                                      typingCount: typingUids.length,
                                       userRepo: userRepo,
-                                      chatRepo: chatRepo,
                                       searchQuery: _searchQuery,
                                     );
-                                  }
-
-                                  final otherUid = participants.firstWhere(
-                                    (id) => id != myUid,
-                                    orElse: () => '',
-                                  );
-
-                                  if (otherUid.isEmpty) {
-                                    return const SizedBox.shrink();
-                                  }
-
-                                  final lastMessage =
-                                      (data['lastMessage'] ?? '').toString();
-                                  final lastSenderId =
-                                      (data['lastSenderId'] ?? '').toString();
-                                  final lastType =
-                                      (data['lastType'] ?? 'text').toString();
-                                  final lastReactionEmoji =
-                                      (data['lastReactionEmoji'] ?? '').toString();
-                                  final updatedAt =
-                                      (data['updatedAt'] as Timestamp?)?.toDate();
-
-                                  // Typing detection
-                                  bool isOtherTyping = false;
-                                  final typingData =
-                                      data['typing'] as Map<String, dynamic>?;
-                                  if (typingData != null &&
-                                      typingData.containsKey(otherUid)) {
-                                    final val = typingData[otherUid];
-                                    isOtherTyping =
-                                        val == true || val is Timestamp;
-                                  }
-
-                                  // Unread detection
-                                  final unreadBy =
-                                      List<String>.from(data['unreadBy'] ?? []);
-                                  final bool isUnread = unreadBy.contains(myUid) ||
-                                      (lastSenderId.isNotEmpty &&
-                                          lastSenderId != myUid &&
-                                          data['lastMessageIsRead'] == false);
-
-                                  final isFriend = friendUids.contains(otherUid);
-                                  final bool isDirectMuted =
-                                      chatRepo.isChatMuted(data, myUid);
-
-                                  return _ConversationItemTile(
-                                    key: ValueKey(doc.id),
-                                    chatId: doc.id,
-                                    myUid: myUid,
-                                    otherUid: otherUid,
-                                    isFriend: isFriend,
-                                    isMuted: isDirectMuted,
-                                    lastMessage: lastMessage,
-                                    lastSenderId: lastSenderId,
-                                    lastType: lastType,
-                                    lastReactionEmoji: lastReactionEmoji,
-                                    updatedAt: updatedAt,
-                                    relativeTime: _formatRelativeTime(
-                                        updatedAt, currentLocale),
-                                    isOtherTyping: isOtherTyping,
-                                    isUnread: isUnread,
-                                    userRepo: userRepo,
-                                    searchQuery: _searchQuery,
-                                  );
-                                },
+                                  },
+                                  childCount: math.max(0, filteredDocs.length * 2 - 1),
+                                ),
                               ),
-                      ),
-                    ],
+                            ),
+                        ],
+                      );
+                    },
                   );
                 },
-              );
-            },
-          ),
-        ),
+              ),
+            ),
           ],
         ),
       ),
@@ -2141,12 +2174,12 @@ class _ActiveStatusHeaderPill extends StatelessWidget {
     final dotColor = isActive ? const Color(0xFF10B981) : const Color(0xFF9CA3AF);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: isActive
             ? const Color(0xFF10B981).withValues(alpha: 0.15)
             : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06)),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isActive
               ? const Color(0xFF10B981).withValues(alpha: 0.35)
@@ -2158,8 +2191,8 @@ class _ActiveStatusHeaderPill extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 7.5,
-            height: 7.5,
+            width: 6.5,
+            height: 6.5,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: dotColor,
@@ -2167,17 +2200,17 @@ class _ActiveStatusHeaderPill extends StatelessWidget {
                   ? [
                       BoxShadow(
                         color: const Color(0xFF10B981).withValues(alpha: 0.6),
-                        blurRadius: 4,
+                        blurRadius: 3.5,
                         spreadRadius: 0.5,
                       ),
                     ]
                   : null,
             ),
           ),
-          const SizedBox(width: 3.5),
+          const SizedBox(width: 3),
           Icon(
             Icons.keyboard_arrow_down_rounded,
-            size: 14,
+            size: 13,
             color: dotColor,
           ),
         ],

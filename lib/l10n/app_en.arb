@@ -358,6 +358,11 @@
   "addFriendTitle": "Add Friend",
   "addFriendSearchHint": "Enter username or email...",
   "noUsersFound": "No users found",
+  "searchUserError": "Error occurred while searching",
+  "sendFriendRequestFailed": "Failed to send friend request",
+  "addFriendHintFind": "Find friends by username to connect",
+  "addFriendHintExactUsername": "Enter the exact username of the friend you want to add",
+  "addFriendHintTrackExpense": "Connect and track shared expenses together",
   "sendFriendRequest": "Add",
   "requestSent": "Friend request sent to {name}",
   "@requestSent": {
@@ -488,6 +493,12 @@
   },
   "saving": "Saving...",
   "confirm": "Confirm",
+  "birthday": "Birthday",
+  "birthdayOptional": "Birthday (optional)",
+  "selectBirthday": "Select Birthday",
+  "birthdayUpdatedSuccess": "Birthday updated successfully!",
+  "notSet": "Not set",
+  "setBirthday": "Set",
   "groupNotFound": "Group not found",
   "group": "Group",
   "groupDetails": "Group Details",
@@ -768,6 +779,9 @@
   "categories": "Categories",
   "map": "Map",
   "transactionMap": "Transaction Map",
+  "fullScreen": "Full Screen",
+  "openFullScreen": "Open Full Screen",
+  "fitAllMarkers": "Fit all markers",
   "mapControl": "Map Control",
   "controlling": "Controlling",
   "tapToControlMap": "Tap to control map",
@@ -1157,6 +1171,8 @@
   "streakMaintaining": "Maintaining",
   "bestStreakLabel": "Personal Best",
   "avatarCollection": "Collection",
+  "daysUnit": "Days",
+  "framesUnit": "Frames",
   "framesCount": "{unlocked}/{total} Frames",
   "@framesCount": {
     "placeholders": {
@@ -1851,5 +1867,53 @@
   "seeMore": "See more",
   "collapse": "Collapse",
   "taggedFriendsTitle": "Tagged friends",
-  "tagFriendAction": "+ Tag friend"
+  "tagFriendAction": "+ Tag friend",
+  "scanReceipt": "Scan receipt",
+  "photoMoment": "Moment",
+  "alignReceiptInFrame": "Align receipt within frame",
+  "scanningReceipt": "Scanning receipt...",
+  "receiptExtracted": "Receipt extracted",
+  "receiptSummedNotice": "Automatically summed from receipt items",
+  "viewReceiptDetails": "View receipt details",
+  "receiptItemsCount": "{count, plural, other{{count} items}}",
+  "@receiptItemsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "merchantStore": "Store / Merchant name",
+  "lineItemsList": "Item list",
+  "ocrScanButton": "Scan Bill OCR",
+  "noReceiptDetected": "No receipt content detected",
+  "receiptSummaryTitle": "OCR Receipt Details",
+  "confirmPassword": "Confirm password",
+  "passwordRequirementHint": "Minimum 6 characters, including lowercase, uppercase, numbers, and special characters.",
+  "passwordNeedsLetterAndNumber": "Password must be at least 6 characters, including lowercase, uppercase, numbers, and special characters",
+  "pleaseConfirmPassword": "Please re-enter your password",
+  "passwordsDoNotMatch": "Passwords do not match",
+  "passwordStrengthTitle": "Password strength: {label}",
+  "@passwordStrengthTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "passwordStrengthNone": "No password entered",
+  "passwordStrengthWeak": "Weak",
+  "passwordStrengthMedium": "Medium",
+  "passwordStrengthStrong": "Strong",
+  "passwordDescEmpty": "Password needs lowercase, uppercase, numbers, and special characters.",
+  "passwordDescTooShort": "Minimum 6 characters, with lowercase, uppercase, numbers, and special characters.",
+  "passwordDescMedium": "Valid password. Add length (8+ chars) to make it stronger.",
+  "passwordDescStrong": "Strong password with uppercase, lowercase, numbers, and special characters.",
+  "passwordDescNeedBoth": "Must include lowercase, uppercase, numbers, and special characters.",
+  "showPassword": "Show password",
+  "hidePassword": "Hide password",
+  "pleaseEnterEmail": "Please enter email",
+  "pleaseEnterUsername": "Please enter username",
+  "invalidUsername": "Username must be 3-20 lowercase letters, numbers, dots or underscores",
+  "passwordMinLength": "Password must be at least 6 characters"
 }

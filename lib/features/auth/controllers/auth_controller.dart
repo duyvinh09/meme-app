@@ -40,6 +40,15 @@ class AuthController extends ChangeNotifier {
         userRepository.getUserProfile(user!.uid).then((profile) {
           if (profile != null) {
             localSettingsService.syncFromUserProfile(profile);
+            NotificationService.instance.scheduleBirthdayReminder(
+              dateOfBirth: profile.dateOfBirth,
+              name: profile.name,
+              language: profile.language,
+            );
+            NotificationService.instance.checkAndShowBirthdayGreeting(
+              user: profile,
+              language: profile.language,
+            );
           }
         });
       } else {
@@ -66,6 +75,15 @@ class AuthController extends ChangeNotifier {
         final profile = await userRepository.getUserProfile(user!.uid);
         if (profile != null) {
           await localSettingsService.syncFromUserProfile(profile);
+          NotificationService.instance.scheduleBirthdayReminder(
+            dateOfBirth: profile.dateOfBirth,
+            name: profile.name,
+            language: profile.language,
+          );
+          NotificationService.instance.checkAndShowBirthdayGreeting(
+            user: profile,
+            language: profile.language,
+          );
         }
       }
       return true;
@@ -87,6 +105,7 @@ class AuthController extends ChangeNotifier {
     required String username,
     required String email,
     required String password,
+    DateTime? dateOfBirth,
   }) async {
     try {
       isLoading = true;
@@ -146,9 +165,18 @@ class AuthController extends ChangeNotifier {
             lastSeen: now,
             chatBubbleTheme: 'default',
             cameraTheme: 'classic_dark',
+            dateOfBirth: dateOfBirth,
           ),
         );
         localSettingsService.setActiveUser(user!.uid);
+
+        if (dateOfBirth != null) {
+          NotificationService.instance.scheduleBirthdayReminder(
+            dateOfBirth: dateOfBirth,
+            name: cleanedName,
+            language: 'vi',
+          );
+        }
       }
 
       return true;

@@ -44,39 +44,6 @@ class _CalendarSectionState extends State<CalendarSection> {
     );
   }
 
-  DateTime _monthForWeek(DateTime weekStart, DateTime activeMonth) {
-    final weekDays = _daysInWeek(weekStart);
-    final now = DateTime.now();
-
-    // 1. Nếu tuần chứa ngày hôm nay và hôm nay thuộc tuần này, ưu tiên tháng hiện tại của hôm nay
-    if (weekDays.any((d) => _sameDate(d, now))) {
-      return DateTime(now.year, now.month);
-    }
-
-    // 2. Nếu tuần chứa ngày thuộc activeMonth, giữ nguyên activeMonth
-    if (weekDays.any((d) => d.year == activeMonth.year && d.month == activeMonth.month)) {
-      return activeMonth;
-    }
-
-    // 3. Nếu tuần hoàn toàn thuộc tháng khác, chọn tháng có nhiều ngày nhất trong tuần
-    int countStart = 0;
-    int countEnd = 0;
-    final startMonth = weekDays.first.month;
-    for (final d in weekDays) {
-      if (d.month == startMonth) {
-        countStart++;
-      } else {
-        countEnd++;
-      }
-    }
-
-    if (countStart >= countEnd) {
-      return DateTime(weekDays.first.year, weekDays.first.month);
-    } else {
-      return DateTime(weekDays.last.year, weekDays.last.month);
-    }
-  }
-
   bool _sameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
   }
@@ -200,223 +167,322 @@ class _CalendarSectionState extends State<CalendarSection> {
       ),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                _MiniNavButton(
-                  icon: Icons.chevron_left_rounded,
-                  onTap: () {
-                    setState(() {
-                      if (_isWeekView) {
-                        currentWeekStart = currentWeekStart.subtract(const Duration(days: 7));
-                        currentMonth = _monthForWeek(currentWeekStart, currentMonth);
-                      } else {
-                        currentMonth = DateTime(
-                          currentMonth.year,
-                          currentMonth.month - 1,
-                        );
-                        currentWeekStart = _startOfWeek(DateTime(currentMonth.year, currentMonth.month, 1));
-                      }
-                    });
-                  },
-                ),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Center(
+        child: _isWeekView
+            ? Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.calendar_month_rounded,
+                        size: 18,
+                        color: AppColors.primaryBlue,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        monthTitle,
+                        style: AppTextStyles.cardTitle(context).copyWith(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: List.generate(7, (index) {
+                      final date = days[index]!;
+                      final txs = _transactionsOfDay(home.transactions, date);
+                      final imageTxs = _previewTransactionsOfDay(txs);
+
+                      final hasData = txs.isNotEmpty;
+                      final hasImage = imageTxs.isNotEmpty;
+                      final isToday = _sameDate(date, now);
+                      final isPast = _isBeforeToday(date);
+                      final isFuture = _isAfterToday(date);
+                      final isBirthday = home.profile?.dateOfBirth != null &&
+                          date.day == home.profile!.dateOfBirth!.day &&
+                          date.month == home.profile!.dateOfBirth!.month;
+                      final isWeekend = index == 5 || index == 6;
+
+                      return Expanded(
+                        child: Padding(
+                          padding: EdgeInsets.only(right: index < 6 ? 4.5 : 0),
+                          child: _WeekDayCell(
+                            date: date,
+                            weekdayLabel: weekdayLabels[index],
+                            isWeekend: isWeekend,
+                            isPast: isPast,
+                            isFuture: isFuture,
+                            hasData: hasData,
+                            hasImage: hasImage,
+                            isBirthday: isBirthday,
+                            imageTransactions: imageTxs,
+                            totalCount: txs.length,
+                            isToday: isToday,
+                            onTap: hasData
+                                ? () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      RouteNames.dayDetail,
+                                      arguments: date,
+                                    );
+                                  }
+                                : null,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 4),
+                  Center(
                     child: InkWell(
-                      onTap: () => _openMonthPicker(context, home.transactions),
-                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() {
+                          _isWeekView = false;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
+                          horizontal: 24,
+                          vertical: 2,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                monthTitle,
-                                style: AppTextStyles.cardTitle(context).copyWith(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 19,
-                              color: AppColors.textSecondary(context),
-                            ),
-                          ],
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 18,
+                          color: AppColors.textSecondary(context)
+                              .withValues(alpha: 0.65),
                         ),
                       ),
                     ),
                   ),
-                ),
-                if (!isCurrentPeriod) ...[
-                  _MiniNavButton(
-                    icon: Icons.today_rounded,
-                    iconColor: AppColors.primaryBlue,
-                    bgColor: AppColors.primaryBlue.withValues(
-                      alpha: AppColors.isDark(context) ? 0.2 : 0.1,
-                    ),
-                    borderColor: AppColors.primaryBlue.withValues(alpha: 0.45),
-                    onTap: () {
-                      setState(() {
-                        currentMonth = DateTime(now.year, now.month);
-                        currentWeekStart = _startOfWeek(now);
-                      });
-                    },
-                  ),
-                  const SizedBox(width: 4),
                 ],
-                _MiniNavButton(
-                  icon: Icons.chevron_right_rounded,
-                  onTap: isCurrentPeriod
-                      ? null
-                      : () {
+              )
+            : Column(
+                children: [
+                  Row(
+                    children: [
+                      _MiniNavButton(
+                        icon: Icons.chevron_left_rounded,
+                        onTap: () {
                           setState(() {
-                            if (_isWeekView) {
-                              final nextWeek = currentWeekStart.add(const Duration(days: 7));
-                              if (!nextWeek.isAfter(_startOfWeek(now))) {
-                                currentWeekStart = nextWeek;
-                                currentMonth = _monthForWeek(currentWeekStart, currentMonth);
-                              }
-                            } else {
-                              currentMonth = DateTime(
-                                currentMonth.year,
-                                currentMonth.month + 1,
-                              );
-                              currentWeekStart = _startOfWeek(DateTime(currentMonth.year, currentMonth.month, 1));
-                            }
+                            currentMonth = DateTime(
+                              currentMonth.year,
+                              currentMonth.month - 1,
+                            );
+                            currentWeekStart = _startOfWeek(DateTime(
+                              currentMonth.year,
+                              currentMonth.month,
+                              1,
+                            ));
                           });
                         },
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.surface(context),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.innerBorder(context),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[0]))),
-                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[1]))),
-                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[2]))),
-                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[3]))),
-                  Expanded(child: Center(child: _WeekdayText(weekdayLabels[4]))),
-                  Expanded(
-                    child: Center(
-                      child: _WeekdayText(weekdayLabels[5], weekend: true),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Center(
+                          child: InkWell(
+                            onTap: () =>
+                                _openMonthPicker(context, home.transactions),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      monthTitle,
+                                      style: AppTextStyles.cardTitle(context)
+                                          .copyWith(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.keyboard_arrow_down_rounded,
+                                    size: 19,
+                                    color: AppColors.textSecondary(context),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (!isCurrentPeriod) ...[
+                        _MiniNavButton(
+                          icon: Icons.today_rounded,
+                          iconColor: AppColors.primaryBlue,
+                          bgColor: AppColors.primaryBlue.withValues(
+                            alpha: AppColors.isDark(context) ? 0.2 : 0.1,
+                          ),
+                          borderColor:
+                              AppColors.primaryBlue.withValues(alpha: 0.45),
+                          onTap: () {
+                            setState(() {
+                              currentMonth = DateTime(now.year, now.month);
+                              currentWeekStart = _startOfWeek(now);
+                            });
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      _MiniNavButton(
+                        icon: Icons.chevron_right_rounded,
+                        onTap: isCurrentPeriod
+                            ? null
+                            : () {
+                                setState(() {
+                                  currentMonth = DateTime(
+                                    currentMonth.year,
+                                    currentMonth.month + 1,
+                                  );
+                                  currentWeekStart = _startOfWeek(DateTime(
+                                    currentMonth.year,
+                                    currentMonth.month,
+                                    1,
+                                  ));
+                                });
+                              },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surface(context),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.innerBorder(context),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                            child:
+                                Center(child: _WeekdayText(weekdayLabels[0]))),
+                        Expanded(
+                            child:
+                                Center(child: _WeekdayText(weekdayLabels[1]))),
+                        Expanded(
+                            child:
+                                Center(child: _WeekdayText(weekdayLabels[2]))),
+                        Expanded(
+                            child:
+                                Center(child: _WeekdayText(weekdayLabels[3]))),
+                        Expanded(
+                            child:
+                                Center(child: _WeekdayText(weekdayLabels[4]))),
+                        Expanded(
+                          child: Center(
+                            child: _WeekdayText(weekdayLabels[5], weekend: true),
+                          ),
+                        ),
+                        Expanded(
+                          child: Center(
+                            child: _WeekdayText(weekdayLabels[6], weekend: true),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  Expanded(
-                    child: Center(
-                      child: _WeekdayText(weekdayLabels[6], weekend: true),
+                  const SizedBox(height: 12),
+                  AnimatedSize(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOutCubic,
+                    child: GridView.builder(
+                      key: ValueKey(
+                        'month_${currentMonth.millisecondsSinceEpoch}',
+                      ),
+                      itemCount: days.length,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 7,
+                        crossAxisSpacing: 7,
+                        mainAxisSpacing: 4,
+                        childAspectRatio: 0.62,
+                      ),
+                      itemBuilder: (context, index) {
+                        final date = days[index];
+
+                        if (date == null) {
+                          return const SizedBox.shrink();
+                        }
+
+                        final txs = _transactionsOfDay(home.transactions, date);
+                        final imageTxs = _previewTransactionsOfDay(txs);
+
+                        final hasData = txs.isNotEmpty;
+                        final hasImage = imageTxs.isNotEmpty;
+                        final isToday = _sameDate(date, DateTime.now());
+                        final isPast = _isBeforeToday(date);
+                        final isFuture = _isAfterToday(date);
+                        final isBirthday = home.profile?.dateOfBirth != null &&
+                            date.day == home.profile!.dateOfBirth!.day &&
+                            date.month == home.profile!.dateOfBirth!.month;
+
+                        return _CalendarStickerCell(
+                          date: date,
+                          isPast: isPast,
+                          isFuture: isFuture,
+                          hasData: hasData,
+                          hasImage: hasImage,
+                          isBirthday: isBirthday,
+                          imageTransactions: imageTxs,
+                          totalCount: txs.length,
+                          isToday: isToday,
+                          onTap: hasData
+                              ? () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    RouteNames.dayDetail,
+                                    arguments: date,
+                                  );
+                                }
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Center(
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        setState(() {
+                          _isWeekView = true;
+                          currentWeekStart = _startOfWeek(DateTime.now());
+                          currentMonth = DateTime(now.year, now.month);
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 2,
+                        ),
+                        child: Icon(
+                          Icons.keyboard_arrow_up_rounded,
+                          size: 18,
+                          color: AppColors.textSecondary(context)
+                              .withValues(alpha: 0.65),
+                        ),
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeInOutCubic,
-              child: GridView.builder(
-                key: ValueKey(
-                  _isWeekView
-                      ? 'week_${currentWeekStart.millisecondsSinceEpoch}'
-                      : 'month_${currentMonth.millisecondsSinceEpoch}',
-                ),
-                itemCount: days.length,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 7,
-                  crossAxisSpacing: 7,
-                  mainAxisSpacing: 4,
-                  childAspectRatio: 0.62,
-                ),
-                itemBuilder: (context, index) {
-                  final date = days[index];
-
-                  if (date == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final txs = _transactionsOfDay(home.transactions, date);
-                  final imageTxs = _previewTransactionsOfDay(txs);
-
-                  final hasData = txs.isNotEmpty;
-                  final hasImage = imageTxs.isNotEmpty;
-                  final isToday = _sameDate(date, DateTime.now());
-                  final isPast = _isBeforeToday(date);
-                  final isFuture = _isAfterToday(date);
-
-                  return _CalendarStickerCell(
-                    date: date,
-                    isPast: isPast,
-                    isFuture: isFuture,
-                    hasData: hasData,
-                    hasImage: hasImage,
-                    imageTransactions: imageTxs,
-                    totalCount: txs.length,
-                    isToday: isToday,
-                    onTap: hasData
-                        ? () {
-                      Navigator.pushNamed(
-                        context,
-                        RouteNames.dayDetail,
-                        arguments: date,
-                      );
-                    }
-                        : null,
-                  );
-                },
-              ),
-            ),
-            const SizedBox(height: 2),
-            Center(
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  setState(() {
-                    _isWeekView = !_isWeekView;
-                    if (_isWeekView) {
-                      final isSameMonthAsNow = currentMonth.year == now.year && currentMonth.month == now.month;
-                      if (isSameMonthAsNow) {
-                        currentWeekStart = _startOfWeek(now);
-                      } else {
-                        currentWeekStart = _startOfWeek(DateTime(currentMonth.year, currentMonth.month, 1));
-                      }
-                    }
-                  });
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
-                  child: Icon(
-                    _isWeekView
-                        ? Icons.keyboard_arrow_down_rounded
-                        : Icons.keyboard_arrow_up_rounded,
-                    size: 18,
-                    color: AppColors.textSecondary(context).withValues(alpha: 0.65),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -492,12 +558,316 @@ class _WeekdayText extends StatelessWidget {
   }
 }
 
+Widget _buildDayVisualMarker({
+  required BuildContext context,
+  required bool hasImage,
+  required bool hasData,
+  required bool isBirthday,
+  required bool isToday,
+  required bool isFuture,
+  required List<TransactionModel> imageTransactions,
+  required int totalCount,
+}) {
+  final isDark = AppColors.isDark(context);
+
+  final markerColor = isBirthday
+      ? const Color(0xFFFF4081)
+      : (isToday
+          ? AppColors.primaryBlue
+          : const Color(0xFF6DB7FF));
+
+  Widget topWidget;
+
+  if (hasImage) {
+    if (imageTransactions.length == 1) {
+      topWidget = _SingleImageSticker(
+        transaction: imageTransactions.first,
+        borderColor: markerColor,
+      );
+    } else {
+      topWidget = _StackedImageSticker(
+        firstTransaction: imageTransactions[0],
+        secondTransaction: imageTransactions[1],
+        borderColor: markerColor,
+      );
+    }
+  } else if (hasData) {
+    topWidget = _SolidCircleMarker(
+      color: markerColor,
+    );
+  } else if (isBirthday) {
+    topWidget = Container(
+      width: 32,
+      height: 32,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.primaryPink.withValues(alpha: 0.15),
+        border: Border.all(
+          color: AppColors.primaryPink.withValues(alpha: 0.6),
+          width: 1.2,
+        ),
+      ),
+      child: const Center(
+        child: Text(
+          '🎂',
+          style: TextStyle(fontSize: 16),
+        ),
+      ),
+    );
+  } else if (isFuture) {
+    topWidget = _SolidCircleMarker(
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.24)
+          : const Color(0xFFD8D3DD),
+    );
+  } else {
+    topWidget = const _EmptyDayMarker();
+  }
+
+  final showCountBadge = hasData && totalCount > 2;
+
+  Widget displayedTopWidget = showCountBadge
+      ? Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            topWidget,
+            Positioned(
+              top: 1,
+              right: 2,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                constraints: const BoxConstraints(
+                  minWidth: 15,
+                  minHeight: 15,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF388AF6),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(
+                    color: isDark ? const Color(0xFF141722) : Colors.white,
+                    width: 1.3,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    totalCount > 99 ? '99+' : '$totalCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9.0,
+                      fontWeight: FontWeight.w900,
+                      height: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        )
+      : topWidget;
+
+  if (isBirthday && (hasImage || hasData)) {
+    displayedTopWidget = Stack(
+      clipBehavior: Clip.none,
+      alignment: Alignment.center,
+      children: [
+        displayedTopWidget,
+        Positioned(
+          top: -4,
+          left: -4,
+          child: Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF4081),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isDark ? const Color(0xFF141722) : Colors.white,
+                width: 1.3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.30),
+                  blurRadius: 3,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: const Center(
+              child: Text(
+                '🎂',
+                style: TextStyle(fontSize: 9.5, height: 1.0),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  return displayedTopWidget;
+}
+
+class _WeekDayCell extends StatelessWidget {
+  final DateTime date;
+  final String weekdayLabel;
+  final bool isWeekend;
+  final bool isPast;
+  final bool isFuture;
+  final bool hasData;
+  final bool hasImage;
+  final bool isBirthday;
+  final List<TransactionModel> imageTransactions;
+  final int totalCount;
+  final bool isToday;
+  final VoidCallback? onTap;
+
+  const _WeekDayCell({
+    required this.date,
+    required this.weekdayLabel,
+    required this.isWeekend,
+    required this.isPast,
+    required this.isFuture,
+    required this.hasData,
+    required this.hasImage,
+    this.isBirthday = false,
+    required this.imageTransactions,
+    required this.totalCount,
+    required this.isToday,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    final dayColor = isBirthday
+        ? const Color(0xFFFF4081)
+        : (isToday
+            ? AppColors.primaryBlue
+            : AppColors.textPrimary(context)
+                .withValues(alpha: isDark ? 0.72 : 0.84));
+
+    final visualMarker = _buildDayVisualMarker(
+      context: context,
+      hasImage: hasImage,
+      hasData: hasData,
+      isBirthday: isBirthday,
+      isToday: isToday,
+      isFuture: isFuture,
+      imageTransactions: imageTransactions,
+      totalCount: totalCount,
+    );
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+        decoration: BoxDecoration(
+          color: isToday
+              ? (isDark
+                  ? AppColors.primaryBlue.withValues(alpha: 0.16)
+                  : AppColors.primaryBlue.withValues(alpha: 0.10))
+              : AppColors.surface(context),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isToday
+                ? AppColors.primaryBlue
+                    .withValues(alpha: isDark ? 0.70 : 0.50)
+                : AppColors.innerBorder(context),
+            width: isToday ? 1.5 : 1.0,
+          ),
+          boxShadow: isToday
+              ? [
+                  BoxShadow(
+                    color: AppColors.primaryBlue
+                        .withValues(alpha: isDark ? 0.20 : 0.10),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              weekdayLabel,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+                color: isToday
+                    ? AppColors.primaryBlue
+                    : (isWeekend
+                        ? AppColors.primaryBlue
+                            .withValues(alpha: isDark ? 0.9 : 0.75)
+                        : AppColors.textSecondary(context)),
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 40,
+              child: Center(
+                child: OverflowBox(
+                  maxWidth: 64,
+                  maxHeight: 48,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: visualMarker,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (isBirthday) ...[
+                  const Text(
+                    '🎂',
+                    style: TextStyle(fontSize: 9.5),
+                  ),
+                  const SizedBox(width: 2),
+                ] else if (isToday) ...[
+                  const _TodayDot(),
+                  const SizedBox(width: 3),
+                ],
+                Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: (isToday || isBirthday)
+                        ? FontWeight.w900
+                        : FontWeight.w700,
+                    color: dayColor,
+                    height: 1,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CalendarStickerCell extends StatelessWidget {
   final DateTime date;
   final bool isPast;
   final bool isFuture;
   final bool hasData;
   final bool hasImage;
+  final bool isBirthday;
   final List<TransactionModel> imageTransactions;
   final int totalCount;
   final bool isToday;
@@ -509,6 +879,7 @@ class _CalendarStickerCell extends StatelessWidget {
     required this.isFuture,
     required this.hasData,
     required this.hasImage,
+    this.isBirthday = false,
     required this.imageTransactions,
     required this.totalCount,
     required this.isToday,
@@ -519,91 +890,23 @@ class _CalendarStickerCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
 
-    final markerColor = isToday
-        ? AppColors.primaryBlue
-        : const Color(0xFF6DB7FF);
+    final dayColor = isBirthday
+        ? const Color(0xFFFF4081)
+        : (isToday
+            ? AppColors.primaryBlue
+            : AppColors.textPrimary(context)
+                .withValues(alpha: isDark ? 0.72 : 0.84));
 
-    final dayColor = isToday
-        ? AppColors.primaryBlue
-        : AppColors.textPrimary(context).withValues(alpha: isDark ? 0.72 : 0.84);
-
-    Widget topWidget;
-
-    if (hasImage) {
-      if (imageTransactions.length == 1) {
-        topWidget = _SingleImageSticker(
-          transaction: imageTransactions.first,
-          borderColor: markerColor,
-        );
-      } else {
-        topWidget = _StackedImageSticker(
-          firstTransaction: imageTransactions[0],
-          secondTransaction: imageTransactions[1],
-          borderColor: markerColor,
-        );
-      }
-    } else if (hasData) {
-      topWidget = _SolidCircleMarker(
-        color: markerColor,
-      );
-    } else if (isFuture) {
-      topWidget = _SolidCircleMarker(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.24)
-            : const Color(0xFFD8D3DD),
-      );
-    } else {
-      topWidget = const _EmptyDayMarker();
-    }
-
-    final showCountBadge = hasData && totalCount > 2;
-
-    final displayedTopWidget = showCountBadge
-        ? Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              topWidget,
-              Positioned(
-                top: 1,
-                right: 2,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  constraints: const BoxConstraints(
-                    minWidth: 15,
-                    minHeight: 15,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF388AF6),
-                    borderRadius: BorderRadius.circular(9),
-                    border: Border.all(
-                      color: isDark ? const Color(0xFF141722) : Colors.white,
-                      width: 1.3,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Text(
-                      totalCount > 99 ? '99+' : '$totalCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9.0,
-                        fontWeight: FontWeight.w900,
-                        height: 1.0,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          )
-        : topWidget;
+    final displayedTopWidget = _buildDayVisualMarker(
+      context: context,
+      hasImage: hasImage,
+      hasData: hasData,
+      isBirthday: isBirthday,
+      isToday: isToday,
+      isFuture: isFuture,
+      imageTransactions: imageTransactions,
+      totalCount: totalCount,
+    );
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -639,7 +942,13 @@ class _CalendarStickerCell extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (isToday) ...[
+                        if (isBirthday) ...[
+                          const Text(
+                            '🎂',
+                            style: TextStyle(fontSize: 9.5),
+                          ),
+                          const SizedBox(width: 2),
+                        ] else if (isToday) ...[
                           const _TodayDot(),
                           const SizedBox(width: 4),
                         ],
@@ -647,8 +956,9 @@ class _CalendarStickerCell extends StatelessWidget {
                           '${date.day}',
                           style: TextStyle(
                             fontSize: 12.5,
-                            fontWeight:
-                            isToday ? FontWeight.w900 : FontWeight.w700,
+                            fontWeight: (isToday || isBirthday)
+                                ? FontWeight.w900
+                                : FontWeight.w700,
                             color: dayColor,
                             height: 1,
                           ),

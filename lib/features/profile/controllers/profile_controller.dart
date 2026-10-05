@@ -1,15 +1,17 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../../../core/services/local_settings_service.dart';
 import '../../../core/services/cloudinary_service.dart';
 import '../../../core/services/exchange_rate_service.dart';
+import '../../../core/services/local_settings_service.dart';
+import '../../../core/services/notification_service.dart';
 import '../../../data/models/user_model.dart';
-import '../../../data/repositories/user_repository.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/repositories/user_repository.dart';
 
 class ProfileController extends ChangeNotifier {
   final LocalSettingsService localSettingsService;
@@ -36,6 +38,13 @@ class ProfileController extends ChangeNotifier {
   Future<void> loadUser(String uid) async {
     if (uid.trim().isEmpty) return;
 
+    // 1. Immediately assign memory cached user profile for instant 0ms display
+    final memoryUser = userRepository.getCachedUserProfile(uid);
+    if (memoryUser != null && user == null) {
+      user = memoryUser;
+      notifyListeners();
+    }
+
     if (_currentUid != uid || _userSub == null) {
       _currentUid = uid;
       await _userSub?.cancel();
@@ -48,7 +57,7 @@ class ProfileController extends ChangeNotifier {
     }
 
     final fetched = await userRepository.getUserProfile(uid);
-    if (fetched != null) {
+    if (fetched != null && fetched != user) {
       user = fetched;
       notifyListeners();
     }
@@ -56,7 +65,7 @@ class ProfileController extends ChangeNotifier {
 
   Future<void> refreshUser(String uid) async {
     if (uid.trim().isEmpty) return;
-    final fetched = await userRepository.getUserProfile(uid);
+    final fetched = await userRepository.getUserProfile(uid, forceRefresh: true);
     if (fetched != null) {
       user = fetched;
       notifyListeners();
@@ -67,6 +76,8 @@ class ProfileController extends ChangeNotifier {
     required String uid,
     required String name,
     File? avatarFile,
+    DateTime? dateOfBirth,
+    bool updateDateOfBirth = false,
   }) async {
     try {
       isSaving = true;
@@ -89,8 +100,21 @@ class ProfileController extends ChangeNotifier {
         data['avatarUrl'] = avatarUrl;
       }
 
+      if (updateDateOfBirth) {
+        data['dateOfBirth'] =
+            dateOfBirth != null ? Timestamp.fromDate(dateOfBirth) : null;
+      }
+
       await userRepository.updateUserProfile(uid, data);
       await refreshUser(uid);
+
+      if (updateDateOfBirth) {
+        NotificationService.instance.scheduleBirthdayReminder(
+          dateOfBirth: dateOfBirth,
+          name: name,
+          language: user?.language,
+        );
+      }
 
       return true;
     } catch (e) {
@@ -104,6 +128,10 @@ class ProfileController extends ChangeNotifier {
 
   Future<bool> updateAvatarFrame(String uid, String frameId) async {
     try {
+      if (user != null) {
+        user = user!.copyWith(avatarFrame: frameId);
+        notifyListeners();
+      }
       await userRepository.updateUserProfile(uid, {'avatarFrame': frameId});
       await refreshUser(uid);
       return true;

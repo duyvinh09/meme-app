@@ -8,6 +8,7 @@ class AppTheme {
 
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
+    fontFamily: 'ProximaSoft',
     brightness: Brightness.light,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primaryBlue,
@@ -23,6 +24,7 @@ class AppTheme {
       foregroundColor: AppColors.lightTextPrimary,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: TextStyle(
+        fontFamily: 'ProximaSoft',
         color: AppColors.lightTextPrimary,
         fontSize: 22,
         fontWeight: FontWeight.w800,
@@ -71,6 +73,7 @@ class AppTheme {
 
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
+    fontFamily: 'ProximaSoft',
     brightness: Brightness.dark,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primaryBlue,
@@ -86,6 +89,7 @@ class AppTheme {
       foregroundColor: AppColors.darkTextPrimary,
       surfaceTintColor: Colors.transparent,
       titleTextStyle: TextStyle(
+        fontFamily: 'ProximaSoft',
         color: AppColors.darkTextPrimary,
         fontSize: 22,
         fontWeight: FontWeight.w800,

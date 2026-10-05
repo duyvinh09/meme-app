@@ -596,12 +596,12 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
               ),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
 
             Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-                vertical: 12,
+                horizontal: 16,
+                vertical: 8.5,
               ),
               decoration: BoxDecoration(
                 color: timePillBg,
@@ -616,22 +616,23 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                   Icon(
                     Icons.calendar_today_rounded,
                     color: secondaryText,
-                    size: 16,
+                    size: 15,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 7),
                   Text(
                     _formatUploadTime(tx.createdAt),
                     style: TextStyle(
                       color: secondaryText,
-                      fontSize: 14,
+                      fontSize: 13.5,
                       fontWeight: FontWeight.w600,
+                      height: 1.15,
                     ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
 
             Expanded(
               child: PageView.builder(
@@ -669,14 +670,14 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                                 ),
                               ),
 
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 12),
 
                               if (item.note.trim().isNotEmpty) ...[
                                 Container(
                                   margin: const EdgeInsets.symmetric(horizontal: 20),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 16,
-                                    vertical: 8.5,
+                                    vertical: 8,
                                   ),
                                   decoration: BoxDecoration(
                                     color: glassColor,
@@ -688,10 +689,10 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                                     children: [
                                       Icon(
                                         Icons.edit_note_rounded,
-                                        size: 19,
+                                        size: 18,
                                         color: secondaryText,
                                       ),
-                                      const SizedBox(width: 8),
+                                      const SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
                                           item.note.trim(),
@@ -701,13 +702,14 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                                             color: primaryText,
                                             fontSize: 13.5,
                                             fontWeight: FontWeight.w600,
+                                            height: 1.15,
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
                               ],
 
                               if (isSavingMedia || isSharingMedia)
@@ -718,8 +720,8 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
 
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 10,
+                                  horizontal: 16,
+                                  vertical: 8,
                                 ),
                                 decoration: BoxDecoration(
                                   color: glassColor,
@@ -736,15 +738,16 @@ class _MomentViewerScreenState extends State<MomentViewerScreen> {
                                     Icon(
                                       Icons.collections_outlined,
                                       color: primaryText,
-                                      size: 18,
+                                      size: 16,
                                     ),
-                                    const SizedBox(width: 10),
+                                    const SizedBox(width: 7),
                                     Text(
                                       '${currentIndex + 1} / ${widget.transactions.length}',
                                       style: TextStyle(
                                         color: primaryText,
-                                        fontSize: 15,
+                                        fontSize: 14,
                                         fontWeight: FontWeight.w700,
+                                        height: 1.15,
                                       ),
                                     ),
                                   ],

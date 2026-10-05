@@ -24,6 +24,7 @@ class UserModel {
   final String? userNote;
   final DateTime? userNoteCreatedAt;
   final List<int> unlockedMilestones;
+  final DateTime? dateOfBirth;
 
   const UserModel({
     required this.uid,
@@ -49,7 +50,14 @@ class UserModel {
     this.userNote,
     this.userNoteCreatedAt,
     this.unlockedMilestones = const [],
+    this.dateOfBirth,
   });
+
+  bool get isBirthdayToday {
+    if (dateOfBirth == null) return false;
+    final now = DateTime.now();
+    return now.month == dateOfBirth!.month && now.day == dateOfBirth!.day;
+  }
 
   bool get hasActiveNote {
     if (userNote == null || userNote!.trim().isEmpty) return false;
@@ -95,6 +103,16 @@ class UserModel {
     if (value is DateTime) return value;
     if (value is int) return DateTime.fromMillisecondsSinceEpoch(value);
     if (value is String) return DateTime.tryParse(value);
+    if (value is Map) {
+      final seconds = value['_seconds'] ?? value['seconds'];
+      final nanoseconds = value['_nanoseconds'] ?? value['nanoseconds'] ?? 0;
+      if (seconds is num) {
+        final nanoInt = nanoseconds is num ? nanoseconds.toInt() : 0;
+        return DateTime.fromMillisecondsSinceEpoch(
+          seconds.toInt() * 1000 + (nanoInt ~/ 1000000),
+        );
+      }
+    }
     return null;
   }
 
@@ -127,6 +145,7 @@ class UserModel {
               ?.map((e) => (e as num).toInt())
               .toList() ??
           const [],
+      dateOfBirth: _parseDateTime(map['dateOfBirth'] ?? map['birthday']),
     );
   }
 
@@ -156,6 +175,7 @@ class UserModel {
       if (userNoteCreatedAt != null)
         'userNoteCreatedAt': Timestamp.fromDate(userNoteCreatedAt!),
       if (unlockedMilestones.isNotEmpty) 'unlockedMilestones': unlockedMilestones,
+      if (dateOfBirth != null) 'dateOfBirth': Timestamp.fromDate(dateOfBirth!),
     };
   }
 
@@ -183,6 +203,8 @@ class UserModel {
     String? userNote,
     DateTime? userNoteCreatedAt,
     List<int>? unlockedMilestones,
+    DateTime? dateOfBirth,
+    bool clearDateOfBirth = false,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -208,6 +230,7 @@ class UserModel {
       userNote: userNote ?? this.userNote,
       userNoteCreatedAt: userNoteCreatedAt ?? this.userNoteCreatedAt,
       unlockedMilestones: unlockedMilestones ?? this.unlockedMilestones,
+      dateOfBirth: clearDateOfBirth ? null : (dateOfBirth ?? this.dateOfBirth),
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../auth/controllers/auth_controller.dart';
 import '../controllers/stats_controller.dart';
 import '../../../data/models/transaction_model.dart';
 import 'category_detail_screen.dart';
+import 'transaction_map_screen.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../widgets/transaction_map_panel.dart';
@@ -865,7 +866,7 @@ class _StatsScreenState extends State<StatsScreen> {
               palette: palette,
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             _RowSegment(
               selectedIndex:
@@ -889,7 +890,7 @@ class _StatsScreenState extends State<StatsScreen> {
               palette: palette,
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             _PeriodSelector(
               title: _formatPeriodTitle(),
@@ -912,7 +913,7 @@ class _StatsScreenState extends State<StatsScreen> {
               },
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
             _AnalysisCard(
               title: isExpense ? context.l10n.totalExpenseLabel : context.l10n.totalIncomeLabel,
@@ -930,7 +931,7 @@ class _StatsScreenState extends State<StatsScreen> {
               isExpense: isExpense,
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
             MonthlyComparisonCard(
               transactions: stats.transactions,
@@ -1005,11 +1006,11 @@ class _StatsScreenState extends State<StatsScreen> {
                     : context.l10n.incomeDetails,
                 style: TextStyle(
                   color: palette.textPrimary,
-                  fontSize: 20,
+                  fontSize: 15.5,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
             ],
 
             if (selectedContentTab != _StatsContentTab.map)
@@ -1127,17 +1128,17 @@ class _SafeMapPanel extends StatelessWidget {
                 onTap: onToggleInteraction,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+                    horizontal: 10,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
                     color: interactionEnabled
-                        ? AppColors.primaryBlue.withOpacity(0.14)
+                        ? AppColors.primaryBlue.withValues(alpha: 0.14)
                         : palette.innerTileBackground,
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(
                       color: interactionEnabled
-                          ? AppColors.primaryBlue.withOpacity(0.28)
+                          ? AppColors.primaryBlue.withValues(alpha: 0.28)
                           : palette.innerTileBorder,
                     ),
                   ),
@@ -1147,8 +1148,8 @@ class _SafeMapPanel extends StatelessWidget {
                       color: interactionEnabled
                           ? AppColors.primaryBlue
                           : palette.textSecondary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
@@ -1170,6 +1171,7 @@ class _SafeMapPanel extends StatelessWidget {
                       ignoring: !interactionEnabled,
                       child: TransactionMapPanel(
                         transactions: transactions,
+                        showFullScreenButton: false,
                       ),
                     ),
                   ),
@@ -1183,14 +1185,14 @@ class _SafeMapPanel extends StatelessWidget {
                           alignment: Alignment.center,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 10,
+                              horizontal: 11,
+                              vertical: 5.5,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.42),
+                              color: Colors.black.withValues(alpha: 0.52),
                               borderRadius: BorderRadius.circular(999),
                               border: Border.all(
-                                color: Colors.white.withOpacity(0.16),
+                                color: Colors.white.withValues(alpha: 0.18),
                               ),
                             ),
                             child: Row(
@@ -1199,15 +1201,15 @@ class _SafeMapPanel extends StatelessWidget {
                                 const Icon(
                                   Icons.touch_app_rounded,
                                   color: Colors.white,
-                                  size: 18,
+                                  size: 14,
                                 ),
-                                const SizedBox(width: 7),
+                                const SizedBox(width: 5),
                                 Text(
                                   context.l10n.tapToControlMap,
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
@@ -1216,6 +1218,50 @@ class _SafeMapPanel extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => TransactionMapScreen(
+                                transactions: transactions,
+                              ),
+                            ),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(999),
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.60),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.22),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.22),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.fullscreen_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1291,7 +1337,7 @@ class _InteractiveStatsPieChartCardState
     super.initState();
     _lineAnimController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 750),
+      duration: const Duration(milliseconds: 320),
     );
     _lineAnimation = CurvedAnimation(
       parent: _lineAnimController,
@@ -1369,8 +1415,8 @@ class _InteractiveStatsPieChartCardState
       return;
     }
 
-    // Chạm vào vành bánh hoặc vùng nhãn (48px -> 140px)
-    if (distance >= 48 && distance <= 140) {
+    // Chạm vào vành bánh hoặc vùng nhãn (48px -> 180px)
+    if (distance >= 48 && distance <= 180) {
       double angle = math.atan2(dy, dx);
       double normalizedAngle = angle - (-math.pi / 2);
       while (normalizedAngle < 0) {
@@ -1503,8 +1549,8 @@ class _InteractiveStatsPieChartCardState
                 builder: (context, constraints) {
                   final center = Offset(constraints.maxWidth / 2, 140.0);
                   return GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTapDown: (details) => _processDirectTap(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) => _processDirectTap(
                       details.localPosition,
                       center,
                       entries,
@@ -1519,24 +1565,7 @@ class _InteractiveStatsPieChartCardState
                             sectionsSpace: 3,
                             startDegreeOffset: -90,
                             borderData: FlBorderData(show: false),
-                            pieTouchData: PieTouchData(
-                              enabled: true,
-                              touchCallback: (event, pieTouchResponse) {
-                                if (!event.isInterestedForInteractions) return;
-                                if (event is FlTapUpEvent ||
-                                    event is FlTapDownEvent) {
-                                  if (pieTouchResponse != null &&
-                                      pieTouchResponse.touchedSection != null) {
-                                    final touchedIndex = pieTouchResponse
-                                        .touchedSection!.touchedSectionIndex;
-                                    if (touchedIndex >= 0 &&
-                                        touchedIndex < entries.length) {
-                                      _handleSectionTap(touchedIndex);
-                                    }
-                                  }
-                                }
-                              },
-                            ),
+                            pieTouchData: PieTouchData(enabled: false),
                             sections: entries.asMap().entries.map((entry) {
                               final index = entry.key;
                               final item = entry.value;
@@ -2340,30 +2369,30 @@ class _MoneyTypeCard extends StatelessWidget {
       curve: Curves.easeOut,
       decoration: BoxDecoration(
         color: selected ? accent.withOpacity(0.08) : palette.cardBackground,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: selected ? accent.withOpacity(0.68) : palette.cardBorder,
-          width: selected ? 1.5 : 1,
+          width: selected ? 1.4 : 1,
         ),
         boxShadow: [
           if (selected)
             BoxShadow(
-              color: accent.withOpacity(0.10),
-              blurRadius: 16,
-              offset: const Offset(0, 6),
+              color: accent.withOpacity(0.08),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
         ],
       ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 16, 14, 16),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
             children: [
               Container(
-                width: 46,
-                height: 46,
+                width: 32,
+                height: 32,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: selected ? accent : accent.withOpacity(0.14),
@@ -2371,10 +2400,10 @@ class _MoneyTypeCard extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: selected ? Colors.white : accent,
-                  size: 24,
+                  size: 16,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2385,19 +2414,19 @@ class _MoneyTypeCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: selected ? accent : palette.textSecondary,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 1),
                     Text(
                       amount,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: selected ? accent : palette.textPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
                         height: 1.1,
                       ),
                     ),
@@ -2445,10 +2474,10 @@ class _AnalysisCard extends StatelessWidget {
     final percentText = '${percent.abs().toStringAsFixed(1)}%';
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: palette.cardBackground,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: palette.cardBorder),
       ),
       child: Column(
@@ -2457,8 +2486,8 @@ class _AnalysisCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 42,
-                height: 42,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: accent.withOpacity(0.15),
@@ -2466,10 +2495,10 @@ class _AnalysisCard extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: accent,
-                  size: 22,
+                  size: 18,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   '$title - $period',
@@ -2477,27 +2506,28 @@ class _AnalysisCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: palette.textSecondary,
-                    fontSize: 15,
+                    fontSize: 13.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Text(
             amount,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: palette.textPrimary,
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5.5),
             decoration: BoxDecoration(
               color: accent.withOpacity(0.10),
               borderRadius: BorderRadius.circular(999),
@@ -2513,9 +2543,9 @@ class _AnalysisCard extends StatelessWidget {
                       ? Icons.trending_up_rounded
                       : Icons.trending_down_rounded,
                   color: accent,
-                  size: 17,
+                  size: 14,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Flexible(
                   child: Text(
                     '$percentText $compareText',
@@ -2523,30 +2553,30 @@ class _AnalysisCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: accent,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             analysisText,
             style: TextStyle(
               color: palette.textSecondary,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
               height: 1.35,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             context.l10n.previousPeriodAmount(previousAmount),
             style: TextStyle(
               color: palette.textSecondary,
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -2582,10 +2612,10 @@ class _PeriodSelector extends StatelessWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
           decoration: BoxDecoration(
             color: palette.cardBackground,
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: palette.cardBorder),
           ),
           child: Row(
@@ -2598,12 +2628,12 @@ class _PeriodSelector extends StatelessWidget {
 
               Expanded(
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                   onTap: onTapTitle,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
-                      vertical: 8,
+                      vertical: 6,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -2616,7 +2646,7 @@ class _PeriodSelector extends StatelessWidget {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: palette.textPrimary,
-                              fontSize: 17,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -2625,7 +2655,7 @@ class _PeriodSelector extends StatelessWidget {
                         Icon(
                           Icons.keyboard_arrow_down_rounded,
                           color: palette.textSecondary,
-                          size: 21,
+                          size: 18,
                         ),
                       ],
                     ),
@@ -2643,7 +2673,7 @@ class _PeriodSelector extends StatelessWidget {
         ),
 
         if (showCurrentButton) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Align(
             alignment: Alignment.center,
             child: InkWell(
@@ -2651,14 +2681,14 @@ class _PeriodSelector extends StatelessWidget {
               onTap: onGoCurrent,
               child: Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
+                  horizontal: 12,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryBlue.withOpacity(0.12),
+                  color: AppColors.primaryBlue.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppSizes.radiusPill),
                   border: Border.all(
-                    color: AppColors.primaryBlue.withOpacity(0.28),
+                    color: AppColors.primaryBlue.withValues(alpha: 0.28),
                   ),
                 ),
                 child: Row(
@@ -2667,14 +2697,14 @@ class _PeriodSelector extends StatelessWidget {
                     const Icon(
                       Icons.today_rounded,
                       color: AppColors.primaryBlue,
-                      size: 16,
+                      size: 14,
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 5),
                     Text(
                       currentButtonText,
                       style: const TextStyle(
                         color: AppColors.primaryBlue,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
@@ -2706,8 +2736,8 @@ class _SmallIconButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        width: 38,
-        height: 38,
+        width: 32,
+        height: 32,
         decoration: BoxDecoration(
           color: palette.innerTileBackground,
           shape: BoxShape.circle,
@@ -2716,7 +2746,7 @@ class _SmallIconButton extends StatelessWidget {
         child: Icon(
           icon,
           color: palette.textPrimary,
-          size: 24,
+          size: 20,
         ),
       ),
     );
@@ -2751,7 +2781,7 @@ class _RowSegment extends StatelessWidget {
         : const Color(0xFFE2E8F0);
 
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3.5),
       decoration: BoxDecoration(
         color: trackBg,
         borderRadius: BorderRadius.circular(AppSizes.radiusPill),
@@ -2775,7 +2805,7 @@ class _RowSegment extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeOutCubic,
-                padding: const EdgeInsets.symmetric(vertical: 9.5),
+                padding: const EdgeInsets.symmetric(vertical: 7),
                 decoration: BoxDecoration(
                   gradient: selected
                       ? const LinearGradient(
@@ -2790,8 +2820,8 @@ class _RowSegment extends StatelessWidget {
                       ? [
                           BoxShadow(
                             color: const Color(0xFF007AFF).withValues(alpha: 0.32),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ]
                       : null,
@@ -2802,12 +2832,12 @@ class _RowSegment extends StatelessWidget {
                     if (icon != null) ...[
                       Icon(
                         icon,
-                        size: 16.5,
+                        size: 15,
                         color: selected
                             ? Colors.white
                             : (isDark ? Colors.white60 : const Color(0xFF64748B)),
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 5),
                     ],
                     Text(
                       labels[index],
@@ -2816,7 +2846,7 @@ class _RowSegment extends StatelessWidget {
                         color: selected
                             ? Colors.white
                             : (isDark ? Colors.white70 : const Color(0xFF475569)),
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                         letterSpacing: -0.1,
                       ),
@@ -2852,70 +2882,90 @@ class _DetailCategoryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: palette.cardBackground,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: palette.cardBorder),
       ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 6,
-        ),
-        leading: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.14),
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Container(
-              width: 14,
-              height: 14,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 10,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: palette.textPrimary,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: palette.textSecondary,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  value,
+                  style: TextStyle(
+                    color: palette.textPrimary,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: palette.textSecondary,
+                  size: 18,
+                ),
+              ],
             ),
           ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            color: palette.textPrimary,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            color: palette.textSecondary,
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: palette.textPrimary,
-                fontSize: 15,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: palette.textSecondary,
-              size: 22,
-            ),
-          ],
         ),
       ),
     );

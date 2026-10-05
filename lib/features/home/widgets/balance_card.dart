@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -163,7 +164,7 @@ class _BalanceCardState extends State<BalanceCard> {
 
             // Top Button: Meme Rewind — Kỷ niệm chi tiêu
             _HeaderIconButton(
-              icon: Icons.auto_awesome_rounded,
+              icon: IconsaxPlusBold.magic_star,
               backgroundColor: actionBtnBg,
               iconColor: actionIconColor,
               onTap: () {
@@ -278,7 +279,7 @@ class _PeriodTabItem extends StatelessWidget {
             if (showGridIcon) ...[
               const SizedBox(width: 5),
               Icon(
-                Icons.grid_view_rounded,
+                IconsaxPlusBold.element_3,
                 size: 13,
                 color: isSelected ? textPrimary : textSecondary,
               ),
@@ -463,8 +464,8 @@ class _MetricCard extends StatelessWidget {
               padding: const EdgeInsets.all(3),
               child: Icon(
                 isAmountHidden
-                    ? Icons.visibility_off_rounded
-                    : Icons.visibility_rounded,
+                    ? IconsaxPlusBold.eye_slash
+                    : IconsaxPlusBold.eye,
                 color: textSecondary.withValues(alpha: 0.75),
                 size: 17,
               ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/localization_extension.dart';
@@ -1942,11 +1943,11 @@ class _ChatConversationScreenState extends State<ChatConversationScreen>
                     child: IconButton(
                       onPressed: _hasText ? _sendMessage : null,
                       icon: Icon(
-                        Icons.send_rounded,
+                        IconsaxPlusBold.send_2,
                         color: _hasText
                             ? AppColors.primaryBlue
                             : AppColors.textSecondary(context).withValues(alpha: 0.35),
-                        size: 24,
+                        size: 32,
                       ),
                     ),
                   ),

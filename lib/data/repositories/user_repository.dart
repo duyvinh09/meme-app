@@ -51,6 +51,12 @@ class UserRepository {
     }).catchError((_) {});
   }
 
+  UserModel? getCachedUserProfile(String uid) {
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return null;
+    return _userProfileMemoryCache[cleanUid];
+  }
+
   Future<void> createUserProfile(UserModel user) {
     invalidateUserProfileCache(user.uid);
     return _remote.createUserProfile(user);
@@ -111,7 +117,19 @@ class UserRepository {
   }
 
   Stream<UserModel?> streamUserProfile(String uid) {
-    return _remote.streamUserProfile(uid);
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return Stream.value(null);
+    return _remote.streamUserProfile(cleanUid).map((user) {
+      if (user != null) {
+        _userProfileMemoryCache[cleanUid] = user;
+        _userProfileCacheTime[cleanUid] = DateTime.now();
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.setString('cached_user_profile_$cleanUid', jsonEncode(user.toMap()));
+          prefs.setInt('cached_user_profile_time_$cleanUid', DateTime.now().millisecondsSinceEpoch);
+        }).catchError((_) {});
+      }
+      return user;
+    });
   }
 
   Stream<int> streamPendingFriendRequestCount(String uid) {
@@ -134,14 +152,34 @@ class UserRepository {
         .map((snapshot) => snapshot.docs.map((e) => e.data()).toList());
   }
 
-  Future<void> updateUserProfile(String uid, Map<String, dynamic> data) {
-    return _remote.updateUserProfile(uid, data);
+  Future<void> updateUserProfile(String uid, Map<String, dynamic> data) async {
+    final cleanUid = uid.trim();
+    if (cleanUid.isNotEmpty) {
+      if (_userProfileMemoryCache.containsKey(cleanUid)) {
+        final current = _userProfileMemoryCache[cleanUid]!;
+        final updatedMap = current.toMap();
+        data.forEach((key, val) {
+          updatedMap[key] = val;
+        });
+        final updatedUser = UserModel.fromMap(updatedMap);
+        _userProfileMemoryCache[cleanUid] = updatedUser;
+        _userProfileCacheTime[cleanUid] = DateTime.now();
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.setString('cached_user_profile_$cleanUid', jsonEncode(updatedMap));
+          prefs.setInt('cached_user_profile_time_$cleanUid', DateTime.now().millisecondsSinceEpoch);
+        }).catchError((_) {});
+      } else {
+        invalidateUserProfileCache(cleanUid);
+      }
+    }
+    await _remote.updateUserProfile(uid, data);
   }
 
   Future<void> updateUserEmail({
     required String uid,
     required String email,
   }) async {
+    invalidateUserProfileCache(uid);
     await _db.collection('users').doc(uid).update({
       'email': email.trim(),
       'updatedAt': FieldValue.serverTimestamp(),
@@ -725,30 +763,62 @@ class UserRepository {
     await getFriends(uid, forceRefresh: true);
   }
 
+  List<String> getCachedFriendIds(String uid) {
+    final cleanUid = uid.trim();
+    if (cleanUid.isEmpty) return const [];
+    final active = _latestActiveFriendsCache[cleanUid];
+    if (active != null && active.isNotEmpty) {
+      return active
+          .map((f) => (f['uid'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toList();
+    }
+    final cached = _friendsMemoryCache[cleanUid];
+    if (cached != null) {
+      return cached
+          .map((f) => (f['uid'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toList();
+    }
+    return const [];
+  }
+
   Stream<List<Map<String, dynamic>>> streamFriends(String uid) {
     final cleanUid = uid.trim();
     if (cleanUid.isEmpty) return Stream.value([]);
 
-    final controller =
-        StreamController<List<Map<String, dynamic>>>.broadcast();
+    StreamSubscription? sub;
+    late StreamController<List<Map<String, dynamic>>> controller;
+
+    void emitCached() {
+      if (_friendsMemoryCache.containsKey(cleanUid)) {
+        if (!controller.isClosed) {
+          controller.add(_friendsMemoryCache[cleanUid]!);
+        }
+      } else {
+        SharedPreferences.getInstance().then((prefs) {
+          final rawJson = prefs.getString('cached_friends_$cleanUid');
+          if (rawJson != null && !controller.isClosed) {
+            try {
+              final decoded = (jsonDecode(rawJson) as List<dynamic>)
+                  .map((e) => Map<String, dynamic>.from(e as Map))
+                  .toList();
+              _friendsMemoryCache[cleanUid] = decoded;
+              controller.add(decoded);
+            } catch (_) {}
+          }
+        }).catchError((_) {});
+      }
+    }
+
+    controller = StreamController<List<Map<String, dynamic>>>.broadcast(
+      onListen: () {
+        emitCached();
+      },
+    );
 
     // 1. Immediately emit memory or persistent cache for offline-first instant display
-    if (_friendsMemoryCache.containsKey(cleanUid)) {
-      controller.add(_friendsMemoryCache[cleanUid]!);
-    } else {
-      SharedPreferences.getInstance().then((prefs) {
-        final rawJson = prefs.getString('cached_friends_$cleanUid');
-        if (rawJson != null && !controller.isClosed) {
-          try {
-            final decoded = (jsonDecode(rawJson) as List<dynamic>)
-                .map((e) => Map<String, dynamic>.from(e as Map))
-                .toList();
-            _friendsMemoryCache[cleanUid] = decoded;
-            controller.add(decoded);
-          } catch (_) {}
-        }
-      }).catchError((_) {});
-    }
+    emitCached();
 
     // 2. Refresh if expired (> 1 hour) or no cache
     final cachedTime = _friendsCacheTime[cleanUid];
@@ -764,7 +834,7 @@ class UserRepository {
     }
 
     // 3. Listen to friend changes from Firestore
-    final sub = _db
+    sub = _db
         .collection('users')
         .doc(cleanUid)
         .collection('friends')
@@ -780,7 +850,7 @@ class UserRepository {
     });
 
     controller.onCancel = () {
-      sub.cancel();
+      sub?.cancel();
     };
 
     return controller.stream;

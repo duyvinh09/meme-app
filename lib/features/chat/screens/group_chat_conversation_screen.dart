@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/localization_extension.dart';
@@ -4381,11 +4382,11 @@ class _GroupChatConversationScreenState
                 child: IconButton(
                   onPressed: hasText && !_isSending ? _sendMessage : null,
                   icon: Icon(
-                    Icons.send_rounded,
+                    IconsaxPlusBold.send_2,
                     color: hasText
                         ? AppColors.primaryBlue
                         : AppColors.textSecondary(context).withValues(alpha: 0.35),
-                    size: 24,
+                    size: 32,
                   ),
                 ),
               );

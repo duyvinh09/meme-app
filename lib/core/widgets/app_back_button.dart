@@ -18,8 +18,8 @@ class AppBackButton extends StatelessWidget {
       onTap: onTap ?? () => Navigator.pop(context),
       borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
       child: Container(
-        width: 48,
-        height: 48,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: AppColors.card(context),
@@ -29,7 +29,7 @@ class AppBackButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          size: 20,
+          size: 19,
           color: AppColors.textPrimary(context),
         ),
       ),

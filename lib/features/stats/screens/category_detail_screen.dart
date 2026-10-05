@@ -164,8 +164,8 @@ class CategoryDetailScreen extends StatelessWidget {
                 onTap: () => Navigator.pop(context),
                 borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
                 child: Container(
-                  width: 48,
-                  height: 48,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: cardColor,
@@ -174,7 +174,7 @@ class CategoryDetailScreen extends StatelessWidget {
                   child: Icon(
                     Icons.arrow_back_ios_new_rounded,
                     color: primaryText,
-                    size: 20,
+                    size: 19,
                   ),
                 ),
               ),
@@ -757,50 +757,56 @@ class _TransactionRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: borderColor),
       ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        leading: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: accent.withValues(alpha: 0.14),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(
-            icon,
-            color: accent,
-            size: 22,
+          onTap: onTap,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          leading: Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: accent.withValues(alpha: 0.14),
+            ),
+            child: Icon(
+              icon,
+              color: accent,
+              size: 22,
+            ),
           ),
-        ),
-        title: Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: primaryText,
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
+          title: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: primaryText,
+              fontSize: 15,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-        ),
-        subtitle: Text(
-          timeText,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: secondaryText,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+          subtitle: Text(
+            timeText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: secondaryText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        trailing: Text(
-          amountText,
-          style: TextStyle(
-            color: transaction.type == 'expense'
-                ? const Color(0xFFFF7A7A)
-                : const Color(0xFF7DDC86),
-            fontSize: 14,
-            fontWeight: FontWeight.w900,
+          trailing: Text(
+            amountText,
+            style: TextStyle(
+              color: transaction.type == 'expense'
+                  ? const Color(0xFFFF7A7A)
+                  : const Color(0xFF7DDC86),
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ),

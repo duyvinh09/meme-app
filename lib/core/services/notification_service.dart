@@ -613,6 +613,124 @@ class NotificationService {
     }
   }
 
+  /// Schedule Birthday Reminder (9:00 AM on user's birthday)
+  Future<void> scheduleBirthdayReminder({
+    DateTime? dateOfBirth,
+    String? name,
+    String? language,
+  }) async {
+    try {
+      // Cancel previous birthday notification slot (ID 9300)
+      await _localNotifications.cancel(id: 9300);
+
+      if (dateOfBirth == null) return;
+
+      final now = tz.TZDateTime.now(tz.local);
+      var scheduledYear = now.year;
+
+      var scheduledDate = tz.TZDateTime(
+        tz.local,
+        scheduledYear,
+        dateOfBirth.month,
+        dateOfBirth.day,
+        9,
+        0,
+      );
+
+      if (scheduledDate.isBefore(now)) {
+        scheduledDate = tz.TZDateTime(
+          tz.local,
+          scheduledYear + 1,
+          dateOfBirth.month,
+          dateOfBirth.day,
+          9,
+          0,
+        );
+      }
+
+      final isEn = (language ?? 'vi').toLowerCase() == 'en';
+      final displayName = name?.trim().isNotEmpty == true ? name!.trim() : (isEn ? 'friend' : 'bạn');
+      final title = isEn
+          ? 'Happy Birthday, $displayName! 🎂🎉'
+          : 'Chúc mừng sinh nhật $displayName! 🎂🎉';
+      final body = isEn
+          ? 'Meme wishes you a joyful new age and abundant prosperity! 💛✨'
+          : 'Meme chúc bạn tuổi mới thật nhiều niềm vui, may mắn và tài khoản luôn rủng rỉnh nhé! 💛✨';
+
+      await _localNotifications.zonedSchedule(
+        id: 9300,
+        title: title,
+        body: body,
+        scheduledDate: scheduledDate,
+        notificationDetails: NotificationDetails(
+          android: AndroidNotificationDetails(
+            reminderChannelId,
+            isEn ? 'Birthday Wishes' : 'Chúc mừng sinh nhật',
+            importance: Importance.high,
+            priority: Priority.high,
+            playSound: true,
+            sound: const RawResourceAndroidNotificationSound(customSoundName),
+            icon: '@mipmap/ic_launcher',
+          ),
+          iOS: const DarwinNotificationDetails(
+            presentAlert: true,
+            presentBadge: true,
+            presentSound: true,
+            sound: 'meme_sound.mp3',
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: jsonEncode({'type': 'birthday'}),
+      );
+      debugPrint('Birthday notification scheduled for $scheduledDate');
+    } catch (e) {
+      debugPrint('Error scheduling birthday notification: $e');
+    }
+  }
+
+  /// Check and show birthday in-app greeting when app is open / resumed
+  Future<void> checkAndShowBirthdayGreeting({
+    UserModel? user,
+    String? language,
+  }) async {
+    if (user == null || user.dateOfBirth == null) return;
+    final now = DateTime.now();
+    if (now.month != user.dateOfBirth!.month || now.day != user.dateOfBirth!.day) {
+      return;
+    }
+
+    await InAppNotificationService.instance.ensureLoaded();
+    final notifKey = 'in_app_birthday_${user.uid}_${now.year}';
+    if (!InAppNotificationService.instance.isNotificationShown(notifKey)) {
+      final isEn = (language ?? user.language).toLowerCase() == 'en';
+      final displayName = user.name.trim().isNotEmpty ? user.name.trim() : (isEn ? 'friend' : 'bạn');
+      await InAppNotificationService.instance.showNotification(
+        InAppNotificationItem(
+          id: notifKey,
+          sender: UserModel(
+            uid: 'system',
+            name: isEn ? 'Happy Birthday!' : 'Meme chúc mừng!',
+            username: 'Birthday',
+            email: '',
+            avatarUrl: '',
+            currency: 'VND',
+            language: language ?? 'vi',
+            themeMode: 'system',
+            currentStreak: 0,
+            bestStreak: 0,
+            createdAt: DateTime.now(),
+            lastActiveDate: DateTime.now(),
+          ),
+          messageText: isEn
+              ? 'Happy Birthday, $displayName! 🎂🎉 Meme wishes you a fantastic year filled with happiness!'
+              : 'Chúc mừng sinh nhật $displayName! 🎂🎉 Meme chúc bạn tuổi mới luôn rực rỡ và hạnh phúc nhé!',
+          type: 'birthday',
+        ),
+        persistShown: true,
+      );
+    }
+  }
+
   /// If user is actively inside the app on weekend or month-end, display the in-app rewind alert
   Future<void> checkAndShowInAppRewindNotification({String? language}) async {
     final bool isAppResumed =
@@ -726,6 +844,11 @@ class NotificationService {
     }
 
     final type = data['type']?.toString();
+
+    if (type == 'birthday') {
+      nav.pushNamed(RouteNames.calendar);
+      return;
+    }
 
     if (type == 'group_chat' || type == 'group_transaction') {
       final groupId = data['groupId']?.toString();

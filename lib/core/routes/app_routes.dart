@@ -10,6 +10,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_sizes.dart';
 import '../constants/app_text_styles.dart';
 import '../extensions/localization_extension.dart';
+import 'package:iconsax_plus/iconsax_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
@@ -120,6 +121,15 @@ class AppRoutes {
         if (args is DateTime) {
           return MaterialPageRoute(
             builder: (_) => DayDetailScreen(selectedDate: args),
+          );
+        } else if (args is Map<String, dynamic>) {
+          final date = args['date'] as DateTime? ?? DateTime.now();
+          final filterType = args['filterType'] as String?;
+          return MaterialPageRoute(
+            builder: (_) => DayDetailScreen(
+              selectedDate: date,
+              filterType: filterType,
+            ),
           );
         }
 
@@ -707,15 +717,16 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
   static const Offset micOffset = Offset(-70.0, -16.0);    // Nút Mic ở ngoài/trái
 
   // Vị trí nút Nhắn tin (Chat)
-  static const double chatClosedY = -72.0;   // Khoảng cách nút Chat khi ĐÓNG (xa nút + hơn)
-  static const double chatOpenedY = -125.0;  // Vị trí nút Chat khi MỞ menu
+  static const double chatClosedY = -72.0;           // Khoảng cách nút Chat khi ĐÓNG (navbar mở rộng)
+  static const double chatCollapsedClosedY = -65.0;  // Khoảng cách nút Chat khi ĐÓNG (navbar thu gọn, cân đối với nút + 55x55)
+  static const double chatOpenSlideDelta = -53.0;    // Độ cao trượt thêm khi MỞ menu
   // ===========================================================================
 
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
   late Animation<double> _voiceAnimation;
   late Animation<double> _cameraAnimation;
-  late Animation<double> _chatSlideAnimation;
+  late Animation<double> _chatCurveAnimation;
 
   @override
   void initState() {
@@ -749,13 +760,11 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
       reverseCurve: const Interval(0.0, 0.82, curve: Curves.easeInOutCubic),
     );
 
-    // Nút Chat trượt lên / xuống đồng bộ
-    _chatSlideAnimation = Tween<double>(begin: chatClosedY, end: chatOpenedY).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutBack,
-        reverseCurve: Curves.easeInOutCubic,
-      ),
+    // Nút Chat trượt lên / xuống theo tiến trình mở menu
+    _chatCurveAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutBack,
+      reverseCurve: Curves.easeInOutCubic,
     );
 
     if (widget.isOpen) {
@@ -887,17 +896,31 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
         alignment: Alignment.bottomRight,
         clipBehavior: Clip.none,
         children: [
-          // 1. Nút Chat (Trượt lên cao khi mở menu và hạ xuống khi đóng)
-          AnimatedBuilder(
-            animation: _chatSlideAnimation,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(0, _chatSlideAnimation.value),
-                child: GestureDetector(
-                  onTap: () {
-                    HapticFeedback.selectionClick();
-                    widget.onChatTap();
-                  },
+          // 1. Nút Chat (Trượt lên cao khi mở menu và hạ xuống khi đóng, tự động cân đối khoảng cách khi navbar thu gọn)
+          TweenAnimationBuilder<double>(
+            duration: Duration(milliseconds: widget.isCollapsed ? 280 : 240),
+            curve: widget.isCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
+            tween: Tween<double>(
+              end: widget.isCollapsed ? chatCollapsedClosedY : chatClosedY,
+            ),
+            builder: (context, closedY, child) {
+              return AnimatedBuilder(
+                animation: _chatCurveAnimation,
+                builder: (context, _) {
+                  final yOffset =
+                      closedY + chatOpenSlideDelta * _chatCurveAnimation.value;
+                  return Transform.translate(
+                    offset: Offset(0, yOffset),
+                    child: child,
+                  );
+                },
+              );
+            },
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                widget.onChatTap();
+              },
                   child: Stack(
                     clipBehavior: Clip.none,
                     children: [
@@ -926,7 +949,7 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                           ],
                         ),
                         child: Icon(
-                          Icons.chat_bubble_rounded,
+                          IconsaxPlusBold.messages_2,
                           color: isDark
                               ? Colors.white
                               : AppColors.primaryBlue,
@@ -956,8 +979,8 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                               right: -4,
                               child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 5,
-                                  vertical: 2,
+                                   horizontal: 5,
+                                   vertical: 2,
                                 ),
                                 constraints: const BoxConstraints(
                                   minWidth: 20,
@@ -972,14 +995,6 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                                         : Colors.white,
                                     width: 1.8,
                                   ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFFFF3B30)
-                                          .withValues(alpha: 0.45),
-                                      blurRadius: 6,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
                                 ),
                                 child: Center(
                                   child: Text(
@@ -1001,15 +1016,13 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                     ],
                   ),
                 ),
-              );
-            },
-          ),
+              ),
 
           // 2. Nút Camera (Bung ra phía trên theo cánh cung)
           _buildSubItem(
             animation: _cameraAnimation,
             targetOffset: cameraOffset,
-            icon: Icons.photo_camera_rounded,
+            icon: IconsaxPlusBold.camera,
             onTap: widget.onCameraTap,
             isDark: isDark,
           ),
@@ -1018,7 +1031,7 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
           _buildSubItem(
             animation: _voiceAnimation,
             targetOffset: micOffset,
-            icon: Icons.mic_rounded,
+            icon: IconsaxPlusBold.microphone_2,
             onTap: widget.onVoiceTap,
             isDark: isDark,
           ),
@@ -1059,9 +1072,9 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                   return Transform.rotate(
                     angle: _rotationAnimation.value * 2 * math.pi,
                     child: Icon(
-                      Icons.add_rounded,
+                      IconsaxPlusLinear.add,
                       color: Colors.white,
-                      size: widget.isCollapsed ? 27.0 : 30.0,
+                      size: widget.isCollapsed ? 32.0 : 35.0,
                     ),
                   );
                 },
@@ -1091,9 +1104,13 @@ class _FloatingGlassNavbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
 
-    final selectedColor = isDark
+    // Active text & icon: Dùng primaryBlue cho dark mode, và xanh đậm hơn rõ nét (0xFF2563EB) cho light mode để dễ nhìn
+    final activeTextColor = isDark
         ? AppColors.primaryBlue
-        : const Color(0xFF1D4ED8);
+        : const Color(0xFF2563EB);
+    // Màu pill nền indicator: Đồng bộ tone màu xanh thương hiệu AppColors.primaryBlue
+    final indicatorColor = AppColors.primaryBlue;
+
     final unselectedColor = isDark
         ? Colors.white.withValues(alpha: 0.82)
         : const Color(0xFF334155);
@@ -1101,28 +1118,28 @@ class _FloatingGlassNavbar extends StatelessWidget {
     final l10n = context.l10n;
     final items = <_NavBarItemData>[
       _NavBarItemData(
-        icon: Icons.home_outlined,
-        activeIcon: Icons.home_rounded,
+        icon: IconsaxPlusBold.home_2,
+        activeIcon: IconsaxPlusBold.home_2,
         label: l10n.tabHome,
       ),
       _NavBarItemData(
-        icon: Icons.bar_chart_outlined,
-        activeIcon: Icons.analytics_rounded,
+        icon: IconsaxPlusBold.graph,
+        activeIcon: IconsaxPlusBold.graph,
         label: l10n.tabStats,
       ),
       _NavBarItemData(
-        icon: Icons.auto_awesome_outlined,
-        activeIcon: Icons.auto_awesome_rounded,
+        icon: IconsaxPlusBold.profile_2user,
+        activeIcon: IconsaxPlusBold.profile_2user,
         label: l10n.tabFriends,
       ),
       _NavBarItemData(
-        icon: Icons.savings_outlined,
-        activeIcon: Icons.savings_rounded,
+        icon: IconsaxPlusBold.wallet_3,
+        activeIcon: IconsaxPlusBold.wallet_3,
         label: l10n.tabBudget,
       ),
       _NavBarItemData(
-        icon: Icons.person_outline_rounded,
-        activeIcon: Icons.person_rounded,
+        icon: IconsaxPlusBold.profile_circle,
+        activeIcon: IconsaxPlusBold.profile_circle,
         label: l10n.profile,
       ),
     ];
@@ -1197,22 +1214,22 @@ class _FloatingGlassNavbar extends StatelessWidget {
                             height: AppSizes.navbarHeight - 8.0,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: selectedColor.withValues(
-                                  alpha: isDark ? 0.25 : 0.15,
+                                color: indicatorColor.withValues(
+                                  alpha: isDark ? 0.25 : 0.28,
                                 ),
                                 borderRadius: BorderRadius.circular(
                                   AppSizes.radiusPill,
                                 ),
                                 border: Border.all(
-                                  color: selectedColor.withValues(
-                                    alpha: isDark ? 0.35 : 0.22,
+                                  color: indicatorColor.withValues(
+                                    alpha: isDark ? 0.35 : 0.45,
                                   ),
                                   width: 1.0,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: selectedColor.withValues(
-                                      alpha: isDark ? 0.15 : 0.08,
+                                    color: indicatorColor.withValues(
+                                      alpha: isDark ? 0.15 : 0.12,
                                     ),
                                     blurRadius: 8,
                                     offset: const Offset(0, 2),
@@ -1242,7 +1259,7 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                       padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
                                       child: Builder(
                                         builder: (context) {
-                                          final iconSize = selected ? 35.0 : 32.0;
+                                          final iconSize = selected ? 32.0 : 29.0;
 
                                           return Column(
                                             mainAxisAlignment: MainAxisAlignment.center,
@@ -1255,7 +1272,7 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                                       : item.icon,
                                                   size: iconSize,
                                                   color: selected
-                                                      ? selectedColor
+                                                      ? activeTextColor
                                                       : unselectedColor,
                                                 )
                                               else
@@ -1270,7 +1287,7 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                                     key: ValueKey('${item.label}_$selected'),
                                                     size: iconSize,
                                                     color: selected
-                                                      ? selectedColor
+                                                      ? activeTextColor
                                                       : unselectedColor,
                                                   ),
                                                 ),
@@ -1281,7 +1298,7 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                                   style: AppTextStyles.navLabel(
                                                     selected: selected,
                                                     color: selected
-                                                        ? selectedColor
+                                                        ? activeTextColor
                                                         : unselectedColor,
                                                   ),
                                                   child: Text(
@@ -1332,8 +1349,8 @@ class _FloatingGlassNavbar extends StatelessWidget {
                           height: 48,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: selectedColor.withValues(
-                              alpha: isDark ? 0.25 : 0.16,
+                            color: indicatorColor.withValues(
+                              alpha: isDark ? 0.25 : 0.28,
                             ),
                           ),
                           child: Center(
@@ -1342,12 +1359,12 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                     spinning: isRefreshingFeed,
                                     icon: activeItem.activeIcon,
                                     size: 26,
-                                    color: selectedColor,
+                                    color: activeTextColor,
                                   )
                                 : Icon(
                                     activeItem.activeIcon,
                                     size: 26,
-                                    color: selectedColor,
+                                    color: activeTextColor,
                                   ),
                           ),
                         ),

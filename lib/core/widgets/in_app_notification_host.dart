@@ -122,6 +122,10 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
             'targetPostId': item.postId,
           },
         );
+      } else if (item.type == 'birthday') {
+        AppRoutes.navigatorKey.currentState?.pushNamed(
+          RouteNames.calendar,
+        );
       } else if (item.type == 'rewind') {
         final period = item.postId == 'thisMonth' ? 'thisMonth' : 'thisWeek';
         AppRoutes.navigatorKey.currentState?.pushNamed(
@@ -225,6 +229,32 @@ class _InAppNotificationHostState extends State<InAppNotificationHost>
                                     avatarUrl: _activeItem!.sender.avatarUrl,
                                     frameId: _activeItem!.sender.avatarFrame,
                                     size: 42,
+                                  )
+                                else if (_activeItem!.type == 'birthday')
+                                  Container(
+                                    width: 42,
+                                    height: 42,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(12),
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFFFF758C), Color(0xFFFF7EB3)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFFFF758C).withValues(alpha: 0.35),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        '🎂',
+                                        style: TextStyle(fontSize: 22),
+                                      ),
+                                    ),
                                   )
                                 else if (_activeItem!.type == 'rewind' ||
                                     _activeItem!.sender.uid == 'system' ||

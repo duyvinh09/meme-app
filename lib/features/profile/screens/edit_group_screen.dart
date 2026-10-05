@@ -539,7 +539,10 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: SafeArea(
-        child: ListView(
+        child: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: ListView(
           padding: const EdgeInsets.fromLTRB(
             AppSizes.pagePadding,
             12,
@@ -841,8 +844,9 @@ class _EditGroupScreenState extends State<EditGroupScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _MemberSelectTile extends StatelessWidget {
@@ -887,17 +891,21 @@ class _MemberSelectTile extends StatelessWidget {
     }
 
     return Container(
+      clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: selected
-            ? color.withOpacity(AppColors.isDark(context) ? 0.16 : 0.10)
+            ? color.withValues(alpha: AppColors.isDark(context) ? 0.16 : 0.10)
             : AppColors.surface(context),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: selected ? color.withOpacity(0.45) : AppColors.innerBorder(context),
+          color: selected ? color.withValues(alpha: 0.45) : AppColors.innerBorder(context),
         ),
       ),
       child: ListTile(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(22),
+        ),
         onTap: isOwner ? null : onTap,
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 12,
@@ -1039,7 +1047,7 @@ class _InfoNoteCard extends StatelessWidget {
   }
 }
 
-class _EditInputField extends StatelessWidget {
+class _EditInputField extends StatefulWidget {
   final TextEditingController controller;
   final String label;
   final String hintText;
@@ -1063,22 +1071,50 @@ class _EditInputField extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    final counterLimit = maxLength;
+  State<_EditInputField> createState() => _EditInputFieldState();
+}
 
-    return Container(
+class _EditInputFieldState extends State<_EditInputField> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final counterLimit = widget.maxLength;
+    final hasFocus = _focusNode.hasFocus;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       decoration: BoxDecoration(
         color: AppColors.surface(context),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: AppColors.innerBorder(context),
+          color: hasFocus ? widget.cursorColor : AppColors.innerBorder(context),
+          width: hasFocus ? 1.4 : 1.0,
         ),
       ),
       child: TextField(
-        controller: controller,
-        keyboardType: keyboardType,
-        inputFormatters: inputFormatters,
-        cursorColor: cursorColor,
+        controller: widget.controller,
+        focusNode: _focusNode,
+        keyboardType: widget.keyboardType,
+        inputFormatters: widget.inputFormatters,
+        cursorColor: widget.cursorColor,
         maxLength: counterLimit,
         buildCounter:
             counterLimit == null || counterLimit <= 0
@@ -1105,17 +1141,18 @@ class _EditInputField extends StatelessWidget {
           fontWeight: FontWeight.w800,
         ),
         decoration: InputDecoration(
-          labelText: label,
-          hintText: hintText,
-          suffixText: suffixText,
+          labelText: widget.label,
+          hintText: widget.hintText,
+          suffixText: widget.suffixText,
           counterText: counterLimit != null ? '' : null,
           prefixIcon: Icon(
-            icon,
-            color: AppColors.textSecondary(context),
+            widget.icon,
+            color: hasFocus ? widget.cursorColor : AppColors.textSecondary(context),
           ),
           labelStyle: AppTextStyles.caption(context).copyWith(
             fontSize: 14,
             fontWeight: FontWeight.w600,
+            color: hasFocus ? widget.cursorColor : null,
           ),
           hintStyle: AppTextStyles.caption(context).copyWith(
             fontSize: 15,
@@ -1126,7 +1163,14 @@ class _EditInputField extends StatelessWidget {
             fontSize: 15,
             fontWeight: FontWeight.w800,
           ),
+          filled: false,
+          fillColor: Colors.transparent,
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          focusedErrorBorder: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 14,
             vertical: 16,
@@ -1171,7 +1215,7 @@ class _TopCircleButton extends StatelessWidget {
   }
 }
 
-class _SearchMemberBox extends StatelessWidget {
+class _SearchMemberBox extends StatefulWidget {
   final TextEditingController controller;
   final Color color;
   final ValueChanged<String> onChanged;
@@ -1185,60 +1229,104 @@ class _SearchMemberBox extends StatelessWidget {
   });
 
   @override
+  State<_SearchMemberBox> createState() => _SearchMemberBoxState();
+}
+
+class _SearchMemberBoxState extends State<_SearchMemberBox> {
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(_onFocusChange);
+  }
+
+  void _onFocusChange() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChange);
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 52,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: AppColors.innerBorder(context),
+    final hasFocus = _focusNode.hasFocus;
+
+    return GestureDetector(
+      onTap: () {
+        if (!_focusNode.hasFocus) {
+          _focusNode.requestFocus();
+        }
+      },
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        height: 52,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface(context),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: hasFocus ? widget.color : AppColors.innerBorder(context),
+            width: hasFocus ? 1.4 : 1.0,
+          ),
         ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.search_rounded,
-            color: AppColors.textSecondary(context),
-            size: 22,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              onChanged: onChanged,
-              cursorColor: color,
-              style: AppTextStyles.body(context).copyWith(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-              decoration: InputDecoration(
-                hintText: context.l10n.friendsSearchHint,
-                hintStyle: AppTextStyles.bodySecondary(context).copyWith(
-                  color: AppColors.textSecondary(context).withValues(alpha: 0.7),
+        child: Row(
+          children: [
+            Icon(
+              Icons.search_rounded,
+              color: hasFocus ? widget.color : AppColors.textSecondary(context),
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: widget.controller,
+                focusNode: _focusNode,
+                onChanged: widget.onChanged,
+                cursorColor: widget.color,
+                style: AppTextStyles.body(context).copyWith(
                   fontSize: 15,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
+                decoration: InputDecoration(
+                  hintText: context.l10n.friendsSearchHint,
+                  hintStyle: AppTextStyles.bodySecondary(context).copyWith(
+                    color: AppColors.textSecondary(context).withValues(alpha: 0.7),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  isDense: true,
+                  filled: false,
+                  fillColor: Colors.transparent,
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  disabledBorder: InputBorder.none,
+                  errorBorder: InputBorder.none,
+                  focusedErrorBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
               ),
             ),
-          ),
-          if (controller.text.isNotEmpty)
-            GestureDetector(
-              onTap: onClear,
-              child: Padding(
-                padding: const EdgeInsets.all(4),
-                child: Icon(
-                  Icons.cancel_rounded,
-                  color: AppColors.textSecondary(context),
-                  size: 20,
+            if (widget.controller.text.isNotEmpty)
+              GestureDetector(
+                onTap: widget.onClear,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: Icon(
+                    Icons.cancel_rounded,
+                    color: AppColors.textSecondary(context),
+                    size: 20,
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

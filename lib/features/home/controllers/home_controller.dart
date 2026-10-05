@@ -64,7 +64,7 @@ class HomeController extends ChangeNotifier {
   }
 
   Future<void> refreshProfile(String uid) async {
-    profile = await userRepository.getUserProfile(uid);
+    profile = await userRepository.getUserProfile(uid, forceRefresh: true);
     notifyListeners();
   }
 

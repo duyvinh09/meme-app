@@ -186,6 +186,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                         month: month,
                         allTransactions: home.transactions,
                         userCurrency: currency,
+                        dateOfBirth: profile.user?.dateOfBirth,
                       ),
                     ),
 
@@ -288,7 +289,7 @@ class _MemeStatsBadge extends StatelessWidget {
       },
       borderRadius: BorderRadius.circular(AppSizes.radiusPill),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8.5),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF131418) : Colors.white,
           borderRadius: BorderRadius.circular(AppSizes.radiusPill),
@@ -312,25 +313,25 @@ class _MemeStatsBadge extends StatelessWidget {
             Text(
               '💛 $countFormatted $memeLabel',
               style: TextStyle(
-                fontSize: 14.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: isDark ? Colors.white : const Color(0xFF14151B),
                 letterSpacing: -0.1,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 10),
             // Divider |
             Container(
               width: 1.2,
-              height: 14,
+              height: 12,
               color: isDark ? Colors.white24 : Colors.black12,
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 10),
             // 🔥 chuỗi n ngày / 🔥 n-day streak
             Text(
               streakText,
               style: TextStyle(
-                fontSize: 14.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w800,
                 color: isDark ? Colors.white : const Color(0xFF14151B),
                 letterSpacing: -0.1,
@@ -372,19 +373,19 @@ class _FirstMemeMilestoneHeader extends StatelessWidget {
         : DateFormat('MMMM d, yyyy', 'en_US').format(date);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 26, 20, 10),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Icon lịch trái tim
           Container(
-            width: 48,
-            height: 48,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: isDark
                   ? Colors.white.withValues(alpha: 0.08)
                   : Colors.black.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDark
                     ? Colors.white.withValues(alpha: 0.12)
@@ -397,48 +398,48 @@ class _FirstMemeMilestoneHeader extends StatelessWidget {
               children: [
                 Icon(
                   Icons.calendar_today_rounded,
-                  size: 22,
+                  size: 18,
                   color: isDark
                       ? Colors.white.withValues(alpha: 0.55)
                       : Colors.black.withValues(alpha: 0.55),
                 ),
                 Positioned(
-                  bottom: 11,
+                  bottom: 9,
                   child: Icon(
                     Icons.favorite_rounded,
-                    size: 9.5,
+                    size: 8,
                     color: isDark
-                        ? Colors.white.withValues(alpha: 0.65)
-                        : Colors.black.withValues(alpha: 0.65),
+                      ? Colors.white.withValues(alpha: 0.65)
+                      : Colors.black.withValues(alpha: 0.65),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 10),
           Text(
             titleText,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 14.5,
+              fontSize: 12.5,
               fontWeight: FontWeight.w600,
               color: isDark
                   ? Colors.white.withValues(alpha: 0.65)
                   : Colors.black.withValues(alpha: 0.65),
-              height: 1.35,
+              height: 1.3,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Text(
             dateText,
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w800,
               color: isDark
                   ? Colors.white.withValues(alpha: 0.90)
                   : Colors.black.withValues(alpha: 0.90),
-              height: 1.35,
+              height: 1.3,
             ),
           ),
         ],
@@ -459,8 +460,8 @@ class _TopThreadLoop extends StatelessWidget {
     final dashColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
 
     return SizedBox(
-      width: 52,
-      height: 38,
+      width: 44,
+      height: 28,
       child: CustomPaint(
         painter: _MonthUniqueDashedPainter(
           month: monthNumber,
@@ -484,8 +485,8 @@ class _MonthDashedConnectorThread extends StatelessWidget {
     final dashColor = isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
 
     return SizedBox(
-      width: 64,
-      height: 52,
+      width: 52,
+      height: 38,
       child: CustomPaint(
         painter: _MonthUniqueDashedPainter(
           month: monthNumber,
@@ -657,17 +658,74 @@ void _drawDashedPath(
   }
 }
 
+enum _CalendarFilterMode {
+  all,
+  expense,
+  income,
+}
+
+String _formatDailyCompact({
+  required double amountVnd,
+  required String? currency,
+  required bool isVi,
+}) {
+  if (amountVnd <= 0) return '';
+  final normCurrency = AppCurrencyFormatter.normalizeCurrency(currency);
+  if (normCurrency == 'USD') {
+    final usd = AppCurrencyFormatter.fromVnd(amountVnd: amountVnd, currency: 'USD');
+    if (usd < 1) {
+      return '\$${usd.toStringAsFixed(2)}';
+    }
+    if (usd < 1000) {
+      return '\$${usd.round()}';
+    }
+    if (usd < 1000000) {
+      final k = usd / 1000;
+      final text = k >= 10 || k % 1 == 0 ? k.round().toString() : k.toStringAsFixed(1);
+      return '\$${text}k';
+    }
+    final m = usd / 1000000;
+    final text = m >= 10 || m % 1 == 0 ? m.round().toString() : m.toStringAsFixed(1);
+    return '\$${text}M';
+  }
+
+  // VND
+  if (amountVnd < 1000) {
+    return '${amountVnd.round()}đ';
+  }
+  if (amountVnd < 1000000) {
+    return '${(amountVnd / 1000).round()}k';
+  }
+  if (amountVnd < 1000000000) {
+    final m = amountVnd / 1000000;
+    final text = m >= 10 || m % 1 == 0 ? m.round().toString() : m.toStringAsFixed(1);
+    return isVi ? '${text}tr' : '${text}M';
+  }
+  final b = amountVnd / 1000000000;
+  final text = b >= 10 || b % 1 == 0 ? b.round().toString() : b.toStringAsFixed(1);
+  return isVi ? '${text}tỷ' : '${text}B';
+}
+
 /// Thẻ tháng hoàn chỉnh (Month Card)
-class _MonthCalendarCard extends StatelessWidget {
+class _MonthCalendarCard extends StatefulWidget {
   final DateTime month;
   final List<TransactionModel> allTransactions;
   final String userCurrency;
+  final DateTime? dateOfBirth;
 
   const _MonthCalendarCard({
     required this.month,
     required this.allTransactions,
     required this.userCurrency,
+    this.dateOfBirth,
   });
+
+  @override
+  State<_MonthCalendarCard> createState() => _MonthCalendarCardState();
+}
+
+class _MonthCalendarCardState extends State<_MonthCalendarCard> {
+  _CalendarFilterMode _selectedFilter = _CalendarFilterMode.all;
 
   bool _sameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -695,6 +753,7 @@ class _MonthCalendarCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final locale = Localizations.localeOf(context).toString();
+    final isVi = locale.toLowerCase().startsWith('vi');
     final isDark = AppColors.isDark(context);
 
     // Gom nhóm giao dịch theo ngày và tính tổng thu/chi trong 1 vòng lặp O(N) duy nhất
@@ -702,8 +761,9 @@ class _MonthCalendarCard extends StatelessWidget {
     double totalExpense = 0.0;
     double totalIncome = 0.0;
 
-    for (final tx in allTransactions) {
-      if (tx.createdAt.year == month.year && tx.createdAt.month == month.month) {
+    for (final tx in widget.allTransactions) {
+      if (tx.createdAt.year == widget.month.year &&
+          tx.createdAt.month == widget.month.month) {
         (dayTxMap[tx.createdAt.day] ??= []).add(tx);
         if (tx.isPersonalExpense) {
           totalExpense += tx.amount;
@@ -714,7 +774,8 @@ class _MonthCalendarCard extends StatelessWidget {
     }
 
     // Tiêu đề tháng
-    final rawMonthTitle = DateFormat('MMMM, yyyy', locale).format(month);
+    final rawMonthTitle =
+        DateFormat('MMMM, yyyy', locale).format(widget.month);
     final monthTitle = rawMonthTitle.isNotEmpty
         ? rawMonthTitle[0].toUpperCase() + rawMonthTitle.substring(1)
         : rawMonthTitle;
@@ -728,16 +789,16 @@ class _MonthCalendarCard extends StatelessWidget {
       return DateFormat('E', locale).format(day).toUpperCase();
     });
 
-    final days = _daysInMonth(month);
+    final days = _daysInMonth(widget.month);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final rowCount = (days.length / 7).ceil();
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(14, 20, 14, 18),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF131418) : Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark ? const Color(0xFF222530) : const Color(0xFFE6E9F0),
           width: 1.2,
@@ -757,51 +818,76 @@ class _MonthCalendarCard extends StatelessWidget {
           Text(
             monthTitle,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 15.5,
               fontWeight: FontWeight.w800,
               color: isDark ? const Color(0xFFC8CDD8) : const Color(0xFF2D313E),
-              letterSpacing: 0.2,
+              letterSpacing: 0.1,
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
 
-          // 2 Ô Tổng Chi & Tổng Thu
-          Row(
-            children: [
-              // Ô Chi
-              Expanded(
-                child: _MonthlySummaryBox(
-                  label: l10n.expense,
-                  icon: Icons.arrow_outward_rounded,
-                  amountText: totalExpense > 0
-                      ? '-${AppCurrencyFormatter.formatFromVnd(amountVnd: totalExpense, currency: userCurrency)}'
-                      : '0₫',
-                  accentColor: const Color(0xFFFF5252),
-                  badgeBgColor: isDark
-                      ? const Color(0xFFFF5252).withValues(alpha: 0.15)
-                      : const Color(0xFFFFEBEE),
+          // 2 Ô Tổng Chi & Tổng Thu (Giữ nguyên chiều rộng, hỗ trợ bấm để lọc)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: Row(
+              children: [
+                // Ô Chi
+                Expanded(
+                  child: _MonthlySummaryBox(
+                    label: l10n.expense,
+                    icon: Icons.arrow_outward_rounded,
+                    amountText: totalExpense > 0
+                        ? '-${AppCurrencyFormatter.formatFromVnd(amountVnd: totalExpense, currency: widget.userCurrency)}'
+                        : '0₫',
+                    accentColor: const Color(0xFFFF5252),
+                    badgeBgColor: isDark
+                        ? const Color(0xFFFF5252).withValues(alpha: 0.15)
+                        : const Color(0xFFFFEBEE),
+                    isSelected: _selectedFilter == _CalendarFilterMode.expense,
+                    isDimmed: _selectedFilter == _CalendarFilterMode.income,
+                    onTap: () {
+                      setState(() {
+                        if (_selectedFilter == _CalendarFilterMode.expense) {
+                          _selectedFilter = _CalendarFilterMode.all;
+                        } else {
+                          _selectedFilter = _CalendarFilterMode.expense;
+                        }
+                      });
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              // Ô Thu
-              Expanded(
-                child: _MonthlySummaryBox(
-                  label: l10n.income,
-                  icon: Icons.south_east_rounded,
-                  amountText: totalIncome > 0
-                      ? '+${AppCurrencyFormatter.formatFromVnd(amountVnd: totalIncome, currency: userCurrency)}'
-                      : '0₫',
-                  accentColor: const Color(0xFF2ECC71),
-                  badgeBgColor: isDark
-                      ? const Color(0xFF2ECC71).withValues(alpha: 0.15)
-                      : const Color(0xFFE8F8F0),
+                const SizedBox(width: 8),
+                // Ô Thu
+                Expanded(
+                  child: _MonthlySummaryBox(
+                    label: l10n.income,
+                    icon: Icons.south_east_rounded,
+                    amountText: totalIncome > 0
+                        ? '+${AppCurrencyFormatter.formatFromVnd(amountVnd: totalIncome, currency: widget.userCurrency)}'
+                        : '0₫',
+                    accentColor: const Color(0xFF2ECC71),
+                    badgeBgColor: isDark
+                        ? const Color(0xFF2ECC71).withValues(alpha: 0.15)
+                        : const Color(0xFFE8F8F0),
+                    isSelected: _selectedFilter == _CalendarFilterMode.income,
+                    isDimmed: _selectedFilter == _CalendarFilterMode.expense,
+                    onTap: () {
+                      setState(() {
+                        if (_selectedFilter == _CalendarFilterMode.income) {
+                          _selectedFilter = _CalendarFilterMode.all;
+                        } else {
+                          _selectedFilter = _CalendarFilterMode.income;
+                        }
+                      });
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
           // Hàng thứ trong tuần (T2, T3, T4, T5, T6, T7, CN)
           Padding(
@@ -814,11 +900,13 @@ class _MonthCalendarCard extends StatelessWidget {
                     child: Text(
                       weekdayLabels[index],
                       style: TextStyle(
-                        fontSize: 12.5,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                         color: isWeekend
                             ? AppColors.primaryBlue
-                            : (isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF)),
+                            : (isDark
+                                ? const Color(0xFF6B7280)
+                                : const Color(0xFF9CA3AF)),
                       ),
                     ),
                   ),
@@ -827,7 +915,7 @@ class _MonthCalendarCard extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Lưới ngày siêu nhẹ (Lightweight 7-column Row layout, 0ms render không dùng GridView/shrinkWrap)
           Column(
@@ -848,10 +936,61 @@ class _MonthCalendarCard extends StatelessWidget {
                       return const Expanded(child: SizedBox.shrink());
                     }
 
-                    final dayTransactions = dayTxMap[date.day] ?? const <TransactionModel>[];
+                    final dayAllTransactions =
+                        dayTxMap[date.day] ?? const <TransactionModel>[];
+
+                    // Lọc theo tab đang chọn
+                    final List<TransactionModel> displayedTransactions;
+                    double dayAmount = 0.0;
+
+                    if (_selectedFilter == _CalendarFilterMode.expense) {
+                      displayedTransactions = dayAllTransactions
+                          .where((tx) => tx.isPersonalExpense)
+                          .toList();
+                      for (final tx in displayedTransactions) {
+                        dayAmount += tx.amount;
+                      }
+                    } else if (_selectedFilter == _CalendarFilterMode.income) {
+                      displayedTransactions = dayAllTransactions
+                          .where((tx) => tx.isPersonalIncome)
+                          .toList();
+                      for (final tx in displayedTransactions) {
+                        dayAmount += tx.amount;
+                      }
+                    } else {
+                      displayedTransactions = dayAllTransactions;
+                    }
+
                     final isToday = _sameDate(date, now);
-                    final isFuture = DateTime(date.year, date.month, date.day).isAfter(today);
-                    final hasData = dayTransactions.isNotEmpty;
+                    final isFuture =
+                        DateTime(date.year, date.month, date.day).isAfter(today);
+                    final hasData = displayedTransactions.isNotEmpty;
+                    final isBirthday = widget.dateOfBirth != null &&
+                        date.day == widget.dateOfBirth!.day &&
+                        date.month == widget.dateOfBirth!.month;
+
+                    String? amountText;
+                    Color? amountColor;
+
+                    if (_selectedFilter == _CalendarFilterMode.expense) {
+                      if (dayAmount > 0) {
+                        amountText = _formatDailyCompact(
+                          amountVnd: dayAmount,
+                          currency: widget.userCurrency,
+                          isVi: isVi,
+                        );
+                        amountColor = const Color(0xFFFF5252);
+                      }
+                    } else if (_selectedFilter == _CalendarFilterMode.income) {
+                      if (dayAmount > 0) {
+                        amountText = '+${_formatDailyCompact(
+                          amountVnd: dayAmount,
+                          currency: widget.userCurrency,
+                          isVi: isVi,
+                        )}';
+                        amountColor = const Color(0xFF2ECC71);
+                      }
+                    }
 
                     return Expanded(
                       child: _CalendarDayCell(
@@ -859,16 +998,28 @@ class _MonthCalendarCard extends StatelessWidget {
                         isToday: isToday,
                         isFuture: isFuture,
                         hasData: hasData,
-                        transactions: dayTransactions,
+                        isBirthday: isBirthday,
+                        transactions: displayedTransactions,
+                        amountText: amountText,
+                        amountColor: amountColor,
                         onTap: hasData
                             ? () {
                                 Navigator.pushNamed(
                                   context,
                                   RouteNames.dayDetail,
-                                  arguments: date,
+                                  arguments: {
+                                    'date': date,
+                                    'filterType': _selectedFilter ==
+                                            _CalendarFilterMode.expense
+                                        ? 'expense'
+                                        : (_selectedFilter ==
+                                                _CalendarFilterMode.income
+                                            ? 'income'
+                                            : null),
+                                  },
                                 );
                               }
-                            : null, // Không bấm được nếu là ngày chưa chụp
+                            : null, // Không bấm được nếu là ngày chưa có dữ liệu tương ứng
                       ),
                     );
                   }),
@@ -882,13 +1033,16 @@ class _MonthCalendarCard extends StatelessWidget {
   }
 }
 
-/// Ô tóm tắt Tổng Chi / Tổng Thu trong thẻ tháng
+/// Ô tóm tắt Tổng Chi / Tổng Thu trong thẻ tháng (Hỗ trợ tương tác chọn để lọc)
 class _MonthlySummaryBox extends StatelessWidget {
   final String label;
   final IconData icon;
   final String amountText;
   final Color accentColor;
   final Color badgeBgColor;
+  final bool isSelected;
+  final bool isDimmed;
+  final VoidCallback onTap;
 
   const _MonthlySummaryBox({
     required this.label,
@@ -896,91 +1050,8 @@ class _MonthlySummaryBox extends StatelessWidget {
     required this.amountText,
     required this.accentColor,
     required this.badgeBgColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = AppColors.isDark(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D0E12) : const Color(0xFFF7F8FA),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: isDark ? const Color(0xFF1F222D) : const Color(0xFFE8ECF2),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Badge: [↗ Chi] hoặc [↘ Thu]
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: badgeBgColor,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: accentColor.withValues(alpha: 0.6),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 13,
-                  color: accentColor,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w800,
-                    color: accentColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Số tiền
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              amountText,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
-                color: isDark ? Colors.white : const Color(0xFF14151B),
-                letterSpacing: -0.2,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Ô hiển thị từng ngày trong lưới lịch (Dấu x ở ngày chưa chụp, Badge số lượng cho >= 3 giao dịch)
-class _CalendarDayCell extends StatelessWidget {
-  final DateTime date;
-  final bool isToday;
-  final bool isFuture;
-  final bool hasData;
-  final List<TransactionModel> transactions;
-  final VoidCallback? onTap;
-
-  const _CalendarDayCell({
-    required this.date,
-    required this.isToday,
-    required this.isFuture,
-    required this.hasData,
-    required this.transactions,
+    this.isSelected = false,
+    this.isDimmed = false,
     required this.onTap,
   });
 
@@ -988,7 +1059,133 @@ class _CalendarDayCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
 
-    // Widget phần đầu (Ảnh sticker / dấu x / ô xám mờ)
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: isDimmed ? 0.45 : 1.0,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? (isDark
+                  ? accentColor.withValues(alpha: 0.16)
+                  : accentColor.withValues(alpha: 0.08))
+              : (isDark ? const Color(0xFF0D0E12) : const Color(0xFFF7F8FA)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? accentColor
+                : (isDark ? const Color(0xFF1F222D) : const Color(0xFFE8ECF2)),
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: accentColor.withValues(alpha: isDark ? 0.30 : 0.18),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Badge: [↗ Chi] hoặc [↘ Thu]
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? accentColor.withValues(alpha: isDark ? 0.35 : 0.22)
+                          : badgeBgColor,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: accentColor
+                            .withValues(alpha: isSelected ? 0.9 : 0.6),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          icon,
+                          size: 10.5,
+                          color: accentColor,
+                        ),
+                        const SizedBox(width: 3),
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  // Số tiền
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      amountText,
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF14151B),
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ô hiển thị từng ngày trong lưới lịch (Dấu x ở ngày chưa chụp, Badge số lượng cho >= 3 giao dịch, Badge sinh nhật 🎂, Số tiền hàng ngày)
+class _CalendarDayCell extends StatelessWidget {
+  final DateTime date;
+  final bool isToday;
+  final bool isFuture;
+  final bool hasData;
+  final bool isBirthday;
+  final List<TransactionModel> transactions;
+  final String? amountText;
+  final Color? amountColor;
+  final VoidCallback? onTap;
+
+  const _CalendarDayCell({
+    required this.date,
+    required this.isToday,
+    required this.isFuture,
+    required this.hasData,
+    this.isBirthday = false,
+    required this.transactions,
+    this.amountText,
+    this.amountColor,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    // Widget phần đầu (Ảnh sticker / dấu x / ô xám mờ / bánh sinh nhật)
     Widget topWidget;
 
     if (hasData) {
@@ -996,14 +1193,36 @@ class _CalendarDayCell extends StatelessWidget {
         topWidget = _SingleImageSticker(
           transaction: transactions.first,
           isToday: isToday,
+          isBirthday: isBirthday,
         );
       } else {
         topWidget = _StackedImageSticker(
           firstTransaction: transactions[0],
           secondTransaction: transactions[1],
           isToday: isToday,
+          isBirthday: isBirthday,
         );
       }
+    } else if (isBirthday) {
+      // Ngày sinh nhật chưa có transaction: Hiển thị badge bánh sinh nhật màu hồng giống date picker
+      topWidget = Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.primaryPink.withValues(alpha: 0.15),
+          border: Border.all(
+            color: AppColors.primaryPink.withValues(alpha: 0.6),
+            width: 1.2,
+          ),
+        ),
+        child: const Center(
+          child: Text(
+            '🎂',
+            style: TextStyle(fontSize: 16),
+          ),
+        ),
+      );
     } else if (isFuture) {
       // Ngày tương lai: Ô tròn xám mờ
       topWidget = Container(
@@ -1041,7 +1260,7 @@ class _CalendarDayCell extends StatelessWidget {
 
     // Nếu ngày có từ 3 giao dịch trở lên -> Thêm Badge số lượng giao dịch ở góc trên bên phải
     final showCountBadge = hasData && transactions.length >= 3;
-    final displayedTopWidget = showCountBadge
+    Widget displayedTopWidget = showCountBadge
         ? Stack(
             clipBehavior: Clip.none,
             alignment: Alignment.center,
@@ -1058,9 +1277,51 @@ class _CalendarDayCell extends StatelessWidget {
           )
         : topWidget;
 
+    // Nếu là sinh nhật và đã có ảnh/dữ liệu giao dịch -> gắn kèm thẻ badge bánh sinh nhật 🎂 ở góc
+    if (isBirthday && hasData) {
+      displayedTopWidget = Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          displayedTopWidget,
+          Positioned(
+            top: -4,
+            left: -4,
+            child: Container(
+              width: 18,
+              height: 18,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF4081),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isDark ? const Color(0xFF131418) : Colors.white,
+                  width: 1.3,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.30),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  '🎂',
+                  style: TextStyle(fontSize: 9.5, height: 1.0),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     // Màu chữ số ngày
     final Color dayNumberColor;
-    if (isToday) {
+    if (isBirthday) {
+      dayNumberColor = const Color(0xFFFF4081); // Pink festive
+    } else if (isToday) {
       dayNumberColor = const Color(0xFF29B6F6); // Cyan / Bright Blue
     } else if (isFuture) {
       dayNumberColor = isDark ? const Color(0xFF4B5563) : const Color(0xFF9CA3AF);
@@ -1083,26 +1344,57 @@ class _CalendarDayCell extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 3),
-        // Số ngày + Chấm dot nếu là hôm nay
-        Text(
-          '${date.day}',
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: isToday ? FontWeight.w900 : FontWeight.w700,
-            color: dayNumberColor,
-            height: 1.0,
-          ),
+        // Số ngày + Chấm dot hoặc bánh kem 🎂 ở trước nếu là sinh nhật
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (isBirthday) ...[
+              const Text(
+                '🎂',
+                style: TextStyle(fontSize: 9.5, height: 1.0),
+              ),
+              const SizedBox(width: 2),
+            ] else if (isToday) ...[
+              Container(
+                width: 4,
+                height: 4,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF29B6F6),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 3),
+            ],
+            Text(
+              '${date.day}',
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: (isToday || isBirthday) ? FontWeight.w900 : FontWeight.w700,
+                color: dayNumberColor,
+                height: 1.0,
+              ),
+            ),
+          ],
         ),
-        if (isToday) ...[
+        if (amountText != null && amountText!.isNotEmpty) ...[
           const SizedBox(height: 2),
-          Container(
-            width: 4,
-            height: 4,
-            decoration: const BoxDecoration(
-              color: Color(0xFF29B6F6),
-              shape: BoxShape.circle,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              amountText!,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w800,
+                color: amountColor ??
+                    (isDark ? Colors.white70 : Colors.black87),
+                letterSpacing: -0.2,
+                height: 1.0,
+              ),
             ),
           ),
+          const SizedBox(height: 2),
         ] else ...[
           const SizedBox(height: 6),
         ],
@@ -1171,10 +1463,12 @@ class _TransactionCountBadge extends StatelessWidget {
 class _SingleImageSticker extends StatelessWidget {
   final TransactionModel transaction;
   final bool isToday;
+  final bool isBirthday;
 
   const _SingleImageSticker({
     required this.transaction,
     required this.isToday,
+    this.isBirthday = false,
   });
 
   @override
@@ -1183,6 +1477,7 @@ class _SingleImageSticker extends StatelessWidget {
       transaction: transaction,
       size: 36,
       isToday: isToday,
+      isBirthday: isBirthday,
     );
   }
 }
@@ -1192,11 +1487,13 @@ class _StackedImageSticker extends StatelessWidget {
   final TransactionModel firstTransaction;
   final TransactionModel secondTransaction;
   final bool isToday;
+  final bool isBirthday;
 
   const _StackedImageSticker({
     required this.firstTransaction,
     required this.secondTransaction,
     required this.isToday,
+    this.isBirthday = false,
   });
 
   @override
@@ -1218,6 +1515,7 @@ class _StackedImageSticker extends StatelessWidget {
                 transaction: secondTransaction,
                 size: 32,
                 isToday: false,
+                isBirthday: isBirthday,
               ),
             ),
           ),
@@ -1231,6 +1529,7 @@ class _StackedImageSticker extends StatelessWidget {
                 transaction: firstTransaction,
                 size: 33,
                 isToday: isToday,
+                isBirthday: isBirthday,
               ),
             ),
           ),
@@ -1240,40 +1539,47 @@ class _StackedImageSticker extends StatelessWidget {
   }
 }
 
-/// Khung ảnh sticker bo góc tròn với viền màu đỏ (Chi tiêu) hoặc xanh lá (Thu nhập)
+/// Khung ảnh sticker bo góc tròn với viền màu đỏ (Chi tiêu) hoặc xanh lá (Thu nhập) hoặc hồng (Sinh nhật)
 class _StickerFrame extends StatelessWidget {
   final TransactionModel transaction;
   final double size;
   final bool isToday;
+  final bool isBirthday;
 
   const _StickerFrame({
     required this.transaction,
     required this.size,
     required this.isToday,
+    this.isBirthday = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isExpense = transaction.type == 'expense' && !transaction.isGroupContribution;
     final typeColor = isExpense ? AppColors.expense : AppColors.income;
+    final borderColor = isBirthday
+        ? const Color(0xFFFF4081)
+        : (isToday ? const Color(0xFF29B6F6) : typeColor);
     final radius = BorderRadius.circular(size * 0.32);
 
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: typeColor,
+        color: borderColor,
         borderRadius: radius,
         border: Border.all(
-          color: typeColor,
-          width: isToday ? 2.0 : 1.6,
+          color: borderColor,
+          width: (isToday || isBirthday) ? 2.0 : 1.6,
         ),
         boxShadow: [
           BoxShadow(
-            color: isToday
-                ? const Color(0xFF29B6F6).withValues(alpha: 0.45)
-                : typeColor.withValues(alpha: 0.35),
-            blurRadius: isToday ? 6 : 4,
+            color: isBirthday
+                ? const Color(0xFFFF4081).withValues(alpha: 0.45)
+                : (isToday
+                    ? const Color(0xFF29B6F6).withValues(alpha: 0.45)
+                    : typeColor.withValues(alpha: 0.35)),
+            blurRadius: (isToday || isBirthday) ? 6 : 4,
             offset: const Offset(0, 2),
           ),
         ],

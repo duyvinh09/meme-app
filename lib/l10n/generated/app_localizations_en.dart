@@ -653,6 +653,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noUsersFound => 'No users found';
 
   @override
+  String get searchUserError => 'Error occurred while searching';
+
+  @override
+  String get sendFriendRequestFailed => 'Failed to send friend request';
+
+  @override
+  String get addFriendHintFind => 'Find friends by username to connect';
+
+  @override
+  String get addFriendHintExactUsername =>
+      'Enter the exact username of the friend you want to add';
+
+  @override
+  String get addFriendHintTrackExpense =>
+      'Connect and track shared expenses together';
+
+  @override
   String get sendFriendRequest => 'Add';
 
   @override
@@ -854,6 +871,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get confirm => 'Confirm';
+
+  @override
+  String get birthday => 'Birthday';
+
+  @override
+  String get birthdayOptional => 'Birthday (optional)';
+
+  @override
+  String get selectBirthday => 'Select Birthday';
+
+  @override
+  String get birthdayUpdatedSuccess => 'Birthday updated successfully!';
+
+  @override
+  String get notSet => 'Not set';
+
+  @override
+  String get setBirthday => 'Set';
 
   @override
   String get groupNotFound => 'Group not found';
@@ -1244,6 +1279,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get transactionMap => 'Transaction Map';
+
+  @override
+  String get fullScreen => 'Full Screen';
+
+  @override
+  String get openFullScreen => 'Open Full Screen';
+
+  @override
+  String get fitAllMarkers => 'Fit all markers';
 
   @override
   String get mapControl => 'Map Control';
@@ -1953,6 +1997,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get avatarCollection => 'Collection';
+
+  @override
+  String get daysUnit => 'Days';
+
+  @override
+  String get framesUnit => 'Frames';
 
   @override
   String framesCount(int unlocked, int total) {
@@ -2882,49 +2932,121 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tagFriendAction => '+ Tag friend';
 
   @override
-  String get scanReceipt => 'Quét hoá đơn';
+  String get scanReceipt => 'Scan receipt';
 
   @override
-  String get photoMoment => 'Khoảnh khắc';
+  String get photoMoment => 'Moment';
 
   @override
-  String get alignReceiptInFrame => 'Đặt hoá đơn vào khung hình';
+  String get alignReceiptInFrame => 'Align receipt within frame';
 
   @override
-  String get scanningReceipt => 'Đang quét hoá đơn...';
+  String get scanningReceipt => 'Scanning receipt...';
 
   @override
-  String get receiptExtracted => 'Đã trích xuất hoá đơn';
+  String get receiptExtracted => 'Receipt extracted';
 
   @override
-  String get receiptSummedNotice =>
-      'Đã tự động cộng tổng từ các món trong hoá đơn';
+  String get receiptSummedNotice => 'Automatically summed from receipt items';
 
   @override
-  String get viewReceiptDetails => 'Xem chi tiết hoá đơn';
+  String get viewReceiptDetails => 'View receipt details';
 
   @override
   String receiptItemsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count món',
+      other: '$count items',
     );
     return '$_temp0';
   }
 
   @override
-  String get merchantStore => 'Tên quán / Cửa hàng';
+  String get merchantStore => 'Store / Merchant name';
 
   @override
-  String get lineItemsList => 'Danh sách món';
+  String get lineItemsList => 'Item list';
 
   @override
-  String get ocrScanButton => 'Quét Bill OCR';
+  String get ocrScanButton => 'Scan Bill OCR';
 
   @override
-  String get noReceiptDetected => 'Không nhận diện được nội dung hoá đơn';
+  String get noReceiptDetected => 'No receipt content detected';
 
   @override
-  String get receiptSummaryTitle => 'Chi tiết hoá đơn OCR';
+  String get receiptSummaryTitle => 'OCR Receipt Details';
+
+  @override
+  String get confirmPassword => 'Confirm password';
+
+  @override
+  String get passwordRequirementHint =>
+      'Minimum 6 characters, including lowercase, uppercase, numbers, and special characters.';
+
+  @override
+  String get passwordNeedsLetterAndNumber =>
+      'Password must be at least 6 characters, including lowercase, uppercase, numbers, and special characters';
+
+  @override
+  String get pleaseConfirmPassword => 'Please re-enter your password';
+
+  @override
+  String get passwordsDoNotMatch => 'Passwords do not match';
+
+  @override
+  String passwordStrengthTitle(String label) {
+    return 'Password strength: $label';
+  }
+
+  @override
+  String get passwordStrengthNone => 'No password entered';
+
+  @override
+  String get passwordStrengthWeak => 'Weak';
+
+  @override
+  String get passwordStrengthMedium => 'Medium';
+
+  @override
+  String get passwordStrengthStrong => 'Strong';
+
+  @override
+  String get passwordDescEmpty =>
+      'Password needs lowercase, uppercase, numbers, and special characters.';
+
+  @override
+  String get passwordDescTooShort =>
+      'Minimum 6 characters, with lowercase, uppercase, numbers, and special characters.';
+
+  @override
+  String get passwordDescMedium =>
+      'Valid password. Add length (8+ chars) to make it stronger.';
+
+  @override
+  String get passwordDescStrong =>
+      'Strong password with uppercase, lowercase, numbers, and special characters.';
+
+  @override
+  String get passwordDescNeedBoth =>
+      'Must include lowercase, uppercase, numbers, and special characters.';
+
+  @override
+  String get showPassword => 'Show password';
+
+  @override
+  String get hidePassword => 'Hide password';
+
+  @override
+  String get pleaseEnterEmail => 'Please enter email';
+
+  @override
+  String get pleaseEnterUsername => 'Please enter username';
+
+  @override
+  String get invalidUsername =>
+      'Username must be 3-20 lowercase letters, numbers, dots or underscores';
+
+  @override
+  String get passwordMinLength => 'Password must be at least 6 characters';
 }

@@ -14,6 +14,7 @@ import '../../../core/services/exchange_rate_service.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/app_back_button.dart';
 import '../../../core/widgets/async_filled_button.dart';
+import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../chat/controllers/chat_controller.dart';
@@ -49,22 +50,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _loadedUid = uid;
       context.read<ProfileController>().loadUser(uid);
     }
-  }
-
-  List<Color> _heroGradient(BuildContext context) {
-    if (AppColors.isDark(context)) {
-      return const [
-        Color(0xFF191A27),
-        Color(0xFF141522),
-        Color(0xFF1A1825),
-      ];
-    }
-
-    return const [
-      Color(0xFFF8F5FF),
-      Color(0xFFF2F5FF),
-      Color(0xFFF8F7FB),
-    ];
   }
 
   Future<void> _showDeleteAccountDialog(BuildContext context) async {
@@ -491,12 +476,226 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickAndSaveDateOfBirth(
+    BuildContext context,
+    UserModel? user,
+  ) async {
+    final now = DateTime.now();
+    DateTime tempDate = user?.dateOfBirth ?? DateTime(now.year, now.month, now.day);
+    final isDark = AppColors.isDark(context);
+    final l10n = context.l10n;
+
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1B1D29) : Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                  width: 0.8,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black26,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primaryPink.withValues(alpha: 0.15),
+                          ),
+                          child: const Center(
+                            child: Text('🎂', style: TextStyle(fontSize: 22)),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.selectBirthday,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary(context),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(tempDate),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primaryPink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Divider(
+                      height: 1,
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 300,
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: isDark
+                              ? ColorScheme.dark(
+                                  primary: AppColors.primaryBlue,
+                                  onPrimary: Colors.white,
+                                  surface: const Color(0xFF1B1D29),
+                                  onSurface: Colors.white,
+                                )
+                              : ColorScheme.light(
+                                  primary: AppColors.primaryBlue,
+                                  onPrimary: Colors.white,
+                                  surface: Colors.white,
+                                  onSurface: Colors.black87,
+                                ),
+                        ),
+                        child: CalendarDatePicker(
+                          initialDate: tempDate.isAfter(now) ? now : tempDate,
+                          firstDate: DateTime(1900),
+                          lastDate: now,
+                          onDateChanged: (newDate) {
+                            setSheetState(() {
+                              tempDate = newDate;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheetCtx),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Text(
+                              l10n.cancel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondary(context),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(sheetCtx, tempDate),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: AppColors.primaryBlue,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Text(
+                              l10n.confirm,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (picked != null && context.mounted) {
+      final profileCtrl = context.read<ProfileController>();
+      final authCtrl = context.read<AuthController>();
+      final homeCtrl = context.read<HomeController>();
+      final myUid = authCtrl.user?.uid ?? user?.uid;
+      if (myUid != null && myUid.isNotEmpty) {
+        final success = await profileCtrl.updateProfile(
+          uid: myUid,
+          name: user?.name ?? '',
+          dateOfBirth: picked,
+          updateDateOfBirth: true,
+        );
+        if (success) {
+          await homeCtrl.refreshProfile(myUid);
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(l10n.birthdayUpdatedSuccess),
+                backgroundColor: AppColors.income,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileController>();
     final home = context.watch<HomeController>();
     final auth = context.watch<AuthController>();
-    final user = profile.user ?? home.profile;
+    final user = profile.user ??
+        home.profile ??
+        (auth.user != null
+            ? context.read<UserRepository>().getCachedUserProfile(auth.user!.uid)
+            : null);
 
     final createdAt = user?.createdAt;
     final createdAtText = createdAt != null
@@ -541,197 +740,383 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     AppSizes.bottomNavSafePadding,
                   ),
                   children: [
-          // Hero User Profile Card
+          // Hero User Profile Card (Redesigned based on reference mockup)
           Container(
-            padding: const EdgeInsets.fromLTRB(20, 26, 20, 22),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: _heroGradient(context),
-              ),
+              color: AppColors.card(context),
+              borderRadius: BorderRadius.circular(28),
               border: Border.all(
                 color: AppColors.border(context),
               ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(
+                    alpha: AppColors.isDark(context) ? 0.16 : 0.04,
+                  ),
+                  blurRadius: 14,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  alignment: Alignment.center,
-                  children: [
-                    AvatarWithFrame(
-                      avatarUrl: avatarUrl,
-                      frameId: user?.avatarFrame,
-                      size: 120,
-                    ),
-                    Positioned(
-                      right: 2,
-                      bottom: 4,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.pushNamed(context, RouteNames.editProfile);
-                        },
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: AppColors.primaryBlue,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              width: 2,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.20),
-                                blurRadius: 6,
-                                offset: const Offset(0, 2),
+                // Top Cover Banner with Edit button & Overlapping Avatar
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.topCenter,
+                    children: [
+                      // Banner Cover with water blue background like the budget overview card
+                      Container(
+                        height: 160,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: const Color(0xFFA8D4FF),
+                            width: 1.2,
+                          ),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFFE2F0FD),
+                              Color(0xFFC0E2FF),
+                            ],
+                          ),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(23),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Positioned(
+                                right: -15,
+                                bottom: 30,
+                                child: Transform.rotate(
+                                  angle: -0.16,
+                                  child: Opacity(
+                                    opacity: 0.18,
+                                    child: Image.asset(
+                                      'assets/icons/meme_wordmark.png',
+                                      width: 230,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.edit_rounded,
-                            color: Colors.white,
-                            size: 19,
+                        ),
+                      ),
+                      // Edit Profile Button (top-right round button)
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                RouteNames.editProfile,
+                              );
+                            },
+                            borderRadius: BorderRadius.circular(22),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.black.withValues(alpha: 0.06),
+                                  width: 1,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.edit_rounded,
+                                size: 19,
+                                color: Color(0xFF102A45),
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      top: 4,
-                      left: 10,
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: AppColors.primaryPink.withValues(alpha: 0.95),
-                        size: 18,
+                      // Avatar positioned overlapping the banner bottom edge
+                      Padding(
+                        padding: const EdgeInsets.only(top: 105),
+                        child: AvatarWithFrame(
+                          avatarUrl: avatarUrl,
+                          frameId: user?.avatarFrame,
+                          size: 110,
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      top: 14,
-                      right: 12,
-                      child: Icon(
-                        Icons.auto_awesome_rounded,
-                        color: AppColors.primaryPurple.withValues(alpha: 0.95),
-                        size: 14,
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
-                Transform.translate(
-                  offset: const Offset(0, -4),
+                const SizedBox(height: 12),
+                // Display Name
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Text(
                     displayName,
                     textAlign: TextAlign.center,
                     style: AppTextStyles.pageTitle(context).copyWith(
-                      fontSize: 28,
-                      height: 1.05,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      height: 1.15,
                     ),
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '@$username',
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodySecondary(context).copyWith(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 3),
+                // Username below name
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    '@$username',
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodySecondary(context).copyWith(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary(context),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    _InfoPill(
-                      icon: Icons.calendar_month_rounded,
-                      text: context.l10n.joined(createdAtText),
+                const SizedBox(height: 10),
+                // Joined Date pill below username
+                _InfoPill(
+                  icon: Icons.calendar_month_rounded,
+                  text: context.l10n.joined(createdAtText),
+                ),
+                const SizedBox(height: 16),
+                // Gamification & Streak Stats Card (Replaces likes / posts / views)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 0, 14, 16),
+                  child: GestureDetector(
+                    onTap: () {
+                      StreakDetailSheet.show(
+                        context,
+                        user: user,
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 14,
+                        horizontal: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface(context),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppColors.innerBorder(context),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Streak
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFFFF5722)
+                                        .withValues(alpha: 0.12),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.local_fire_department_rounded,
+                                      color: Color(0xFFFF5722),
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${user?.currentStreak ?? 0}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary(context),
+                                    letterSpacing: -0.2,
+                                    height: 1.15,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  context.l10n.daysUnit,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary(context)
+                                        .withValues(alpha: 0.85),
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  context.l10n.streakMaintaining,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary(context),
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildStatDivider(context),
+                          // Best Streak
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFFFFB300)
+                                        .withValues(alpha: 0.14),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.emoji_events_rounded,
+                                      color: Color(0xFFFFB300),
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${user?.bestStreak ?? 0}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary(context),
+                                    letterSpacing: -0.2,
+                                    height: 1.15,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  context.l10n.daysUnit,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary(context)
+                                        .withValues(alpha: 0.85),
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  context.l10n.bestStreakLabel,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary(context),
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildStatDivider(context),
+                          // Collection
+                          Expanded(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: const Color(0xFF388AF6)
+                                        .withValues(alpha: 0.12),
+                                  ),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.workspace_premium_rounded,
+                                      color: Color(0xFF388AF6),
+                                      size: 20,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  '${AvatarFrames.getUnlockedCount(user?.currentStreak ?? 0, bestStreak: user?.bestStreak ?? 0)}/${AvatarFrames.all.length}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary(context),
+                                    letterSpacing: -0.2,
+                                    height: 1.15,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  context.l10n.framesUnit,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary(context)
+                                        .withValues(alpha: 0.85),
+                                    height: 1.1,
+                                  ),
+                                ),
+                                const SizedBox(height: 1),
+                                Text(
+                                  context.l10n.avatarCollection,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                    color: AppColors.textSecondary(context),
+                                    height: 1.1,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
+                  ),
                 ),
               ],
-            ),
-          ),
-
-          const SizedBox(height: 14),
-
-          // Gamification & Collection Stats Card: Streak | Best Streak | Collection
-          GestureDetector(
-            onTap: () {
-              StreakDetailSheet.show(
-                context,
-                user: user,
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 14),
-              decoration: BoxDecoration(
-                color: AppColors.card(context),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppColors.isDark(context)
-                      ? Colors.white.withValues(alpha: 0.10)
-                      : Colors.black.withValues(alpha: 0.05),
-                  width: 0.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // Streak Card
-                  Expanded(
-                    child: _buildAchievementStat(
-                      context,
-                      icon: Icons.local_fire_department_rounded,
-                      iconColor: const Color(0xFFFF5722),
-                      iconBgColor: const Color(0xFFFF5722).withValues(alpha: 0.12),
-                      value: context.l10n.shortDaysStreak(user?.currentStreak ?? 0),
-                      label: context.l10n.streakMaintaining,
-                    ),
-                  ),
-                  _buildStatDivider(context),
-
-                  // Best Streak Card
-                  Expanded(
-                    child: _buildAchievementStat(
-                      context,
-                      icon: Icons.emoji_events_rounded,
-                      iconColor: const Color(0xFFFFB300),
-                      iconBgColor: const Color(0xFFFFB300).withValues(alpha: 0.14),
-                      value: context.l10n.shortDaysStreak(user?.bestStreak ?? 0),
-                      label: context.l10n.bestStreakLabel,
-                    ),
-                  ),
-                  _buildStatDivider(context),
-
-                  // Collection Card
-                  Expanded(
-                    child: _buildAchievementStat(
-                      context,
-                      icon: Icons.workspace_premium_rounded,
-                      iconColor: const Color(0xFF388AF6),
-                      iconBgColor: const Color(0xFF388AF6).withValues(alpha: 0.12),
-                      value: context.l10n.framesCount(
-                        AvatarFrames.getUnlockedCount(
-                          user?.currentStreak ?? 0,
-                          bestStreak: user?.bestStreak ?? 0,
-                        ),
-                        AvatarFrames.all.length,
-                      ),
-                      label: context.l10n.avatarCollection,
-                    ),
-                  ),
-                ],
-              ),
             ),
           ),
 
@@ -742,6 +1127,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _SectionCard(
             children: [
               StreamBuilder<List<String>>(
+                initialData: auth.user == null
+                    ? const []
+                    : context
+                        .read<UserRepository>()
+                        .getCachedFriendIds(auth.user!.uid),
                 stream: auth.user == null
                     ? const Stream.empty()
                     : context
@@ -773,6 +1163,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pushNamed(context, RouteNames.manageCategories);
                 },
               ),
+              _ProfileMenuTile(
+                icon: Icons.cake_outlined,
+                title: context.l10n.birthday,
+                trailingWidget: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: (user?.dateOfBirth != null
+                            ? AppColors.primaryPink
+                            : AppColors.primaryBlue)
+                        .withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    user?.dateOfBirth != null
+                        ? DateFormat('dd/MM').format(user!.dateOfBirth!)
+                        : context.l10n.setBirthday,
+                    style: TextStyle(
+                      color: user?.dateOfBirth != null
+                          ? AppColors.primaryPink
+                          : const Color(0xFF388AF6),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                onTap: () => _pickAndSaveDateOfBirth(context, user),
+              ),
             ],
           ),
 
@@ -789,7 +1209,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? Icons.light_mode_outlined
                         : Icons.settings_suggest_outlined),
                 title: context.l10n.themeModeLabel,
-                subtitle: _getThemeModeLabel(profile.themeMode, context),
                 trailingWidget: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -833,11 +1252,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _ProfileMenuTile(
                 icon: Icons.language_rounded,
                 title: context.l10n.language,
-                subtitle: profile.rawLanguageCode == 'system'
-                    ? '${context.l10n.systemDefault} (${profile.languageCode == 'vi' ? '🇻🇳 Tiếng Việt' : '🇺🇸 English'})'
-                    : (profile.languageCode == 'vi'
-                        ? '🇻🇳 Tiếng Việt'
-                        : '🇺🇸 English'),
                 trailingWidget: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -860,9 +1274,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _ProfileMenuTile(
                 icon: Icons.currency_exchange_rounded,
                 title: context.l10n.currency,
-                subtitle: profile.currency == 'USD'
-                    ? context.l10n.usdFull
-                    : context.l10n.vndFull,
                 trailingWidget: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -996,67 +1407,66 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAchievementStat(
-    BuildContext context, {
-    required IconData icon,
-    required Color iconColor,
-    required Color iconBgColor,
-    required String value,
-    required String label,
-  }) {
-    final textPrimary = AppColors.textPrimary(context);
-    final textSecondary = AppColors.textSecondary(context);
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: iconBgColor,
-          ),
-          child: Center(
-            child: Icon(
-              icon,
-              color: iconColor,
-              size: 22,
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: textPrimary,
-            letterSpacing: -0.2,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 12.5,
-            fontWeight: FontWeight.w600,
-            color: textSecondary.withValues(alpha: 0.8),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildStatDivider(BuildContext context) {
     return Container(
       width: 1,
-      height: 30,
+      height: 36,
       color: AppColors.border(context).withValues(alpha: 0.25),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InfoPill({
+    required this.icon,
+    required this.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+
+    return Container(
+      constraints: const BoxConstraints(minHeight: 32),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : Colors.black.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : AppColors.border(context),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 15,
+            color: AppColors.textSecondary(context),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            overflow: TextOverflow.ellipsis,
+            style: AppTextStyles.caption(context).copyWith(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1083,60 +1493,6 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-class _InfoPill extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _InfoPill({
-    required this.icon,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 34),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.isDark(context)
-            ? Colors.white.withValues(alpha: 0.06)
-            : Colors.white.withValues(alpha: 0.92),
-        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-        border: Border.all(
-          color: AppColors.isDark(context)
-              ? Colors.white.withValues(alpha: 0.08)
-              : AppColors.border(context),
-          width: 0.8,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 16,
-            color: AppColors.textSecondary(context),
-          ),
-          const SizedBox(width: 8),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 220),
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.caption(context).copyWith(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _SectionCard extends StatelessWidget {
   final List<Widget> children;
@@ -1164,8 +1520,10 @@ class _SectionCard extends StatelessWidget {
           ),
         ],
       ),
-      child: ClipRRect(
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(24),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             for (int i = 0; i < children.length; i++) ...[
@@ -1189,7 +1547,6 @@ class _SectionCard extends StatelessWidget {
 class _ProfileMenuTile extends StatelessWidget {
   final IconData icon;
   final String title;
-  final String? subtitle;
   final VoidCallback? onTap;
   final Color? iconColor;
   final Color? iconBackgroundColor;
@@ -1199,7 +1556,6 @@ class _ProfileMenuTile extends StatelessWidget {
   const _ProfileMenuTile({
     required this.icon,
     required this.title,
-    this.subtitle,
     this.onTap,
     this.iconColor,
     this.iconBackgroundColor,
@@ -1235,30 +1591,13 @@ class _ProfileMenuTile extends StatelessWidget {
             ),
             const SizedBox(width: 14),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.body(context).copyWith(
-                      color: titleColor ?? AppColors.textPrimary(context),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15,
-                    ),
-                  ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle!,
-                      style: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textSecondary(context),
-                      ),
-                    ),
-                  ],
-                ],
+              child: Text(
+                title,
+                style: AppTextStyles.body(context).copyWith(
+                  color: titleColor ?? AppColors.textPrimary(context),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
               ),
             ),
             if (trailingWidget != null) ...[

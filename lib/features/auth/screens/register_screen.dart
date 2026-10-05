@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -25,6 +26,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
 
+  DateTime? _dateOfBirth;
   String? localError;
   bool _primaryAuthBusy = false;
   bool _obscurePassword = true;
@@ -41,74 +43,269 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   _PasswordStrength _passwordStrength(
-      BuildContext context,
-      String password,
-      ) {
+    BuildContext context,
+    String password,
+  ) {
+    final l10n = context.l10n;
     final text = password.trim();
 
     if (text.isEmpty) {
       return _PasswordStrength(
-        label: 'Chưa nhập mật khẩu',
+        label: l10n.passwordStrengthNone,
         progress: 0,
         color: AppColors.textSecondary(context),
-        description: 'Mật khẩu nên có chữ và số.',
+        description: l10n.passwordDescEmpty,
       );
     }
 
-    final hasLetter = RegExp(r'[A-Za-zÀ-ỹ]').hasMatch(text);
+    final hasLower = RegExp(r'[a-zà-ỹ]').hasMatch(text);
+    final hasUpper = RegExp(r'[A-ZÀ-Ỹ]').hasMatch(text);
     final hasNumber = RegExp(r'[0-9]').hasMatch(text);
-    final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~`]').hasMatch(text);
+    final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~` ]').hasMatch(text);
     final hasMinLength = text.length >= 6;
     final hasGoodLength = text.length >= 8;
 
-    int score = 0;
+    int passedCount = 0;
+    if (hasMinLength) passedCount++;
+    if (hasLower) passedCount++;
+    if (hasUpper) passedCount++;
+    if (hasNumber) passedCount++;
+    if (hasSpecial) passedCount++;
 
-    if (hasMinLength) score++;
-    if (hasLetter) score++;
-    if (hasNumber) score++;
-    if (hasSpecial) score++;
-    if (hasGoodLength) score++;
+    final meetsAllRequirements =
+        hasMinLength && hasLower && hasUpper && hasNumber && hasSpecial;
 
     if (!hasMinLength) {
-      return const _PasswordStrength(
-        label: 'Yếu',
-        progress: 0.25,
+      return _PasswordStrength(
+        label: l10n.passwordStrengthWeak,
+        progress: (passedCount / 5.0) * 0.35,
         color: AppColors.expense,
-        description: 'Tối thiểu 6 ký tự, nên có cả chữ và số.',
+        description: l10n.passwordDescTooShort,
       );
     }
 
-    if (hasLetter && hasNumber && score >= 3) {
-      if (hasSpecial || hasGoodLength) {
-        return const _PasswordStrength(
-          label: 'Mạnh',
-          progress: 1,
+    if (meetsAllRequirements) {
+      if (hasGoodLength) {
+        return _PasswordStrength(
+          label: l10n.passwordStrengthStrong,
+          progress: 1.0,
           color: AppColors.income,
-          description: 'Mật khẩu tốt, có chữ, số và đủ độ dài.',
+          description: l10n.passwordDescStrong,
         );
       }
 
-      return const _PasswordStrength(
-        label: 'Vừa',
-        progress: 0.65,
+      return _PasswordStrength(
+        label: l10n.passwordStrengthMedium,
+        progress: 0.8,
         color: AppColors.warning,
-        description: 'Mật khẩu ổn. Thêm ký tự đặc biệt để mạnh hơn.',
+        description: l10n.passwordDescMedium,
       );
     }
 
-    return const _PasswordStrength(
-      label: 'Yếu',
-      progress: 0.35,
+    return _PasswordStrength(
+      label: l10n.passwordStrengthWeak,
+      progress: (passedCount / 5.0) * 0.65,
       color: AppColors.expense,
-      description: 'Nên có cả chữ và số để bảo mật hơn.',
+      description: l10n.passwordDescNeedBoth,
     );
   }
 
-  bool _passwordHasLetterAndNumber(String password) {
-    final hasLetter = RegExp(r'[A-Za-zÀ-ỹ]').hasMatch(password);
-    final hasNumber = RegExp(r'[0-9]').hasMatch(password);
+  bool _isPasswordComplex(String password) {
+    final text = password.trim();
+    if (text.length < 6) return false;
+    final hasLower = RegExp(r'[a-zà-ỹ]').hasMatch(text);
+    final hasUpper = RegExp(r'[A-ZÀ-Ỹ]').hasMatch(text);
+    final hasNumber = RegExp(r'[0-9]').hasMatch(text);
+    final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~` ]').hasMatch(text);
 
-    return hasLetter && hasNumber;
+    return hasLower && hasUpper && hasNumber && hasSpecial;
+  }
+
+  Future<void> _pickDateOfBirth() async {
+    FocusScope.of(context).unfocus();
+    final now = DateTime.now();
+    DateTime tempDate = _dateOfBirth ?? DateTime(now.year, now.month, now.day);
+    final isDark = AppColors.isDark(context);
+    final l10n = context.l10n;
+
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              margin: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1B1D29) : Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : Colors.black12,
+                  width: 0.8,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.white24 : Colors.black26,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.primaryPink.withValues(alpha: 0.15),
+                          ),
+                          child: const Center(
+                            child: Text('🎂', style: TextStyle(fontSize: 22)),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.selectBirthday,
+                                style: TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary(context),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                DateFormat('dd/MM/yyyy').format(tempDate),
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primaryPink,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Divider(
+                      height: 1,
+                      color: isDark ? Colors.white12 : Colors.black12,
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 300,
+                      child: Theme(
+                        data: Theme.of(context).copyWith(
+                          colorScheme: isDark
+                              ? ColorScheme.dark(
+                                  primary: AppColors.primaryBlue,
+                                  onPrimary: Colors.white,
+                                  surface: const Color(0xFF1B1D29),
+                                  onSurface: Colors.white,
+                                )
+                              : ColorScheme.light(
+                                  primary: AppColors.primaryBlue,
+                                  onPrimary: Colors.white,
+                                  surface: Colors.white,
+                                  onSurface: Colors.black87,
+                                ),
+                        ),
+                        child: CalendarDatePicker(
+                          initialDate: tempDate.isAfter(now) ? now : tempDate,
+                          firstDate: DateTime(1900),
+                          lastDate: now,
+                          onDateChanged: (newDate) {
+                            setSheetState(() {
+                              tempDate = newDate;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Navigator.pop(sheetCtx),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              side: BorderSide(
+                                color: isDark ? Colors.white24 : Colors.black12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Text(
+                              l10n.cancel,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textSecondary(context),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: () => Navigator.pop(sheetCtx, tempDate),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              backgroundColor: AppColors.primaryBlue,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Text(
+                              l10n.confirm,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _dateOfBirth = picked;
+      });
+    }
   }
 
   Future<void> _register(AuthController auth) async {
@@ -134,41 +331,53 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    final usernameError = AppValidators.username(username);
+    final usernameError = AppValidators.username(
+      username,
+      requiredMessage: l10n.pleaseEnterUsername,
+      invalidMessage: l10n.invalidUsername,
+    );
     if (usernameError != null) {
       setState(() => localError = usernameError);
       return;
     }
 
-    final emailError = AppValidators.email(email);
+    final emailError = AppValidators.email(
+      email,
+      requiredMessage: l10n.pleaseEnterEmail,
+      invalidMessage: l10n.invalidEmailGeneric,
+    );
     if (emailError != null) {
       setState(() => localError = emailError);
       return;
     }
 
-    final passwordError = AppValidators.password(password);
+    final passwordError = AppValidators.password(
+      password,
+      requiredMessage: l10n.pleaseEnterPasswordLogin,
+      minLengthMessage: l10n.passwordMinLength,
+    );
     if (passwordError != null) {
       setState(() => localError = passwordError);
       return;
     }
 
-    if (!_passwordHasLetterAndNumber(password)) {
+    if (!_isPasswordComplex(password)) {
       setState(() {
-        localError = 'Mật khẩu cần có cả chữ và số';
+        localError = l10n.passwordNeedsLetterAndNumber;
       });
       return;
     }
 
     if (confirmPassword.isEmpty) {
       setState(() {
-        localError = 'Vui lòng nhập lại mật khẩu';
+        localError = l10n.pleaseConfirmPassword;
       });
       return;
     }
 
     if (password != confirmPassword) {
       setState(() {
-        localError = 'Mật khẩu nhập lại không khớp';
+        localError = l10n.passwordsDoNotMatch;
       });
       return;
     }
@@ -178,6 +387,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       username: username,
       email: email,
       password: password,
+      dateOfBirth: _dateOfBirth,
     );
 
     if (ok && mounted) {
@@ -277,6 +487,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 12),
 
+                      // Ngày sinh (Date of birth)
+                      InkWell(
+                        onTap: authBusy ? null : _pickDateOfBirth,
+                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface(context),
+                            borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+                            border: Border.all(
+                              color: AppColors.innerBorder(context),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.cake_outlined,
+                                color: _dateOfBirth != null
+                                    ? AppColors.primaryPink
+                                    : AppColors.textSecondary(context),
+                                size: 22,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  _dateOfBirth != null
+                                      ? DateFormat('dd/MM/yyyy').format(_dateOfBirth!)
+                                      : context.l10n.birthdayOptional,
+                                  style: _dateOfBirth != null
+                                      ? AppTextStyles.body(context).copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        )
+                                      : AppTextStyles.bodySecondary(context),
+                                ),
+                              ),
+                              if (_dateOfBirth != null)
+                                GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _dateOfBirth = null;
+                                    });
+                                  },
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    size: 18,
+                                    color: AppColors.textSecondary(context),
+                                  ),
+                                )
+                              else
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 18,
+                                  color: AppColors.textSecondary(context),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
                       CustomTextField(
                         controller: emailController,
                         hintText: l10n.email,
@@ -307,7 +580,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                       _PasswordTextField(
                         controller: confirmPasswordController,
-                        hintText: 'Nhập lại mật khẩu',
+                        hintText: l10n.confirmPassword,
                         obscureText: _obscureConfirmPassword,
                         textInputAction: TextInputAction.done,
                         onChanged: (_) => setState(() {}),
@@ -330,7 +603,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       Padding(
                         padding: const EdgeInsets.only(left: 4),
                         child: Text(
-                          'Mật khẩu tối thiểu 6 ký tự, nên gồm cả chữ và số.',
+                          l10n.passwordRequirementHint,
                           style: AppTextStyles.caption(context),
                         ),
                       ),
@@ -518,7 +791,9 @@ class _PasswordTextField extends StatelessWidget {
               const SizedBox(width: 2),
             ],
             IconButton(
-              tooltip: obscureText ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+              tooltip: obscureText
+                  ? context.l10n.showPassword
+                  : context.l10n.hidePassword,
               onPressed: onToggleObscure,
               icon: Icon(
                 obscureText
@@ -571,10 +846,10 @@ class _PasswordStrengthView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       decoration: BoxDecoration(
-        color: strength.color.withOpacity(0.08),
+        color: strength.color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: strength.color.withOpacity(0.18),
+          color: strength.color.withValues(alpha: 0.18),
         ),
       ),
       child: Column(
@@ -589,7 +864,7 @@ class _PasswordStrengthView extends StatelessWidget {
               const SizedBox(width: 7),
               Expanded(
                 child: Text(
-                  'Độ mạnh mật khẩu: ${strength.label}',
+                  context.l10n.passwordStrengthTitle(strength.label),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

@@ -34,6 +34,7 @@ dependencies:
   latlong2: ^0.10.1
   geolocator: ^14.0.2
   geocoding: ^5.0.0
+  sensors_plus: ^6.1.1
 
   crypto: ^3.0.3
   path: ^1.9.0
@@ -53,6 +54,7 @@ dependencies:
   googleapis_auth: ^2.3.4
   record: ^6.2.1
   audioplayers: ^6.7.1
+  iconsax_plus: ^1.0.0
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +69,12 @@ flutter:
     - assets/icons/
     - assets/sounds/
     - assets/fcm_service_account.json
+
+  fonts:
+    - family: ProximaSoft
+      fonts:
+        - asset: assets/fonts/ProximaSoft-Bold.ttf
+
 
 #Icon app
 flutter_launcher_icons:

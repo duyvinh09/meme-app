@@ -259,9 +259,9 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
-            20,
-            18,
-            20,
+            16,
+            12,
+            16,
             AppSizes.bottomNavSafePadding,
           ),
           children: [
@@ -270,7 +270,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
               onBack: () => Navigator.pop(context),
             ),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
 
             _BudgetSummaryCard(
               budgetName: BudgetNameLocalizer.display(
@@ -290,7 +290,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
               worstText: money(worst),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
 
             _PeriodCountSelector(
               selected: selectedPeriodCount,
@@ -301,7 +301,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
               },
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
 
             _BudgetChartCard(
               periods: periods,
@@ -311,7 +311,7 @@ class _BudgetHistoryScreenState extends State<BudgetHistoryScreen> {
               monthLabel: _shortMonthLabel,
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
 
             _PeriodDetailCard(
               periods: periods.reversed.toList(),
@@ -393,8 +393,8 @@ class _HistoryHeader extends StatelessWidget {
             onTap: onBack,
             borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
             child: Container(
-              width: 48,
-              height: 48,
+              width: 38,
+              height: 38,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: AppColors.card(context),
@@ -405,7 +405,7 @@ class _HistoryHeader extends StatelessWidget {
               child: Icon(
                 Icons.arrow_back_ios_new_rounded,
                 color: AppColors.textPrimary(context),
-                size: 20,
+                size: 16,
               ),
             ),
           ),
@@ -414,7 +414,7 @@ class _HistoryHeader extends StatelessWidget {
           title,
           textAlign: TextAlign.center,
           style: AppTextStyles.pageTitle(context).copyWith(
-            fontSize: 25,
+            fontSize: 19,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -448,10 +448,10 @@ class _BudgetSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.border(context),
         ),
@@ -461,8 +461,8 @@ class _BudgetSummaryCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 64,
-                height: 64,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: color.withValues(alpha: 0.16),
@@ -470,11 +470,11 @@ class _BudgetSummaryCard extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: color,
-                  size: 31,
+                  size: 24,
                 ),
               ),
 
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
 
               Expanded(
                 child: Column(
@@ -485,17 +485,17 @@ class _BudgetSummaryCard extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.cardTitle(context).copyWith(
-                        fontSize: 21,
+                        fontSize: 17,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 3),
                     Text(
                       limitText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.bodySecondary(context).copyWith(
-                        fontSize: 16,
+                        fontSize: 13.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -505,13 +505,13 @@ class _BudgetSummaryCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
           Divider(
             color: AppColors.border(context),
           ),
 
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
 
           Row(
             children: [
@@ -534,7 +534,7 @@ class _BudgetSummaryCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 14),
 
           Row(
             children: [
@@ -582,25 +582,25 @@ class _SummaryMetric extends StatelessWidget {
         Icon(
           icon,
           color: iconColor,
-          size: 31,
+          size: 22,
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Text(
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
           style: AppTextStyles.cardTitle(context).copyWith(
-            fontSize: 20,
+            fontSize: 15.5,
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 4),
         Text(
           label,
           textAlign: TextAlign.center,
           style: AppTextStyles.bodySecondary(context).copyWith(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -623,10 +623,10 @@ class _PeriodCountSelector extends StatelessWidget {
     const values = [3, 6, 12];
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: AppColors.border(context),
         ),
@@ -637,7 +637,7 @@ class _PeriodCountSelector extends StatelessWidget {
             child: Text(
               context.l10n.periodCount,
               style: AppTextStyles.bodySecondary(context).copyWith(
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -647,14 +647,14 @@ class _PeriodCountSelector extends StatelessWidget {
               final active = value == selected;
 
               return Padding(
-                padding: const EdgeInsets.only(left: 8),
+                padding: const EdgeInsets.only(left: 6),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(999),
                   onTap: () => onChanged(value),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 160),
-                    width: 58,
-                    height: 42,
+                    width: 44,
+                    height: 32,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: active
@@ -673,7 +673,7 @@ class _PeriodCountSelector extends StatelessWidget {
                         color: active
                             ? Colors.white
                             : AppColors.primaryBlue,
-                        fontSize: 17,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -688,7 +688,7 @@ class _PeriodCountSelector extends StatelessWidget {
   }
 }
 
-class _BudgetChartCard extends StatelessWidget {
+class _BudgetChartCard extends StatefulWidget {
   final List<_BudgetPeriodData> periods;
   final double limitAmount;
   final Color color;
@@ -704,22 +704,60 @@ class _BudgetChartCard extends StatelessWidget {
   });
 
   @override
+  State<_BudgetChartCard> createState() => _BudgetChartCardState();
+}
+
+class _BudgetChartCardState extends State<_BudgetChartCard>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _animController;
+  late final Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 750),
+    );
+    _animation = CurvedAnimation(
+      parent: _animController,
+      curve: Curves.easeOutQuart,
+    );
+    _animController.forward();
+  }
+
+  @override
+  void didUpdateWidget(covariant _BudgetChartCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.periods != widget.periods) {
+      _animController.forward(from: 0.0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final periods = widget.periods;
     final maxSpent = periods.isEmpty
         ? 0.0
         : periods.map((e) => e.total).reduce(math.max);
 
     final maxY = math.max(
-      limitAmount <= 0 ? 1 : limitAmount,
+      widget.limitAmount <= 0 ? 1 : widget.limitAmount,
       maxSpent <= 0 ? 1 : maxSpent,
     ) * 1.22;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 16),
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.border(context),
         ),
@@ -730,16 +768,16 @@ class _BudgetChartCard extends StatelessWidget {
           Text(
             l10n.compareOverPeriods,
             style: AppTextStyles.sectionTitle(context).copyWith(
-              fontSize: 22,
+              fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Wrap(
-            spacing: 16,
-            runSpacing: 8,
+            spacing: 12,
+            runSpacing: 6,
             children: [
               _LegendItem(
                 color: AppColors.warning,
@@ -757,126 +795,132 @@ class _BudgetChartCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 22),
+          const SizedBox(height: 16),
 
           SizedBox(
-            height: 285,
-            child: BarChart(
-              BarChartData(
-                maxY: maxY,
-                minY: 0,
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: maxY / 4,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: AppColors.border(context),
-                      strokeWidth: 1,
-                    );
-                  },
-                ),
-                borderData: FlBorderData(
-                  show: false,
-                ),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  leftTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 34,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-
-                        if (index < 0 || index >= periods.length) {
-                          return const SizedBox.shrink();
-                        }
-
-                        final item = periods[index];
-                        final label = item.shortLabel ?? monthLabel(item.date);
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8),
-                          child: Text(
-                            label,
-                            style: AppTextStyles.caption(context).copyWith(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
+            height: 230,
+            child: AnimatedBuilder(
+              animation: _animation,
+              builder: (context, _) {
+                final animValue = _animation.value;
+                return BarChart(
+                  BarChartData(
+                    maxY: maxY,
+                    minY: 0,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: maxY / 4,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: AppColors.border(context),
+                          strokeWidth: 1,
                         );
                       },
                     ),
-                  ),
-                ),
-                extraLinesData: ExtraLinesData(
-                  horizontalLines: [
-                    if (limitAmount > 0)
-                      HorizontalLine(
-                        y: limitAmount,
-                        color: AppColors.warning,
-                        strokeWidth: 1.4,
-                        dashArray: [8, 6],
+                    borderData: FlBorderData(
+                      show: false,
+                    ),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
                       ),
-                  ],
-                ),
-                barGroups: periods.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final item = entry.value;
-                  final barColor = item.isOverLimit
-                      ? AppColors.expense
-                      : AppColors.primaryBlue;
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 28,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
 
-                  return BarChartGroupData(
-                    x: index,
-                    barRods: [
-                      BarChartRodData(
-                        toY: item.total,
-                        width: 36,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(7),
-                        ),
-                        color: barColor,
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            barColor.withValues(alpha: 0.92),
-                            barColor.withValues(alpha: 0.42),
-                          ],
+                            if (index < 0 || index >= periods.length) {
+                              return const SizedBox.shrink();
+                            }
+
+                            final item = periods[index];
+                            final label = item.shortLabel ?? widget.monthLabel(item.date);
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(
+                                label,
+                                style: AppTextStyles.caption(context).copyWith(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-                    ],
-                    showingTooltipIndicators:
-                    item.total > 0 ? [0] : const [],
-                  );
-                }).toList(),
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (_) => Colors.transparent,
-                    tooltipPadding: EdgeInsets.zero,
-                    tooltipMargin: 4,
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      return BarTooltipItem(
-                        compactMoney(rod.toY),
-                        TextStyle(
-                          color: AppColors.textSecondary(context),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    ),
+                    extraLinesData: ExtraLinesData(
+                      horizontalLines: [
+                        if (widget.limitAmount > 0)
+                          HorizontalLine(
+                            y: widget.limitAmount,
+                            color: AppColors.warning,
+                            strokeWidth: 1.4,
+                            dashArray: [8, 6],
+                          ),
+                      ],
+                    ),
+                    barGroups: periods.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final item = entry.value;
+                      final barColor = item.isOverLimit
+                          ? AppColors.expense
+                          : AppColors.primaryBlue;
+
+                      return BarChartGroupData(
+                        x: index,
+                        barRods: [
+                          BarChartRodData(
+                            toY: item.total * animValue,
+                            width: 26,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(6),
+                            ),
+                            color: barColor,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                barColor.withValues(alpha: 0.92),
+                                barColor.withValues(alpha: 0.42),
+                              ],
+                            ),
+                          ),
+                        ],
+                        showingTooltipIndicators:
+                            item.total > 0 ? [0] : const [],
                       );
-                    },
+                    }).toList(),
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (_) => Colors.transparent,
+                        tooltipPadding: EdgeInsets.zero,
+                        tooltipMargin: 4,
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          return BarTooltipItem(
+                            widget.compactMoney(rod.toY),
+                            TextStyle(
+                              color: AppColors.textSecondary(context),
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
         ],
@@ -903,24 +947,24 @@ class _LegendItem extends StatelessWidget {
       children: [
         if (isLine)
           Container(
-            width: 24,
-            height: 3,
+            width: 18,
+            height: 2.5,
             color: color,
           )
         else
           Container(
-            width: 9,
-            height: 9,
+            width: 8,
+            height: 8,
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
             ),
           ),
-        const SizedBox(width: 7),
+        const SizedBox(width: 5),
         Text(
           label,
           style: AppTextStyles.bodySecondary(context).copyWith(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -947,10 +991,10 @@ class _PeriodDetailCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.border(context),
         ),
@@ -961,11 +1005,11 @@ class _PeriodDetailCard extends StatelessWidget {
           Text(
             context.l10n.periodDetail,
             style: AppTextStyles.sectionTitle(context).copyWith(
-              fontSize: 22,
+              fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           ...periods.map((item) {
             return _PeriodDetailItem(
               item: item,
@@ -1005,7 +1049,7 @@ class _PeriodDetailItem extends StatelessWidget {
         ? '0%'
         : '${((item.total / limitAmount) * 100).toStringAsFixed(0)}%';
 
-    const radius = Radius.circular(20);
+    const radius = Radius.circular(16);
 
     return Material(
       color: Colors.transparent,
@@ -1015,218 +1059,218 @@ class _PeriodDetailItem extends StatelessWidget {
         onTap: onTap,
         borderRadius: const BorderRadius.all(radius),
         child: Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: item.isCurrent
-            ? AppColors.primaryBlue.withValues(alpha: 0.10)
-            : AppColors.surface(context).withValues(
-          alpha: AppColors.isDark(context) ? 0.72 : 0.92,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: item.isCurrent
-              ? AppColors.primaryBlue.withValues(alpha: 0.42)
-              : item.isOverLimit
-              ? AppColors.expense.withValues(alpha: 0.35)
-              : AppColors.innerBorder(context),
-          width: item.isCurrent ? 1.3 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-              alpha: AppColors.isDark(context) ? 0.12 : 0.035,
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            color: item.isCurrent
+                ? AppColors.primaryBlue.withValues(alpha: 0.10)
+                : AppColors.surface(context).withValues(
+                    alpha: AppColors.isDark(context) ? 0.72 : 0.92,
+                  ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: item.isCurrent
+                  ? AppColors.primaryBlue.withValues(alpha: 0.42)
+                  : item.isOverLimit
+                      ? AppColors.expense.withValues(alpha: 0.35)
+                      : AppColors.innerBorder(context),
+              width: item.isCurrent ? 1.2 : 1,
             ),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Container(
-              width: 5,
-              decoration: BoxDecoration(
-                color: item.isOverLimit
-                    ? AppColors.expense
-                    : item.isCurrent
-                    ? AppColors.primaryBlue
-                    : AppColors.income,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  bottomLeft: Radius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(
+                  alpha: AppColors.isDark(context) ? 0.10 : 0.03,
                 ),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-            ),
+            ],
+          ),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: item.isOverLimit
+                        ? AppColors.expense
+                        : item.isCurrent
+                            ? AppColors.primaryBlue
+                            : AppColors.income,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      bottomLeft: Radius.circular(16),
+                    ),
+                  ),
+                ),
 
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 13, 12, 13),
-                child: Column(
-                  children: [
-                    Row(
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                    child: Column(
                       children: [
-                        if (item.isCurrent) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 7,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.primaryBlue,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              l10n.currentPeriod,
+                        Row(
+                          children: [
+                            if (item.isCurrent) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primaryBlue,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Text(
+                                  l10n.currentPeriod,
+                                  maxLines: 1,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9.5,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+
+                            Text(
+                              item.label ?? monthLabel(item.date),
                               maxLines: 1,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10.5,
+                              softWrap: false,
+                              style: AppTextStyles.cardTitle(context).copyWith(
+                                fontSize: 14,
                                 fontWeight: FontWeight.w900,
                                 height: 1,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 7),
-                        ],
 
-                        Text(
-                          item.label ?? monthLabel(item.date),
-                          maxLines: 1,
-                          softWrap: false,
-                          style: AppTextStyles.cardTitle(context).copyWith(
-                            fontSize: 16.5,
-                            fontWeight: FontWeight.w900,
-                            height: 1,
-                          ),
-                        ),
+                            const SizedBox(width: 8),
 
-                        const SizedBox(width: 8),
-
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                money(item.total),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                                style: TextStyle(
-                                  color: item.isOverLimit
-                                      ? AppColors.expense
-                                      : AppColors.textPrimary(context),
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  height: 1.05,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                percentText,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                textAlign: TextAlign.right,
-                                style: AppTextStyles.caption(context).copyWith(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(width: 2),
-
-                        Icon(
-                          Icons.chevron_right_rounded,
-                          color: AppColors.textSecondary(context),
-                          size: 22,
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 14),
-
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(999),
-                      child: LinearProgressIndicator(
-                        value: item.percent,
-                        minHeight: 9,
-                        backgroundColor: AppColors.card(context),
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Row(
-                            children: [
-                              if (item.isOverLimit) ...[
-                                const Icon(
-                                  Icons.warning_amber_rounded,
-                                  color: AppColors.expense,
-                                  size: 17,
-                                ),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    l10n.overBudgetWarning,
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    money(item.total),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AppColors.expense,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w800,
+                                    textAlign: TextAlign.right,
+                                    style: TextStyle(
+                                      color: item.isOverLimit
+                                          ? AppColors.expense
+                                          : AppColors.textPrimary(context),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      height: 1.05,
                                     ),
                                   ),
-                                ),
-                              ] else ...[
-                                Expanded(
-                                  child: Text(
-                                    l10n.remainingLabel(money(remaining < 0 ? 0 : remaining)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    percentText,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: AppTextStyles.bodySecondary(context)
-                                        .copyWith(
-                                      fontSize: 13,
+                                    textAlign: TextAlign.right,
+                                    style: AppTextStyles.caption(context).copyWith(
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w700,
+                                      height: 1,
                                     ),
                                   ),
-                                ),
-                              ],
-                            ],
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(width: 2),
+
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              color: AppColors.textSecondary(context),
+                              size: 18,
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 10),
+
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            value: item.percent,
+                            minHeight: 6,
+                            backgroundColor: AppColors.card(context),
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
                           ),
                         ),
 
-                        const SizedBox(width: 10),
+                        const SizedBox(height: 8),
 
-                        Flexible(
-                          child: Text(
-                            l10n.budgetLimitLabel(money(limitAmount)),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            textAlign: TextAlign.right,
-                            style: AppTextStyles.bodySecondary(context).copyWith(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  if (item.isOverLimit) ...[
+                                    const Icon(
+                                      Icons.warning_amber_rounded,
+                                      color: AppColors.expense,
+                                      size: 15,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        l10n.overBudgetWarning,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: AppColors.expense,
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Expanded(
+                                      child: Text(
+                                        l10n.remainingLabel(money(remaining < 0 ? 0 : remaining)),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: AppTextStyles.bodySecondary(context)
+                                            .copyWith(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
-                          ),
+
+                            const SizedBox(width: 8),
+
+                            Flexible(
+                              child: Text(
+                                l10n.budgetLimitLabel(money(limitAmount)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.right,
+                                style: AppTextStyles.bodySecondary(context).copyWith(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
         ),
       ),
     );

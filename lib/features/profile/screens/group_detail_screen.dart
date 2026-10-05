@@ -924,11 +924,16 @@ class _GoalProgressCard extends StatelessWidget {
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: AppColors.innerBorder(context),
-              valueColor: AlwaysStoppedAnimation<Color>(groupColor),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0.0, end: progress),
+              duration: const Duration(milliseconds: 900),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: 8,
+                backgroundColor: AppColors.innerBorder(context),
+                valueColor: AlwaysStoppedAnimation<Color>(groupColor),
+              ),
             ),
           ),
           const SizedBox(height: 16),
@@ -954,7 +959,7 @@ class _GoalProgressCard extends StatelessWidget {
   }
 }
 
-class _GroupFundStatisticsCard extends StatelessWidget {
+class _GroupFundStatisticsCard extends StatefulWidget {
   final String groupId;
   final Color groupColor;
   final String currency;
@@ -970,11 +975,79 @@ class _GroupFundStatisticsCard extends StatelessWidget {
   });
 
   @override
+  State<_GroupFundStatisticsCard> createState() =>
+      _GroupFundStatisticsCardState();
+}
+
+class _GroupFundStatisticsCardState extends State<_GroupFundStatisticsCard>
+    with SingleTickerProviderStateMixin {
+  final GlobalKey _cardKey = GlobalKey();
+  late AnimationController _controller;
+  late Animation<double> _curvedAnimation;
+  bool _hasAnimated = false;
+  ScrollPosition? _scrollPosition;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    _curvedAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkVisibility());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final newPosition = Scrollable.maybeOf(context)?.position;
+    if (_scrollPosition != newPosition) {
+      _scrollPosition?.removeListener(_checkVisibility);
+      _scrollPosition = newPosition;
+      _scrollPosition?.addListener(_checkVisibility);
+    }
+  }
+
+  void _checkVisibility() {
+    if (_hasAnimated || !mounted) return;
+    final box = _cardKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkVisibility();
+      });
+      return;
+    }
+
+    try {
+      final position = box.localToGlobal(Offset.zero);
+      final screenHeight = MediaQuery.of(context).size.height;
+
+      // Card is in or entering viewport
+      if (position.dy < screenHeight - 30 &&
+          position.dy + box.size.height > 30) {
+        _hasAnimated = true;
+        _controller.forward();
+      }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    _scrollPosition?.removeListener(_checkVisibility);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final txRepo = context.read<TransactionRepository>();
 
     return StreamBuilder<List<TransactionModel>>(
-      stream: txRepo.streamGroupTransactions(groupId),
+      stream: txRepo.streamGroupTransactions(widget.groupId),
       builder: (ctx, snapshot) {
         final allTxs = snapshot.data ?? [];
 
@@ -1027,367 +1100,390 @@ class _GroupFundStatisticsCard extends StatelessWidget {
           ..sort((a, b) => b.value.compareTo(a.value));
         final topCategories = sortedCategories.take(4).toList();
 
-        return _SectionCard(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                children: [
+        return Container(
+          key: _cardKey,
+          child: _SectionCard(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: widget.groupColor.withValues(alpha: 0.14),
+                      ),
+                      child: Icon(
+                        Icons.analytics_rounded,
+                        color: widget.groupColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            context.l10n.groupStatsContributionAndExpense,
+                            style: AppTextStyles.sectionTitle(context).copyWith(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          Text(
+                            context.l10n.groupStatsFundFlowSubtitle,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // 2 Thẻ lớn: Tổng Góp & Tổng Chi
+                Row(
+                  children: [
+                    // Cột Góp
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.09),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.22),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF10B981),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_downward_rounded,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    context.l10n.groupTotalContributed,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.caption(context).copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: const Color(0xFF10B981),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            FittedBox(
+                              alignment: Alignment.centerLeft,
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                widget.money(totalContributed),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF10B981),
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              context.l10n.groupContributionCount(contributionTxs.length),
+                              style: AppTextStyles.caption(context).copyWith(
+                                fontSize: 11,
+                                color: AppColors.textSecondary(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Cột Chi
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.expense.withValues(alpha: 0.09),
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: AppColors.expense.withValues(alpha: 0.22),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.expense,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.arrow_upward_rounded,
+                                    color: Colors.white,
+                                    size: 12,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    context.l10n.groupTotalSpent,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: AppTextStyles.caption(context).copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: AppColors.expense,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            FittedBox(
+                              alignment: Alignment.centerLeft,
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                widget.money(totalSpent),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.expense,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              context.l10n.groupExpenseCount(expenseTxs.length),
+                              style: AppTextStyles.caption(context).copyWith(
+                                fontSize: 11,
+                                color: AppColors.textSecondary(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Thanh tỷ lệ Quỹ (Fund Allocation Bar) với Animation chạy khi cuộn tới
+                if (totalContributed > 0 || totalSpent > 0) ...[
                   Container(
-                    width: 38,
-                    height: 38,
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: groupColor.withValues(alpha: 0.14),
+                      color: AppColors.surface(context),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppColors.innerBorder(context),
+                      ),
                     ),
-                    child: Icon(
-                      Icons.analytics_rounded,
-                      color: groupColor,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.l10n.groupStatsContributionAndExpense,
-                          style: AppTextStyles.sectionTitle(context).copyWith(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        Text(
-                          context.l10n.groupStatsFundFlowSubtitle,
-                          style: AppTextStyles.caption(context).copyWith(
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // 2 Thẻ lớn: Tổng Góp & Tổng Chi
-              Row(
-                children: [
-                  // Cột Góp
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.22),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF10B981),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.arrow_downward_rounded,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  context.l10n.groupTotalContributed,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.caption(context).copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                    color: const Color(0xFF10B981),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          FittedBox(
-                            alignment: Alignment.centerLeft,
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              money(totalContributed),
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                                color: Color(0xFF10B981),
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            context.l10n.groupContributionCount(contributionTxs.length),
-                            style: AppTextStyles.caption(context).copyWith(
-                              fontSize: 11,
-                              color: AppColors.textSecondary(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  // Cột Chi
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.expense.withValues(alpha: 0.09),
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: AppColors.expense.withValues(alpha: 0.22),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.expense,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.arrow_upward_rounded,
-                                  color: Colors.white,
-                                  size: 12,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  context.l10n.groupTotalSpent,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: AppTextStyles.caption(context).copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                    color: AppColors.expense,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          FittedBox(
-                            alignment: Alignment.centerLeft,
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              money(totalSpent),
-                              style: const TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w900,
-                                color: AppColors.expense,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            context.l10n.groupExpenseCount(expenseTxs.length),
-                            style: AppTextStyles.caption(context).copyWith(
-                              fontSize: 11,
-                              color: AppColors.textSecondary(context),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-
-              // Thanh tỷ lệ Quỹ (Fund Allocation Bar)
-              if (totalContributed > 0 || totalSpent > 0) ...[
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surface(context),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: AppColors.innerBorder(context),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            context.l10n.groupFundUsageRatio,
-                            style: AppTextStyles.caption(context).copyWith(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                          Text(
-                            isSurplus
-                                ? context.l10n.groupSurplusWithAmount(money(remainingFund))
-                                : context.l10n.groupDeficitWithAmount(money(remainingFund.abs())),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: isSurplus
-                                  ? const Color(0xFF10B981)
-                                  : AppColors.expense,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Multi-segment Bar
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                        child: Container(
-                          height: 8,
-                          color: AppColors.innerBorder(context),
-                          child: Row(
-                            children: [
-                              if (spentRatio > 0)
-                                Flexible(
-                                  flex: (spentRatio * 1000).toInt(),
-                                  child: Container(
-                                    color: AppColors.expense,
-                                  ),
-                                ),
-                              if (remainingRatio > 0)
-                                Flexible(
-                                  flex: (remainingRatio * 1000).toInt(),
-                                  child: Container(
-                                    color: const Color(0xFF10B981),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.expense,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                context.l10n.groupSpentPercent((spentRatio * 100).toStringAsFixed(1)),
-                                style: AppTextStyles.caption(context).copyWith(fontSize: 11),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF10B981),
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                context.l10n.groupRemainingPercent((remainingRatio * 100).toStringAsFixed(1)),
-                                style: AppTextStyles.caption(context).copyWith(fontSize: 11),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-
-              // Top danh mục chi tiêu của quỹ
-              if (topCategories.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                Text(
-                  context.l10n.groupTopSpendingCategories,
-                  style: AppTextStyles.caption(context).copyWith(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    color: AppColors.textSecondary(context),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...topCategories.map((entry) {
-                  final catName = BudgetNameLocalizer.display(context, entry.key);
-                  final catAmount = entry.value;
-                  final catRatio = totalSpent > 0 ? (catAmount / totalSpent).clamp(0.0, 1.0) : 0.0;
-
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Column(
                       children: [
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              catName,
-                              style: AppTextStyles.body(context).copyWith(
-                                fontSize: 13,
+                              context.l10n.groupFundUsageRatio,
+                              style: AppTextStyles.caption(context).copyWith(
                                 fontWeight: FontWeight.w700,
+                                fontSize: 12,
                               ),
                             ),
                             Text(
-                              '${money(catAmount)} (${(catRatio * 100).toStringAsFixed(0)}%)',
-                              style: const TextStyle(
+                              isSurplus
+                                  ? context.l10n.groupSurplusWithAmount(widget.money(remainingFund))
+                                  : context.l10n.groupDeficitWithAmount(widget.money(remainingFund.abs())),
+                              style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w800,
-                                color: AppColors.expense,
+                                color: isSurplus
+                                    ? const Color(0xFF10B981)
+                                    : AppColors.expense,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                          child: LinearProgressIndicator(
-                            value: catRatio,
-                            minHeight: 5,
-                            backgroundColor: AppColors.innerBorder(context),
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              AppColors.expense.withValues(alpha: 0.8),
+                        const SizedBox(height: 8),
+                        // Multi-segment Bar with Animation
+                        AnimatedBuilder(
+                          animation: _curvedAnimation,
+                          builder: (context, _) {
+                            final anim = _curvedAnimation.value;
+                            final currentSpent = spentRatio * anim;
+                            final currentRemaining = remainingRatio * anim;
+                            final currentEmpty = (1.0 - currentSpent - currentRemaining).clamp(0.0, 1.0);
+
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                              child: Container(
+                                height: 8,
+                                color: AppColors.innerBorder(context),
+                                child: Row(
+                                  children: [
+                                    if (spentRatio > 0)
+                                      Flexible(
+                                        flex: (currentSpent * 1000).toInt().clamp(0, 1000),
+                                        child: Container(
+                                          color: AppColors.expense,
+                                        ),
+                                      ),
+                                    if (remainingRatio > 0)
+                                      Flexible(
+                                        flex: (currentRemaining * 1000).toInt().clamp(0, 1000),
+                                        child: Container(
+                                          color: const Color(0xFF10B981),
+                                        ),
+                                      ),
+                                    if (currentEmpty > 0.001)
+                                      Flexible(
+                                        flex: (currentEmpty * 1000).toInt().clamp(0, 1000),
+                                        child: const SizedBox.shrink(),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.expense,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: null,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  context.l10n.groupSpentPercent((spentRatio * 100).toStringAsFixed(1)),
+                                  style: AppTextStyles.caption(context).copyWith(fontSize: 11),
+                                ),
+                              ],
                             ),
-                          ),
+                            Row(
+                              children: [
+                                Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFF10B981),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: null,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  context.l10n.groupRemainingPercent((remainingRatio * 100).toStringAsFixed(1)),
+                                  style: AppTextStyles.caption(context).copyWith(fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  );
-                }),
+                  ),
+                ],
+
+                // Top danh mục chi tiêu của quỹ với Animation chạy mượt mà
+                if (topCategories.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Text(
+                    context.l10n.groupTopSpendingCategories,
+                    style: AppTextStyles.caption(context).copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      color: AppColors.textSecondary(context),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...topCategories.map((entry) {
+                    final catName = BudgetNameLocalizer.display(context, entry.key);
+                    final catAmount = entry.value;
+                    final catRatio = totalSpent > 0 ? (catAmount / totalSpent).clamp(0.0, 1.0) : 0.0;
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                catName,
+                                style: AppTextStyles.body(context).copyWith(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              Text(
+                                '${widget.money(catAmount)} (${(catRatio * 100).toStringAsFixed(0)}%)',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.expense,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          AnimatedBuilder(
+                            animation: _curvedAnimation,
+                            builder: (context, _) => ClipRRect(
+                              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                              child: LinearProgressIndicator(
+                                value: (catRatio * _curvedAnimation.value).clamp(0.0, 1.0),
+                                minHeight: 5,
+                                backgroundColor: AppColors.innerBorder(context),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.expense.withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
               ],
-            ],
+            ),
           ),
         );
       },

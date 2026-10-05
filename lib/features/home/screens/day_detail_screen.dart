@@ -18,13 +18,28 @@ import '../controllers/home_controller.dart';
 import 'moment_viewer_screen.dart';
 import '../../../core/services/video_cache_service.dart';
 
-class DayDetailScreen extends StatelessWidget {
+class DayDetailScreen extends StatefulWidget {
   final DateTime selectedDate;
+  final String? filterType;
 
   const DayDetailScreen({
     super.key,
     required this.selectedDate,
+    this.filterType,
   });
+
+  @override
+  State<DayDetailScreen> createState() => _DayDetailScreenState();
+}
+
+class _DayDetailScreenState extends State<DayDetailScreen> {
+  late String? _currentFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentFilter = widget.filterType;
+  }
 
   bool _sameDate(DateTime a, DateTime b) {
     return a.year == b.year && a.month == b.month && a.day == b.day;
@@ -56,13 +71,20 @@ class DayDetailScreen extends StatelessWidget {
     final home = context.watch<HomeController>();
     final currency = context.watch<ProfileController>().currency;
 
-    final dayTransactions = home.transactions.where((tx) {
-      return _sameDate(tx.createdAt, selectedDate);
+    final allDayTransactions = home.transactions.where((tx) {
+      return _sameDate(tx.createdAt, widget.selectedDate);
     }).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
+    // Lọc theo bộ lọc hiện tại (null = tất cả, 'expense' = chỉ chi tiêu, 'income' = chỉ thu nhập)
+    final filteredTransactions = allDayTransactions.where((tx) {
+      if (_currentFilter == 'expense') return tx.isPersonalExpense;
+      if (_currentFilter == 'income') return tx.isPersonalIncome;
+      return true;
+    }).toList();
+
     // Preload ngay các video của ngày này để khi bấm vào xem chi tiết là video phát ngay tức thì
-    final videoUrls = dayTransactions
+    final videoUrls = filteredTransactions
         .where((tx) => tx.isVideo && tx.playableVideoUrl.isNotEmpty)
         .map((tx) => tx.playableVideoUrl)
         .toList();
@@ -70,20 +92,20 @@ class DayDetailScreen extends StatelessWidget {
       VideoCacheService.instance.preloadBatch(videoUrls);
     }
 
-    final totalIncome = dayTransactions
+    final totalIncome = allDayTransactions
         .where((e) => e.isPersonalIncome)
         .fold<double>(0, (sum, e) => sum + e.amount);
 
-    final totalExpense = dayTransactions
+    final totalExpense = allDayTransactions
         .where((e) => e.isPersonalExpense)
         .fold<double>(0, (sum, e) => sum + e.amount);
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
       body: SafeArea(
-        child: dayTransactions.isEmpty
+        child: allDayTransactions.isEmpty
             ? _EmptyDayView(
-                selectedDateText: _formatHeaderDate(context, selectedDate),
+                selectedDateText: _formatHeaderDate(context, widget.selectedDate),
                 onClose: () => Navigator.pop(context),
                 onCamera: () =>
                     Navigator.pushNamed(context, RouteNames.addTransaction),
@@ -93,72 +115,91 @@ class DayDetailScreen extends StatelessWidget {
                 child: Column(
                   children: [
                     _HeaderBar(
-                      title: _formatHeaderDate(context, selectedDate),
+                      title: _formatHeaderDate(context, widget.selectedDate),
                       onClose: () => Navigator.pop(context),
                       onCamera: () =>
                           Navigator.pushNamed(context, RouteNames.addTransaction),
                     ),
 
-              const SizedBox(height: 12),
+                    const SizedBox(height: 12),
 
-              _DailySummaryRow(
-                totalExpenseText: AppCurrencyFormatter.formatFromVnd(
-                  amountVnd: totalExpense,
-                  currency: currency,
-                ),
-                totalIncomeText: AppCurrencyFormatter.formatFromVnd(
-                  amountVnd: totalIncome,
-                  currency: currency,
-                ),
-              ),
-
-              const SizedBox(height: 18),
-
-              Expanded(
-                child: GridView.builder(
-                  cacheExtent: 700,
-                  itemCount: dayTransactions.length,
-                  gridDelegate:
-                  const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
-                    childAspectRatio: 1,
-                  ),
-                  itemBuilder: (context, index) {
-                    final tx = dayTransactions[index];
-
-                    return RepaintBoundary(
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => MomentViewerScreen(
-                                transactions: dayTransactions,
-                                initialIndex: index,
-                              ),
-                            ),
-                          );
-                        },
-                        child: _MomentGridCard(
-                          transaction: tx,
-                          amountText: _formatCompactMoney(
-                            value: tx.type == 'expense'
-                                ? -tx.amount
-                                : tx.amount,
-                            currency: currency,
-                          ),
-                          timeText: _formatTime(tx.createdAt),
-                        ),
+                    _DailySummaryRow(
+                      totalExpenseText: AppCurrencyFormatter.formatFromVnd(
+                        amountVnd: totalExpense,
+                        currency: currency,
                       ),
-                    );
-                  },
+                      totalIncomeText: AppCurrencyFormatter.formatFromVnd(
+                        amountVnd: totalIncome,
+                        currency: currency,
+                      ),
+                      activeFilter: _currentFilter,
+                      onFilterChanged: (filter) {
+                        setState(() {
+                          _currentFilter = filter;
+                        });
+                      },
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    Expanded(
+                      child: filteredTransactions.isEmpty
+                          ? Center(
+                              child: Text(
+                                _currentFilter == 'expense'
+                                    ? (Localizations.localeOf(context).toString().toLowerCase().startsWith('vi')
+                                        ? 'Không có giao dịch chi tiêu'
+                                        : 'No expense transactions')
+                                    : (Localizations.localeOf(context).toString().toLowerCase().startsWith('vi')
+                                        ? 'Không có giao dịch thu nhập'
+                                        : 'No income transactions'),
+                                style: AppTextStyles.bodySecondary(context),
+                              ),
+                            )
+                          : GridView.builder(
+                              cacheExtent: 700,
+                              itemCount: filteredTransactions.length,
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 3,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                                childAspectRatio: 1,
+                              ),
+                              itemBuilder: (context, index) {
+                                final tx = filteredTransactions[index];
+
+                                return RepaintBoundary(
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => MomentViewerScreen(
+                                            transactions: filteredTransactions,
+                                            initialIndex: index,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: _MomentGridCard(
+                                      transaction: tx,
+                                      amountText: _formatCompactMoney(
+                                        value: tx.type == 'expense'
+                                            ? -tx.amount
+                                            : tx.amount,
+                                        currency: currency,
+                                      ),
+                                      timeText: _formatTime(tx.createdAt),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -183,8 +224,8 @@ class _HeaderBar extends StatelessWidget {
           onTap: onClose,
           borderRadius: BorderRadius.circular(AppSizes.radiusPill),
           child: Container(
-            width: 52,
-            height: 52,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: AppColors.subtleOverlay(context),
               shape: BoxShape.circle,
@@ -195,7 +236,7 @@ class _HeaderBar extends StatelessWidget {
             child: Icon(
               Icons.close_rounded,
               color: AppColors.textPrimary(context),
-              size: 28,
+              size: 22,
             ),
           ),
         ),
@@ -216,8 +257,8 @@ class _HeaderBar extends StatelessWidget {
             onTap: onCamera,
             borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             child: Container(
-              width: 52,
-              height: 52,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: AppColors.subtleOverlay(context),
                 shape: BoxShape.circle,
@@ -228,12 +269,12 @@ class _HeaderBar extends StatelessWidget {
               child: Icon(
                 Icons.camera_alt_rounded,
                 color: AppColors.textPrimary(context),
-                size: 26,
+                size: 20,
               ),
             ),
           )
         else
-          const SizedBox(width: 52),
+          const SizedBox(width: 44),
       ],
     );
   }
@@ -242,10 +283,14 @@ class _HeaderBar extends StatelessWidget {
 class _DailySummaryRow extends StatelessWidget {
   final String totalExpenseText;
   final String totalIncomeText;
+  final String? activeFilter;
+  final ValueChanged<String?> onFilterChanged;
 
   const _DailySummaryRow({
     required this.totalExpenseText,
     required this.totalIncomeText,
+    this.activeFilter,
+    required this.onFilterChanged,
   });
 
   @override
@@ -259,11 +304,29 @@ class _DailySummaryRow extends StatelessWidget {
           icon: Icons.north_east_rounded,
           text: totalExpenseText,
           color: AppColors.expense,
+          isSelected: activeFilter == 'expense',
+          isDimmed: activeFilter == 'income',
+          onTap: () {
+            if (activeFilter == 'expense') {
+              onFilterChanged(null);
+            } else {
+              onFilterChanged('expense');
+            }
+          },
         ),
         _SummaryPill(
           icon: Icons.south_west_rounded,
           text: totalIncomeText,
           color: AppColors.income,
+          isSelected: activeFilter == 'income',
+          isDimmed: activeFilter == 'expense',
+          onTap: () {
+            if (activeFilter == 'income') {
+              onFilterChanged(null);
+            } else {
+              onFilterChanged('income');
+            }
+          },
         ),
       ],
     );
@@ -274,54 +337,79 @@ class _SummaryPill extends StatelessWidget {
   final IconData icon;
   final String text;
   final Color color;
+  final bool isSelected;
+  final bool isDimmed;
+  final VoidCallback onTap;
 
   const _SummaryPill({
     required this.icon,
     required this.text,
     required this.color,
+    this.isSelected = false,
+    this.isDimmed = false,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(
-        maxWidth: 170,
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 8,
-      ),
-      decoration: BoxDecoration(
-        color: color.withOpacity(
-          AppColors.isDark(context) ? 0.16 : 0.12,
-        ),
+    final isDark = AppColors.isDark(context);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-        border: Border.all(
-          color: color.withOpacity(0.18),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            color: color,
-            size: 18,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          constraints: const BoxConstraints(
+            maxWidth: 170,
           ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-              ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withOpacity(isDark ? 0.28 : 0.20)
+                : color.withOpacity(
+                    isDimmed
+                        ? (isDark ? 0.07 : 0.05)
+                        : (isDark ? 0.16 : 0.12),
+                  ),
+            borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+            border: Border.all(
+              color: isSelected
+                  ? color
+                  : color.withOpacity(isDimmed ? 0.08 : 0.20),
+              width: isSelected ? 1.6 : 1.0,
             ),
           ),
-        ],
+          child: Opacity(
+            opacity: isDimmed ? 0.45 : 1.0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: color,
+                  size: 18,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 15,
+                      fontWeight: isSelected ? FontWeight.w900 : FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

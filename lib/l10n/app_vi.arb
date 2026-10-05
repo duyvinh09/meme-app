@@ -358,6 +358,11 @@
   "addFriendTitle": "Thêm bạn bè",
   "addFriendSearchHint": "Nhập username hoặc email...",
   "noUsersFound": "Không tìm thấy người dùng",
+  "searchUserError": "Có lỗi khi tìm kiếm",
+  "sendFriendRequestFailed": "Gửi lời mời thất bại",
+  "addFriendHintFind": "Tìm bạn bè bằng username để kết nối",
+  "addFriendHintExactUsername": "Nhập đúng username của người bạn muốn thêm",
+  "addFriendHintTrackExpense": "Kết nối và theo dõi chi tiêu chung",
   "sendFriendRequest": "Thêm",
   "requestSent": "Đã gửi yêu cầu kết bạn tới {name}",
   "@requestSent": {
@@ -488,6 +493,12 @@
   },
   "saving": "Đang lưu...",
   "confirm": "Xác nhận",
+  "birthday": "Ngày sinh",
+  "birthdayOptional": "Ngày sinh (tuỳ chọn)",
+  "selectBirthday": "Chọn ngày sinh",
+  "birthdayUpdatedSuccess": "Đã cập nhật ngày sinh thành công!",
+  "notSet": "Chưa thiết lập",
+  "setBirthday": "Thiết lập",
   "groupNotFound": "Không tìm thấy nhóm",
   "group": "Nhóm",
   "groupDetails": "Chi tiết nhóm",
@@ -767,6 +778,9 @@
   "categories": "Danh mục",
   "map": "Bản đồ",
   "transactionMap": "Bản đồ giao dịch",
+  "fullScreen": "Toàn màn hình",
+  "openFullScreen": "Mở toàn màn hình",
+  "fitAllMarkers": "Căn chỉnh bản đồ",
   "mapControl": "Điều khiển bản đồ",
   "controlling": "Đang điều khiển",
   "tapToControlMap": "Chạm để điều khiển bản đồ",
@@ -1157,6 +1171,8 @@
   "streakMaintaining": "Đang duy trì",
   "bestStreakLabel": "Kỷ lục cá nhân",
   "avatarCollection": "Bộ sưu tập",
+  "daysUnit": "Ngày",
+  "framesUnit": "Khung",
   "framesCount": "{unlocked}/{total} Khung",
   "@framesCount": {
     "placeholders": {
@@ -1871,5 +1887,33 @@
   "lineItemsList": "Danh sách món",
   "ocrScanButton": "Quét Bill OCR",
   "noReceiptDetected": "Không nhận diện được nội dung hoá đơn",
-  "receiptSummaryTitle": "Chi tiết hoá đơn OCR"
+  "receiptSummaryTitle": "Chi tiết hoá đơn OCR",
+  "confirmPassword": "Nhập lại mật khẩu",
+  "passwordRequirementHint": "Mật khẩu tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt.",
+  "passwordNeedsLetterAndNumber": "Mật khẩu cần tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt",
+  "pleaseConfirmPassword": "Vui lòng nhập lại mật khẩu",
+  "passwordsDoNotMatch": "Mật khẩu nhập lại không khớp",
+  "passwordStrengthTitle": "Độ mạnh mật khẩu: {label}",
+  "@passwordStrengthTitle": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "passwordStrengthNone": "Chưa nhập mật khẩu",
+  "passwordStrengthWeak": "Yếu",
+  "passwordStrengthMedium": "Vừa",
+  "passwordStrengthStrong": "Mạnh",
+  "passwordDescEmpty": "Mật khẩu cần chữ thường, chữ hoa, số và ký tự đặc biệt.",
+  "passwordDescTooShort": "Tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt.",
+  "passwordDescMedium": "Mật khẩu hợp lệ. Thêm độ dài (từ 8 ký tự) để mạnh hơn.",
+  "passwordDescStrong": "Mật khẩu rất mạnh, đầy đủ chữ hoa, thường, số và ký tự đặc biệt.",
+  "passwordDescNeedBoth": "Cần có đủ chữ thường, chữ hoa, số và ký tự đặc biệt.",
+  "showPassword": "Hiện mật khẩu",
+  "hidePassword": "Ẩn mật khẩu",
+  "pleaseEnterEmail": "Vui lòng nhập email",
+  "pleaseEnterUsername": "Vui lòng nhập username",
+  "invalidUsername": "Username chỉ gồm chữ thường, số, dấu chấm hoặc gạch dưới, từ 3-20 ký tự",
+  "passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự"
 }

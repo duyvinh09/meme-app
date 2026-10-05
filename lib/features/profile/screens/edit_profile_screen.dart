@@ -34,7 +34,7 @@ class _EditProfileScreenBodyState extends State<_EditProfileScreenBody> {
   final nameController = TextEditingController();
 
   File? selectedAvatar;
-  bool didFillName = false;
+  bool didFillData = false;
 
   /// Trailing/leading spaces ignored when comparing drafts to baseline.
   String _baselineNameTrimmed = '';
@@ -65,13 +65,13 @@ class _EditProfileScreenBodyState extends State<_EditProfileScreenBody> {
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    if (didFillName) return;
+    if (didFillData) return;
 
     final profile = context.read<ProfileController>();
     final raw = profile.user?.name ?? '';
     _baselineNameTrimmed = raw.trim();
     nameController.text = raw;
-    didFillName = true;
+    didFillData = true;
   }
 
   @override
@@ -150,10 +150,10 @@ class _EditProfileScreenBodyState extends State<_EditProfileScreenBody> {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
-            18,
-            18,
-            18,
-            32,
+            20,
+            14,
+            20,
+            24,
           ),
           children: [
             _TopBar(
@@ -161,7 +161,7 @@ class _EditProfileScreenBodyState extends State<_EditProfileScreenBody> {
               onCancel: () => Navigator.pop(context),
             ),
 
-            const SizedBox(height: 34),
+            const SizedBox(height: 28),
 
             Center(
               child: _AvatarPicker(
@@ -171,28 +171,28 @@ class _EditProfileScreenBodyState extends State<_EditProfileScreenBody> {
               ),
             ),
 
-            const SizedBox(height: 34),
+            const SizedBox(height: 28),
 
             Text(
               l10n.name,
               style: AppTextStyles.bodySecondary(context).copyWith(
-                fontSize: 18,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
             _NameInput(
               controller: nameController,
               hintText: l10n.displayName,
             ),
 
-            const SizedBox(height: 26),
+            const SizedBox(height: 28),
 
             CustomButton(
-              height: 64,
-              borderRadius: 22,
+              height: 48,
+              borderRadius: 16,
               text: l10n.saveChanges,
               isLoading: profile.isSaving,
               onPressedAsync:
@@ -228,8 +228,8 @@ class _TopBar extends StatelessWidget {
             opacity: isSaving ? 0.55 : 1,
             child: Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: 22,
-                vertical: 14,
+                horizontal: 14,
+                vertical: 8,
               ),
               decoration: BoxDecoration(
                 color: AppColors.surface(context),
@@ -241,22 +241,25 @@ class _TopBar extends StatelessWidget {
               child: Text(
                 l10n.cancel,
                 style: AppTextStyles.bodySecondary(context).copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
         ),
-        const Spacer(),
-        Text(
-          l10n.editProfile,
-          style: AppTextStyles.pageTitle(context).copyWith(
-            fontSize: 24,
+        Expanded(
+          child: Center(
+            child: Text(
+              l10n.editProfile,
+              style: AppTextStyles.cardTitle(context).copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
           ),
         ),
-        const Spacer(),
-        const SizedBox(width: 84),
+        const SizedBox(width: 60),
       ],
     );
   }
@@ -281,8 +284,8 @@ class _AvatarPicker extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
-          width: 148,
-          height: 148,
+          width: 96,
+          height: 96,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: AppColors.surface(context),
@@ -294,44 +297,41 @@ class _AvatarPicker extends StatelessWidget {
           child: ClipOval(
             child: selectedAvatar != null
                 ? Image.file(
-              selectedAvatar!,
-              fit: BoxFit.cover,
-            )
+                    selectedAvatar!,
+                    fit: BoxFit.cover,
+                  )
                 : hasCurrentAvatar
-                ? Image.network(
-              currentAvatar,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return const _AvatarFallbackIcon();
-              },
-            )
-                : const _AvatarFallbackIcon(),
+                    ? Image.network(
+                        currentAvatar,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) {
+                          return const _AvatarFallbackIcon();
+                        },
+                      )
+                    : const _AvatarFallbackIcon(),
           ),
         ),
-
         Positioned(
           right: -2,
-          bottom: 8,
+          bottom: 0,
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             child: Container(
-              width: 54,
-              height: 54,
+              width: 32,
+              height: 32,
               decoration: BoxDecoration(
                 color: AppColors.primaryBlue,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: Colors.white.withValues(
-                    alpha: AppColors.isDark(context) ? 0.16 : 0.90,
-                  ),
-                  width: 2.5,
+                  color: AppColors.surface(context),
+                  width: 2.2,
                 ),
               ),
               child: const Icon(
                 Icons.camera_alt_rounded,
                 color: Colors.white,
-                size: 24,
+                size: 16,
               ),
             ),
           ),
@@ -348,7 +348,7 @@ class _AvatarFallbackIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Icon(
       Icons.person_rounded,
-      size: 72,
+      size: 48,
       color: AppColors.textSecondary(context),
     );
   }
@@ -373,36 +373,36 @@ class _NameInput extends StatelessWidget {
       ],
       cursorColor: AppColors.primaryBlue,
       style: AppTextStyles.body(context).copyWith(
-        fontSize: 18,
-        fontWeight: FontWeight.w700,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
       ),
       decoration: InputDecoration(
         counterText: '',
         hintText: hintText,
         hintStyle: AppTextStyles.bodySecondary(context).copyWith(
-          fontSize: 18,
+          fontSize: 15,
           fontWeight: FontWeight.w500,
         ),
         filled: true,
         fillColor: AppColors.card(context),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 22,
+          horizontal: 16,
+          vertical: 14,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
             color: AppColors.border(context),
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
             color: AppColors.border(context),
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(16),
           borderSide: const BorderSide(
             color: AppColors.primaryBlue,
             width: 1.4,

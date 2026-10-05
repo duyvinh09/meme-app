@@ -28,6 +28,7 @@ class AddFriendScreen extends StatefulWidget {
 
 class _AddFriendScreenState extends State<AddFriendScreen> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   Timer? _debounce;
   UserModel? foundUser;
@@ -37,9 +38,18 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
   String? infoText;
 
   @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -104,7 +114,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       setState(() {
         foundUser = null;
         _connectionForFoundUser = null;
-        infoText = 'Có lỗi khi tìm kiếm';
+        infoText = context.l10n.searchUserError;
         isSearching = false;
       });
     }
@@ -185,9 +195,9 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           duration: AppDurations.snackBar,
-          content: Text('Gửi lời mời thất bại'),
+          content: Text(context.l10n.sendFriendRequestFailed),
         ),
       );
     }
@@ -199,9 +209,13 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: ListView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           children: [
             Container(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 22),
@@ -304,6 +318,7 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
 
                   _SearchBox(
                     controller: _controller,
+                    focusNode: _focusNode,
                     onChanged: _onSearchChanged,
                     cursorColor: yellow,
                   ),
@@ -347,56 +362,74 @@ class _AddFriendScreenState extends State<AddFriendScreen> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 class _SearchBox extends StatelessWidget {
   final TextEditingController controller;
+  final FocusNode focusNode;
   final ValueChanged<String> onChanged;
   final Color cursorColor;
 
   const _SearchBox({
     required this.controller,
+    required this.focusNode,
     required this.onChanged,
     required this.cursorColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 62,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+    final isDark = AppColors.isDark(context);
+    final textPrimary = AppColors.textPrimary(context);
+    final textSecondary = AppColors.textSecondary(context);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      height: 48,
       decoration: BoxDecoration(
-        color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(22),
+        color: isDark ? const Color(0xFF1B1E2B) : AppColors.surface(context),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.innerBorder(context),
+          color: focusNode.hasFocus
+              ? AppColors.primaryBlue
+              : AppColors.innerBorder(context),
+          width: focusNode.hasFocus ? 1.4 : 1.0,
         ),
       ),
       child: Row(
         children: [
-          Icon(
-            Icons.search_rounded,
-            color: AppColors.textSecondary(context),
-            size: 30,
+          Padding(
+            padding: const EdgeInsets.only(left: 14, right: 10),
+            child: Icon(
+              Icons.search_rounded,
+              color: focusNode.hasFocus
+                  ? AppColors.primaryBlue
+                  : textSecondary.withValues(alpha: 0.70),
+              size: 22,
+            ),
           ),
-          const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: controller,
+              focusNode: focusNode,
               autofocus: true,
               onChanged: onChanged,
               cursorColor: cursorColor,
-              style: AppTextStyles.body(context).copyWith(
-                fontSize: 18,
+              textAlignVertical: TextAlignVertical.center,
+              style: TextStyle(
+                color: textPrimary,
+                fontSize: 14.5,
                 fontWeight: FontWeight.w600,
               ),
               decoration: InputDecoration(
                 isDense: true,
                 hintText: context.l10n.addFriendSearchHint,
-                hintStyle: AppTextStyles.bodySecondary(context).copyWith(
-                  fontSize: 18,
+                hintStyle: TextStyle(
+                  color: textSecondary.withValues(alpha: 0.65),
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w500,
                 ),
                 border: InputBorder.none,
@@ -406,10 +439,25 @@ class _SearchBox extends StatelessWidget {
                 errorBorder: InputBorder.none,
                 focusedErrorBorder: InputBorder.none,
                 filled: false,
-                contentPadding: EdgeInsets.zero,
+                fillColor: Colors.transparent,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
+          if (controller.text.isNotEmpty)
+            IconButton(
+              icon: Icon(
+                Icons.close_rounded,
+                color: textSecondary,
+                size: 18,
+              ),
+              onPressed: () {
+                controller.clear();
+                onChanged('');
+              },
+            )
+          else
+            const SizedBox(width: 8),
         ],
       ),
     );
@@ -640,12 +688,12 @@ class _SearchHintBox extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: 12,
+        horizontal: 14,
         vertical: 14,
       ),
       decoration: BoxDecoration(
         color: AppColors.surface(context),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: AppColors.innerBorder(context),
         ),
@@ -654,21 +702,21 @@ class _SearchHintBox extends StatelessWidget {
         children: [
           _SearchHintRow(
             icon: Icons.person_outline_rounded,
-            text: 'Tìm bạn bè bằng username để kết nối',
+            text: context.l10n.addFriendHintFind,
             iconBg: AppColors.primaryBlue.withValues(alpha: 0.15),
             iconColor: AppColors.primaryBlue,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           _SearchHintRow(
             icon: Icons.alternate_email_rounded,
-            text: 'Nhập đúng username của người bạn muốn thêm',
+            text: context.l10n.addFriendHintExactUsername,
             iconBg: Colors.orange.withValues(alpha: 0.15),
             iconColor: Colors.orange,
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           _SearchHintRow(
             icon: Icons.link_rounded,
-            text: 'Kết nối và theo dõi chi tiêu chung',
+            text: context.l10n.addFriendHintTrackExpense,
             iconBg: Colors.green.withValues(alpha: 0.15),
             iconColor: Colors.green,
           ),

@@ -22,6 +22,7 @@ import '../services/daily_moment_service.dart';
 import '../widgets/balance_card.dart';
 import '../widgets/calendar_section.dart';
 import '../widgets/recent_transaction_card.dart';
+import '../widgets/shake_photo_memory_tray.dart';
 import '../widgets/streak_card.dart';
 
 enum RecentTxSortFilter {
@@ -42,7 +43,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool loaded = false;
   Timer? _timeUpdateTimer;
-  static const int _pageSize = 10;
+  static const int _pageSize = 7;
   int _currentPage = 1;
   RecentTxSortFilter _recentFilter = RecentTxSortFilter.newest;
 
@@ -511,150 +512,198 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     return Scaffold(
       backgroundColor: AppColors.background(context),
-      body: SafeArea(
-        child: home.isLoading
-            ? const Center(
-          child: CircularProgressIndicator(),
-        )
-            : ListView(
-          cacheExtent: 800,
-          padding: const EdgeInsets.fromLTRB(
-            AppSizes.pagePadding,
-            12,
-            AppSizes.pagePadding,
-            AppSizes.bottomNavSafePadding,
-          ),
-          children: [
-            Row(
-              children: [
-                const MemeLogo(
-                  height: 44,
-                  showSubtitle: true,
-                ),
-                const Spacer(),
-                _TopActionButton(
-                  icon: Icons.calendar_month_outlined,
-                  onTap: () {
-                    Navigator.pushNamed(context, RouteNames.calendar);
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSizes.sectionGap),
-
-            _WelcomeCard(
-              avatarUrl: avatarUrl,
-              avatarFrame: home.profile?.avatarFrame ?? 'plain',
-              greetingIcon: momentData.greetingIcon,
-              greetingText: momentData.greetingText,
-              userName: home.profile?.name ?? context.l10n.you,
-              todaySummary: _buildTodaySummary(
-                home: home,
-                currency: currency,
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            BalanceCard(
-              transactions: home.transactions,
-            ),
-
-            const SizedBox(height: 16),
-
-            StreakCard(
-              streak: home.profile?.currentStreak ?? 0,
-              onStartTap: () {
-                Navigator.pushNamed(context, RouteNames.addTransaction);
-              },
-            ),
-
-            const SizedBox(height: 16),
-
-            _SectionContainer(
-              clipBehavior: Clip.antiAlias,
-              child: const CalendarSection(),
-            ),
-
-            const SizedBox(height: 22),
-
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        context.l10n.recentTransactions,
-                        style: AppTextStyles.sectionTitle(context),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        languageCode == 'vi'
-                            ? 'Hiển thị các giao dịch trong 7 ngày gần đây'
-                            : 'Showing transactions from the last 7 days',
-                        style: AppTextStyles.caption(context).copyWith(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: AppColors.textSecondary(context),
+      body: home.isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Stack(
+                children: [
+                  // Top sky-blue gradient header that scrolls along with content (not fixed)
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: 380,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: isDark
+                              ? const [0.0, 0.40, 0.75, 1.0]
+                              : const [0.0, 0.35, 0.70, 1.0],
+                          colors: isDark
+                              ? [
+                                  const Color(0xFF102844),
+                                  const Color(0xFF0D1E33),
+                                  const Color(0xFF0A1424),
+                                  AppColors.darkBackground,
+                                ]
+                              : [
+                                  const Color(0xFFBFE0FD),
+                                  const Color(0xFFDAEDFE),
+                                  const Color(0xFFF2F8FE),
+                                  AppColors.lightBackground,
+                                ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                if (filteredRecent.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? AppColors.primaryBlue.withValues(alpha: 0.18)
-                          : AppColors.primaryBlue.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                      border: Border.all(
-                        color: AppColors.primaryBlue.withValues(alpha: 0.3),
-                        width: 0.8,
-                      ),
-                    ),
-                    child: Text(
-                      languageCode == 'vi'
-                          ? '$totalItems giao dịch'
-                          : '$totalItems txs',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primaryBlue,
-                      ),
                     ),
                   ),
-              ],
+
+                  // Main scrollable content
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSizes.pagePadding,
+                        12,
+                        AppSizes.pagePadding,
+                        AppSizes.bottomNavSafePadding,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              const MemeLogo(
+                                height: 44,
+                                showSubtitle: true,
+                              ),
+                              const Spacer(),
+                              _TopActionButton(
+                                icon: Icons.calendar_month_outlined,
+                                onTap: () {
+                                  Navigator.pushNamed(context, RouteNames.calendar);
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: AppSizes.sectionGap),
+
+                          _WelcomeCard(
+                            avatarUrl: avatarUrl,
+                            avatarFrame: home.profile?.avatarFrame ?? 'plain',
+                            greetingIcon: momentData.greetingIcon,
+                            greetingText: momentData.greetingText,
+                            userName: home.profile?.name ?? context.l10n.you,
+                            todaySummary: _buildTodaySummary(
+                              home: home,
+                              currency: currency,
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          BalanceCard(
+                            transactions: home.transactions,
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          StreakCard(
+                            streak: home.profile?.currentStreak ?? 0,
+                            onStartTap: () {
+                              Navigator.pushNamed(context, RouteNames.addTransaction);
+                            },
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          _SectionContainer(
+                            clipBehavior: Clip.antiAlias,
+                            child: const CalendarSection(),
+                          ),
+
+                          const SizedBox(height: 18),
+
+                          ShakePhotoMemoryTray(
+                            transactions: home.transactions,
+                          ),
+
+                          const SizedBox(height: 22),
+
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      context.l10n.recentTransactions,
+                                      style: AppTextStyles.sectionTitle(context),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      languageCode == 'vi'
+                                          ? 'Hiển thị các giao dịch trong 7 ngày gần đây'
+                                          : 'Showing transactions from the last 7 days',
+                                      style: AppTextStyles.caption(context).copyWith(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                        color: AppColors.textSecondary(context),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (filteredRecent.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? AppColors.primaryBlue.withValues(alpha: 0.18)
+                                        : AppColors.primaryBlue.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                                    border: Border.all(
+                                      color: AppColors.primaryBlue.withValues(alpha: 0.3),
+                                      width: 0.8,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    languageCode == 'vi'
+                                        ? '$totalItems giao dịch'
+                                        : '$totalItems txs',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.primaryBlue,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 10),
+
+                          _buildFilterChips(languageCode),
+
+                          const SizedBox(height: 12),
+
+                          if (displayedTransactions.isEmpty)
+                            const _EmptyTransactionCard()
+                          else ...[
+                            ...displayedTransactions
+                                .map((e) => RecentTransactionCard(transaction: e)),
+                            if (totalPages > 1)
+                              _buildPaginationControls(
+                                currentPage: _currentPage,
+                                totalPages: totalPages,
+                                totalItems: totalItems,
+                                languageCode: languageCode,
+                              ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-
-            const SizedBox(height: 10),
-
-            _buildFilterChips(languageCode),
-
-            const SizedBox(height: 12),
-
-            if (displayedTransactions.isEmpty)
-              const _EmptyTransactionCard()
-            else ...[
-              ...displayedTransactions
-                  .map((e) => RecentTransactionCard(transaction: e)),
-              if (totalPages > 1)
-                _buildPaginationControls(
-                  currentPage: _currentPage,
-                  totalPages: totalPages,
-                  totalItems: totalItems,
-                  languageCode: languageCode,
-                ),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }
@@ -815,6 +864,15 @@ class _TopActionButton extends StatelessWidget {
           border: Border.all(
             color: AppColors.border(context),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(
+                alpha: AppColors.isDark(context) ? 0.20 : 0.05,
+              ),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
         child: Icon(
           icon,

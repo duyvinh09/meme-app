@@ -295,80 +295,86 @@ class _SettingsOptionTile extends StatelessWidget {
         ? const Color(0xFF4A5062)
         : const Color(0xFFC9D1DD);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      decoration: BoxDecoration(
+        color: selected ? selectedTileBg : AppColors.surface(context),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        border: Border.all(
+          color: selected ? selectedTileBorder : AppColors.innerBorder(context),
         ),
-        decoration: BoxDecoration(
-          color: selected ? selectedTileBg : AppColors.surface(context),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-          border: Border.all(
-            color: selected ? selectedTileBorder : AppColors.innerBorder(context),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: iconColor.withValues(alpha: 0.14),
-              ),
-              child: Center(
-                child: flagEmoji != null
-                    ? Text(
-                  flagEmoji!,
-                  style: const TextStyle(
-                    fontSize: 21,
-                    height: 1,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: iconColor.withValues(alpha: 0.14),
                   ),
-                )
-                    : Icon(
-                  icon,
-                  color: iconColor,
-                  size: 20,
+                  child: Center(
+                    child: flagEmoji != null
+                        ? Text(
+                      flagEmoji!,
+                      style: const TextStyle(
+                        fontSize: 21,
+                        height: 1,
+                      ),
+                    )
+                        : Icon(
+                      icon,
+                      color: iconColor,
+                      size: 20,
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: AppTextStyles.body(context).copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selected ? AppColors.primaryBlue : Colors.transparent,
+                    border: Border.all(
+                      color: selected ? AppColors.primaryBlue : radioBorder,
+                      width: 1.8,
+                    ),
+                  ),
+                  child: selected
+                      ? const Center(
+                    child: Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 15,
+                    ),
+                  )
+                      : null,
+                ),
+              ],
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                title,
-                style: AppTextStyles.body(context).copyWith(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: selected ? AppColors.primaryBlue : Colors.transparent,
-                border: Border.all(
-                  color: selected ? AppColors.primaryBlue : radioBorder,
-                  width: 1.8,
-                ),
-              ),
-              child: selected
-                  ? const Center(
-                child: Icon(
-                  Icons.check_rounded,
-                  color: Colors.white,
-                  size: 15,
-                ),
-              )
-                  : null,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -392,69 +398,75 @@ class _SettingsActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface(context),
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        border: Border.all(
+          color: AppColors.innerBorder(context),
         ),
-        decoration: BoxDecoration(
-          color: AppColors.surface(context),
-          borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-          border: Border.all(
-            color: AppColors.innerBorder(context),
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: iconColor.withValues(alpha: 0.14),
-              ),
-              child: Center(
-                child: Icon(
-                  icon,
-                  color: iconColor,
-                  size: 20,
-                ),
-              ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: AppTextStyles.body(context).copyWith(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: iconColor.withValues(alpha: 0.14),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      icon,
+                      color: iconColor,
+                      size: 20,
                     ),
                   ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle!,
-                      style: AppTextStyles.caption(context).copyWith(
-                        fontSize: 12.5,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: AppTextStyles.body(context).copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 3),
+                        Text(
+                          subtitle!,
+                          style: AppTextStyles.caption(context).copyWith(
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppColors.textSecondary(context).withValues(alpha: 0.5),
+                  size: 22,
+                ),
+              ],
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: AppColors.textSecondary(context).withValues(alpha: 0.5),
-              size: 22,
-            ),
-          ],
+          ),
         ),
       ),
     );

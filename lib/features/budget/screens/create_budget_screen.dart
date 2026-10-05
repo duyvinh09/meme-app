@@ -432,7 +432,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(
             16,
-            14,
+            12,
             16,
             AppSizes.bottomNavSafePadding,
           ),
@@ -441,7 +441,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               onCancel: () => Navigator.pop(context),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
             _PreviewBudgetCard(
               color: selectedColor,
@@ -452,10 +452,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               typeText: displayTypeText,
             ),
 
-            const SizedBox(height: 22),
+            const SizedBox(height: 16),
 
             _SectionTitle(title: context.l10n.budgetType),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -476,7 +476,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                     },
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
                 Expanded(
                   child: _BudgetTypeCard(
                     title: context.l10n.category,
@@ -498,9 +498,9 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
             ),
 
             if (budgetType == 'category') ...[
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               _SectionTitle(title: isEn ? 'Select Category' : 'Chọn danh mục chi tiêu'),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               _CategoryChipSelector(
                 categories: categories,
                 selectedKey: selectedCategoryKey,
@@ -508,10 +508,10 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               ),
             ],
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
             _SectionTitle(title: context.l10n.budgetNameLabel),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             CustomTextField(
               controller: nameController,
               hintText: context.l10n.budgetNameHint,
@@ -520,20 +520,20 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               onChanged: (_) => setState(() {}),
             ),
 
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
 
             _SectionTitle(title: context.l10n.budgetAmountLabel),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             _AmountField(
               controller: amountController,
               selectedColor: selectedColor,
               onChanged: (_) => setState(() {}),
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
             _SectionTitle(title: context.l10n.period),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _PeriodGrid(
               periodOptions: periodOptions,
               selectedPeriod: period,
@@ -545,22 +545,22 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               },
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
                 children: [
                   Icon(
                     Icons.info_outline_rounded,
-                    size: 14,
+                    size: 13,
                     color: AppColors.textSecondary(context),
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 5),
                   Expanded(
                     child: Text(
                       _periodDescription(period),
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary(context),
                       ),
@@ -571,7 +571,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
             ),
 
             if (period == 'custom') ...[
-              const SizedBox(height: 16),
+              const SizedBox(height: 14),
               _CustomDateRangeCard(
                 startDate: startDate,
                 endDate: endDate,
@@ -581,13 +581,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               ),
             ],
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
 
             _SectionTitle(title: context.l10n.color),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 10,
+              runSpacing: 10,
               children: colorOptions.map((color) {
                 final selected = selectedColor.toARGB32() == color.toARGB32();
 
@@ -599,21 +599,21 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 160),
-                    width: 46,
-                    height: 46,
+                    width: 38,
+                    height: 38,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: color,
                       border: Border.all(
                         color: selected ? Colors.white : AppColors.border(context),
-                        width: selected ? 3 : 1,
+                        width: selected ? 2.5 : 1,
                       ),
                       boxShadow: selected
                           ? [
                               BoxShadow(
                                 color: color.withValues(alpha: 0.20),
-                                blurRadius: 10,
-                                offset: const Offset(0, 4),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
                               ),
                             ]
                           : null,
@@ -622,7 +622,7 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                         ? const Icon(
                             Icons.check_rounded,
                             color: Colors.white,
-                            size: 22,
+                            size: 18,
                           )
                         : null,
                   ),
@@ -630,13 +630,13 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
               }).toList(),
             ),
 
-            const SizedBox(height: 22),
+            const SizedBox(height: 14),
 
             _SectionTitle(title: context.l10n.icon),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 12,
-              runSpacing: 12,
+              spacing: 10,
+              runSpacing: 10,
               children: iconOptions.map((icon) {
                 final selected = selectedIcon == icon;
 
@@ -648,8 +648,8 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 160),
-                    width: 48,
-                    height: 48,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: selected ? selectedColor : AppColors.surface(context),
@@ -662,22 +662,22 @@ class _CreateBudgetScreenState extends State<CreateBudgetScreen> {
                     child: Icon(
                       icon,
                       color: selected ? Colors.white : AppColors.textSecondary(context),
-                      size: 22,
+                      size: 19,
                     ),
                   ),
                 );
               }).toList(),
             ),
 
-            const SizedBox(height: 26),
+            const SizedBox(height: 20),
 
             CustomButton(
               text: context.l10n.createBudget,
               onPressedAsync: canSubmit ? _createBudget : null,
               backgroundColor: selectedColor,
               foregroundColor: AppColors.foregroundOnAccent(selectedColor),
-              height: 54,
-              borderRadius: 18,
+              height: 46,
+              borderRadius: 14,
             ),
           ],
         ),
@@ -948,8 +948,8 @@ class _TopBar extends StatelessWidget {
           onTap: onCancel,
           child: Container(
             padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 10,
+              horizontal: 12,
+              vertical: 7,
             ),
             decoration: BoxDecoration(
               color: AppColors.surface(context),
@@ -961,7 +961,7 @@ class _TopBar extends StatelessWidget {
             child: Text(
               context.l10n.cancelLabel,
               style: AppTextStyles.bodySecondary(context).copyWith(
-                fontSize: 15,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -971,12 +971,12 @@ class _TopBar extends StatelessWidget {
         Text(
           context.l10n.addBudget,
           style: AppTextStyles.pageTitle(context).copyWith(
-            fontSize: 21,
+            fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
         ),
         const Spacer(),
-        const SizedBox(width: 64),
+        const SizedBox(width: 48),
       ],
     );
   }
@@ -1002,26 +1002,26 @@ class _PreviewBudgetCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: AppColors.border(context),
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: AppColors.isDark(context) ? 0.10 : 0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 5),
+            color: color.withValues(alpha: AppColors.isDark(context) ? 0.10 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 62,
-            height: 62,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color.withValues(alpha: 0.16),
@@ -1029,10 +1029,10 @@ class _PreviewBudgetCard extends StatelessWidget {
             child: Icon(
               icon,
               color: color,
-              size: 32,
+              size: 23,
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1042,26 +1042,26 @@ class _PreviewBudgetCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.sectionTitle(context).copyWith(
-                    fontSize: 18,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 3),
                 Row(
                   children: [
                     Icon(
                       Icons.calendar_today_outlined,
-                      size: 14,
+                      size: 12,
                       color: AppColors.textSecondary(context),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     Flexible(
                       child: Text(
                         '$periodText  •  $typeText',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.bodySecondary(context).copyWith(
-                          fontSize: 13,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1071,7 +1071,7 @@ class _PreviewBudgetCard extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Flexible(
             child: Text(
               amount,
@@ -1080,7 +1080,7 @@ class _PreviewBudgetCard extends StatelessWidget {
               textAlign: TextAlign.right,
               style: TextStyle(
                 color: color,
-                fontSize: 18,
+                fontSize: 15,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -1122,42 +1122,42 @@ class _AmountField extends StatelessWidget {
       ],
       style: TextStyle(
         color: AppColors.textPrimary(context),
-        fontSize: 38,
+        fontSize: 28,
         fontWeight: FontWeight.w900,
       ),
       decoration: InputDecoration(
         hintText: AppCurrencyFormatter.formatInputHint(currency),
         hintStyle: TextStyle(
           color: AppColors.textSecondary(context).withValues(alpha: 0.50),
-          fontSize: 38,
+          fontSize: 28,
           fontWeight: FontWeight.w900,
         ),
         suffixText: AppCurrencyFormatter.symbol(currency),
         suffixStyle: TextStyle(
           color: AppColors.textPrimary(context),
-          fontSize: 24,
+          fontSize: 18,
           fontWeight: FontWeight.w800,
         ),
         filled: true,
         fillColor: AppColors.card(context),
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
+          horizontal: 12,
+          vertical: 10,
         ),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
             color: AppColors.border(context),
           ),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
             color: AppColors.border(context),
           ),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(
             color: selectedColor,
             width: 1.3,
@@ -1189,9 +1189,9 @@ class _PeriodGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
-        childAspectRatio: 3.25,
+        mainAxisSpacing: 8,
+        crossAxisSpacing: 8,
+        childAspectRatio: 3.6,
       ),
       itemBuilder: (context, index) {
         final item = periodOptions[index];
@@ -1203,7 +1203,7 @@ class _PeriodGrid extends StatelessWidget {
             duration: const Duration(milliseconds: 180),
             decoration: BoxDecoration(
               color: selected ? selectedColor : AppColors.card(context),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: selected ? selectedColor : AppColors.border(context),
               ),
@@ -1214,16 +1214,16 @@ class _PeriodGrid extends StatelessWidget {
                 Icon(
                   item.icon,
                   color: selected ? Colors.white : AppColors.textSecondary(context),
-                  size: 16,
+                  size: 14,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Text(
                   item.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: selected ? Colors.white : AppColors.textPrimary(context),
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1259,11 +1259,11 @@ class _BudgetTypeCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        height: 96,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        height: 78,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           color: selected ? selectedColor : AppColors.card(context),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected ? selectedColor : AppColors.border(context),
           ),
@@ -1273,19 +1273,19 @@ class _BudgetTypeCard extends StatelessWidget {
           children: [
             Icon(
               icon,
-              size: 24,
+              size: 20,
               color: selected ? Colors.white : AppColors.textSecondary(context),
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 5),
             Text(
               title,
               style: TextStyle(
                 color: selected ? Colors.white : AppColors.textPrimary(context),
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               subtitle,
               maxLines: 1,
@@ -1295,9 +1295,9 @@ class _BudgetTypeCard extends StatelessWidget {
                 color: selected
                     ? Colors.white.withValues(alpha: 0.88)
                     : AppColors.textSecondary(context),
-                fontSize: 11.5,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w600,
-                height: 1.2,
+                height: 1.1,
               ),
             ),
           ],
@@ -1319,7 +1319,7 @@ class _SectionTitle extends StatelessWidget {
     return Text(
       title,
       style: AppTextStyles.sectionTitle(context).copyWith(
-        fontSize: 16,
+        fontSize: 13.5,
         fontWeight: FontWeight.w800,
       ),
     );

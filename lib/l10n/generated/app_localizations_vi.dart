@@ -653,6 +653,22 @@ class AppLocalizationsVi extends AppLocalizations {
   String get noUsersFound => 'Không tìm thấy người dùng';
 
   @override
+  String get searchUserError => 'Có lỗi khi tìm kiếm';
+
+  @override
+  String get sendFriendRequestFailed => 'Gửi lời mời thất bại';
+
+  @override
+  String get addFriendHintFind => 'Tìm bạn bè bằng username để kết nối';
+
+  @override
+  String get addFriendHintExactUsername =>
+      'Nhập đúng username của người bạn muốn thêm';
+
+  @override
+  String get addFriendHintTrackExpense => 'Kết nối và theo dõi chi tiêu chung';
+
+  @override
   String get sendFriendRequest => 'Thêm';
 
   @override
@@ -855,6 +871,24 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get confirm => 'Xác nhận';
+
+  @override
+  String get birthday => 'Ngày sinh';
+
+  @override
+  String get birthdayOptional => 'Ngày sinh (tuỳ chọn)';
+
+  @override
+  String get selectBirthday => 'Chọn ngày sinh';
+
+  @override
+  String get birthdayUpdatedSuccess => 'Đã cập nhật ngày sinh thành công!';
+
+  @override
+  String get notSet => 'Chưa thiết lập';
+
+  @override
+  String get setBirthday => 'Thiết lập';
 
   @override
   String get groupNotFound => 'Không tìm thấy nhóm';
@@ -1245,6 +1279,15 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get transactionMap => 'Bản đồ giao dịch';
+
+  @override
+  String get fullScreen => 'Toàn màn hình';
+
+  @override
+  String get openFullScreen => 'Mở toàn màn hình';
+
+  @override
+  String get fitAllMarkers => 'Căn chỉnh bản đồ';
 
   @override
   String get mapControl => 'Điều khiển bản đồ';
@@ -1957,6 +2000,12 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get avatarCollection => 'Bộ sưu tập';
+
+  @override
+  String get daysUnit => 'Ngày';
+
+  @override
+  String get framesUnit => 'Khung';
 
   @override
   String framesCount(int unlocked, int total) {
@@ -2929,4 +2978,77 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get receiptSummaryTitle => 'Chi tiết hoá đơn OCR';
+
+  @override
+  String get confirmPassword => 'Nhập lại mật khẩu';
+
+  @override
+  String get passwordRequirementHint =>
+      'Mật khẩu tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+
+  @override
+  String get passwordNeedsLetterAndNumber =>
+      'Mật khẩu cần tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt';
+
+  @override
+  String get pleaseConfirmPassword => 'Vui lòng nhập lại mật khẩu';
+
+  @override
+  String get passwordsDoNotMatch => 'Mật khẩu nhập lại không khớp';
+
+  @override
+  String passwordStrengthTitle(String label) {
+    return 'Độ mạnh mật khẩu: $label';
+  }
+
+  @override
+  String get passwordStrengthNone => 'Chưa nhập mật khẩu';
+
+  @override
+  String get passwordStrengthWeak => 'Yếu';
+
+  @override
+  String get passwordStrengthMedium => 'Vừa';
+
+  @override
+  String get passwordStrengthStrong => 'Mạnh';
+
+  @override
+  String get passwordDescEmpty =>
+      'Mật khẩu cần chữ thường, chữ hoa, số và ký tự đặc biệt.';
+
+  @override
+  String get passwordDescTooShort =>
+      'Tối thiểu 6 ký tự, gồm chữ thường, chữ hoa, số và ký tự đặc biệt.';
+
+  @override
+  String get passwordDescMedium =>
+      'Mật khẩu hợp lệ. Thêm độ dài (từ 8 ký tự) để mạnh hơn.';
+
+  @override
+  String get passwordDescStrong =>
+      'Mật khẩu rất mạnh, đầy đủ chữ hoa, thường, số và ký tự đặc biệt.';
+
+  @override
+  String get passwordDescNeedBoth =>
+      'Cần có đủ chữ thường, chữ hoa, số và ký tự đặc biệt.';
+
+  @override
+  String get showPassword => 'Hiện mật khẩu';
+
+  @override
+  String get hidePassword => 'Ẩn mật khẩu';
+
+  @override
+  String get pleaseEnterEmail => 'Vui lòng nhập email';
+
+  @override
+  String get pleaseEnterUsername => 'Vui lòng nhập username';
+
+  @override
+  String get invalidUsername =>
+      'Username chỉ gồm chữ thường, số, dấu chấm hoặc gạch dưới, từ 3-20 ký tự';
+
+  @override
+  String get passwordMinLength => 'Mật khẩu phải có ít nhất 6 ký tự';
 }

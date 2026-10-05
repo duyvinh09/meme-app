@@ -171,8 +171,8 @@ class CategoryPhotosScreen extends StatelessWidget {
                     onTap: () => Navigator.pop(context),
                     borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
                     child: Container(
-                      width: 48,
-                      height: 48,
+                      width: 44,
+                      height: 44,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: cardColor,
@@ -181,7 +181,7 @@ class CategoryPhotosScreen extends StatelessWidget {
                       child: Icon(
                         Icons.arrow_back_ios_new_rounded,
                         color: primaryText,
-                        size: 20,
+                        size: 19,
                       ),
                     ),
                   ),

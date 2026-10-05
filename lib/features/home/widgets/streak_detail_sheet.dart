@@ -93,6 +93,9 @@ class _StreakDetailSheetState extends State<StreakDetailSheet> {
       await context
           .read<ProfileController>()
           .updateAvatarFrame(uid, frame.id);
+      if (mounted) {
+        await context.read<HomeController>().refreshProfile(uid);
+      }
     }
   }
 
