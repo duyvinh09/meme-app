@@ -5354,6 +5354,138 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Mật khẩu phải có ít nhất 6 ký tự'**
   String get passwordMinLength;
+
+  /// No description provided for @createPollTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tạo bình chọn'**
+  String get createPollTitle;
+
+  /// No description provided for @pollQuestionLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Câu hỏi'**
+  String get pollQuestionLabel;
+
+  /// No description provided for @pollQuestionHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhập câu hỏi bình chọn...'**
+  String get pollQuestionHint;
+
+  /// No description provided for @pollOptionsLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Các lựa chọn'**
+  String get pollOptionsLabel;
+
+  /// No description provided for @pollOptionHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lựa chọn {index}'**
+  String pollOptionHint(int index);
+
+  /// No description provided for @addPollOption.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thêm lựa chọn'**
+  String get addPollOption;
+
+  /// No description provided for @createPollAction.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tạo bình chọn'**
+  String get createPollAction;
+
+  /// No description provided for @voteAction.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bình chọn'**
+  String get voteAction;
+
+  /// No description provided for @changeVoteAction.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đổi bình chọn'**
+  String get changeVoteAction;
+
+  /// No description provided for @votersCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} người bình chọn'**
+  String votersCount(int count);
+
+  /// No description provided for @youSelectedOptionsCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đã chọn {count}'**
+  String youSelectedOptionsCount(int count);
+
+  /// No description provided for @viewOptionVoters.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem người chọn'**
+  String get viewOptionVoters;
+
+  /// No description provided for @votesCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} phiếu'**
+  String votesCount(int count);
+
+  /// No description provided for @pollOptionsCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} lựa chọn'**
+  String pollOptionsCount(int count);
+
+  /// No description provided for @votersForOptionTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Người đã chọn \"{option}\"'**
+  String votersForOptionTitle(String option);
+
+  /// No description provided for @noVotersYet.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có ai bình chọn lựa chọn này'**
+  String get noVotersYet;
+
+  /// No description provided for @pollQuestionEmptyError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vui lòng nhập câu hỏi'**
+  String get pollQuestionEmptyError;
+
+  /// No description provided for @pollMinOptionsError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cần ít nhất 2 lựa chọn'**
+  String get pollMinOptionsError;
+
+  /// No description provided for @pollDuplicateOptionsError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Các lựa chọn không được trùng nhau'**
+  String get pollDuplicateOptionsError;
+
+  /// No description provided for @pollEmptyOptionError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vui lòng không để trống lựa chọn'**
+  String get pollEmptyOptionError;
+
+  /// No description provided for @pollSelectAtLeastOneError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Vui lòng chọn ít nhất 1 lựa chọn để bình chọn'**
+  String get pollSelectAtLeastOneError;
+
+  /// No description provided for @pollAttachmentLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bình chọn'**
+  String get pollAttachmentLabel;
 }
 
 class _AppLocalizationsDelegate

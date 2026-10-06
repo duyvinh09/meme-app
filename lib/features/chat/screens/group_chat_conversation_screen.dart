@@ -29,6 +29,8 @@ import '../../profile/screens/group_detail_screen.dart';
 import '../../profile/widgets/avatar_with_frame.dart';
 import '../controllers/chat_controller.dart';
 import '../widgets/chat_bubble_widget.dart';
+import '../widgets/create_poll_sheet.dart';
+import '../widgets/group_poll_bubble.dart';
 import '../widgets/message_action_menu_overlay.dart';
 import '../widgets/message_reactions_detail_sheet.dart';
 import '../widgets/nearby_place_bottom_sheet.dart';
@@ -1463,6 +1465,54 @@ class _GroupChatConversationScreenState
       });
       if (success) {
         _scrollToBottom();
+      }
+    }
+  }
+
+  Future<void> _openCreatePoll() async {
+    final myUser = context.read<AuthController>().user;
+    if (myUser == null || _isSending) return;
+
+    final userRepo = context.read<UserRepository>();
+    final userProfile = await userRepo.getUserProfile(myUser.uid);
+    if (!mounted) return;
+    final isEn = Localizations.localeOf(context).languageCode == 'en';
+    final creatorName = userProfile?.name.isNotEmpty == true
+        ? userProfile!.name
+        : (userProfile?.username.isNotEmpty == true
+            ? '@${userProfile!.username}'
+            : (isEn ? 'Member' : 'Thành viên'));
+
+    final poll = await CreatePollSheet.show(
+      context: context,
+      creatorId: myUser.uid,
+      creatorName: creatorName,
+    );
+
+    if (poll != null && mounted) {
+      final senderAvatar = userProfile?.avatarUrl ?? '';
+      final localSettings = context.read<LocalSettingsService>();
+      final bubbleThemeId = localSettings.chatBubbleTheme;
+
+      setState(() => _isSending = true);
+      SoundEffectService.instance.playMessageSent();
+
+      final success = await _chatRepo.sendGroupMessage(
+        groupId: widget.groupId,
+        senderId: myUser.uid,
+        senderName: creatorName,
+        senderAvatar: senderAvatar,
+        text: poll.question,
+        type: 'poll',
+        bubbleTheme: bubbleThemeId,
+        poll: poll,
+      );
+
+      if (mounted) {
+        setState(() => _isSending = false);
+        if (success) {
+          _scrollToBottom();
+        }
       }
     }
   }
@@ -4272,6 +4322,8 @@ class _GroupChatConversationScreenState
       child: Row(
         children: [
           IconButton(
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
             icon: Icon(
               _showEmojiGrid
                   ? Icons.keyboard_rounded
@@ -4279,7 +4331,7 @@ class _GroupChatConversationScreenState
               color: _showEmojiGrid
                   ? AppColors.primaryBlue
                   : AppColors.textSecondary(context),
-              size: 24,
+              size: 22,
             ),
             onPressed: () {
               if (_showEmojiGrid) {
@@ -4291,6 +4343,18 @@ class _GroupChatConversationScreenState
               }
             },
           ),
+          IconButton(
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+            icon: Icon(
+              Icons.poll_rounded,
+              color: AppColors.textSecondary(context),
+              size: 22,
+            ),
+            tooltip: isEn ? 'Create Poll' : 'Tạo bình chọn',
+            onPressed: _openCreatePoll,
+          ),
+          const SizedBox(width: 4),
           Expanded(
             child: AnimatedBuilder(
               animation: _textFocusNode,
@@ -4346,7 +4410,7 @@ class _GroupChatConversationScreenState
                     color: AppColors.textPrimary(context),
                   ),
                   decoration: InputDecoration(
-                    hintText: isEn ? 'Type a group message...' : 'Nhập tin nhắn nhóm...',
+                    hintText: context.l10n.typeMessageHint,
                     hintStyle: TextStyle(
                       fontSize: 14.5,
                       color: AppColors.textSecondary(context).withValues(alpha: 0.7),
@@ -4360,7 +4424,7 @@ class _GroupChatConversationScreenState
                     errorBorder: InputBorder.none,
                     focusedErrorBorder: InputBorder.none,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 9),
                   ),
                   onSubmitted: (_) => _sendMessage(),
                   onTap: () {
@@ -5031,7 +5095,54 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
         widget.message.postImageUrl!.isNotEmpty;
     final isPureEmojiMessage = _isPureEmoji(widget.message.text);
 
-    if (hasPost) {
+    if (widget.message.isPoll || widget.message.poll != null) {
+      final isEn = Localizations.localeOf(context).languageCode == 'en';
+      final senderDisplayName = widget.isMe
+          ? (isEn ? 'You created a poll' : 'Bạn đã tạo bình chọn')
+          : (widget.friend.name.isNotEmpty
+              ? widget.friend.name
+              : widget.friend.username);
+
+      content = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!widget.isMe) ...[
+                    _buildFriendAvatar(forceShow: true),
+                    const SizedBox(width: 4),
+                  ],
+                  Text(
+                    senderDisplayName,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary(context).withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Center(
+              child: GestureDetector(
+                onLongPress: _openActionMenu,
+                child: GroupPollBubble(
+                  message: widget.message,
+                  isMe: widget.isMe,
+                  memberCache: widget.memberCache,
+                ),
+              ),
+            ),
+            _buildStatusLine(context),
+          ],
+        ),
+      );
+    } else if (hasPost) {
       final screenWidth = MediaQuery.of(context).size.width;
       final cardSize = (screenWidth * 0.74).clamp(220.0, 290.0);
       final postTimeAgo = _formatFeedTime(

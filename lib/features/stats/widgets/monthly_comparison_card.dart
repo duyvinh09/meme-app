@@ -224,12 +224,12 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
       duration: const Duration(milliseconds: 280),
       curve: Curves.easeInOutCubic,
       padding: EdgeInsets.symmetric(
-        horizontal: 14,
-        vertical: _isExpanded ? 13 : 10,
+        horizontal: _isExpanded ? 16 : 14,
+        vertical: _isExpanded ? 16 : 11,
       ),
       decoration: BoxDecoration(
         color: widget.cardBackground,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: widget.cardBorder),
         boxShadow: [
           BoxShadow(
@@ -265,16 +265,16 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                         cardTitle,
                         style: TextStyle(
                           color: widget.textPrimary,
-                          fontSize: 14.5,
+                          fontSize: 15.5,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         avgSubtitle,
                         style: TextStyle(
                           color: widget.textSecondary,
-                          fontSize: 12,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -288,7 +288,7 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                   child: Icon(
                     Icons.keyboard_arrow_down_rounded,
                     color: widget.textSecondary,
-                    size: 20,
+                    size: 22,
                   ),
                 ),
               ],
@@ -303,13 +303,13 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 14),
 
                       // Segment Filter (3 months / 6 months / 9 months)
                       Align(
                         alignment: Alignment.centerRight,
                         child: Container(
-                          padding: const EdgeInsets.all(3),
+                          padding: const EdgeInsets.all(3.5),
                           decoration: BoxDecoration(
                             color: widget.innerTileBackground,
                             borderRadius: BorderRadius.circular(999),
@@ -332,8 +332,8 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                 child: AnimatedContainer(
                                   duration: const Duration(milliseconds: 180),
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 4.5,
+                                    horizontal: 12,
+                                    vertical: 5.5,
                                   ),
                                   decoration: BoxDecoration(
                                     color: isSelected
@@ -347,7 +347,7 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                       color: isSelected
                                           ? Colors.white
                                           : widget.textSecondary,
-                                      fontSize: 11.5,
+                                      fontSize: 12,
                                       fontWeight: isSelected
                                           ? FontWeight.w800
                                           : FontWeight.w600,
@@ -360,11 +360,11 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                         ),
                       ),
 
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
 
                       // Bar Chart
                       SizedBox(
-                        height: 185,
+                        height: 220,
                         child: AnimatedBuilder(
                           animation: _animation,
                           builder: (context, child) {
@@ -399,7 +399,7 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                   leftTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 30,
+                                      reservedSize: 32,
                                       interval: step,
                                       getTitlesWidget: (value, meta) {
                                         if (value < 0 || value > maxY) {
@@ -413,7 +413,7 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                             textAlign: TextAlign.right,
                                             style: TextStyle(
                                               color: widget.textSecondary,
-                                              fontSize: 9.5,
+                                              fontSize: 10,
                                               fontWeight: FontWeight.w700,
                                             ),
                                           ),
@@ -424,7 +424,7 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                   bottomTitles: AxisTitles(
                                     sideTitles: SideTitles(
                                       showTitles: true,
-                                      reservedSize: 22,
+                                      reservedSize: 24,
                                       getTitlesWidget: (value, meta) {
                                         final idx = value.toInt();
                                         if (idx < 0 ||
@@ -440,8 +440,8 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                             style: TextStyle(
                                               color: widget.textSecondary,
                                               fontSize: _selectedMonths >= 9
-                                                  ? 9.5
-                                                  : 10.5,
+                                                  ? 10.5
+                                                  : 11.5,
                                               fontWeight: FontWeight.w700,
                                             ),
                                           ),
@@ -538,11 +538,11 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                       Curves.easeOutQuart.transform(progress);
 
                                   final double rodWidth = _selectedMonths >= 9
-                                      ? 5.5
-                                      : (_selectedMonths >= 6 ? 7.5 : 11.0);
+                                      ? 6.5
+                                      : (_selectedMonths >= 6 ? 9.0 : 13.5);
                                   final double barsSpace = _selectedMonths >= 9
-                                      ? 2.0
-                                      : (_selectedMonths >= 6 ? 2.8 : 4.0);
+                                      ? 2.5
+                                      : (_selectedMonths >= 6 ? 3.5 : 5.0);
 
                                   return BarChartGroupData(
                                     x: index,
@@ -576,19 +576,19 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
                                   );
                                 }).toList(),
                               ),
-                              swapAnimationDuration: Duration.zero,
+                              duration: Duration.zero,
                             );
                           },
                         ),
                       ),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 14),
 
                       // Legend Row
                       Row(
                         children: [
                           _buildLegendItem(l10n.income, _incomeColor),
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 16),
                           _buildLegendItem(l10n.expense, _expenseColor),
                         ],
                       ),
@@ -606,19 +606,19 @@ class _MonthlyComparisonCardState extends State<MonthlyComparisonCard>
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 8,
-          height: 8,
+          width: 9,
+          height: 9,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
           ),
         ),
-        const SizedBox(width: 5),
+        const SizedBox(width: 6),
         Text(
           label,
           style: TextStyle(
             color: widget.textSecondary,
-            fontSize: 11.5,
+            fontSize: 12.5,
             fontWeight: FontWeight.w700,
           ),
         ),

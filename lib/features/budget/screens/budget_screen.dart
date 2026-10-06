@@ -727,6 +727,7 @@ class _BudgetScreenState extends State<BudgetScreen> {
             if (budget.budgets.length >= 2) ...[
               _BudgetOverviewCard(
                 userName: context.watch<ProfileController>().user?.name,
+                dateOfBirth: context.watch<ProfileController>().user?.dateOfBirth,
                 totalSpentText: AppCurrencyFormatter.formatFromVnd(
                   amountVnd: totalSpent,
                   currency: currency,
@@ -1037,6 +1038,7 @@ class _BudgetOverviewItemData {
 
 class _BudgetOverviewCard extends StatelessWidget {
   final String? userName;
+  final DateTime? dateOfBirth;
   final String totalSpentText;
   final String totalLimitText;
   final String totalRemainingText;
@@ -1050,6 +1052,7 @@ class _BudgetOverviewCard extends StatelessWidget {
 
   const _BudgetOverviewCard({
     this.userName,
+    this.dateOfBirth,
     required this.totalSpentText,
     required this.totalLimitText,
     required this.totalRemainingText,
@@ -1065,10 +1068,14 @@ class _BudgetOverviewCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final isEnglish = Localizations.localeOf(context).languageCode == 'en';
     final percentText = '${(percent * 100).round()}%';
     final now = DateTime.now();
     final validThru =
         '${now.month.toString().padLeft(2, '0')}/${(now.year % 100).toString().padLeft(2, '0')}';
+    final lastFourDigits = dateOfBirth != null
+        ? '${dateOfBirth!.day.toString().padLeft(2, '0')}${dateOfBirth!.month.toString().padLeft(2, '0')}'
+        : '3923';
 
     return Column(
       children: [
@@ -1127,7 +1134,7 @@ class _BudgetOverviewCard extends StatelessWidget {
                             Padding(
                               padding: const EdgeInsets.only(right: 56),
                               child: Text(
-                                'Budget Overview',
+                                l10n.budgetOverview,
                                 style: const TextStyle(
                                   color: Color(0xFF13345A),
                                   fontSize: 16,
@@ -1141,7 +1148,7 @@ class _BudgetOverviewCard extends StatelessWidget {
                         const SizedBox(height: 10),
 
                         Text(
-                          '••••  ••••  ••••  3923',
+                          '••••  ••••  ••••  $lastFourDigits',
                           style: const TextStyle(
                             color: Color(0xFF385A7F),
                             fontSize: 15,
@@ -1175,7 +1182,7 @@ class _BudgetOverviewCard extends StatelessWidget {
                                   Text(
                                     userName?.isNotEmpty == true
                                         ? userName!
-                                        : 'Maicel Handray',
+                                        : l10n.you,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
@@ -1191,9 +1198,9 @@ class _BudgetOverviewCard extends StatelessWidget {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                const Text(
-                                  'Valid Thru',
-                                  style: TextStyle(
+                                Text(
+                                  isEnglish ? 'Valid Thru' : 'Hiệu lực',
+                                  style: const TextStyle(
                                     color: Color(0xFF4B6E94),
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
@@ -1802,11 +1809,11 @@ class _BudgetItemCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
         color: AppColors.card(context),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isOverLimit
               ? AppColors.expense.withValues(alpha: 0.45)
@@ -1828,8 +1835,8 @@ class _BudgetItemCard extends StatelessWidget {
           Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: color.withValues(alpha: 0.16),
@@ -1840,31 +1847,25 @@ class _BudgetItemCard extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: color,
-                  size: 17,
+                  size: 21,
                 ),
               ),
-              const SizedBox(width: 9),
+              const SizedBox(width: 12),
 
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.cardTitle(context).copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.cardTitle(context).copyWith(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 3),
                     Text(
                       isOverLimit
                           ? context.l10n.overLimit
@@ -1877,7 +1878,7 @@ class _BudgetItemCard extends StatelessWidget {
                         color: isOverLimit
                             ? AppColors.expense
                             : AppColors.textSecondary(context),
-                        fontSize: 11.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1885,12 +1886,12 @@ class _BudgetItemCard extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
 
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 7,
-                  vertical: 3,
+                  horizontal: 9,
+                  vertical: 4.5,
                 ),
                 decoration: BoxDecoration(
                   color: progressColor.withValues(alpha: 0.12),
@@ -1900,13 +1901,13 @@ class _BudgetItemCard extends StatelessWidget {
                   '${(percent * 100).round()}%',
                   style: TextStyle(
                     color: progressColor,
-                    fontSize: 11,
+                    fontSize: 12,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
 
-              const SizedBox(width: 2),
+              const SizedBox(width: 4),
 
               Builder(
                 builder: (iconContext) {
@@ -2024,7 +2025,7 @@ class _BudgetItemCard extends StatelessWidget {
                       child: Icon(
                         Icons.more_vert_rounded,
                         color: AppColors.textSecondary(context),
-                        size: 18,
+                        size: 20,
                       ),
                     ),
                   );
@@ -2033,19 +2034,19 @@ class _BudgetItemCard extends StatelessWidget {
             ],
           ),
 
-          const SizedBox(height: 7),
+          const SizedBox(height: 12),
 
           ClipRRect(
             borderRadius: BorderRadius.circular(AppSizes.radiusPill),
             child: LinearProgressIndicator(
               value: percent,
-              minHeight: 4.5,
+              minHeight: 6,
               backgroundColor: AppColors.surface(context),
               valueColor: AlwaysStoppedAnimation(progressColor),
             ),
           ),
 
-          const SizedBox(height: 7),
+          const SizedBox(height: 10),
 
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2053,7 +2054,7 @@ class _BudgetItemCard extends StatelessWidget {
               Text(
                 '${context.l10n.budgetGoal}: $limitText',
                 style: AppTextStyles.caption(context).copyWith(
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary(context),
                 ),
@@ -2061,7 +2062,7 @@ class _BudgetItemCard extends StatelessWidget {
               Text(
                 '${context.l10n.usedAmount}: $spentText',
                 style: AppTextStyles.caption(context).copyWith(
-                  fontSize: 11,
+                  fontSize: 12.5,
                   fontWeight: FontWeight.w700,
                   color: isOverLimit
                       ? AppColors.expense
@@ -2143,15 +2144,15 @@ class _SectionTitle extends StatelessWidget {
               Text(
                 title,
                 style: AppTextStyles.sectionTitle(context).copyWith(
-                  fontSize: 15.5,
+                  fontSize: 17,
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 4),
               Text(
                 subtitle,
                 style: AppTextStyles.bodySecondary(context).copyWith(
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
               ),

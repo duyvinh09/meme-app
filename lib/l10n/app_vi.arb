@@ -1915,5 +1915,69 @@
   "pleaseEnterEmail": "Vui lòng nhập email",
   "pleaseEnterUsername": "Vui lòng nhập username",
   "invalidUsername": "Username chỉ gồm chữ thường, số, dấu chấm hoặc gạch dưới, từ 3-20 ký tự",
-  "passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự"
+  "passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự",
+  "createPollTitle": "Tạo bình chọn",
+  "pollQuestionLabel": "Câu hỏi",
+  "pollQuestionHint": "Nhập câu hỏi bình chọn...",
+  "pollOptionsLabel": "Các lựa chọn",
+  "pollOptionHint": "Lựa chọn {index}",
+  "@pollOptionHint": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "addPollOption": "Thêm lựa chọn",
+  "createPollAction": "Tạo bình chọn",
+  "voteAction": "Bình chọn",
+  "changeVoteAction": "Đổi bình chọn",
+  "votersCount": "{count} người bình chọn",
+  "@votersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youSelectedOptionsCount": "Đã chọn {count}",
+  "@youSelectedOptionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "viewOptionVoters": "Xem người chọn",
+  "votesCount": "{count} phiếu",
+  "@votesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pollOptionsCount": "{count} lựa chọn",
+  "@pollOptionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "votersForOptionTitle": "Người đã chọn \"{option}\"",
+  "@votersForOptionTitle": {
+    "placeholders": {
+      "option": {
+        "type": "String"
+      }
+    }
+  },
+  "noVotersYet": "Chưa có ai bình chọn lựa chọn này",
+  "pollQuestionEmptyError": "Vui lòng nhập câu hỏi",
+  "pollMinOptionsError": "Cần ít nhất 2 lựa chọn",
+  "pollDuplicateOptionsError": "Các lựa chọn không được trùng nhau",
+  "pollEmptyOptionError": "Vui lòng không để trống lựa chọn",
+  "pollSelectAtLeastOneError": "Vui lòng chọn ít nhất 1 lựa chọn để bình chọn",
+  "pollAttachmentLabel": "Bình chọn"
 }

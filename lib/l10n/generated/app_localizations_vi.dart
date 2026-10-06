@@ -3051,4 +3051,83 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get passwordMinLength => 'Mật khẩu phải có ít nhất 6 ký tự';
+
+  @override
+  String get createPollTitle => 'Tạo bình chọn';
+
+  @override
+  String get pollQuestionLabel => 'Câu hỏi';
+
+  @override
+  String get pollQuestionHint => 'Nhập câu hỏi bình chọn...';
+
+  @override
+  String get pollOptionsLabel => 'Các lựa chọn';
+
+  @override
+  String pollOptionHint(int index) {
+    return 'Lựa chọn $index';
+  }
+
+  @override
+  String get addPollOption => 'Thêm lựa chọn';
+
+  @override
+  String get createPollAction => 'Tạo bình chọn';
+
+  @override
+  String get voteAction => 'Bình chọn';
+
+  @override
+  String get changeVoteAction => 'Đổi bình chọn';
+
+  @override
+  String votersCount(int count) {
+    return '$count người bình chọn';
+  }
+
+  @override
+  String youSelectedOptionsCount(int count) {
+    return 'Đã chọn $count';
+  }
+
+  @override
+  String get viewOptionVoters => 'Xem người chọn';
+
+  @override
+  String votesCount(int count) {
+    return '$count phiếu';
+  }
+
+  @override
+  String pollOptionsCount(int count) {
+    return '$count lựa chọn';
+  }
+
+  @override
+  String votersForOptionTitle(String option) {
+    return 'Người đã chọn \"$option\"';
+  }
+
+  @override
+  String get noVotersYet => 'Chưa có ai bình chọn lựa chọn này';
+
+  @override
+  String get pollQuestionEmptyError => 'Vui lòng nhập câu hỏi';
+
+  @override
+  String get pollMinOptionsError => 'Cần ít nhất 2 lựa chọn';
+
+  @override
+  String get pollDuplicateOptionsError => 'Các lựa chọn không được trùng nhau';
+
+  @override
+  String get pollEmptyOptionError => 'Vui lòng không để trống lựa chọn';
+
+  @override
+  String get pollSelectAtLeastOneError =>
+      'Vui lòng chọn ít nhất 1 lựa chọn để bình chọn';
+
+  @override
+  String get pollAttachmentLabel => 'Bình chọn';
 }

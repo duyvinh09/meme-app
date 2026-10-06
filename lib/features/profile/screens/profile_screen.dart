@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import 'package:package_info_plus/package_info_plus.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_durations.dart';
 import '../../../core/constants/app_sizes.dart';
@@ -14,6 +16,7 @@ import '../../../core/services/exchange_rate_service.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/app_back_button.dart';
 import '../../../core/widgets/async_filled_button.dart';
+import '../../../core/widgets/meme_logo.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../auth/controllers/auth_controller.dart';
@@ -1351,6 +1354,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+
+          const SizedBox(height: 28),
+
+          const _ProfileFooter(),
         ],
       ),
     ),
@@ -1893,6 +1900,81 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileFooter extends StatefulWidget {
+  const _ProfileFooter();
+
+  @override
+  State<_ProfileFooter> createState() => _ProfileFooterState();
+}
+
+class _ProfileFooterState extends State<_ProfileFooter> {
+  String _version = '2.0.0';
+  String _appName = 'Meme';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppInfo();
+  }
+
+  Future<void> _loadAppInfo() async {
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (mounted) {
+        setState(() {
+          if (info.version.isNotEmpty) {
+            _version = info.version;
+          }
+          if (info.appName.isNotEmpty) {
+            _appName = info.appName;
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = AppColors.isDark(context);
+    final textSecondary = AppColors.textSecondary(context);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Opacity(
+            opacity: isDark ? 0.70 : 0.82,
+            child: const MemeLogo(
+              height: 32,
+              showSubtitle: false,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '$_appName • v$_version',
+            style: TextStyle(
+              color: textSecondary.withValues(alpha: 0.85),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            'Visual Spending Diary & Moments',
+            style: TextStyle(
+              color: textSecondary.withValues(alpha: 0.50),
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }

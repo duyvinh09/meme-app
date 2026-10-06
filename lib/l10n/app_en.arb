@@ -1915,5 +1915,69 @@
   "pleaseEnterEmail": "Please enter email",
   "pleaseEnterUsername": "Please enter username",
   "invalidUsername": "Username must be 3-20 lowercase letters, numbers, dots or underscores",
-  "passwordMinLength": "Password must be at least 6 characters"
+  "passwordMinLength": "Password must be at least 6 characters",
+  "createPollTitle": "Create Poll",
+  "pollQuestionLabel": "Question",
+  "pollQuestionHint": "Enter poll question...",
+  "pollOptionsLabel": "Options",
+  "pollOptionHint": "Option {index}",
+  "@pollOptionHint": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "addPollOption": "Add option",
+  "createPollAction": "Create Poll",
+  "voteAction": "Vote",
+  "changeVoteAction": "Change vote",
+  "votersCount": "{count} voters",
+  "@votersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "youSelectedOptionsCount": "{count} selected",
+  "@youSelectedOptionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "viewOptionVoters": "View voters",
+  "votesCount": "{count, plural, =1{1 vote} other{{count} votes}}",
+  "@votesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pollOptionsCount": "{count} options",
+  "@pollOptionsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "votersForOptionTitle": "Voted for \"{option}\"",
+  "@votersForOptionTitle": {
+    "placeholders": {
+      "option": {
+        "type": "String"
+      }
+    }
+  },
+  "noVotersYet": "No votes for this option yet",
+  "pollQuestionEmptyError": "Please enter a question",
+  "pollMinOptionsError": "At least 2 options are required",
+  "pollDuplicateOptionsError": "Duplicate options are not allowed",
+  "pollEmptyOptionError": "Options cannot be empty",
+  "pollSelectAtLeastOneError": "Please select at least 1 option to vote",
+  "pollAttachmentLabel": "Poll"
 }

@@ -3049,4 +3049,89 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get passwordMinLength => 'Password must be at least 6 characters';
+
+  @override
+  String get createPollTitle => 'Create Poll';
+
+  @override
+  String get pollQuestionLabel => 'Question';
+
+  @override
+  String get pollQuestionHint => 'Enter poll question...';
+
+  @override
+  String get pollOptionsLabel => 'Options';
+
+  @override
+  String pollOptionHint(int index) {
+    return 'Option $index';
+  }
+
+  @override
+  String get addPollOption => 'Add option';
+
+  @override
+  String get createPollAction => 'Create Poll';
+
+  @override
+  String get voteAction => 'Vote';
+
+  @override
+  String get changeVoteAction => 'Change vote';
+
+  @override
+  String votersCount(int count) {
+    return '$count voters';
+  }
+
+  @override
+  String youSelectedOptionsCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get viewOptionVoters => 'View voters';
+
+  @override
+  String votesCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count votes',
+      one: '1 vote',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String pollOptionsCount(int count) {
+    return '$count options';
+  }
+
+  @override
+  String votersForOptionTitle(String option) {
+    return 'Voted for \"$option\"';
+  }
+
+  @override
+  String get noVotersYet => 'No votes for this option yet';
+
+  @override
+  String get pollQuestionEmptyError => 'Please enter a question';
+
+  @override
+  String get pollMinOptionsError => 'At least 2 options are required';
+
+  @override
+  String get pollDuplicateOptionsError => 'Duplicate options are not allowed';
+
+  @override
+  String get pollEmptyOptionError => 'Options cannot be empty';
+
+  @override
+  String get pollSelectAtLeastOneError =>
+      'Please select at least 1 option to vote';
+
+  @override
+  String get pollAttachmentLabel => 'Poll';
 }

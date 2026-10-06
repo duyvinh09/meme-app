@@ -1,11 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'poll_model.dart';
 
 class ChatMessageModel {
   final String id;
   final String senderId;
   final String receiverId;
   final String text;
-  final String type; // 'text' | 'reaction' | 'post_reply'
+  final String type; // 'text' | 'reaction' | 'post_reply' | 'poll'
   final String? postId;
   final String? postImageUrl;
   final String? postCaption;
@@ -34,6 +35,9 @@ class ChatMessageModel {
   /// Metadata for group expense system messages – used by Nearby Place Suggestions.
   final String? transactionCategory;
   final double? transactionAmount;
+
+  /// Group Poll data
+  final PollModel? poll;
 
   const ChatMessageModel({
     required this.id,
@@ -67,9 +71,11 @@ class ChatMessageModel {
     this.taggedUserIds = const [],
     this.transactionCategory,
     this.transactionAmount,
+    this.poll,
   });
 
   bool get isSystem => type == 'system';
+  bool get isPoll => type == 'poll';
   bool get isGroup => groupId != null && groupId!.isNotEmpty;
 
   factory ChatMessageModel.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -141,6 +147,9 @@ class ChatMessageModel {
       taggedUserIds: parseReadBy(data['taggedUserIds']),
       transactionCategory: data['transactionCategory'] as String?,
       transactionAmount: (data['transactionAmount'] as num?)?.toDouble(),
+      poll: data['poll'] != null && data['poll'] is Map
+          ? PollModel.fromMap(Map<String, dynamic>.from(data['poll']), data['poll']['id'] ?? id)
+          : null,
     );
   }
 
@@ -177,6 +186,7 @@ class ChatMessageModel {
       if (postOwnerId != null) 'postOwnerId': postOwnerId,
       if (transactionCategory != null) 'transactionCategory': transactionCategory,
       if (transactionAmount != null) 'transactionAmount': transactionAmount,
+      if (poll != null) 'poll': poll!.toMap(),
     };
   }
 
@@ -212,6 +222,7 @@ class ChatMessageModel {
     String? postOwnerId,
     String? transactionCategory,
     double? transactionAmount,
+    PollModel? poll,
   }) {
     return ChatMessageModel(
       id: id ?? this.id,
@@ -245,6 +256,7 @@ class ChatMessageModel {
       postOwnerId: postOwnerId ?? this.postOwnerId,
       transactionCategory: transactionCategory ?? this.transactionCategory,
       transactionAmount: transactionAmount ?? this.transactionAmount,
+      poll: poll ?? this.poll,
     );
   }
 }

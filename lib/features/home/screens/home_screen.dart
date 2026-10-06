@@ -517,31 +517,35 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: CircularProgressIndicator(),
             )
           : SingleChildScrollView(
+              clipBehavior: Clip.none,
               physics: const AlwaysScrollableScrollPhysics(),
               child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  // Top sky-blue gradient header that scrolls along with content (not fixed)
+                  // Top sky-blue gradient header that scrolls along with content (extends upwards for overscroll)
                   Positioned(
-                    top: 0,
+                    top: -1000,
                     left: 0,
                     right: 0,
-                    height: 380,
+                    height: 1380,
                     child: Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           stops: isDark
-                              ? const [0.0, 0.40, 0.75, 1.0]
-                              : const [0.0, 0.35, 0.70, 1.0],
+                              ? const [0.0, 0.724, 0.833, 0.930, 1.0]
+                              : const [0.0, 0.724, 0.820, 0.915, 1.0],
                           colors: isDark
                               ? [
+                                  const Color(0xFF102844),
                                   const Color(0xFF102844),
                                   const Color(0xFF0D1E33),
                                   const Color(0xFF0A1424),
                                   AppColors.darkBackground,
                                 ]
                               : [
+                                  const Color(0xFFBFE0FD),
                                   const Color(0xFFBFE0FD),
                                   const Color(0xFFDAEDFE),
                                   const Color(0xFFF2F8FE),

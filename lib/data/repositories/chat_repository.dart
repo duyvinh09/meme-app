@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/chat_message_model.dart';
 import '../models/note_reaction_model.dart';
+import '../models/poll_model.dart';
 import '../models/post_reaction_model.dart';
 import '../models/post_view_model.dart';
 import '../../core/services/fcm_push_service.dart';
@@ -967,10 +969,14 @@ class ChatRepository {
     String? postAuthorFrame,
     String? postOwnerId,
     List<String> taggedUserIds = const [],
+    PollModel? poll,
   }) async {
     try {
       final messageId = _uuid.v4();
       final now = DateTime.now();
+
+      final resolvedPoll =
+          poll?.copyWith(id: poll.id.isNotEmpty ? poll.id : messageId);
 
       final message = ChatMessageModel(
         id: messageId,
@@ -997,6 +1003,7 @@ class ChatRepository {
         postAuthorFrame: postAuthorFrame,
         postOwnerId: postOwnerId,
         taggedUserIds: taggedUserIds,
+        poll: resolvedPoll,
       );
 
       final chatDoc = await _firestore.collection('chats').doc(groupId).get();
@@ -1041,13 +1048,17 @@ class ChatRepository {
           .doc(messageId);
       final chatRef = _firestore.collection('chats').doc(groupId);
 
+      final lastMessageText = type == 'poll'
+          ? '$senderName: 📊 $text'
+          : '$senderName: $text';
+
       batch.set(messageRef, message.toMap());
       batch.set(
         chatRef,
         {
           'isGroup': true,
           'groupId': groupId,
-          'lastMessage': '$senderName: $text',
+          'lastMessage': lastMessageText,
           'lastSenderId': senderId,
           'lastType': type,
           if (postImageUrl != null) 'lastPostImageUrl': postImageUrl,
@@ -1105,6 +1116,67 @@ class ChatRepository {
 
       return true;
     } catch (_) {
+      return false;
+    }
+  }
+
+  /// Submit or update a user's vote on a group poll message
+  Future<bool> votePoll({
+    required String groupId,
+    required String messageId,
+    required String userId,
+    required List<String> selectedOptionIds,
+  }) async {
+    try {
+      final messageRef = _firestore
+          .collection('chats')
+          .doc(groupId)
+          .collection('messages')
+          .doc(messageId);
+
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(messageRef);
+        if (!snapshot.exists) return;
+
+        final data = snapshot.data();
+        if (data == null || data['poll'] == null) return;
+
+        final pollData = Map<String, dynamic>.from(data['poll'] as Map);
+        final poll = PollModel.fromMap(pollData, pollData['id']?.toString() ?? messageId);
+
+        // Update voterIds for each option
+        final updatedOptions = poll.options.map((opt) {
+          final voterList = List<String>.from(opt.voterIds);
+          if (selectedOptionIds.contains(opt.id)) {
+            if (!voterList.contains(userId)) {
+              voterList.add(userId);
+            }
+          } else {
+            voterList.remove(userId);
+          }
+          return opt.copyWith(voterIds: voterList);
+        }).toList();
+
+        // Calculate unique voters across all options
+        final allVoters = <String>{};
+        for (final opt in updatedOptions) {
+          allVoters.addAll(opt.voterIds);
+        }
+
+        final updatedPoll = poll.copyWith(
+          options: updatedOptions,
+          totalVoterIds: allVoters.toList(),
+          updatedAt: DateTime.now(),
+        );
+
+        transaction.update(messageRef, {
+          'poll': updatedPoll.toMap(),
+        });
+      });
+
+      return true;
+    } catch (e) {
+      debugPrint('Error voting on poll: $e');
       return false;
     }
   }
