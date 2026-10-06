@@ -19,18 +19,33 @@ import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../screens/moment_viewer_screen.dart';
 
-/// Thẻ vật lý phẳng trượt trong khay (Flat Photo/Category Card Body)
+/// Thẻ khối vật lý vuông phẳng (2D Rigid Body Square Box)
 class _PhotoCardBody {
   TransactionModel transaction;
   int originalIndex;
   double x; // Tọa độ tâm X
   double y; // Tọa độ tâm Y
-  double vx = 0.0; // Vận tốc trượt X
-  double vy = 0.0; // Vận tốc trượt Y
-  double currentAngle; // Góc nghiêng hiển thị bị lật xiên theo va chạm
-  double angularVelocity = 0.0; // Vận tốc chuyển góc
-  final double halfSize; // Nửa kích thước để tính biên va chạm
-  bool isDragging = false; // Đang được ngón tay giữ / búng ném
+  double vx = 0.0; // Vận tốc tuyến tính X
+  double vy = 0.0; // Vận tốc tuyến tính Y
+  double currentAngle; // Góc xoay thực tế trong không gian 2D (radians, tự do 360°)
+  double angularVelocity = 0.0; // Vận tốc góc (rad/s)
+  final double halfSize; // Nửa kích thước cạnh vuông
+  bool isDragging = false; // Đang được ngón tay kéo / giữ / búng
+
+  // Thuộc tính vật lý khối cứng (Rigid Body Properties)
+  static const double mass = 1.0;
+  static const double invMass = 1.0;
+  // Mô-men quán tính hình vuông: I = (1/6) * m * (2h)^2 = (2/3) * m * h^2
+  late final double inertia = (2.0 / 3.0) * mass * halfSize * halfSize;
+  late final double invInertia = 1.0 / inertia;
+
+  // Tọa độ 4 đỉnh góc thế giới (World corner vertices)
+  final List<double> cornersX = [0, 0, 0, 0];
+  final List<double> cornersY = [0, 0, 0, 0];
+
+  // Vector đơn vị của 2 trục tọa độ cục bộ (Local axes)
+  double uxx = 1.0, uxy = 0.0;
+  double uyx = 0.0, uyy = 1.0;
 
   _PhotoCardBody({
     required this.transaction,
@@ -39,10 +54,35 @@ class _PhotoCardBody {
     required this.y,
     required double baseAngle,
     required this.halfSize,
-  }) : currentAngle = baseAngle;
+  }) : currentAngle = baseAngle {
+    updateTransform();
+  }
+
+  void updateTransform() {
+    final c = math.cos(currentAngle);
+    final s = math.sin(currentAngle);
+    uxx = c;
+    uxy = s;
+    uyx = -s;
+    uyy = c;
+
+    final h = halfSize;
+    // 4 góc của khối vuông: (+h, +h), (-h, +h), (-h, -h), (+h, -h)
+    cornersX[0] = x + h * c - h * s;
+    cornersY[0] = y + h * s + h * c;
+
+    cornersX[1] = x - h * c - h * s;
+    cornersY[1] = y - h * s + h * c;
+
+    cornersX[2] = x - h * c + h * s;
+    cornersY[2] = y - h * s - h * c;
+
+    cornersX[3] = x + h * c + h * s;
+    cornersY[3] = y + h * s - h * c;
+  }
 }
 
-/// Khay kỷ niệm với hiệu ứng các tấm ảnh / category vật lý phẳng trượt và rơi theo góc nghiêng điện thoại
+/// Khay kỷ niệm với hiệu ứng các khối vuông hóa đơn/ảnh vật lý trượt, xoay và dồn đè lên nhau theo trọng lực
 class ShakePhotoMemoryTray extends StatefulWidget {
   final List<TransactionModel> transactions;
 
@@ -65,8 +105,8 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
   static const double _cardSize = 65.0;
   static const double _cardHalfSize = _cardSize / 2;
 
-  double _accelX = 0.0;
-  double _accelY = 9.8;
+  double _smoothAccelX = 0.0;
+  double _smoothAccelY = 9.8;
 
   double _lastX = 0.0;
   double _lastY = 0.0;
@@ -88,10 +128,13 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
         samplingPeriod: SensorInterval.uiInterval,
       ).listen(
         (AccelerometerEvent event) {
-          _accelX = event.x;
-          _accelY = event.y;
+          if (event.x.isNaN || event.y.isNaN || event.z.isNaN) return;
 
-          // Phát hiện rung lắc mạnh để tạo lực xóc nảy các thẻ tung loạn xạ
+          // Lọc thông thấp mượt mà để chống rung vi mô tay nhưng phản hồi tức thì khi nghiêng/lật máy
+          _smoothAccelX = _smoothAccelX * 0.70 + event.x * 0.30;
+          _smoothAccelY = _smoothAccelY * 0.70 + event.y * 0.30;
+
+          // Phát hiện xóc / lắc mạnh để hất tung các khối thẻ
           final delta = (event.x - _lastX).abs() +
               (event.y - _lastY).abs() +
               (event.z - _lastZ).abs();
@@ -100,7 +143,7 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
           _lastY = event.y;
           _lastZ = event.z;
 
-          if (delta > 3.0) {
+          if (delta > 3.2) {
             final now = DateTime.now();
             if (now.difference(_lastShakeTime).inMilliseconds > 250) {
               _lastShakeTime = now;
@@ -112,7 +155,7 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
         cancelOnError: false,
       );
 
-      // Vòng lặp vật lý trượt phẳng (Flat Sliding Physics Loop)
+      // Vòng lặp vật lý mô phỏng khối vuông cứng 60fps (Rigid Body Physics Simulation)
       _physicsTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
         if (!mounted || _cards.isEmpty) return;
         _stepPhysics(0.016);
@@ -123,142 +166,436 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
   void _applyShakeImpulse(double intensity) {
     HapticFeedback.mediumImpact();
     final random = math.Random();
-    final force = (intensity * 130.0).clamp(400.0, 1400.0);
+    final force = (intensity * 160.0).clamp(500.0, 1800.0);
 
     for (final card in _cards) {
       if (card.isDragging) continue;
-      // Bắn tung tóe theo các hướng và làm lệch góc nghiêng tự nhiên
       final angle = random.nextDouble() * 2 * math.pi;
       card.vx += math.cos(angle) * force;
-      card.vy += -math.sin(angle).abs() * force * 1.1;
-      card.angularVelocity += (random.nextDouble() - 0.5) * 5.0;
+      card.vy += -math.sin(angle).abs() * force * 1.2;
+      card.angularVelocity += (random.nextDouble() - 0.5) * 16.0;
     }
   }
 
-  /// Tính toán mô phỏng vật lý các tấm ảnh / category phẳng rơi tự do, va chạm và trượt theo góc nghiêng
-  void _stepPhysics(double dt) {
-    // Trọng lực theo cảm biến chuyển động Accelerometer
-    // - Nghiêng trái (_accelX > 0) -> gx âm (kéo về trái)
-    // - Nghiêng phải (_accelX < 0) -> gx dương (kéo về phải)
-    // - Dựng máy (_accelY > 0) -> gy dương (kéo xuống đáy)
-    // - Lộn ngược máy (_accelY < 0) -> gy âm (kéo dồn ngược lên đỉnh)
-    // - Đặt phẳng trên bàn -> mặc định trọng lực kéo xuống sàn khay
-    final isFlatOnTable = _accelX.abs() < 0.9 && _accelY.abs() < 0.9;
-    final gx = -_accelX * 720.0;
-    final gy = isFlatOnTable ? 420.0 : (_accelY * 720.0);
+  /// Xử lý va chạm giữa 2 khối vuông cứng (OBB vs OBB SAT Collision)
+  bool _solveBoxCollision(_PhotoCardBody a, _PhotoCardBody b) {
+    final dx = b.x - a.x;
+    final dy = b.y - a.y;
+    final distSq = dx * dx + dy * dy;
+    final maxRadius = (a.halfSize + b.halfSize) * 1.415;
+    if (distSq > maxRadius * maxRadius) return false;
 
-    // 1. Áp dụng trọng lực và ma sát trượt
-    for (final card in _cards) {
-      if (card.isDragging) continue;
+    // 4 trục kiểm tra phân tách (2 trục của A, 2 trục của B)
+    final axesX = [a.uxx, a.uyx, b.uxx, b.uyx];
+    final axesY = [a.uxy, a.uyy, b.uxy, b.uyy];
 
-      card.vx += gx * dt;
-      card.vy += gy * dt;
+    double minOverlap = double.infinity;
+    double bestNx = 0.0;
+    double bestNy = 0.0;
 
-      // Giảm dần vận tốc (ma sát bề mặt và không khí)
-      card.vx *= 0.980;
-      card.vy *= 0.980;
+    for (int i = 0; i < 4; i++) {
+      final nx = axesX[i];
+      final ny = axesY[i];
 
-      // Ma sát góc cao để xoay nghiêng rồi dừng ổn định theo va chạm
-      card.angularVelocity *= 0.88;
+      // Chiếu 4 góc của hộp A lên trục
+      double minA = a.cornersX[0] * nx + a.cornersY[0] * ny;
+      double maxA = minA;
+      for (int k = 1; k < 4; k++) {
+        final p = a.cornersX[k] * nx + a.cornersY[k] * ny;
+        if (p < minA) minA = p;
+        if (p > maxA) maxA = p;
+      }
 
-      card.x += card.vx * dt;
-      card.y += card.vy * dt;
+      // Chiếu 4 góc của hộp B lên trục
+      double minB = b.cornersX[0] * nx + b.cornersY[0] * ny;
+      double maxB = minB;
+      for (int k = 1; k < 4; k++) {
+        final p = b.cornersX[k] * nx + b.cornersY[k] * ny;
+        if (p < minB) minB = p;
+        if (p > maxB) maxB = p;
+      }
 
-      // Cập nhật góc lật nghiêng tự nhiên và giới hạn góc nghiêng (-45° đến +45°)
-      card.currentAngle += card.angularVelocity * dt;
-      card.currentAngle = card.currentAngle.clamp(-0.78, 0.78);
+      final overlap = math.min(maxA, maxB) - math.max(minA, minB);
+      if (overlap <= 0.0) {
+        return false; // Tồn tại trục phân tách -> Không va chạm
+      }
+
+      if (overlap < minOverlap) {
+        minOverlap = overlap;
+        bestNx = nx;
+        bestNy = ny;
+      }
     }
 
-    // 2. Xử lý va chạm các vật thể với nhau (Elastic Collision & Torque tiếp tuyến)
-    for (int pass = 0; pass < 3; pass++) {
-      for (int i = 0; i < _cards.length; i++) {
-        for (int j = i + 1; j < _cards.length; j++) {
-          final c1 = _cards[i];
-          final c2 = _cards[j];
+    // Đảm bảo vector pháp tuyến hướng từ A sang B
+    if (dx * bestNx + dy * bestNy < 0) {
+      bestNx = -bestNx;
+      bestNy = -bestNy;
+    }
 
-          final dx = c2.x - c1.x;
-          final dy = c2.y - c1.y;
-          final distSq = dx * dx + dy * dy;
-          final minDist = c1.halfSize + c2.halfSize + 2.0;
+    // Tách chống lấn hình học dứt khoát - Tuyệt đối không để thẻ chìm/gộp vào nhau
+    final double pushA;
+    final double pushB;
+    if (a.isDragging && !b.isDragging) {
+      pushA = 0.0;
+      pushB = 1.0;
+    } else if (!a.isDragging && b.isDragging) {
+      pushA = 1.0;
+      pushB = 0.0;
+    } else {
+      pushA = 0.5;
+      pushB = 0.5;
+    }
 
-          if (distSq < minDist * minDist && distSq > 0.0001) {
-            final dist = math.sqrt(distSq);
-            final nx = dx / dist;
-            final ny = dy / dist;
+    final double correction = minOverlap + 0.3;
+    if (!a.isDragging) {
+      a.x -= bestNx * correction * pushA;
+      a.y -= bestNy * correction * pushA;
+      a.updateTransform();
+    }
+    if (!b.isDragging) {
+      b.x += bestNx * correction * pushB;
+      b.y += bestNy * correction * pushB;
+      b.updateTransform();
+    }
 
-            // Đẩy dạt ra không cho lún vào nhau
-            final overlap = (minDist - dist) * 0.5;
-            if (!c1.isDragging && !c2.isDragging) {
-              c1.x -= nx * overlap;
-              c1.y -= ny * overlap;
-              c2.x += nx * overlap;
-              c2.y += ny * overlap;
-            } else if (c1.isDragging && !c2.isDragging) {
-              c2.x += nx * (overlap * 2);
-              c2.y += ny * (overlap * 2);
-            } else if (!c1.isDragging && c2.isDragging) {
-              c1.x -= nx * (overlap * 2);
-              c1.y -= ny * (overlap * 2);
-            }
+    // Khi đang kéo thẻ bằng tay, đẩy dạt thẻ khác mượt mà (không tích tụ xung lực nảy nổ tung)
+    if (a.isDragging || b.isDragging) {
+      final dragged = a.isDragging ? a : b;
+      final other = a.isDragging ? b : a;
+      final sign = a.isDragging ? 1.0 : -1.0;
 
-            // Phản lực đàn hồi nảy qua lại lẫn nhau
-            final rvx = c2.vx - c1.vx;
-            final rvy = c2.vy - c1.vy;
-            final velAlongNormal = rvx * nx + rvy * ny;
+      other.vx = (dragged.vx * 0.35 + bestNx * sign * 140.0).clamp(-1000.0, 1000.0);
+      other.vy = (dragged.vy * 0.35 + bestNy * sign * 140.0).clamp(-1000.0, 1000.0);
+      other.angularVelocity = (other.angularVelocity * 0.8 + (bestNx * bestNy) * 2.5).clamp(-6.0, 6.0);
+      return true;
+    }
 
-            if (velAlongNormal < 0) {
-              const restitution = 0.72; // Độ nảy đàn hồi cao
-              final impulse = -(1.0 + restitution) * velAlongNormal * 0.5;
+    // Thu thập các điểm tiếp xúc (Contact Manifold Points)
+    final contactPointsX = <double>[];
+    final contactPointsY = <double>[];
 
-              if (!c1.isDragging) {
-                c1.vx -= impulse * nx;
-                c1.vy -= impulse * ny;
-                // Va đập tạo mô-men làm lật xiên góc tùy điểm tiếp xúc
-                final torque = (c1.vx * ny - c1.vy * nx) * 0.002;
-                c1.angularVelocity += torque.clamp(-3.5, 3.5);
-              }
-              if (!c2.isDragging) {
-                c2.vx += impulse * nx;
-                c2.vy += impulse * ny;
-                final torque = (c2.vx * ny - c2.vy * nx) * 0.002;
-                c2.angularVelocity += torque.clamp(-3.5, 3.5);
-              }
-            }
+    // Đỉnh của B lún sâu nhất vào A
+    double minProjB = double.infinity;
+    for (int k = 0; k < 4; k++) {
+      final proj = b.cornersX[k] * bestNx + b.cornersY[k] * bestNy;
+      if (proj < minProjB) minProjB = proj;
+    }
+    for (int k = 0; k < 4; k++) {
+      final proj = b.cornersX[k] * bestNx + b.cornersY[k] * bestNy;
+      if (proj <= minProjB + 3.0) {
+        contactPointsX.add(b.cornersX[k]);
+        contactPointsY.add(b.cornersY[k]);
+      }
+    }
+
+    // Đỉnh của A lún sâu nhất vào B
+    double maxProjA = -double.infinity;
+    for (int k = 0; k < 4; k++) {
+      final proj = a.cornersX[k] * bestNx + a.cornersY[k] * bestNy;
+      if (proj > maxProjA) maxProjA = proj;
+    }
+    for (int k = 0; k < 4; k++) {
+      final proj = a.cornersX[k] * bestNx + a.cornersY[k] * bestNy;
+      if (proj >= maxProjA - 3.0) {
+        contactPointsX.add(a.cornersX[k]);
+        contactPointsY.add(a.cornersY[k]);
+      }
+    }
+
+    if (contactPointsX.isEmpty) {
+      contactPointsX.add((a.x + b.x) * 0.5);
+      contactPointsY.add((a.y + b.y) * 0.5);
+    }
+
+    // Xung lực va chạm khối nặng đầm tay (Low Restitution, Solid Friction)
+    const restitution = 0.10; // Giảm độ nảy tối đa để tạo cảm giác khối vuông nặng trịch
+    const friction = 0.60;    // Ma sát bám mặt cao
+    final numContacts = contactPointsX.length;
+
+    for (int i = 0; i < numContacts; i++) {
+      final cpx = contactPointsX[i];
+      final cpy = contactPointsY[i];
+
+      final raX = cpx - a.x;
+      final raY = cpy - a.y;
+      final rbX = cpx - b.x;
+      final rbY = cpy - b.y;
+
+      final vpAx = a.vx - a.angularVelocity * raY;
+      final vpAy = a.vy + a.angularVelocity * raX;
+
+      final vpBx = b.vx - b.angularVelocity * rbY;
+      final vpBy = b.vy + b.angularVelocity * rbX;
+
+      final relVx = vpBx - vpAx;
+      final relVy = vpBy - vpAy;
+
+      final vn = relVx * bestNx + relVy * bestNy;
+
+      if (vn < 0) {
+        final rnA = raX * bestNy - raY * bestNx;
+        final rnB = rbX * bestNy - rbY * bestNx;
+
+        final kn = _PhotoCardBody.invMass + _PhotoCardBody.invMass +
+            (rnA * rnA * a.invInertia) +
+            (rnB * rnB * b.invInertia);
+
+        if (kn > 0.0001) {
+          // Khống chế xung lực tối đa chống bắn nảy bất thường
+          double jn = -(1.0 + restitution) * vn / (kn * numContacts);
+          jn = jn.clamp(0.0, 750.0);
+
+          a.vx -= jn * bestNx * _PhotoCardBody.invMass;
+          a.vy -= jn * bestNy * _PhotoCardBody.invMass;
+          a.angularVelocity -= rnA * jn * a.invInertia;
+
+          b.vx += jn * bestNx * _PhotoCardBody.invMass;
+          b.vy += jn * bestNy * _PhotoCardBody.invMass;
+          b.angularVelocity += rnB * jn * b.invInertia;
+
+          // Ma sát tiếp tuyến tạo xoay tự nhiên
+          final tx = -bestNy;
+          final ty = bestNx;
+          final vt = relVx * tx + relVy * ty;
+          final rtA = raX * ty - raY * tx;
+          final rtB = rbX * ty - rbY * tx;
+
+          final kt = _PhotoCardBody.invMass + _PhotoCardBody.invMass +
+              (rtA * rtA * a.invInertia) +
+              (rtB * rtB * b.invInertia);
+
+          if (kt > 0.0001) {
+            double jt = -vt / (kt * numContacts);
+            final maxJt = friction * jn;
+            jt = jt.clamp(-maxJt, maxJt);
+
+            a.vx -= jt * tx * _PhotoCardBody.invMass;
+            a.vy -= jt * ty * _PhotoCardBody.invMass;
+            a.angularVelocity -= rtA * jt * a.invInertia;
+
+            b.vx += jt * tx * _PhotoCardBody.invMass;
+            b.vy += jt * ty * _PhotoCardBody.invMass;
+            b.angularVelocity += rtB * jt * b.invInertia;
           }
         }
       }
     }
 
-    // 3. Giới hạn và nảy vào 4 cạnh tường của khay (kèm độ lật góc khi va cạnh tường)
-    for (final card in _cards) {
-      if (card.isDragging) continue;
+    return true;
+  }
 
-      const wallRestitution = 0.70;
+  /// Xử lý va chạm 4 góc của khối vuông với 4 cạnh viền khay (Box vs Wall)
+  void _solveWallCollision(_PhotoCardBody body, double width, double height) {
+    if (body.isDragging) return;
 
-      // Cạnh trái
-      if (card.x < card.halfSize + 4) {
-        card.x = card.halfSize + 4;
-        card.vx = -card.vx * wallRestitution;
-        card.angularVelocity += (card.vy * 0.005).clamp(-2.5, 2.5);
-      }
-      // Cạnh phải
-      else if (card.x > _trayWidth - card.halfSize - 4) {
-        card.x = _trayWidth - card.halfSize - 4;
-        card.vx = -card.vx * wallRestitution;
-        card.angularVelocity -= (card.vy * 0.005).clamp(-2.5, 2.5);
+    const double padding = 2.0;
+    const double wallRestitution = 0.10; // Đập vào sàn chắc nịch, không nảy tưng tưng
+    const double wallFriction = 0.65;    // Ma sát sàn bám chắc
+
+    for (int i = 0; i < 4; i++) {
+      final cx = body.cornersX[i];
+      final cy = body.cornersY[i];
+
+      // 1. Sàn đáy (Bottom Floor)
+      if (cy > height - padding) {
+        final pen = cy - (height - padding);
+        body.y -= pen * 0.85;
+        body.updateTransform();
+
+        final rx = cx - body.x;
+        final ry = cy - body.y;
+
+        final vpx = body.vx - body.angularVelocity * ry;
+        final vpy = body.vy + body.angularVelocity * rx;
+
+        if (vpy > 0) {
+          final kn = _PhotoCardBody.invMass + (rx * rx * body.invInertia);
+          final jn = (1.0 + wallRestitution) * vpy / kn;
+
+          body.vy -= jn * _PhotoCardBody.invMass;
+          body.angularVelocity -= rx * jn * body.invInertia;
+
+          final kt = _PhotoCardBody.invMass + (ry * ry * body.invInertia);
+          double jt = -vpx / kt;
+          final maxJt = wallFriction * jn;
+          jt = jt.clamp(-maxJt, maxJt);
+
+          body.vx += jt * _PhotoCardBody.invMass;
+          body.angularVelocity += ry * jt * body.invInertia;
+        }
       }
 
-      // Cạnh trên (khi lộn ngược máy)
-      if (card.y < card.halfSize + 4) {
-        card.y = card.halfSize + 4;
-        card.vy = -card.vy * wallRestitution;
-        card.angularVelocity -= (card.vx * 0.005).clamp(-2.5, 2.5);
+      // 2. Trần đỉnh (Top Ceiling - khi lộn ngược máy)
+      if (cy < padding) {
+        final pen = padding - cy;
+        body.y += pen * 0.85;
+        body.updateTransform();
+
+        final rx = cx - body.x;
+        final ry = cy - body.y;
+
+        final vpx = body.vx - body.angularVelocity * ry;
+        final vpy = body.vy + body.angularVelocity * rx;
+
+        if (vpy < 0) {
+          final kn = _PhotoCardBody.invMass + (rx * rx * body.invInertia);
+          final jn = -(1.0 + wallRestitution) * vpy / kn;
+
+          body.vy += jn * _PhotoCardBody.invMass;
+          body.angularVelocity += rx * jn * body.invInertia;
+
+          final kt = _PhotoCardBody.invMass + (ry * ry * body.invInertia);
+          double jt = -vpx / kt;
+          final maxJt = wallFriction * jn;
+          jt = jt.clamp(-maxJt, maxJt);
+
+          body.vx += jt * _PhotoCardBody.invMass;
+          body.angularVelocity += ry * jt * body.invInertia;
+        }
       }
-      // Cạnh đáy
-      else if (card.y > _trayHeight - card.halfSize - 4) {
-        card.y = _trayHeight - card.halfSize - 4;
-        card.vy = -card.vy * wallRestitution;
-        card.angularVelocity += (card.vx * 0.005).clamp(-2.5, 2.5);
+
+      // 3. Cạnh trái (Left Wall)
+      if (cx < padding) {
+        final pen = padding - cx;
+        body.x += pen * 0.85;
+        body.updateTransform();
+
+        final rx = cx - body.x;
+        final ry = cy - body.y;
+
+        final vpx = body.vx - body.angularVelocity * ry;
+        final vpy = body.vy + body.angularVelocity * rx;
+
+        if (vpx < 0) {
+          final kn = _PhotoCardBody.invMass + (ry * ry * body.invInertia);
+          final jn = -(1.0 + wallRestitution) * vpx / kn;
+
+          body.vx += jn * _PhotoCardBody.invMass;
+          body.angularVelocity -= ry * jn * body.invInertia;
+
+          final kt = _PhotoCardBody.invMass + (rx * rx * body.invInertia);
+          double jt = -vpy / kt;
+          final maxJt = wallFriction * jn;
+          jt = jt.clamp(-maxJt, maxJt);
+
+          body.vy += jt * _PhotoCardBody.invMass;
+          body.angularVelocity -= rx * jt * body.invInertia;
+        }
+      }
+
+      // 4. Cạnh phải (Right Wall)
+      if (cx > width - padding) {
+        final pen = cx - (width - padding);
+        body.x -= pen * 0.85;
+        body.updateTransform();
+
+        final rx = cx - body.x;
+        final ry = cy - body.y;
+
+        final vpx = body.vx - body.angularVelocity * ry;
+        final vpy = body.vy + body.angularVelocity * rx;
+
+        if (vpx > 0) {
+          final kn = _PhotoCardBody.invMass + (ry * ry * body.invInertia);
+          final jn = (1.0 + wallRestitution) * vpx / kn;
+
+          body.vx -= jn * _PhotoCardBody.invMass;
+          body.angularVelocity += ry * jn * body.invInertia;
+
+          final kt = _PhotoCardBody.invMass + (rx * rx * body.invInertia);
+          double jt = -vpy / kt;
+          final maxJt = wallFriction * jn;
+          jt = jt.clamp(-maxJt, maxJt);
+
+          body.vy += jt * _PhotoCardBody.invMass;
+          body.angularVelocity -= rx * jt * body.invInertia;
+        }
+      }
+    }
+
+    // Bảo vệ giới hạn tâm không bị bật ra ngoài
+    final minSafeX = body.halfSize + padding;
+    final maxSafeX = width - body.halfSize - padding;
+    final minSafeY = body.halfSize + padding;
+    final maxSafeY = height - body.halfSize - padding;
+
+    body.x = body.x.clamp(minSafeX, maxSafeX);
+    body.y = body.y.clamp(minSafeY, maxSafeY);
+    body.updateTransform();
+  }
+
+  /// Tính toán mô phỏng vật lý các khối vuông giao dịch theo gia tốc trọng trường và góc nghiêng điện thoại
+  void _stepPhysics(double dt) {
+    // 1. Gia tốc trọng trường với vùng chết (Deadzone chống trôi vi mô) & Trọng lượng nặng
+    final double rawX = -_smoothAccelX;
+    final double effectiveGx;
+    if (rawX.abs() > 0.65) {
+      // Chỉ khi nghiêng điện thoại rõ ràng mới tạo lực trôi ngang
+      effectiveGx = (rawX - 0.65 * rawX.sign) * 1200.0;
+    } else {
+      effectiveGx = 0.0; // Triệt tiêu hoàn toàn trôi vi mô khi cầm đứng máy
+    }
+
+    final bool isFlatOnTable =
+        _smoothAccelX.abs() < 0.8 && _smoothAccelY.abs() < 0.8;
+    final double effectiveGy;
+    if (isFlatOnTable) {
+      effectiveGy = 900.0; // Đặt trên bàn -> trọng lượng kéo chắc xuống đáy
+    } else {
+      effectiveGy = _smoothAccelY * 1350.0; // Rơi nặng và dứt khoát
+    }
+
+    const int subSteps = 2;
+    final double subDt = dt / subSteps;
+
+    for (int step = 0; step < subSteps; step++) {
+      // 1. Áp dụng trọng lực, ma sát hãm và sleep threshold
+      for (final card in _cards) {
+        if (card.isDragging) continue;
+
+        card.vx += effectiveGx * subDt;
+        card.vy += effectiveGy * subDt;
+
+        // Ma sát hãm cao tạo cảm giác khối vuông nặng đầm tay (Heavy Grounded Damping)
+        card.vx *= 0.965;
+        card.vy *= 0.965;
+        card.angularVelocity *= 0.90;
+
+        // Vùng dừng ổn định (Static Friction / Sleep) - triệt tiêu trượt vi mô
+        final double speedSq = card.vx * card.vx + card.vy * card.vy;
+        if (speedSq < 15.0 &&
+            card.angularVelocity.abs() < 0.08 &&
+            effectiveGx.abs() < 100.0) {
+          card.vx = 0.0;
+          card.vy = 0.0;
+          card.angularVelocity = 0.0;
+        }
+
+        card.vx = card.vx.clamp(-2200.0, 2200.0);
+        card.vy = card.vy.clamp(-2200.0, 2200.0);
+        card.angularVelocity = card.angularVelocity.clamp(-15.0, 15.0);
+
+        card.x += card.vx * subDt;
+        card.y += card.vy * subDt;
+        card.currentAngle += card.angularVelocity * subDt;
+
+        card.updateTransform();
+      }
+
+      // 2. Vòng lặp giải va chạm đa tầng
+      for (int iter = 0; iter < 4; iter++) {
+        // Va chạm giữa các khối vuông với nhau
+        for (int i = 0; i < _cards.length; i++) {
+          for (int j = i + 1; j < _cards.length; j++) {
+            _solveBoxCollision(_cards[i], _cards[j]);
+          }
+        }
+
+        // Va chạm giữa khối vuông với 4 cạnh viền
+        for (final card in _cards) {
+          _solveWallCollision(card, _trayWidth, _trayHeight);
+        }
       }
     }
 
@@ -537,7 +874,9 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final boxWidth = constraints.maxWidth;
-              _syncCardsWithItems(items, boxWidth);
+              if (boxWidth > 50) {
+                _syncCardsWithItems(items, boxWidth);
+              }
 
               return Stack(
                 clipBehavior: Clip.hardEdge,
@@ -546,6 +885,7 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
                   if (hasItems)
                     _TrayBackgroundTimeline(
                       transactions: items,
+                      isScrollable: !_showFloatingPhotos,
                     ),
 
                   // 2. Trạng thái khi không có bài đăng / giao dịch nào
@@ -630,65 +970,93 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
                               return Positioned(
                                 left: card.x - card.halfSize,
                                 top: card.y - card.halfSize,
-                                child: Transform.rotate(
-                                  angle: card.currentAngle,
-                                  child: GestureDetector(
-                                    behavior: HitTestBehavior.opaque,
-                                    onPanStart: (details) {
-                                      card.isDragging = true;
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onPanStart: (details) {
+                                    card.isDragging = true;
+                                    card.vx = 0.0;
+                                    card.vy = 0.0;
+                                    card.angularVelocity = 0.0;
+                                    HapticFeedback.selectionClick();
+                                  },
+                                  onPanUpdate: (details) {
+                                    setState(() {
+                                      // Vector delta chuẩn trong không gian khay (không bị xoay theo thẻ)
+                                      card.vx = details.delta.dx / 0.016;
+                                      card.vy = details.delta.dy / 0.016;
+
+                                      card.x = (card.x + details.delta.dx)
+                                          .clamp(
+                                        card.halfSize + 2,
+                                        boxWidth - card.halfSize - 2,
+                                      );
+                                      card.y = (card.y + details.delta.dy)
+                                          .clamp(
+                                        card.halfSize + 2,
+                                        _trayHeight - card.halfSize - 2,
+                                      );
+
+                                      // Nghiêng nhẹ tự nhiên khi kéo
+                                      card.angularVelocity =
+                                          (details.delta.dx * 0.03)
+                                              .clamp(-5.0, 5.0);
+                                      card.currentAngle +=
+                                          card.angularVelocity * 0.016;
+                                      card.updateTransform();
+
+                                      // Đẩy dạt các thẻ khác ngay trong thời gian thực khi ngón tay di chuyển
+                                      for (final other in _cards) {
+                                        if (other != card) {
+                                          _solveBoxCollision(card, other);
+                                          _solveWallCollision(
+                                            other,
+                                            boxWidth,
+                                            _trayHeight,
+                                          );
+                                        }
+                                      }
+                                    });
+                                  },
+                                  onPanEnd: (details) {
+                                    card.isDragging = false;
+                                    final velocity =
+                                        details.velocity.pixelsPerSecond;
+                                    if (velocity.distance > 40.0) {
+                                      // Ném thẻ với cảm giác khối nặng đầm tay
+                                      card.vx = velocity.dx
+                                          .clamp(-1800.0, 1800.0);
+                                      card.vy = velocity.dy
+                                          .clamp(-1800.0, 1800.0);
+                                      final randomSpin =
+                                          (math.Random().nextDouble() - 0.5) *
+                                              3.0;
+                                      card.angularVelocity =
+                                          (velocity.dx * 0.005 + randomSpin)
+                                              .clamp(-10.0, 10.0);
+                                      HapticFeedback.lightImpact();
+                                    } else {
                                       card.vx = 0.0;
                                       card.vy = 0.0;
                                       card.angularVelocity = 0.0;
-                                      HapticFeedback.selectionClick();
-                                    },
-                                    onPanUpdate: (details) {
-                                      setState(() {
-                                        card.x = (card.x + details.delta.dx)
-                                            .clamp(
-                                          card.halfSize + 4,
-                                          boxWidth - card.halfSize - 4,
-                                        );
-                                        card.y = (card.y + details.delta.dy)
-                                            .clamp(
-                                          card.halfSize + 4,
-                                          _trayHeight - card.halfSize - 4,
-                                        );
-                                        card.currentAngle =
-                                            (card.currentAngle +
-                                                    (details.delta.dx * 0.005))
-                                                .clamp(-0.78, 0.78);
-                                      });
-                                    },
-                                    onPanEnd: (details) {
-                                      card.isDragging = false;
-                                      final velocity =
-                                          details.velocity.pixelsPerSecond;
-                                      if (velocity.distance > 40.0) {
-                                        // Búng / ném thẻ bay nảy quanh khay và lật góc tự nhiên
-                                        card.vx = velocity.dx
-                                            .clamp(-2400.0, 2400.0);
-                                        card.vy = velocity.dy
-                                            .clamp(-2400.0, 2400.0);
-                                        card.angularVelocity =
-                                            (velocity.dx * 0.003)
-                                                .clamp(-3.0, 3.0);
-                                        HapticFeedback.lightImpact();
-                                      }
-                                    },
-                                    onTap: () {
-                                      HapticFeedback.lightImpact();
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (_) => MomentViewerScreen(
-                                            transactions: items,
-                                            initialIndex: card.originalIndex,
-                                          ),
+                                    }
+                                  },
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => MomentViewerScreen(
+                                          transactions: items,
+                                          initialIndex: card.originalIndex,
                                         ),
-                                      );
-                                    },
+                                      ),
+                                    );
+                                  },
+                                  child: Transform.rotate(
+                                    angle: card.currentAngle,
                                     child: _FlatPhotoCard(
-                                      key: ValueKey('${card.transaction.id}_${card.transaction.displayImageUrl}'),
+                                      key: ValueKey(
+                                          '${card.transaction.id}_${card.transaction.displayImageUrl}'),
                                       transaction: card.transaction,
                                       size: _cardSize,
                                     ),
@@ -710,13 +1078,63 @@ class _ShakePhotoMemoryTrayState extends State<ShakePhotoMemoryTray> {
   }
 }
 
-/// Dòng thời gian nền các giao dịch hôm nay (Vertical Background Timeline - Manual Scroll Only)
-class _TrayBackgroundTimeline extends StatelessWidget {
+/// Dòng thời gian nền các giao dịch hôm nay (Vertical Background Timeline)
+class _TrayBackgroundTimeline extends StatefulWidget {
   final List<TransactionModel> transactions;
+  final bool isScrollable;
 
   const _TrayBackgroundTimeline({
     required this.transactions,
+    required this.isScrollable,
   });
+
+  @override
+  State<_TrayBackgroundTimeline> createState() =>
+      _TrayBackgroundTimelineState();
+}
+
+class _TrayBackgroundTimelineState extends State<_TrayBackgroundTimeline> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollToLatestIfNeeded();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TrayBackgroundTimeline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.isScrollable && oldWidget.isScrollable) {
+      _scrollToLatestIfNeeded(animate: true);
+    } else if (!widget.isScrollable &&
+        oldWidget.transactions.length != widget.transactions.length) {
+      _scrollToLatestIfNeeded(animate: true);
+    }
+  }
+
+  void _scrollToLatestIfNeeded({bool animate = false}) {
+    if (widget.isScrollable) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) return;
+      final target = _scrollController.position.maxScrollExtent;
+      if (animate) {
+        _scrollController.animateTo(
+          target,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _scrollController.jumpTo(target);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -724,7 +1142,7 @@ class _TrayBackgroundTimeline extends StatelessWidget {
     final currency = context.watch<ProfileController>().currency;
 
     // Sắp xếp theo trình tự thời gian tăng dần trong ngày (Chronological order)
-    final sortedTx = List<TransactionModel>.from(transactions)
+    final sortedTx = List<TransactionModel>.from(widget.transactions)
       ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     if (sortedTx.isEmpty) {
@@ -748,10 +1166,13 @@ class _TrayBackgroundTimeline extends StatelessWidget {
         },
         blendMode: BlendMode.dstIn,
         child: ListView.builder(
+          controller: _scrollController,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          physics: const BouncingScrollPhysics(
-            parent: AlwaysScrollableScrollPhysics(),
-          ),
+          physics: widget.isScrollable
+              ? const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const NeverScrollableScrollPhysics(),
           itemCount: sortedTx.length,
           itemBuilder: (context, index) {
             final tx = sortedTx[index];

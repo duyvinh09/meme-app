@@ -13,6 +13,7 @@ import '../../../core/constants/avatar_frames.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/exchange_rate_service.dart';
+import '../../../core/utils/app_haptics.dart';
 import '../../../core/utils/currency_formatter.dart';
 import '../../../core/widgets/app_back_button.dart';
 import '../../../core/widgets/async_filled_button.dart';
@@ -25,6 +26,7 @@ import '../../home/controllers/home_controller.dart';
 import '../../home/widgets/streak_detail_sheet.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/avatar_with_frame.dart';
+import '../widgets/widget_frame_picker_sheet.dart';
 import 'change_email_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -183,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: l10n.light,
                   isSelected: profile.themeMode == ThemeMode.light,
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selectionClick();
                     profile.setThemeMode('light', myUid);
                     Navigator.pop(sheetCtx);
                   },
@@ -195,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: l10n.dark,
                   isSelected: profile.themeMode == ThemeMode.dark,
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selectionClick();
                     profile.setThemeMode('dark', myUid);
                     Navigator.pop(sheetCtx);
                   },
@@ -207,7 +209,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: l10n.system,
                   isSelected: profile.themeMode == ThemeMode.system,
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selectionClick();
                     profile.setThemeMode('system', myUid);
                     Navigator.pop(sheetCtx);
                   },
@@ -271,7 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: '${l10n.systemDefault} (Auto)',
                   isSelected: profile.rawLanguageCode == 'system',
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selectionClick();
                     profile.setLanguage('system', myUid);
                     Navigator.pop(sheetCtx);
                   },
@@ -283,7 +285,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: l10n.vietnamese,
                   isSelected: profile.rawLanguageCode == 'vi',
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selectionClick();
                     profile.setLanguage('vi', myUid);
                     Navigator.pop(sheetCtx);
                   },
@@ -295,7 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: l10n.english,
                   isSelected: profile.rawLanguageCode == 'en',
                   onTap: () {
-                    HapticFeedback.selectionClick();
+                    AppHaptics.selectionClick();
                     profile.setLanguage('en', myUid);
                     Navigator.pop(sheetCtx);
                   },
@@ -1243,6 +1245,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.pushNamed(context, RouteNames.cameraTheme);
                 },
               ),
+              _ProfileMenuTile(
+                icon: Icons.filter_frames_outlined,
+                title: context.l10n.widgetFrameTitle,
+                onTap: () => WidgetFramePickerSheet.show(context),
+              ),
+              _ProfileMenuTile(
+                icon: Icons.widgets_outlined,
+                title: context.l10n.homeWidgets,
+                onTap: () {
+                  Navigator.pushNamed(context, RouteNames.homeWidgets);
+                },
+              ),
             ],
           ),
 
@@ -1293,6 +1307,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 onTap: () => _showCurrencyPickerBottomSheet(context),
+              ),
+              _ProfileSwitchTile(
+                icon: Icons.vibration_rounded,
+                iconColor: const Color(0xFF8B5CF6),
+                iconBackgroundColor: const Color(0xFF8B5CF6).withValues(alpha: 0.12),
+                title: context.l10n.hapticFeedback,
+                subtitle: context.l10n.hapticFeedbackSubtitle,
+                value: profile.hapticFeedbackEnabled,
+                onChanged: (val) {
+                  if (val) {
+                    AppHaptics.isEnabled = true;
+                    AppHaptics.lightImpact();
+                  }
+                  final myUid = context.read<AuthController>().user?.uid;
+                  profile.setHapticFeedback(val, myUid);
+                },
               ),
             ],
           ),
@@ -1620,6 +1650,90 @@ class _ProfileMenuTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ProfileSwitchTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Color? iconColor;
+  final Color? iconBackgroundColor;
+
+  const _ProfileSwitchTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.iconColor,
+    this.iconBackgroundColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveIconColor = iconColor ?? AppColors.primaryBlue;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: iconBackgroundColor ??
+                  effectiveIconColor.withValues(alpha: 0.12),
+            ),
+            child: Center(
+              child: Icon(
+                icon,
+                color: effectiveIconColor,
+                size: 20,
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  title,
+                  style: AppTextStyles.body(context).copyWith(
+                    color: AppColors.textPrimary(context),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(
+                      color: AppColors.textSecondary(context),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            activeTrackColor: AppColors.primaryBlue,
+            onChanged: (val) {
+              onChanged(val);
+            },
+          ),
+        ],
       ),
     );
   }

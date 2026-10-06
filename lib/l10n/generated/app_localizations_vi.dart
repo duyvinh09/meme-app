@@ -2099,6 +2099,12 @@ class AppLocalizationsVi extends AppLocalizations {
   String get systemPreferences => 'Tùy chọn hệ thống';
 
   @override
+  String get hapticFeedback => 'Rung phản hồi';
+
+  @override
+  String get hapticFeedbackSubtitle => 'Rung nhẹ khi chạm & tương tác';
+
+  @override
   String get accountAndSupport => 'Tài khoản & Hỗ trợ';
 
   @override
@@ -3130,4 +3136,145 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get pollAttachmentLabel => 'Bình chọn';
+
+  @override
+  String get homeWidgets => 'Tiện ích màn hình chính';
+
+  @override
+  String get homeWidgetsSubtitle =>
+      'Xem các loại widget và cách cài đặt ra màn hình chính';
+
+  @override
+  String get homeWidgetsIntroTitle => 'Meme App Widgets';
+
+  @override
+  String get homeWidgetsIntroSubtitle =>
+      'Theo dõi chi tiêu và nhật ký ảnh tức thì ngay trên màn hình chính điện thoại của bạn.';
+
+  @override
+  String get availableWidgetsSection => 'CÁC LOẠI WIDGET HIỆN CÓ';
+
+  @override
+  String get statsWidgetTitle => 'Meme - Thống kê chi tiêu';
+
+  @override
+  String get statsWidgetSize => '4 × 2 (Chữ nhật)';
+
+  @override
+  String get statsWidgetDesc =>
+      'Hiển thị trực quan biểu đồ Donut các danh mục chi tiêu trong tháng, tổng tiền chi và phần trăm tăng giảm so với tháng trước.';
+
+  @override
+  String get statsWidgetTapHint => 'Chạm vào widget để mở nhanh tab Thống kê.';
+
+  @override
+  String get calendarWidgetTitle => 'Meme - Nhật ký Lịch ảnh';
+
+  @override
+  String get calendarWidgetSize => '4 × 4 (Vuông lớn)';
+
+  @override
+  String get calendarWidgetDesc =>
+      'Xem toàn bộ lưới ảnh khoảnh khắc chi tiêu từng ngày trong tháng, chuỗi ngày liên tiếp (Streak 🔥) và thống kê thu chi nhanh.';
+
+  @override
+  String get calendarWidgetTapHint =>
+      'Chạm vào widget để mở nhanh màn hình Lịch chi tiêu.';
+
+  @override
+  String get momentWidgetTitle => 'Meme - Khoảnh khắc mới nhất';
+
+  @override
+  String get momentWidgetSize => '2 × 2 (Vuông nhỏ)';
+
+  @override
+  String get momentWidgetDesc =>
+      'Hiển thị giao dịch và ảnh khoảnh khắc chi tiêu mới nhất của bạn và của các nhóm bạn tham gia kèm huy hiệu chuỗi (Streak 🔥) và phân loại thu/chi.';
+
+  @override
+  String get momentWidgetTapHint =>
+      'Chạm vào widget để mở nhanh trang chủ Meme.';
+
+  @override
+  String get widgetSetupGuideSection => 'CÁCH TẠO WIDGET TRÊN MÀN HÌNH CHÍNH';
+
+  @override
+  String get widgetStep1Title => 'Về màn hình chính';
+
+  @override
+  String get widgetStep1Desc => 'Thoát ra màn hình chính của điện thoại.';
+
+  @override
+  String get widgetStep2Title => 'Nhấn giữ khoảng trống';
+
+  @override
+  String get widgetStep2Desc =>
+      'Chạm và giữ 1-2 giây vào một vùng trống bất kỳ trên màn hình chính.';
+
+  @override
+  String get widgetStep3Title => 'Chọn mục Tiện ích (Widgets)';
+
+  @override
+  String get widgetStep3Desc =>
+      'Bấm vào biểu tượng Tiện ích / Widgets xuất hiện dưới màn hình.';
+
+  @override
+  String get widgetStep4Title => 'Tìm ứng dụng Meme & Kéo thả';
+
+  @override
+  String get widgetStep4Desc =>
+      'Tìm \"Meme\", chọn widget Thống kê hoặc Lịch ảnh rồi kéo ra vị trí bạn muốn.';
+
+  @override
+  String get widgetSyncTitle => 'Tự động làm mới & Tiết kiệm pin';
+
+  @override
+  String get widgetSyncDesc =>
+      '• Widget tự động cập nhật số liệu ngay khi bạn thêm, sửa hoặc xoá chi tiêu trong app.\n• Bộ nhớ đệm thông minh giúp widget hiển thị ảnh mượt mà và không tốn pin điện thoại.';
+
+  @override
+  String get thisMonthLabel => 'Tháng này';
+
+  @override
+  String get previewExpenseLabel => 'Chi';
+
+  @override
+  String get previewTxnCountLabel => 'GD';
+
+  @override
+  String get previewIncomeLabel => 'Thu';
+
+  @override
+  String get previewCategoriesSample => '• 55% Ăn uống  • 25% Mua sắm';
+
+  @override
+  String get previewMonthSample => 'Tháng 4 2026';
+
+  @override
+  String get widgetExpenseLabel => 'Chi tiêu';
+
+  @override
+  String get widgetTransactionsLabel => 'Số giao dịch';
+
+  @override
+  String get widgetIncomeLabel => 'Thu vào';
+
+  @override
+  String get widgetNoTransactions => 'Chưa có giao dịch';
+
+  @override
+  String get previewMomentGroupSample => 'Nhóm Bạn Thân';
+
+  @override
+  String get previewMomentCaptionSample => 'Cà phê sáng cùng team ☕';
+
+  @override
+  String get widgetFrameTitle => 'Khung widget';
+
+  @override
+  String get widgetFrameSubtitle =>
+      'Đổi màu viền gradient đẹp mắt cho widget màn hình chính';
+
+  @override
+  String get changeWidgetFrame => 'Đổi khung widget';
 }

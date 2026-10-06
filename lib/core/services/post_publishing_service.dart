@@ -97,6 +97,7 @@ class PostPublishingService extends ChangeNotifier {
           if (navContext != null) {
             final uid = navContext.read<AuthController>().user?.uid;
             if (uid != null) {
+              navContext.read<FeedController>().addNewTransaction(tx);
               unawaited(navContext.read<FeedController>().refresh());
               navContext.read<BudgetController>().load(uid);
               navContext.read<ProfileController>().refreshUser(uid);
@@ -143,26 +144,36 @@ class PostPublishingService extends ChangeNotifier {
 
   void viewPost({String? targetId}) {
     final effectiveId = targetId ?? _postId;
+    final createdTx = _createdTransaction;
     dismiss();
 
     if (effectiveId != null && effectiveId.isNotEmpty) {
       final navContext = AppRoutes.navigatorKey.currentContext;
       if (navContext != null) {
         final myUid = navContext.read<AuthController>().user?.uid;
+        if (createdTx != null) {
+          navContext.read<FeedController>().addNewTransaction(createdTx);
+        }
         navContext.read<FeedController>().setTargetPostId(effectiveId);
         if (myUid != null) {
           unawaited(navContext.read<FeedController>().load(myUid));
         }
       }
 
-      AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
-        RouteNames.mainShell,
-        (route) => false,
-        arguments: {
-          'initialIndex': 2,
-          'targetPostId': effectiveId,
-        },
-      );
+      if (MainShell.mainShellKey.currentState != null) {
+        final nav = AppRoutes.navigatorKey.currentState;
+        nav?.popUntil((route) => route.isFirst);
+        MainShell.switchTab(2);
+      } else {
+        AppRoutes.navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          RouteNames.mainShell,
+          (route) => false,
+          arguments: {
+            'initialIndex': 2,
+            'targetPostId': effectiveId,
+          },
+        );
+      }
     }
   }
 

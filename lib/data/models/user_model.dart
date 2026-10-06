@@ -14,6 +14,7 @@ class UserModel {
   final DateTime createdAt;
   final DateTime lastActiveDate;
   final String avatarFrame;
+  final String widgetFrame;
   final bool isDeleted;
   final bool isOnline;
   final DateTime? lastSeen;
@@ -21,6 +22,7 @@ class UserModel {
   final String cameraTheme;
   final bool showActiveStatus;
   final String activeStatusMode;
+  final bool hapticFeedback;
   final String? userNote;
   final DateTime? userNoteCreatedAt;
   final List<int> unlockedMilestones;
@@ -40,6 +42,7 @@ class UserModel {
     required this.createdAt,
     required this.lastActiveDate,
     this.avatarFrame = 'plain',
+    this.widgetFrame = 'none',
     this.isDeleted = false,
     this.isOnline = false,
     this.lastSeen,
@@ -47,6 +50,7 @@ class UserModel {
     this.cameraTheme = 'classic_dark',
     this.showActiveStatus = true,
     this.activeStatusMode = 'friends',
+    this.hapticFeedback = true,
     this.userNote,
     this.userNoteCreatedAt,
     this.unlockedMilestones = const [],
@@ -131,6 +135,7 @@ class UserModel {
       createdAt: _parseDateTime(map['createdAt']) ?? DateTime.now(),
       lastActiveDate: _parseDateTime(map['lastActiveDate']) ?? DateTime.now(),
       avatarFrame: map['avatarFrame'] ?? 'plain',
+      widgetFrame: map['widgetFrame'] ?? 'none',
       isDeleted: map['isDeleted'] == true,
       isOnline: map['isOnline'] == true,
       lastSeen: _parseDateTime(map['lastSeen']),
@@ -139,6 +144,7 @@ class UserModel {
       showActiveStatus: map['showActiveStatus'] != false,
       activeStatusMode: (map['activeStatusMode'] as String?) ??
           (map['showActiveStatus'] == false ? 'none' : 'friends'),
+      hapticFeedback: map['hapticFeedback'] != false,
       userNote: map['userNote'] as String?,
       userNoteCreatedAt: _parseDateTime(map['userNoteCreatedAt']),
       unlockedMilestones: (map['unlockedMilestones'] as List<dynamic>?)
@@ -164,10 +170,12 @@ class UserModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'lastActiveDate': Timestamp.fromDate(lastActiveDate),
       'avatarFrame': avatarFrame,
+      'widgetFrame': widgetFrame,
       'isDeleted': isDeleted,
       'isOnline': isOnline,
       'showActiveStatus': showActiveStatus,
       'activeStatusMode': activeStatusMode,
+      'hapticFeedback': hapticFeedback,
       if (lastSeen != null) 'lastSeen': Timestamp.fromDate(lastSeen!),
       if (chatBubbleTheme.isNotEmpty) 'chatBubbleTheme': chatBubbleTheme,
       if (cameraTheme.isNotEmpty) 'cameraTheme': cameraTheme,
@@ -193,6 +201,7 @@ class UserModel {
     DateTime? createdAt,
     DateTime? lastActiveDate,
     String? avatarFrame,
+    String? widgetFrame,
     bool? isDeleted,
     bool? isOnline,
     DateTime? lastSeen,
@@ -200,6 +209,7 @@ class UserModel {
     String? cameraTheme,
     bool? showActiveStatus,
     String? activeStatusMode,
+    bool? hapticFeedback,
     String? userNote,
     DateTime? userNoteCreatedAt,
     List<int>? unlockedMilestones,
@@ -220,6 +230,7 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       lastActiveDate: lastActiveDate ?? this.lastActiveDate,
       avatarFrame: avatarFrame ?? this.avatarFrame,
+      widgetFrame: widgetFrame ?? this.widgetFrame,
       isDeleted: isDeleted ?? this.isDeleted,
       isOnline: isOnline ?? this.isOnline,
       lastSeen: lastSeen ?? this.lastSeen,
@@ -227,6 +238,7 @@ class UserModel {
       cameraTheme: cameraTheme ?? this.cameraTheme,
       showActiveStatus: showActiveStatus ?? this.showActiveStatus,
       activeStatusMode: activeStatusMode ?? this.activeStatusMode,
+      hapticFeedback: hapticFeedback ?? this.hapticFeedback,
       userNote: userNote ?? this.userNote,
       userNoteCreatedAt: userNoteCreatedAt ?? this.userNoteCreatedAt,
       unlockedMilestones: unlockedMilestones ?? this.unlockedMilestones,

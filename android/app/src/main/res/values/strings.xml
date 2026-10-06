@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Meme</string>
+    <string name="stats_widget_name">Meme - Thống kê chi tiêu</string>
+    <string name="stats_widget_description">Xem nhanh biểu đồ chi tiêu và các danh mục chính trong tháng</string>
+    <string name="calendar_widget_name">Meme - Nhật ký Lịch ảnh</string>
+    <string name="calendar_widget_description">Xem lịch chi tiêu trực quan cùng ảnh khoảnh khắc và chuỗi streak</string>
+    <string name="moment_widget_name">Meme - Khoảnh khắc mới nhất</string>
+    <string name="moment_widget_description">Xem nhanh giao dịch và ảnh khoảnh khắc mới nhất của bạn và nhóm</string>
+</resources>

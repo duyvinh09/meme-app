@@ -182,6 +182,29 @@ class ProfileController extends ChangeNotifier {
 
   bool get showActiveStatus => localSettingsService.showActiveStatus;
   String get activeStatusMode => localSettingsService.activeStatusMode;
+  bool get hapticFeedbackEnabled => localSettingsService.hapticFeedbackEnabled;
+  String get widgetFrame => user?.widgetFrame.isNotEmpty == true
+      ? user!.widgetFrame
+      : localSettingsService.widgetFrame;
+
+  Future<void> setWidgetFrame(String value, [String? uid]) async {
+    await localSettingsService.setWidgetFrame(value);
+    if (user != null) {
+      user = user!.copyWith(widgetFrame: value);
+    }
+    if (uid != null && uid.isNotEmpty) {
+      await userRepository.updateUserProfile(uid, {'widgetFrame': value});
+    }
+    notifyListeners();
+  }
+
+  Future<void> setHapticFeedback(bool value, [String? uid]) async {
+    await localSettingsService.setHapticFeedbackEnabled(value);
+    if (uid != null && uid.isNotEmpty) {
+      await userRepository.updateUserProfile(uid, {'hapticFeedback': value});
+    }
+    notifyListeners();
+  }
 
   Future<void> setShowActiveStatus(bool value, [String? uid]) async {
     await localSettingsService.setShowActiveStatus(value);

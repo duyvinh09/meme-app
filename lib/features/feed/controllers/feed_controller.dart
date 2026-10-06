@@ -7,6 +7,7 @@ import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
 import '../../../core/services/video_cache_service.dart';
 import '../../../core/services/failed_post_service.dart';
+import '../../../core/services/app_widget_service.dart';
 
 class FeedController extends ChangeNotifier {
   final TransactionRepository transactionRepository;
@@ -181,6 +182,10 @@ class FeedController extends ChangeNotifier {
       if (videoUrls.isNotEmpty) {
         VideoCacheService.instance.preloadBatch(videoUrls);
       }
+
+      AppWidgetService.instance.updateWidgets(
+        feedTransactions: feedTransactions,
+      );
     } catch (e) {
       debugPrint('Feed load error: $e');
       feedTransactions = [];

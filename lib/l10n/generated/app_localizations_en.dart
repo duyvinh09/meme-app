@@ -2096,6 +2096,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get systemPreferences => 'System Preferences';
 
   @override
+  String get hapticFeedback => 'Haptic Feedback';
+
+  @override
+  String get hapticFeedbackSubtitle =>
+      'Gentle vibration on touch & interactions';
+
+  @override
   String get accountAndSupport => 'Account & Support';
 
   @override
@@ -3134,4 +3141,145 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pollAttachmentLabel => 'Poll';
+
+  @override
+  String get homeWidgets => 'Home Screen Widgets';
+
+  @override
+  String get homeWidgetsSubtitle =>
+      'Explore widget types and learn how to add them to your Home Screen';
+
+  @override
+  String get homeWidgetsIntroTitle => 'Meme App Widgets';
+
+  @override
+  String get homeWidgetsIntroSubtitle =>
+      'Track spending and photo moments instantly on your phone\'s Home Screen.';
+
+  @override
+  String get availableWidgetsSection => 'AVAILABLE WIDGETS';
+
+  @override
+  String get statsWidgetTitle => 'Meme - Expense Stats';
+
+  @override
+  String get statsWidgetSize => '4 × 2 (Rectangle)';
+
+  @override
+  String get statsWidgetDesc =>
+      'Visually displays a donut chart of monthly expense categories, total spending, and percentage change compared to last month.';
+
+  @override
+  String get statsWidgetTapHint =>
+      'Tap the widget to quickly open the Stats tab.';
+
+  @override
+  String get calendarWidgetTitle => 'Meme - Photo Calendar';
+
+  @override
+  String get calendarWidgetSize => '4 × 4 (Large Square)';
+
+  @override
+  String get calendarWidgetDesc =>
+      'View a monthly visual grid of daily spending photos, your active streak (🔥), and a quick financial summary.';
+
+  @override
+  String get calendarWidgetTapHint =>
+      'Tap the widget to quickly open the Calendar screen.';
+
+  @override
+  String get momentWidgetTitle => 'Meme - Recent Moments';
+
+  @override
+  String get momentWidgetSize => '2 × 2 (Compact Square)';
+
+  @override
+  String get momentWidgetDesc =>
+      'Displays your latest spending photo moment and group transactions with a streak badge (🔥) and income/expense indicator.';
+
+  @override
+  String get momentWidgetTapHint => 'Tap the widget to quickly open Meme Home.';
+
+  @override
+  String get widgetSetupGuideSection => 'HOW TO ADD WIDGETS TO HOME SCREEN';
+
+  @override
+  String get widgetStep1Title => 'Go to Home Screen';
+
+  @override
+  String get widgetStep1Desc => 'Return to your phone\'s main home screen.';
+
+  @override
+  String get widgetStep2Title => 'Press and hold empty space';
+
+  @override
+  String get widgetStep2Desc =>
+      'Touch and hold an empty area on your home screen for 1-2 seconds.';
+
+  @override
+  String get widgetStep3Title => 'Select Widgets';
+
+  @override
+  String get widgetStep3Desc =>
+      'Tap the Widgets icon that appears at the bottom of the screen.';
+
+  @override
+  String get widgetStep4Title => 'Find Meme & Drag widget';
+
+  @override
+  String get widgetStep4Desc =>
+      'Search for \"Meme\", select the Stats or Calendar widget, and drag it to your desired spot.';
+
+  @override
+  String get widgetSyncTitle => 'Auto Sync & Battery Friendly';
+
+  @override
+  String get widgetSyncDesc =>
+      '• Widgets update automatically when you add, edit, or delete transactions in the app.\n• Smart caching ensures instant photo loading without battery drain.';
+
+  @override
+  String get thisMonthLabel => 'This Month';
+
+  @override
+  String get previewExpenseLabel => 'Spent';
+
+  @override
+  String get previewTxnCountLabel => 'Txns';
+
+  @override
+  String get previewIncomeLabel => 'Income';
+
+  @override
+  String get previewCategoriesSample => '• 55% Food  • 25% Shopping';
+
+  @override
+  String get previewMonthSample => 'April 2026';
+
+  @override
+  String get widgetExpenseLabel => 'Expense';
+
+  @override
+  String get widgetTransactionsLabel => 'Transactions';
+
+  @override
+  String get widgetIncomeLabel => 'Income';
+
+  @override
+  String get widgetNoTransactions => 'No transactions yet';
+
+  @override
+  String get previewMomentGroupSample => 'Best Friends Group';
+
+  @override
+  String get previewMomentCaptionSample => 'Morning coffee with team ☕';
+
+  @override
+  String get widgetFrameTitle => 'Widget Frame';
+
+  @override
+  String get widgetFrameSubtitle =>
+      'Customize vibrant gradient borders for your Home Screen widget';
+
+  @override
+  String get changeWidgetFrame => 'Change widget frame';
 }

@@ -13,6 +13,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../auth/controllers/auth_controller.dart';
 import '../../splash/screens/preloader_screen.dart';
 import '../controllers/profile_controller.dart';
+import '../widgets/widget_frame_picker_sheet.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -125,6 +126,24 @@ class SettingsScreen extends StatelessWidget {
                   subtitle: l10n.cameraThemeSubtitle,
                   onTap: () {
                     Navigator.pushNamed(context, RouteNames.cameraTheme);
+                  },
+                ),
+                _SettingsActionTile(
+                  icon: Icons.filter_frames_outlined,
+                  iconColor: AppColors.primaryPurple,
+                  title: l10n.widgetFrameTitle,
+                  subtitle: l10n.widgetFrameSubtitle,
+                  onTap: () {
+                    WidgetFramePickerSheet.show(context);
+                  },
+                ),
+                _SettingsActionTile(
+                  icon: Icons.widgets_outlined,
+                  iconColor: AppColors.primaryBlue,
+                  title: l10n.homeWidgets,
+                  subtitle: l10n.homeWidgetsSubtitle,
+                  onTap: () {
+                    Navigator.pushNamed(context, RouteNames.homeWidgets);
                   },
                 ),
                 _SettingsActionTile(

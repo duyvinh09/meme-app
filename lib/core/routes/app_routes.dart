@@ -37,6 +37,7 @@ import '../../features/profile/screens/manage_categories_screen.dart';
 import '../../features/profile/controllers/user_category_controller.dart';
 import '../../features/profile/screens/app_icon_picker_screen.dart';
 import '../../features/profile/screens/camera_theme_picker_screen.dart';
+import '../../features/profile/screens/home_widgets_screen.dart';
 import '../../features/profile/controllers/profile_controller.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/settings_screen.dart';
@@ -54,6 +55,7 @@ import '../../data/models/transaction_model.dart';
 import '../../data/repositories/user_repository.dart';
 import '../../data/repositories/chat_repository.dart';
 import '../services/notification_service.dart';
+import '../services/app_widget_service.dart';
 import 'route_names.dart';
 
 class AppRoutes {
@@ -90,6 +92,7 @@ class AppRoutes {
         final targetPostId = args?['targetPostId'] as String?;
         return MaterialPageRoute(
           builder: (_) => MainShell(
+            key: MainShell.mainShellKey,
             initialIndex: initialIndex,
             initialTargetPostId: targetPostId,
           ),
@@ -179,6 +182,11 @@ class AppRoutes {
       case RouteNames.cameraTheme:
         return MaterialPageRoute(
           builder: (_) => const CameraThemePickerScreen(),
+        );
+
+      case RouteNames.homeWidgets:
+        return MaterialPageRoute(
+          builder: (_) => const HomeWidgetsScreen(),
         );
 
       case RouteNames.chatConversation:
@@ -344,11 +352,32 @@ class _SplashGateState extends State<SplashGate> {
     if (auth.user == null) {
       return const LoginScreen(key: ValueKey('login_screen'));
     }
-    return const MainShell(key: ValueKey('main_shell'));
+
+    final pendingTarget =
+        AppWidgetService.instance.consumePendingWidgetTarget();
+    if (pendingTarget == 'stats') {
+      return MainShell(
+        key: MainShell.mainShellKey,
+        initialIndex: 1,
+      );
+    } else if (pendingTarget == 'calendar') {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AppRoutes.navigatorKey.currentState?.pushNamed(RouteNames.calendar);
+      });
+      return MainShell(
+        key: MainShell.mainShellKey,
+        initialIndex: 0,
+      );
+    }
+
+    return MainShell(key: MainShell.mainShellKey);
   }
 }
 
 class MainShell extends StatefulWidget {
+  static final GlobalKey<MainShellState> mainShellKey =
+      GlobalKey<MainShellState>();
+
   final int initialIndex;
   final String? initialTargetPostId;
 
@@ -358,13 +387,39 @@ class MainShell extends StatefulWidget {
     this.initialTargetPostId,
   });
 
+  static void switchTab(int targetIndex) {
+    mainShellKey.currentState?.setTabIndex(targetIndex);
+  }
+
   @override
-  State<MainShell> createState() => _MainShellState();
+  State<MainShell> createState() => MainShellState();
 }
 
-class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
+class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   late int index;
   bool isRefreshingFeed = false;
+
+  void setTabIndex(int newIndex) {
+    if (newIndex >= 0 && newIndex <= 4 && mounted) {
+      setState(() {
+        index = newIndex;
+        showCaptureFab = newIndex == 0;
+        isFabMenuOpen = false;
+        isNavbarCollapsed = false;
+      });
+      if (newIndex == 0) {
+        _showCaptureFabNow();
+      } else {
+        _captureFabTimer?.cancel();
+      }
+      if (newIndex == 4) {
+        final uid = context.read<AuthController>().user?.uid;
+        if (uid != null) {
+          context.read<ProfileController>().refreshUser(uid);
+        }
+      }
+    }
+  }
   bool isNavbarCollapsed = false;
 
   bool showCaptureFab = true;
@@ -556,8 +611,11 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     final isDark = AppColors.isDark(context);
 
+    final isKeyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+
     return Scaffold(
       extendBody: true,
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Positioned.fill(
@@ -624,23 +682,30 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
             duration: Duration(milliseconds: isNavbarCollapsed ? 280 : 240),
             curve: isNavbarCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
             left: AppSizes.pagePadding,
-            bottom: 24,
+            bottom: isKeyboardOpen ? -120 : 24,
             width: isNavbarCollapsed
                 ? 50.0
                 : (MediaQuery.sizeOf(context).width - AppSizes.pagePadding * 2),
             height: isNavbarCollapsed ? 50.0 : AppSizes.navbarHeight,
-            child: _FloatingGlassNavbar(
-              currentIndex: index,
-              isRefreshingFeed: isRefreshingFeed,
-              isCollapsed: isNavbarCollapsed,
-              onTap: (value) {
-                if (isNavbarCollapsed) {
-                  HapticFeedback.selectionClick();
-                  _expandNavbar();
-                } else {
-                  _onNavTap(context, value);
-                }
-              },
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 200),
+              opacity: isKeyboardOpen ? 0.0 : 1.0,
+              child: IgnorePointer(
+                ignoring: isKeyboardOpen,
+                child: _FloatingGlassNavbar(
+                  currentIndex: index,
+                  isRefreshingFeed: isRefreshingFeed,
+                  isCollapsed: isNavbarCollapsed,
+                  onTap: (value) {
+                    if (isNavbarCollapsed) {
+                      HapticFeedback.selectionClick();
+                      _expandNavbar();
+                    } else {
+                      _onNavTap(context, value);
+                    }
+                  },
+                ),
+              ),
             ),
           ),
 
@@ -649,30 +714,37 @@ class _MainShellState extends State<MainShell> with WidgetsBindingObserver {
               duration: Duration(milliseconds: isNavbarCollapsed ? 280 : 240),
               curve: isNavbarCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
               right: 20,
-              bottom: isNavbarCollapsed ? 24 : 104,
-              child: _GenZExpandableFab(
-                isOpen: isFabMenuOpen,
-                isCollapsed: isNavbarCollapsed,
-                onToggle: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    isFabMenuOpen = !isFabMenuOpen;
-                  });
-                },
-                onVoiceTap: () {
-                  setState(() => isFabMenuOpen = false);
-                  QuickVoiceExpenseSheet.show(context);
-                },
-                onCameraTap: () {
-                  setState(() => isFabMenuOpen = false);
-                  Navigator.pushNamed(context, RouteNames.addTransaction);
-                },
-                onChatTap: () {
-                  if (isFabMenuOpen) {
-                    setState(() => isFabMenuOpen = false);
-                  }
-                  Navigator.pushNamed(context, RouteNames.chatList);
-                },
+              bottom: isKeyboardOpen ? -120 : (isNavbarCollapsed ? 24 : 104),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: isKeyboardOpen ? 0.0 : 1.0,
+                child: IgnorePointer(
+                  ignoring: isKeyboardOpen,
+                  child: _GenZExpandableFab(
+                    isOpen: isFabMenuOpen,
+                    isCollapsed: isNavbarCollapsed,
+                    onToggle: () {
+                      HapticFeedback.selectionClick();
+                      setState(() {
+                        isFabMenuOpen = !isFabMenuOpen;
+                      });
+                    },
+                    onVoiceTap: () {
+                      setState(() => isFabMenuOpen = false);
+                      QuickVoiceExpenseSheet.show(context);
+                    },
+                    onCameraTap: () {
+                      setState(() => isFabMenuOpen = false);
+                      Navigator.pushNamed(context, RouteNames.addTransaction);
+                    },
+                    onChatTap: () {
+                      if (isFabMenuOpen) {
+                        setState(() => isFabMenuOpen = false);
+                      }
+                      Navigator.pushNamed(context, RouteNames.chatList);
+                    },
+                  ),
+                ),
               ),
             ),
         ],

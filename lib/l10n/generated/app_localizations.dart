@@ -3789,6 +3789,18 @@ abstract class AppLocalizations {
   /// **'Tùy chọn hệ thống'**
   String get systemPreferences;
 
+  /// No description provided for @hapticFeedback.
+  ///
+  /// In vi, this message translates to:
+  /// **'Rung phản hồi'**
+  String get hapticFeedback;
+
+  /// No description provided for @hapticFeedbackSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Rung nhẹ khi chạm & tương tác'**
+  String get hapticFeedbackSubtitle;
+
   /// No description provided for @accountAndSupport.
   ///
   /// In vi, this message translates to:
@@ -5486,6 +5498,264 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Bình chọn'**
   String get pollAttachmentLabel;
+
+  /// No description provided for @homeWidgets.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tiện ích màn hình chính'**
+  String get homeWidgets;
+
+  /// No description provided for @homeWidgetsSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem các loại widget và cách cài đặt ra màn hình chính'**
+  String get homeWidgetsSubtitle;
+
+  /// No description provided for @homeWidgetsIntroTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme App Widgets'**
+  String get homeWidgetsIntroTitle;
+
+  /// No description provided for @homeWidgetsIntroSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Theo dõi chi tiêu và nhật ký ảnh tức thì ngay trên màn hình chính điện thoại của bạn.'**
+  String get homeWidgetsIntroSubtitle;
+
+  /// No description provided for @availableWidgetsSection.
+  ///
+  /// In vi, this message translates to:
+  /// **'CÁC LOẠI WIDGET HIỆN CÓ'**
+  String get availableWidgetsSection;
+
+  /// No description provided for @statsWidgetTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme - Thống kê chi tiêu'**
+  String get statsWidgetTitle;
+
+  /// No description provided for @statsWidgetSize.
+  ///
+  /// In vi, this message translates to:
+  /// **'4 × 2 (Chữ nhật)'**
+  String get statsWidgetSize;
+
+  /// No description provided for @statsWidgetDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hiển thị trực quan biểu đồ Donut các danh mục chi tiêu trong tháng, tổng tiền chi và phần trăm tăng giảm so với tháng trước.'**
+  String get statsWidgetDesc;
+
+  /// No description provided for @statsWidgetTapHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chạm vào widget để mở nhanh tab Thống kê.'**
+  String get statsWidgetTapHint;
+
+  /// No description provided for @calendarWidgetTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme - Nhật ký Lịch ảnh'**
+  String get calendarWidgetTitle;
+
+  /// No description provided for @calendarWidgetSize.
+  ///
+  /// In vi, this message translates to:
+  /// **'4 × 4 (Vuông lớn)'**
+  String get calendarWidgetSize;
+
+  /// No description provided for @calendarWidgetDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xem toàn bộ lưới ảnh khoảnh khắc chi tiêu từng ngày trong tháng, chuỗi ngày liên tiếp (Streak 🔥) và thống kê thu chi nhanh.'**
+  String get calendarWidgetDesc;
+
+  /// No description provided for @calendarWidgetTapHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chạm vào widget để mở nhanh màn hình Lịch chi tiêu.'**
+  String get calendarWidgetTapHint;
+
+  /// No description provided for @momentWidgetTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Meme - Khoảnh khắc mới nhất'**
+  String get momentWidgetTitle;
+
+  /// No description provided for @momentWidgetSize.
+  ///
+  /// In vi, this message translates to:
+  /// **'2 × 2 (Vuông nhỏ)'**
+  String get momentWidgetSize;
+
+  /// No description provided for @momentWidgetDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Hiển thị giao dịch và ảnh khoảnh khắc chi tiêu mới nhất của bạn và của các nhóm bạn tham gia kèm huy hiệu chuỗi (Streak 🔥) và phân loại thu/chi.'**
+  String get momentWidgetDesc;
+
+  /// No description provided for @momentWidgetTapHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chạm vào widget để mở nhanh trang chủ Meme.'**
+  String get momentWidgetTapHint;
+
+  /// No description provided for @widgetSetupGuideSection.
+  ///
+  /// In vi, this message translates to:
+  /// **'CÁCH TẠO WIDGET TRÊN MÀN HÌNH CHÍNH'**
+  String get widgetSetupGuideSection;
+
+  /// No description provided for @widgetStep1Title.
+  ///
+  /// In vi, this message translates to:
+  /// **'Về màn hình chính'**
+  String get widgetStep1Title;
+
+  /// No description provided for @widgetStep1Desc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thoát ra màn hình chính của điện thoại.'**
+  String get widgetStep1Desc;
+
+  /// No description provided for @widgetStep2Title.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhấn giữ khoảng trống'**
+  String get widgetStep2Title;
+
+  /// No description provided for @widgetStep2Desc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chạm và giữ 1-2 giây vào một vùng trống bất kỳ trên màn hình chính.'**
+  String get widgetStep2Desc;
+
+  /// No description provided for @widgetStep3Title.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn mục Tiện ích (Widgets)'**
+  String get widgetStep3Title;
+
+  /// No description provided for @widgetStep3Desc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bấm vào biểu tượng Tiện ích / Widgets xuất hiện dưới màn hình.'**
+  String get widgetStep3Desc;
+
+  /// No description provided for @widgetStep4Title.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm ứng dụng Meme & Kéo thả'**
+  String get widgetStep4Title;
+
+  /// No description provided for @widgetStep4Desc.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tìm \"Meme\", chọn widget Thống kê hoặc Lịch ảnh rồi kéo ra vị trí bạn muốn.'**
+  String get widgetStep4Desc;
+
+  /// No description provided for @widgetSyncTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tự động làm mới & Tiết kiệm pin'**
+  String get widgetSyncTitle;
+
+  /// No description provided for @widgetSyncDesc.
+  ///
+  /// In vi, this message translates to:
+  /// **'• Widget tự động cập nhật số liệu ngay khi bạn thêm, sửa hoặc xoá chi tiêu trong app.\n• Bộ nhớ đệm thông minh giúp widget hiển thị ảnh mượt mà và không tốn pin điện thoại.'**
+  String get widgetSyncDesc;
+
+  /// No description provided for @thisMonthLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tháng này'**
+  String get thisMonthLabel;
+
+  /// No description provided for @previewExpenseLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi'**
+  String get previewExpenseLabel;
+
+  /// No description provided for @previewTxnCountLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'GD'**
+  String get previewTxnCountLabel;
+
+  /// No description provided for @previewIncomeLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thu'**
+  String get previewIncomeLabel;
+
+  /// No description provided for @previewCategoriesSample.
+  ///
+  /// In vi, this message translates to:
+  /// **'• 55% Ăn uống  • 25% Mua sắm'**
+  String get previewCategoriesSample;
+
+  /// No description provided for @previewMonthSample.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tháng 4 2026'**
+  String get previewMonthSample;
+
+  /// No description provided for @widgetExpenseLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chi tiêu'**
+  String get widgetExpenseLabel;
+
+  /// No description provided for @widgetTransactionsLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Số giao dịch'**
+  String get widgetTransactionsLabel;
+
+  /// No description provided for @widgetIncomeLabel.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thu vào'**
+  String get widgetIncomeLabel;
+
+  /// No description provided for @widgetNoTransactions.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có giao dịch'**
+  String get widgetNoTransactions;
+
+  /// No description provided for @previewMomentGroupSample.
+  ///
+  /// In vi, this message translates to:
+  /// **'Nhóm Bạn Thân'**
+  String get previewMomentGroupSample;
+
+  /// No description provided for @previewMomentCaptionSample.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cà phê sáng cùng team ☕'**
+  String get previewMomentCaptionSample;
+
+  /// No description provided for @widgetFrameTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khung widget'**
+  String get widgetFrameTitle;
+
+  /// No description provided for @widgetFrameSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đổi màu viền gradient đẹp mắt cho widget màn hình chính'**
+  String get widgetFrameSubtitle;
+
+  /// No description provided for @changeWidgetFrame.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đổi khung widget'**
+  String get changeWidgetFrame;
 }
 
 class _AppLocalizationsDelegate

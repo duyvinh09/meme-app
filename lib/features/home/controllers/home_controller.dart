@@ -5,6 +5,7 @@ import '../../../data/models/transaction_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/repositories/transaction_repository.dart';
 import '../../../data/repositories/user_repository.dart';
+import '../../../core/services/app_widget_service.dart';
 import '../../../core/services/video_cache_service.dart';
 
 class HomeController extends ChangeNotifier {
@@ -44,12 +45,21 @@ class HomeController extends ChangeNotifier {
     _profileSub = userRepository.streamUserProfile(uid).listen((userData) {
       profile = userData;
       notifyListeners();
+      AppWidgetService.instance.updateWidgets(
+        transactions: transactions,
+        profile: userData,
+      );
     });
 
     _txSub = transactionRepository.streamTransactions(uid).listen((data) {
       transactions = data;
       isLoading = false;
       notifyListeners();
+
+      AppWidgetService.instance.updateWidgets(
+        transactions: data,
+        profile: profile,
+      );
 
       // Preload ngầm các video gần nhất cho Lịch, Recent moment và Home widget
       final videoUrls = data

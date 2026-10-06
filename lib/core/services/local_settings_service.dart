@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/user_model.dart';
+import '../utils/app_haptics.dart';
 
 class LocalSettingsService extends ChangeNotifier {
   late final SharedPreferences _prefs;
@@ -8,11 +9,13 @@ class LocalSettingsService extends ChangeNotifier {
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+    AppHaptics.isEnabled = hapticFeedbackEnabled;
   }
 
   void setActiveUser(String? uid) {
     if (_currentUserId == uid) return;
     _currentUserId = uid;
+    AppHaptics.isEnabled = hapticFeedbackEnabled;
     notifyListeners();
   }
 
@@ -32,7 +35,13 @@ class LocalSettingsService extends ChangeNotifier {
       _currentUserId != null ? '${_currentUserId}_showActiveStatus' : 'showActiveStatus';
   String get _activeStatusModeKey =>
       _currentUserId != null ? '${_currentUserId}_activeStatusMode' : 'activeStatusMode';
+  String get _hapticFeedbackKey =>
+      _currentUserId != null ? '${_currentUserId}_hapticFeedback' : 'hapticFeedback';
+  String get _widgetFrameKey =>
+      _currentUserId != null ? '${_currentUserId}_widgetFrame' : 'widgetFrame';
 
+  bool get hapticFeedbackEnabled => _prefs.getBool(_hapticFeedbackKey) ?? true;
+  String get widgetFrame => _prefs.getString(_widgetFrameKey) ?? 'none';
   bool get showActiveStatus => _prefs.getBool(_showActiveStatusKey) ?? true;
   String get activeStatusMode {
     if (!showActiveStatus) return 'none';
@@ -109,6 +118,13 @@ class LocalSettingsService extends ChangeNotifier {
     return _prefs.getString(_chatBubbleThemeKey) ?? 'default';
   }
 
+  Future<bool> setHapticFeedbackEnabled(bool value) async {
+    final res = await _prefs.setBool(_hapticFeedbackKey, value);
+    AppHaptics.isEnabled = value;
+    notifyListeners();
+    return res;
+  }
+
   Future<void> syncFromUserProfile(UserModel user) async {
     _currentUserId = user.uid;
     if (user.language.isNotEmpty) {
@@ -126,8 +142,19 @@ class LocalSettingsService extends ChangeNotifier {
     if (user.chatBubbleTheme.isNotEmpty) {
       await _prefs.setString(_chatBubbleThemeKey, user.chatBubbleTheme);
     }
+    if (user.widgetFrame.isNotEmpty) {
+      await _prefs.setString(_widgetFrameKey, user.widgetFrame);
+    }
     await _prefs.setBool(_showActiveStatusKey, user.showActiveStatus);
+    await _prefs.setBool(_hapticFeedbackKey, user.hapticFeedback);
+    AppHaptics.isEnabled = user.hapticFeedback;
     notifyListeners();
+  }
+
+  Future<bool> setWidgetFrame(String value) async {
+    final res = await _prefs.setString(_widgetFrameKey, value);
+    notifyListeners();
+    return res;
   }
 
   Future<bool> setShowActiveStatus(bool value) async {
@@ -257,6 +284,9 @@ class LocalSettingsService extends ChangeNotifier {
     await _prefs.remove(_chatBubbleThemeKey);
     await _prefs.remove(_showActiveStatusKey);
     await _prefs.remove(_activeStatusModeKey);
+    await _prefs.remove(_hapticFeedbackKey);
+    await _prefs.remove(_widgetFrameKey);
+    AppHaptics.isEnabled = true;
     notifyListeners();
     return true;
   }

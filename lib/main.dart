@@ -32,6 +32,7 @@ import 'core/services/notification_service.dart';
 import 'core/widgets/in_app_notification_host.dart';
 import 'core/services/exchange_rate_service.dart';
 import 'core/services/fcm_push_service.dart';
+import 'core/services/app_widget_service.dart';
 import 'core/theme/app_scroll_behavior.dart';
 
 Future<void> main() async {
@@ -50,6 +51,7 @@ Future<void> main() async {
   final localSettings = LocalSettingsService();
   await localSettings.init();
   await AppIconService.init();
+  await AppWidgetService.instance.init();
   await InAppNotificationService.instance.ensureLoaded();
   await ExchangeRateService.init();
   await NotificationService.instance.init();

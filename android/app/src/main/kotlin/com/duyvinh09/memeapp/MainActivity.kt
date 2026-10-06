@@ -1,13 +1,17 @@
 package com.duyvinh09.memeapp
 
 import android.content.ComponentName
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.duyvinh09.memeapp/app_icon"
+    private val ICON_CHANNEL = "com.duyvinh09.memeapp/app_icon"
+    private val WIDGET_CHANNEL = "com.duyvinh09.memeapp/widget_click"
+    private var widgetMethodChannel: MethodChannel? = null
 
     private val ICONS = listOf(
         "default" to ".MainActivityDefault",
@@ -22,7 +26,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, ICON_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getCurrentIcon" -> {
                     val current = getCurrentIconKey()
@@ -34,6 +38,33 @@ class MainActivity : FlutterActivity() {
                     result.success(success)
                 }
                 else -> result.notImplemented()
+            }
+        }
+
+        widgetMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).apply {
+            setMethodCallHandler { call, result ->
+                if (call.method == "getInitialUrl") {
+                    val data = intent?.dataString
+                    result.success(data)
+                } else {
+                    result.notImplemented()
+                }
+            }
+        }
+
+        intent?.dataString?.let { uri ->
+            if (uri.startsWith("memeapp://")) {
+                widgetMethodChannel?.invokeMethod("onWidgetClick", uri)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        intent.dataString?.let { uri ->
+            if (uri.startsWith("memeapp://")) {
+                widgetMethodChannel?.invokeMethod("onWidgetClick", uri)
             }
         }
     }

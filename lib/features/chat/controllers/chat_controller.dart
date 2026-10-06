@@ -605,6 +605,51 @@ class ChatController extends ChangeNotifier {
     }
   }
 
+  Future<bool> sendGroupPostReply({
+    required String groupId,
+    required String senderId,
+    required String senderName,
+    required String senderAvatar,
+    required String text,
+    required String postId,
+    String? postImageUrl,
+    String? postCaption,
+    DateTime? postCreatedAt,
+    String? postAuthorName,
+    String? postAuthorAvatar,
+    String? postAuthorFrame,
+    String? postOwnerId,
+  }) async {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) return false;
+
+    _isSending = true;
+    notifyListeners();
+
+    try {
+      final success = await _chatRepository.sendGroupMessage(
+        groupId: groupId,
+        senderId: senderId,
+        senderName: senderName,
+        senderAvatar: senderAvatar,
+        text: trimmed,
+        type: 'post_reply',
+        postId: postId,
+        postImageUrl: postImageUrl,
+        postCaption: postCaption,
+        postCreatedAt: postCreatedAt,
+        postAuthorName: postAuthorName,
+        postAuthorAvatar: postAuthorAvatar,
+        postAuthorFrame: postAuthorFrame,
+        postOwnerId: postOwnerId,
+      );
+      return success;
+    } finally {
+      _isSending = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> sendPostReaction({
     required String postId,
     required String postOwnerId,

@@ -32,4 +32,5 @@ class RouteNames {
   static const chatList = '/chat-list';
   static const rewind = '/rewind';
   static const browseTransactions = '/browse-transactions';
+  static const homeWidgets = '/home-widgets';
 }
