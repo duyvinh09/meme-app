@@ -492,13 +492,30 @@ class TransactionRepository {
           .limit(1)
           .get();
 
-      if (snapshot.docs.isEmpty) return null;
-      final doc = snapshot.docs.first;
-      final data = doc.data();
-      return TransactionModel.fromMap({
-        ...data,
-        'id': data['id'] ?? doc.id,
-      });
+      if (snapshot.docs.isNotEmpty) {
+        final doc = snapshot.docs.first;
+        final data = doc.data();
+        return TransactionModel.fromMap({
+          ...data,
+          'id': data['id'] ?? doc.id,
+        });
+      }
+
+      final docSnap = await _db
+          .collectionGroup('transactions')
+          .where(FieldPath.documentId, isEqualTo: transactionId)
+          .limit(1)
+          .get();
+      if (docSnap.docs.isNotEmpty) {
+        final doc = docSnap.docs.first;
+        final data = doc.data();
+        return TransactionModel.fromMap({
+          ...data,
+          'id': data['id'] ?? doc.id,
+        });
+      }
+
+      return null;
     } catch (e) {
       return null;
     }

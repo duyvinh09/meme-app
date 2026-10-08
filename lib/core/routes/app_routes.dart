@@ -65,7 +65,17 @@ class AppRoutes {
       RouteObserver<PageRoute>();
 
   static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    switch (settings.name) {
+    final rawName = settings.name ?? '';
+    final uri = Uri.tryParse(rawName);
+
+    if (uri != null && uri.scheme == 'memeapp') {
+      AppWidgetService.instance.handleUri(uri);
+      return MaterialPageRoute(
+        builder: (_) => const SplashGate(),
+      );
+    }
+
+    switch (rawName) {
       case RouteNames.splash:
         return MaterialPageRoute(
           builder: (_) => const SplashGate(),
@@ -265,12 +275,15 @@ class AppRoutes {
         );
 
       default:
+        if (uri != null &&
+            (uri.path.contains('moment') ||
+                uri.path.contains('stats') ||
+                uri.path.contains('calendar') ||
+                uri.path.contains('home'))) {
+          AppWidgetService.instance.handleUri(uri);
+        }
         return MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: Center(
-              child: Text('Route not found'),
-            ),
-          ),
+          builder: (_) => const SplashGate(),
         );
     }
   }
@@ -363,6 +376,16 @@ class _SplashGateState extends State<SplashGate> {
     } else if (pendingTarget == 'calendar') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         AppRoutes.navigatorKey.currentState?.pushNamed(RouteNames.calendar);
+      });
+      return MainShell(
+        key: MainShell.mainShellKey,
+        initialIndex: 0,
+      );
+    } else if (pendingTarget == 'moment') {
+      final pendingMomentId =
+          AppWidgetService.instance.consumePendingMomentId();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        AppWidgetService.instance.openMomentViewer(momentId: pendingMomentId);
       });
       return MainShell(
         key: MainShell.mainShellKey,
@@ -467,6 +490,11 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       if (index == 0) {
         _showCaptureFabNow();
       }
+
+      // Pre-warm camera in the background so opening camera is instant without grey delay
+      Future.delayed(const Duration(milliseconds: 300), () {
+        CameraScreen.warmUp();
+      });
     });
   }
 
@@ -476,12 +504,14 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       _updatePresence(true);
       _startPresenceHeartbeat();
       NotificationService.instance.checkAndShowInAppRewindNotification();
+      CameraScreen.warmUp();
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
       _stopPresenceHeartbeat();
       _updatePresence(false);
+      CameraScreen.disposeSharedCamera();
     }
   }
 
@@ -725,6 +755,7 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     isCollapsed: isNavbarCollapsed,
                     onToggle: () {
                       HapticFeedback.selectionClick();
+                      CameraScreen.warmUp();
                       setState(() {
                         isFabMenuOpen = !isFabMenuOpen;
                       });
@@ -735,6 +766,7 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     },
                     onCameraTap: () {
                       setState(() => isFabMenuOpen = false);
+                      CameraScreen.warmUp();
                       Navigator.pushNamed(context, RouteNames.addTransaction);
                     },
                     onChatTap: () {

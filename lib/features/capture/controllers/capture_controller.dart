@@ -238,6 +238,9 @@ class CaptureController extends ChangeNotifier {
     double? longitude,
     bool? isGroupContribution,
     bool? isFrontCamera,
+    File? explicitImageFile,
+    File? explicitVideoFile,
+    String? explicitMediaType,
   }) async {
     try {
       isSaving = true;
@@ -289,6 +292,9 @@ class CaptureController extends ChangeNotifier {
           groupId.isNotEmpty;
 
       final effectiveType = effectiveGroupContribution ? 'expense' : type;
+      final effectiveMediaType = explicitMediaType ?? selectedMediaType;
+      final effectiveImageFile = explicitImageFile ?? (effectiveMediaType == 'image' ? selectedImage : null);
+      final effectiveVideoFile = explicitVideoFile ?? (effectiveMediaType == 'video' ? selectedVideo : null);
 
       final savedTx = await transactionRepository.addTransaction(
         userId: userId,
@@ -299,9 +305,9 @@ class CaptureController extends ChangeNotifier {
         note: note,
         createdAt: now,
 
-        imageFile: selectedMediaType == 'image' ? selectedImage : null,
-        videoFile: selectedMediaType == 'video' ? selectedVideo : null,
-        mediaType: selectedMediaType,
+        imageFile: effectiveImageFile,
+        videoFile: effectiveVideoFile,
+        mediaType: effectiveMediaType,
         durationMs: selectedMediaType == 'video'
             ? selectedVideoDurationMs
             : null,

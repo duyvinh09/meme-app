@@ -5756,6 +5756,54 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Đổi khung widget'**
   String get changeWidgetFrame;
+
+  /// No description provided for @cropSquareTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cắt ảnh vuông'**
+  String get cropSquareTitle;
+
+  /// No description provided for @cropRotateLeft.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xoay trái'**
+  String get cropRotateLeft;
+
+  /// No description provided for @cropRotateRight.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xoay phải'**
+  String get cropRotateRight;
+
+  /// No description provided for @cropFlipHorizontal.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lật ngang'**
+  String get cropFlipHorizontal;
+
+  /// No description provided for @cropFlipVertical.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lật dọc'**
+  String get cropFlipVertical;
+
+  /// No description provided for @cropReset.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt lại'**
+  String get cropReset;
+
+  /// No description provided for @cropDone.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xong'**
+  String get cropDone;
+
+  /// No description provided for @cropFailed.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không thể cắt ảnh. Vui lòng thử lại!'**
+  String get cropFailed;
 }
 
 class _AppLocalizationsDelegate

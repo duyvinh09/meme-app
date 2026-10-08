@@ -24,11 +24,25 @@ class MomentWidgetProvider : AppWidgetProvider() {
             ?: flutterPrefs.getString("flutter.moment_widget_image", null)
             ?: flutterPrefs.getString("moment_widget_image", null)
 
+        val targetId = prefs.getString("moment_target_id", null)
+            ?: flutterPrefs.getString("flutter.moment_target_id", null)
+            ?: flutterPrefs.getString("moment_target_id", null)
+
+        val uriString = if (!targetId.isNullOrEmpty()) {
+            "memeapp://moment?id=$targetId"
+        } else {
+            "memeapp://moment"
+        }
+
         appWidgetIds.forEach { widgetId ->
             val views = RemoteViews(context.packageName, R.layout.moment_widget_layout).apply {
                 val intent = Intent(context, MainActivity::class.java).apply {
                     action = Intent.ACTION_VIEW
-                    data = Uri.parse("memeapp://home")
+                    data = Uri.parse(uriString)
+                    putExtra("route", uriString)
+                    if (!targetId.isNullOrEmpty()) {
+                        putExtra("moment_id", targetId)
+                    }
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
                 val pendingIntent = PendingIntent.getActivity(

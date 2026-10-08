@@ -2525,6 +2525,60 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
     );
   }
 
+  Widget _buildPostReplyHeader(BuildContext context) {
+    final isMe = widget.isMe;
+    final isDark = widget.isDark;
+    final l10n = context.l10n;
+
+    final friendName = widget.friend.name.isNotEmpty
+        ? widget.friend.name
+        : widget.friend.username;
+
+    String headerText;
+    if (isMe) {
+      if (widget.message.postOwnerId == widget.myUid) {
+        headerText = l10n.replyingToSelf;
+      } else {
+        headerText = l10n.replyingToPost(widget.message.postAuthorName?.isNotEmpty == true
+            ? widget.message.postAuthorName!
+            : friendName);
+      }
+    } else {
+      if (widget.message.postOwnerId == widget.myUid) {
+        headerText = '$friendName đã trả lời bài viết của bạn';
+      } else {
+        headerText = '$friendName đã trả lời bài viết của chính họ';
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.reply_rounded,
+            size: 13.5,
+            color: isDark ? Colors.white54 : const Color(0xFF6B7280),
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              headerText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : const Color(0xFF6B7280),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFriendAvatar({bool forceShow = false}) {
     if (widget.isMe) return const SizedBox.shrink();
 
@@ -2632,8 +2686,11 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
       );
     }
 
-    final hasPost = widget.message.postImageUrl != null &&
+    final hasPostImage = widget.message.postImageUrl != null &&
         widget.message.postImageUrl!.isNotEmpty;
+    final isPostReply = widget.message.type == 'post_reply' ||
+        (widget.message.postId != null && widget.message.postId!.isNotEmpty);
+    final hasPost = hasPostImage || isPostReply;
     final localThemeId = context.read<LocalSettingsService>().chatBubbleTheme;
     final msgThemeId = widget.message.bubbleTheme;
     final friendThemeId = widget.friend.chatBubbleTheme;
@@ -2661,6 +2718,7 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildQuotedReplyHeader(),
+          _buildPostReplyHeader(context),
 
           // Full Rounded Post Preview Card (aligned to edge)
           GestureDetector(
@@ -2684,12 +2742,24 @@ class _ChatMessageBubbleState extends State<_ChatMessageBubble>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      widget.message.postImageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Container(color: const Color(0xFF1E2430)),
-                    ),
+                    if (hasPostImage)
+                      Image.network(
+                        widget.message.postImageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Container(color: const Color(0xFF1E2430)),
+                      )
+                    else
+                      Container(
+                        color: const Color(0xFF1E2430),
+                        child: const Center(
+                          child: Icon(
+                            Icons.receipt_long_rounded,
+                            color: Colors.white70,
+                            size: 40,
+                          ),
+                        ),
+                      ),
 
                     // Subtle dark gradient from top and bottom for readability
                     Positioned.fill(

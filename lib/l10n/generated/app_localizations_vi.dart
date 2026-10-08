@@ -3277,4 +3277,28 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get changeWidgetFrame => 'Đổi khung widget';
+
+  @override
+  String get cropSquareTitle => 'Cắt ảnh vuông';
+
+  @override
+  String get cropRotateLeft => 'Xoay trái';
+
+  @override
+  String get cropRotateRight => 'Xoay phải';
+
+  @override
+  String get cropFlipHorizontal => 'Lật ngang';
+
+  @override
+  String get cropFlipVertical => 'Lật dọc';
+
+  @override
+  String get cropReset => 'Đặt lại';
+
+  @override
+  String get cropDone => 'Xong';
+
+  @override
+  String get cropFailed => 'Không thể cắt ảnh. Vui lòng thử lại!';
 }

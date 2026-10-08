@@ -5,8 +5,10 @@ import 'dart:math';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:image/image.dart' as img;
 import 'package:light_compressor_v2/light_compressor_v2.dart';
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import 'locket_config.dart';
 
@@ -223,6 +225,8 @@ class LocketUploadService {
     final mediaType = _detectMediaType(ext);
     if (mediaType == 'video') {
       fileToUpload = await _compressVideoIfNeeded(file);
+    } else if (mediaType == 'image') {
+      fileToUpload = await _compressImageIfNeeded(file);
     }
 
     final session = await _getOrRotateSession();
@@ -278,6 +282,37 @@ class LocketUploadService {
       }
     } catch (e) {
       debugPrint('[LocketUpload] Lỗi trong quá trình nén video: $e -> Dùng file gốc');
+    }
+    return file;
+  }
+
+  Future<File> _compressImageIfNeeded(File file) async {
+    try {
+      final initialBytes = await file.length();
+      final initialMb = initialBytes / (1024 * 1024);
+      debugPrint('[LocketUpload] File ban đầu (image): ${initialMb.toStringAsFixed(2)}MB');
+
+      if (initialMb < 6.0) {
+        return file;
+      }
+
+      debugPrint('[LocketUpload] Ảnh >= 6.0MB (${initialMb.toStringAsFixed(2)}MB) -> Tiến hành nén ảnh...');
+      final tempDir = await getTemporaryDirectory();
+      final compressedPath = await compute(_compressImageIsolate, {
+        'inputPath': file.path,
+        'tempDirPath': tempDir.path,
+      });
+      if (compressedPath != null) {
+        final compressedFile = File(compressedPath);
+        if (await compressedFile.exists()) {
+          final compressedBytes = await compressedFile.length();
+          final compressedMb = compressedBytes / (1024 * 1024);
+          debugPrint('[LocketUpload] Nén ảnh thành công: ${initialMb.toStringAsFixed(2)}MB -> ${compressedMb.toStringAsFixed(2)}MB');
+          return compressedFile;
+        }
+      }
+    } catch (e) {
+      debugPrint('[LocketUpload] Lỗi trong quá trình nén ảnh: $e -> Dùng file gốc');
     }
     return file;
   }
@@ -442,5 +477,37 @@ class LocketUploadService {
 
   void close() {
     _client.close();
+  }
+}
+
+Future<String?> _compressImageIsolate(Map<String, dynamic> params) async {
+  try {
+    final inputPath = params['inputPath'] as String;
+    final tempDirPath = params['tempDirPath'] as String;
+    final rawBytes = File(inputPath).readAsBytesSync();
+    var imgObj = img.decodeImage(rawBytes);
+    if (imgObj == null) return null;
+
+    imgObj = img.bakeOrientation(imgObj);
+
+    // Giới hạn độ phân giải nếu ảnh quá lớn (> 2048px)
+    final maxDim = max(imgObj.width, imgObj.height);
+    if (maxDim > 2048) {
+      if (imgObj.width >= imgObj.height) {
+        imgObj = img.copyResize(imgObj, width: 2048);
+      } else {
+        imgObj = img.copyResize(imgObj, height: 2048);
+      }
+    }
+
+    final compressedBytes = img.encodeJpg(imgObj, quality: 82);
+    final outPath =
+        '$tempDirPath/compressed_img_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final outFile = File(outPath);
+    outFile.writeAsBytesSync(compressedBytes, flush: true);
+    return outPath;
+  } catch (e) {
+    debugPrint('[LocketUpload] Lỗi trong _compressImageIsolate: $e');
+    return null;
   }
 }

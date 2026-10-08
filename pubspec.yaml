@@ -30,8 +30,6 @@ dependencies:
   share_plus: ^13.3.0
   path_provider: ^2.1.5
 
-  flutter_map: ^8.2.2
-  latlong2: ^0.10.1
   geolocator: ^14.0.2
   geocoding: ^5.0.0
   sensors_plus: ^7.1.1
@@ -57,6 +55,7 @@ dependencies:
   iconsax_plus: ^1.0.0
   package_info_plus: ^10.2.2
   home_widget: ^0.10.0
+  google_maps_flutter: ^2.18.1
 
 dev_dependencies:
   flutter_test:

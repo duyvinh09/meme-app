@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../constants/app_icon_registry.dart';
 import '../services/post_publishing_service.dart';
 
 class PostPublishingBannerHost extends StatefulWidget {
@@ -300,6 +301,89 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
     );
   }
 
+  static const Map<String, Map<String, dynamic>> _defaultCategoryMeta = {
+    'Ăn uống': {
+      'icon': Icons.shopping_cart_outlined,
+      'color': Color(0xFF59D46F),
+    },
+    'Food': {
+      'icon': Icons.shopping_cart_outlined,
+      'color': Color(0xFF59D46F),
+    },
+    'Mua sắm': {
+      'icon': Icons.shopping_bag_outlined,
+      'color': Color(0xFFFF4D8D),
+    },
+    'Shopping': {
+      'icon': Icons.shopping_bag_outlined,
+      'color': Color(0xFFFF4D8D),
+    },
+    'Di chuyển': {
+      'icon': Icons.directions_bus_outlined,
+      'color': Color(0xFF2F9BFF),
+    },
+    'Đi lại': {
+      'icon': Icons.directions_bus_outlined,
+      'color': Color(0xFF2F9BFF),
+    },
+    'Transport': {
+      'icon': Icons.directions_bus_outlined,
+      'color': Color(0xFF2F9BFF),
+    },
+    'Giải trí': {
+      'icon': Icons.movie_outlined,
+      'color': Color(0xFFFFA52F),
+    },
+    'Entertainment': {
+      'icon': Icons.movie_outlined,
+      'color': Color(0xFFFFA52F),
+    },
+    'Giáo dục': {
+      'icon': Icons.menu_book_outlined,
+      'color': Color(0xFF8B7CFF),
+    },
+    'Học tập': {
+      'icon': Icons.menu_book_outlined,
+      'color': Color(0xFF8B7CFF),
+    },
+    'Education': {
+      'icon': Icons.menu_book_outlined,
+      'color': Color(0xFF8B7CFF),
+    },
+    'Lương': {
+      'icon': Icons.payments_outlined,
+      'color': Color(0xFF7DFFA1),
+    },
+    'Salary': {
+      'icon': Icons.payments_outlined,
+      'color': Color(0xFF7DFFA1),
+    },
+    'Quà tặng': {
+      'icon': Icons.card_giftcard_rounded,
+      'color': Color(0xFFFF4D4D),
+    },
+    'Gift': {
+      'icon': Icons.card_giftcard_rounded,
+      'color': Color(0xFFFF4D4D),
+    },
+    'Quỹ nhóm': {
+      'icon': Icons.groups_rounded,
+      'color': Color(0xFFFFD166),
+    },
+    'Group Fund': {
+      'icon': Icons.groups_rounded,
+      'color': Color(0xFFFFD166),
+    },
+    'Khác': {
+      'icon': Icons.more_horiz_rounded,
+      'color': Color(0xFFAAAAAA),
+    },
+    'Other': {
+      'icon': Icons.more_horiz_rounded,
+      'color': Color(0xFFAAAAAA),
+    },
+  };
+
   Widget _buildMediaThumbnailWithClip(PostPublishingService service) {
     final displayFile = service.thumbnailFile ??
         (!service.isVideo ? service.mediaFile : null);
@@ -338,10 +422,10 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
                     width: 42,
                     height: 42,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _buildFallbackThumbnail(service.isVideo),
+                    errorBuilder: (_, __, ___) => _buildFallbackThumbnail(service),
                   )
                 else
-                  _buildFallbackThumbnail(service.isVideo),
+                  _buildFallbackThumbnail(service),
 
                 // Video play indicator icon overlay
                 if (service.isVideo)
@@ -384,15 +468,69 @@ class _PostPublishingBannerHostState extends State<PostPublishingBannerHost>
     );
   }
 
-  Widget _buildFallbackThumbnail(bool isVideo) {
+  Widget _buildFallbackThumbnail(PostPublishingService service) {
+    if (service.isVideo) {
+      return Container(
+        width: 42,
+        height: 42,
+        color: const Color(0xFF333642),
+        child: const Icon(
+          Icons.videocam_rounded,
+          color: Colors.white54,
+          size: 20,
+        ),
+      );
+    }
+
+    Color catColor = const Color(0xFF79AFFF);
+    if (service.categoryColorHex != null &&
+        service.categoryColorHex!.trim().isNotEmpty) {
+      var cleaned = service.categoryColorHex!.trim().replaceAll('#', '');
+      if (cleaned.length == 6) cleaned = 'FF$cleaned';
+      if (cleaned.length == 8) {
+        try {
+          catColor = Color(int.parse(cleaned, radix: 16));
+        } catch (_) {}
+      }
+    } else if (service.category != null && service.category!.trim().isNotEmpty) {
+      final meta = _defaultCategoryMeta[service.category!.trim()];
+      if (meta != null && meta['color'] is Color) {
+        catColor = meta['color'] as Color;
+      }
+    }
+
+    IconData catIcon = Icons.account_balance_wallet_rounded;
+    if (service.categoryIconCodePoint != null &&
+        service.categoryIconCodePoint! > 0) {
+      catIcon = AppIconRegistry.fromCodePoint(service.categoryIconCodePoint!);
+    } else if (service.category != null && service.category!.trim().isNotEmpty) {
+      final meta = _defaultCategoryMeta[service.category!.trim()];
+      if (meta != null && meta['icon'] is IconData) {
+        catIcon = meta['icon'] as IconData;
+      }
+    }
+
     return Container(
       width: 42,
       height: 42,
-      color: const Color(0xFF333642),
-      child: Icon(
-        isVideo ? Icons.videocam_rounded : Icons.image_rounded,
-        color: Colors.white54,
-        size: 20,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(9),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            catColor.withValues(alpha: 0.38),
+            catColor.withValues(alpha: 0.18),
+            const Color(0xFF1B1D24),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Icon(
+          catIcon,
+          size: 21,
+          color: catColor,
+        ),
       ),
     );
   }

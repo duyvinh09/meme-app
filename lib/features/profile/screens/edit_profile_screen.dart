@@ -12,6 +12,7 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../auth/controllers/auth_controller.dart';
+import '../../capture/screens/square_crop_screen.dart';
 import '../controllers/profile_controller.dart';
 
 class EditProfileScreen extends StatelessWidget {
@@ -86,13 +87,25 @@ class _EditProfileScreenBodyState extends State<_EditProfileScreenBody> {
 
     final file = await picker.pickImage(
       source: ImageSource.gallery,
-      imageQuality: 80,
+      imageQuality: 95,
     );
 
-    if (file == null) return;
+    if (file == null || !mounted) return;
+
+    final croppedFile = await Navigator.push<File>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SquareCropScreen(
+          imageFile: File(file.path),
+          title: 'Cắt ảnh đại diện',
+        ),
+      ),
+    );
+
+    if (croppedFile == null || !mounted) return;
 
     setState(() {
-      selectedAvatar = File(file.path);
+      selectedAvatar = croppedFile;
     });
   }
 

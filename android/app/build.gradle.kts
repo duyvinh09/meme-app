@@ -1,3 +1,6 @@
+import java.util.Base64
+import java.nio.charset.StandardCharsets
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -23,6 +26,33 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    var googleMapsApiKey = ""
+    val dartDefines = project.findProperty("dart-defines") as? String
+    if (dartDefines != null) {
+        dartDefines.split(",").forEach { encoded ->
+            try {
+                val decoded = String(Base64.getDecoder().decode(encoded), StandardCharsets.UTF_8)
+                val parts = decoded.split("=", limit = 2)
+                if (parts.size == 2 && parts[0] == "GOOGLE_MAPS_API_KEY") {
+                    googleMapsApiKey = parts[1]
+                }
+            } catch (_: Exception) {}
+        }
+    }
+    if (googleMapsApiKey.isEmpty()) {
+        val envFile = rootProject.file("../.env.json")
+        if (envFile.exists()) {
+            try {
+                val content = envFile.readText()
+                val regex = Regex(""""GOOGLE_MAPS_API_KEY"\s*:\s*"([^"]+)"""")
+                val match = regex.find(content)
+                if (match != null) {
+                    googleMapsApiKey = match.groupValues[1]
+                }
+            } catch (_: Exception) {}
+        }
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.duyvinh09.memeapp"
@@ -32,6 +62,8 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["GOOGLE_MAPS_API_KEY"] = googleMapsApiKey
     }
 
     buildTypes {

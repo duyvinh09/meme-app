@@ -452,7 +452,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                     final isCurrentPostOwner = currentTransaction != null &&
                         currentTransaction.userId == myUid;
 
-                    // Handle jump to tagged post if opened via mention notification
+                    // Handle jump to tagged/target post if opened via mention notification, chat, etc.
                     final targetPostId = feed.targetPostId;
                     if (targetPostId != null && targetPostId.isNotEmpty) {
                       if (selectedUserId != 'all') {
@@ -468,20 +468,21 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                         final targetIdx = filteredTransactions.indexWhere((tx) => tx.id == targetPostId);
                         if (targetIdx != -1) {
                           feed.targetPostId = null;
+                          _currentPageIndex = targetIdx;
+                          _topPostId = filteredTransactions.first.id;
+                          _newPostsCount = 0;
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (!mounted) return;
                             if (_pageController.hasClients) {
-                              _pageController.jumpToPage(targetIdx);
-                              setState(() {
-                                _currentPageIndex = targetIdx;
-                              });
+                              try {
+                                _pageController.jumpToPage(targetIdx);
+                              } catch (_) {}
                             } else {
-                              Future.delayed(const Duration(milliseconds: 150), () {
+                              Future.delayed(const Duration(milliseconds: 100), () {
                                 if (mounted && _pageController.hasClients) {
-                                  _pageController.jumpToPage(targetIdx);
-                                  setState(() {
-                                    _currentPageIndex = targetIdx;
-                                  });
+                                  try {
+                                    _pageController.jumpToPage(targetIdx);
+                                  } catch (_) {}
                                 }
                               });
                             }
@@ -717,6 +718,8 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                                                 },
                                                 onSendReply: (text) async {
                                                   final authUser = context.read<AuthController>().user;
+                                                  final chatCtrl = context.read<ChatController>();
+                                                  final userRepo = context.read<UserRepository>();
                                                   final myUid = authUser?.uid ?? '';
                                                   final profile = context.read<ProfileController>().user;
                                                   final myName = (profile?.name.trim().isNotEmpty == true)
@@ -725,7 +728,7 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                                                           ? profile!.username.trim()
                                                           : (authUser?.displayName?.trim().isNotEmpty == true
                                                               ? authUser!.displayName!.trim()
-                                                              : 'Bạn'));
+                                                               : 'Bạn'));
                                                   final myAvatar = profile?.avatarUrl ?? '';
 
                                                   final isGroupPost = (currentTransaction.privacy == 'group') ||
@@ -733,12 +736,34 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                                                           currentTransaction.groupId!.trim().isNotEmpty);
                                                   final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
+                                                  // Robustly resolve author information (even if author is not a direct friend)
+                                                  String finalAuthorName = authorName;
+                                                  String finalAuthorAvatar = authorAvatar;
+                                                  String finalAuthorFrame = authorFrame;
+
+                                                  if ((finalAuthorName.isEmpty || finalAuthorName == 'Bạn bè' || finalAuthorName == 'Thành viên') &&
+                                                      currentTransaction.userId.isNotEmpty &&
+                                                      currentTransaction.userId != myUid) {
+                                                    try {
+                                                      final fetchedUser = await userRepo.getUserProfile(currentTransaction.userId);
+                                                      if (fetchedUser != null) {
+                                                        finalAuthorName = fetchedUser.name.trim().isNotEmpty
+                                                            ? fetchedUser.name.trim()
+                                                            : (fetchedUser.username.trim().isNotEmpty
+                                                                ? fetchedUser.username.trim()
+                                                                : 'Thành viên');
+                                                        finalAuthorAvatar = fetchedUser.avatarUrl;
+                                                        finalAuthorFrame = fetchedUser.avatarFrame;
+                                                      }
+                                                    } catch (_) {}
+                                                  }
+
                                                   bool success = false;
                                                   if (isGroupPost &&
                                                       currentTransaction.groupId != null &&
                                                       currentTransaction.groupId!.trim().isNotEmpty) {
                                                     final gId = currentTransaction.groupId!.trim();
-                                                    success = await context.read<ChatController>().sendGroupPostReply(
+                                                    success = await chatCtrl.sendGroupPostReply(
                                                       groupId: gId,
                                                       senderId: myUid,
                                                       senderName: myName,
@@ -748,13 +773,13 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                                                       postImageUrl: currentTransaction.displayImageUrl,
                                                       postCaption: currentTransaction.caption,
                                                       postCreatedAt: currentTransaction.createdAt,
-                                                      postAuthorName: authorName,
-                                                      postAuthorAvatar: authorAvatar,
-                                                      postAuthorFrame: authorFrame,
+                                                      postAuthorName: finalAuthorName,
+                                                      postAuthorAvatar: finalAuthorAvatar,
+                                                      postAuthorFrame: finalAuthorFrame,
                                                       postOwnerId: currentTransaction.userId,
                                                     );
                                                   } else {
-                                                    success = await context.read<ChatController>().sendPostReply(
+                                                    success = await chatCtrl.sendPostReply(
                                                       myUid: myUid,
                                                       friendUid: currentTransaction.userId,
                                                       text: text,
@@ -762,9 +787,9 @@ class _FeedScreenState extends State<FeedScreen> with WidgetsBindingObserver {
                                                       postImageUrl: currentTransaction.displayImageUrl,
                                                       postCaption: currentTransaction.caption,
                                                       postCreatedAt: currentTransaction.createdAt,
-                                                      postAuthorName: authorName,
-                                                      postAuthorAvatar: authorAvatar,
-                                                      postAuthorFrame: authorFrame,
+                                                      postAuthorName: finalAuthorName,
+                                                      postAuthorAvatar: finalAuthorAvatar,
+                                                      postAuthorFrame: finalAuthorFrame,
                                                       postOwnerId: currentTransaction.userId,
                                                     );
                                                   }

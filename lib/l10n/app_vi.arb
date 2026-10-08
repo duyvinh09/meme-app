@@ -2024,5 +2024,13 @@
   "previewMomentCaptionSample": "Cà phê sáng cùng team ☕",
   "widgetFrameTitle": "Khung widget",
   "widgetFrameSubtitle": "Đổi màu viền gradient đẹp mắt cho widget màn hình chính",
-  "changeWidgetFrame": "Đổi khung widget"
+  "changeWidgetFrame": "Đổi khung widget",
+  "cropSquareTitle": "Cắt ảnh vuông",
+  "cropRotateLeft": "Xoay trái",
+  "cropRotateRight": "Xoay phải",
+  "cropFlipHorizontal": "Lật ngang",
+  "cropFlipVertical": "Lật dọc",
+  "cropReset": "Đặt lại",
+  "cropDone": "Xong",
+  "cropFailed": "Không thể cắt ảnh. Vui lòng thử lại!"
 }

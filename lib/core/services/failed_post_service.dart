@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -14,6 +15,7 @@ import '../../features/budget/controllers/budget_controller.dart';
 import '../../features/feed/controllers/feed_controller.dart';
 import '../../features/profile/controllers/profile_controller.dart';
 import '../constants/app_durations.dart';
+import 'app_widget_service.dart';
 
 class FailedPostService extends ChangeNotifier {
   static final FailedPostService instance = FailedPostService._();
@@ -365,6 +367,12 @@ class FailedPostService extends ChangeNotifier {
       feedCtrl.addNewTransaction(savedTx);
       budgetCtrl.load(authUid);
       profileCtrl.refreshUser(authUid);
+
+      // Update home widgets after successfully retrying post upload
+      unawaited(AppWidgetService.instance.updateWidgets(
+        transactions: [savedTx, ...AppWidgetService.instance.cachedTransactions],
+        feedTransactions: [savedTx, ...AppWidgetService.instance.cachedFeedTransactions],
+      ));
     } catch (e) {
       debugPrint('FailedPostService retryPost error: $e');
       messenger?.showSnackBar(

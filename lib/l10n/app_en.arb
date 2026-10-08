@@ -2024,5 +2024,13 @@
   "previewMomentCaptionSample": "Morning coffee with team ☕",
   "widgetFrameTitle": "Widget Frame",
   "widgetFrameSubtitle": "Customize vibrant gradient borders for your Home Screen widget",
-  "changeWidgetFrame": "Change widget frame"
+  "changeWidgetFrame": "Change widget frame",
+  "cropSquareTitle": "Square Crop",
+  "cropRotateLeft": "Rotate Left",
+  "cropRotateRight": "Rotate Right",
+  "cropFlipHorizontal": "Flip H",
+  "cropFlipVertical": "Flip V",
+  "cropReset": "Reset",
+  "cropDone": "Done",
+  "cropFailed": "Unable to crop image. Please try again!"
 }

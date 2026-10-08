@@ -27,9 +27,9 @@ class LocationService {
     bool requestPermissionIfNeeded = true,
   }) async {
     try {
-      // 0. Use fresh cache if obtained within last 45 seconds
+      // 0. Use fresh cache if obtained within last 120 seconds
       if (_cachedLocation != null && _lastFetchTime != null) {
-        if (DateTime.now().difference(_lastFetchTime!).inSeconds < 45) {
+        if (DateTime.now().difference(_lastFetchTime!).inSeconds < 120) {
           return _cachedLocation;
         }
       }
@@ -71,30 +71,19 @@ class LocationService {
 
       Position? position;
 
-      // 1. Try fast last known position as fallback candidate
+      // 1. Fast last known position
       final lastKnown = await Geolocator.getLastKnownPosition();
 
-      // 2. Fetch fresh position with multi-stage accuracy
+      // 2. Try fast fresh position (2s timeout), fallback to lastKnown
       try {
         position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.medium,
-            timeLimit: Duration(seconds: 10),
+            timeLimit: Duration(seconds: 2),
           ),
         );
       } catch (e) {
-        debugPrint('Medium accuracy position error: $e, trying low accuracy...');
-        try {
-          position = await Geolocator.getCurrentPosition(
-            locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.low,
-              timeLimit: Duration(seconds: 5),
-            ),
-          );
-        } catch (e2) {
-          debugPrint('Low accuracy position error: $e2');
-          position = lastKnown;
-        }
+        position = lastKnown;
       }
 
       position ??= lastKnown;
@@ -159,7 +148,7 @@ class LocationService {
     // 2. Fallback to OpenStreetMap Reverse Geocoding API if native geocoder fails
     try {
       final uri = Uri.parse(
-        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$latitude&lon=$longitude&zoom=16&addressdetails=1',
+        'https://nominatim.openstreetmap.org/reverse?format=json&lat=$latitude&lon=$longitude&zoom=18&addressdetails=1',
       );
 
       final response = await http.get(

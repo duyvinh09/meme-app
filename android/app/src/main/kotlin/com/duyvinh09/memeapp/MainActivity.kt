@@ -44,7 +44,7 @@ class MainActivity : FlutterActivity() {
         widgetMethodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WIDGET_CHANNEL).apply {
             setMethodCallHandler { call, result ->
                 if (call.method == "getInitialUrl") {
-                    val data = intent?.dataString
+                    val data = intent?.dataString ?: intent?.getStringExtra("route")
                     result.success(data)
                 } else {
                     result.notImplemented()
@@ -52,20 +52,18 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        intent?.dataString?.let { uri ->
-            if (uri.startsWith("memeapp://")) {
-                widgetMethodChannel?.invokeMethod("onWidgetClick", uri)
-            }
+        val initialUri = intent?.dataString ?: intent?.getStringExtra("route")
+        if (initialUri != null && initialUri.startsWith("memeapp://")) {
+            widgetMethodChannel?.invokeMethod("onWidgetClick", initialUri)
         }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        intent.dataString?.let { uri ->
-            if (uri.startsWith("memeapp://")) {
-                widgetMethodChannel?.invokeMethod("onWidgetClick", uri)
-            }
+        val uri = intent.dataString ?: intent.getStringExtra("route")
+        if (uri != null && uri.startsWith("memeapp://")) {
+            widgetMethodChannel?.invokeMethod("onWidgetClick", uri)
         }
     }
 

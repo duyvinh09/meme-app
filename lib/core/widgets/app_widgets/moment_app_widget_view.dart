@@ -54,68 +54,68 @@ class MomentAppWidgetView extends StatelessWidget {
 
   static const Map<String, Map<String, dynamic>> _defaultCategoryMeta = {
     'Ăn uống': {
-      'icon': Icons.restaurant_rounded,
-      'color': Color(0xFFFF9F43),
+      'icon': Icons.shopping_cart_outlined,
+      'color': Color(0xFF59D46F),
     },
     'Food': {
-      'icon': Icons.restaurant_rounded,
-      'color': Color(0xFFFF9F43),
+      'icon': Icons.shopping_cart_outlined,
+      'color': Color(0xFF59D46F),
     },
     'Mua sắm': {
-      'icon': Icons.shopping_bag_rounded,
-      'color': Color(0xFFFF5252),
+      'icon': Icons.shopping_bag_outlined,
+      'color': Color(0xFFFF4D8D),
     },
     'Shopping': {
-      'icon': Icons.shopping_bag_rounded,
-      'color': Color(0xFFFF5252),
-    },
-    'Di chuyển': {
-      'icon': Icons.directions_car_rounded,
-      'color': Color(0xFF48DBFB),
+      'icon': Icons.shopping_bag_outlined,
+      'color': Color(0xFFFF4D8D),
     },
     'Đi lại': {
-      'icon': Icons.directions_car_rounded,
-      'color': Color(0xFF48DBFB),
+      'icon': Icons.directions_bus_outlined,
+      'color': Color(0xFF2F9BFF),
+    },
+    'Di chuyển': {
+      'icon': Icons.directions_bus_outlined,
+      'color': Color(0xFF2F9BFF),
     },
     'Transport': {
-      'icon': Icons.directions_car_rounded,
-      'color': Color(0xFF48DBFB),
+      'icon': Icons.directions_bus_outlined,
+      'color': Color(0xFF2F9BFF),
     },
     'Giải trí': {
-      'icon': Icons.sports_esports_rounded,
-      'color': Color(0xFF9B59B6),
+      'icon': Icons.movie_outlined,
+      'color': Color(0xFFFFA52F),
     },
     'Entertainment': {
-      'icon': Icons.sports_esports_rounded,
-      'color': Color(0xFF9B59B6),
+      'icon': Icons.movie_outlined,
+      'color': Color(0xFFFFA52F),
     },
     'Giáo dục': {
-      'icon': Icons.school_rounded,
-      'color': Color(0xFF2ECC71),
+      'icon': Icons.menu_book_outlined,
+      'color': Color(0xFF8B7CFF),
     },
     'Học tập': {
-      'icon': Icons.school_rounded,
-      'color': Color(0xFF2ECC71),
+      'icon': Icons.menu_book_outlined,
+      'color': Color(0xFF8B7CFF),
     },
     'Education': {
-      'icon': Icons.school_rounded,
-      'color': Color(0xFF2ECC71),
+      'icon': Icons.menu_book_outlined,
+      'color': Color(0xFF8B7CFF),
     },
     'Lương': {
-      'icon': Icons.payments_rounded,
-      'color': Color(0xFF10B981),
+      'icon': Icons.payments_outlined,
+      'color': Color(0xFF7DFFA1),
     },
     'Salary': {
-      'icon': Icons.payments_rounded,
-      'color': Color(0xFF10B981),
+      'icon': Icons.payments_outlined,
+      'color': Color(0xFF7DFFA1),
     },
     'Quà tặng': {
       'icon': Icons.card_giftcard_rounded,
-      'color': Color(0xFFFF6B6B),
+      'color': Color(0xFFFF4D4D),
     },
     'Gift': {
       'icon': Icons.card_giftcard_rounded,
-      'color': Color(0xFFFF6B6B),
+      'color': Color(0xFFFF4D4D),
     },
     'Quỹ nhóm': {
       'icon': Icons.groups_rounded,
@@ -143,7 +143,7 @@ class MomentAppWidgetView extends StatelessWidget {
     if (meta != null && meta['icon'] is IconData) {
       return meta['icon'] as IconData;
     }
-    return Icons.account_balance_wallet_rounded;
+    return Icons.account_balance_wallet_outlined;
   }
 
   Color _resolveCategoryColor() {
@@ -162,7 +162,16 @@ class MomentAppWidgetView extends StatelessWidget {
     if (meta != null && meta['color'] is Color) {
       return meta['color'] as Color;
     }
-    return const Color(0xFF79AFFF);
+    const colors = [
+      Color(0xFF79AFFF),
+      Color(0xFF7CC486),
+      Color(0xFFFF8B8B),
+      Color(0xFFFFB457),
+      Color(0xFFB466CB),
+      Color(0xFF1CC5C0),
+    ];
+    final index = data.category.hashCode.abs() % colors.length;
+    return colors[index];
   }
 
   @override
@@ -217,20 +226,13 @@ class MomentAppWidgetView extends StatelessWidget {
                           : const Color(0xFFE5E9F2),
                       width: 1,
                     ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.20),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(hasFrame ? (26 - borderWidth) : 25),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 1. Background (Image OR Category-Themed Card)
+                  // 1. Background (Image OR Feed-identical Category-Themed Gradient Card)
                   if (data.decodedImage != null) ...[
                     RawImage(
                       image: data.decodedImage!,
@@ -293,96 +295,121 @@ class MomentAppWidgetView extends StatelessWidget {
                         ),
                       ),
                   ] else ...[
-                    // Category-themed card background when there's no photo/video
+                    // Category-themed card background identical to Feed TransactionMomentImage
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: isDark
-                              ? [
-                                  catColor.withValues(alpha: 0.28),
-                                  const Color(0xFF14151B),
-                                  const Color(0xFF0F1015),
-                                ]
-                              : [
-                                  catColor.withValues(alpha: 0.18),
-                                  const Color(0xFFF6F8FC),
-                                  const Color(0xFFEDF2F9),
-                                ],
+                          colors: [
+                            catColor.withValues(alpha: 0.96),
+                            catColor.withValues(alpha: 0.72),
+                            const Color(0xFF20232C),
+                          ],
                         ),
                       ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 22),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: catColor.withValues(alpha: 0.24),
-                                  border: Border.all(
-                                    color: catColor.withValues(alpha: 0.55),
-                                    width: 2.0,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: catColor.withValues(alpha: 0.35),
-                                      blurRadius: 22,
-                                      offset: const Offset(0, 4),
-                                    ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Positioned.fill(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.08),
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.22),
                                   ],
                                 ),
-                                child: Icon(
-                                  catIcon,
-                                  size: 42,
-                                  color: catColor,
-                                ),
                               ),
-                              if (data.category.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  data.category,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontFamily: 'ProximaSoft',
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w900,
-                                    color: isDark
-                                        ? Colors.white
-                                        : const Color(0xFF1E2235),
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                              ],
-                            ],
+                            ),
                           ),
-                        ),
+                          Center(
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 78,
+                                    height: 78,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withValues(alpha: 0.18),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.26),
+                                        width: 1.8,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Icon(
+                                        catIcon,
+                                        size: 40,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                  if (data.category.isNotEmpty) ...[
+                                    const SizedBox(height: 10),
+                                    Text(
+                                      data.category,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontFamily: 'ProximaSoft',
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white,
+                                        height: 1.05,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
 
                   // 2. Dark Overlay Gradients for Readability
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: hasImage ? 0.45 : 0.25),
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: hasImage ? 0.85 : 0.65),
-                          ],
-                          stops: const [0.0, 0.45, 1.0],
+                  if (hasImage)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.45),
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.85),
+                            ],
+                            stops: const [0.0, 0.45, 1.0],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (isDark)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.35),
+                            ],
+                            stops: const [0.55, 1.0],
+                          ),
                         ),
                       ),
                     ),
-                  ),
 
                   // 3. Top Row: Streak Badge (Left) & Translucent Income/Expense Badge (Right)
                   Positioned(
@@ -503,35 +530,43 @@ class MomentAppWidgetView extends StatelessWidget {
                               fontFamily: 'ProximaSoft',
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white.withValues(alpha: 0.8),
+                              color: Colors.white.withValues(alpha: 0.85),
                             ),
                           ),
                           const SizedBox(height: 2),
                         ],
 
                         // Main Caption Text
-                        Text(
-                          data.hasTransaction && data.caption.isNotEmpty
-                              ? data.caption
-                              : (data.hasTransaction
-                                  ? (data.category.isNotEmpty
-                                      ? data.category
-                                      : (isExpense
-                                          ? (data.isEn ? 'New Expense' : 'Chi tiêu mới')
-                                          : (data.isEn ? 'New Income' : 'Thu nhập mới')))
-                                  : (data.isEn
-                                      ? 'Tap to add spending 📸'
-                                      : 'Chạm để thêm chi tiêu 📸')),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'ProximaSoft',
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            height: 1.2,
-                          ),
-                        ),
+                        () {
+                          final bottomText = data.hasTransaction
+                              ? (data.caption.isNotEmpty
+                                  ? data.caption
+                                  : (hasImage
+                                      ? (data.category.isNotEmpty
+                                          ? data.category
+                                          : (isExpense
+                                              ? (data.isEn ? 'New Expense' : 'Chi tiêu mới')
+                                              : (data.isEn ? 'New Income' : 'Thu nhập mới')))
+                                      : ''))
+                              : (data.isEn
+                                  ? 'Tap to add spending 📸'
+                                  : 'Chạm để thêm chi tiêu 📸');
+
+                          if (bottomText.isEmpty) return const SizedBox.shrink();
+
+                          return Text(
+                            bottomText,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'ProximaSoft',
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          );
+                        }(),
                       ],
                     ),
                   ),

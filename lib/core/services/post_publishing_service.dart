@@ -11,6 +11,7 @@ import '../../features/feed/controllers/feed_controller.dart';
 import '../../features/profile/controllers/profile_controller.dart';
 import '../routes/app_routes.dart';
 import '../routes/route_names.dart';
+import 'app_widget_service.dart';
 
 enum PostPublishStatus {
   idle,
@@ -34,6 +35,15 @@ class PostPublishingService extends ChangeNotifier {
 
   bool _isVideo = false;
   bool get isVideo => _isVideo;
+
+  String? _category;
+  String? get category => _category;
+
+  int? _categoryIconCodePoint;
+  int? get categoryIconCodePoint => _categoryIconCodePoint;
+
+  String? _categoryColorHex;
+  String? get categoryColorHex => _categoryColorHex;
 
   bool _isFinalizing = false;
   bool get isFinalizing => _isFinalizing;
@@ -59,11 +69,17 @@ class PostPublishingService extends ChangeNotifier {
     File? mediaFile,
     File? thumbnailFile,
     bool isVideo = false,
+    String? category,
+    int? categoryIconCodePoint,
+    String? categoryColorHex,
   }) {
     _dismissTimer?.cancel();
     _mediaFile = mediaFile;
     _thumbnailFile = thumbnailFile;
     _isVideo = isVideo;
+    _category = category;
+    _categoryIconCodePoint = categoryIconCodePoint;
+    _categoryColorHex = categoryColorHex;
     _postId = null;
     _createdTransaction = null;
     _errorMessage = null;
@@ -89,6 +105,9 @@ class PostPublishingService extends ChangeNotifier {
         if (tx != null) {
           _createdTransaction = tx;
           _postId = tx.id;
+          _category ??= tx.category;
+          _categoryIconCodePoint ??= tx.categoryIconCodePoint;
+          _categoryColorHex ??= tx.categoryColorHex;
           _status = PostPublishStatus.success;
           notifyListeners();
 
@@ -103,6 +122,12 @@ class PostPublishingService extends ChangeNotifier {
               navContext.read<ProfileController>().refreshUser(uid);
             }
           }
+
+          // Trigger home widget update after uploading moment/transaction
+          unawaited(AppWidgetService.instance.updateWidgets(
+            transactions: [tx, ...AppWidgetService.instance.cachedTransactions],
+            feedTransactions: [tx, ...AppWidgetService.instance.cachedFeedTransactions],
+          ));
 
           _startAutoDismissTimer(const Duration(seconds: 5));
         } else {
@@ -204,6 +229,9 @@ class PostPublishingService extends ChangeNotifier {
     _mediaFile = null;
     _thumbnailFile = null;
     _isVideo = false;
+    _category = null;
+    _categoryIconCodePoint = null;
+    _categoryColorHex = null;
     _isFinalizing = false;
     _postId = null;
     _createdTransaction = null;

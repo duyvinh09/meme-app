@@ -2242,7 +2242,8 @@ class _GroupChatConversationScreenState
                                             _fetchSenderThemeIfNeeded,
                                         senderBubbleThemeCache:
                                             _senderBubbleThemeCache,
-                                        onTapPost: (postId) => _navigateToPost(postId),
+                                        onTapPost: (postId) =>
+                                            _handleSystemPostTap(postId, msg),
                                         memberCache: _memberCache,
                                         fetchMemberIfNeeded: _fetchMemberIfNeeded,
                                         onTapMention: (tag) => _showUserMentionBottomSheet(tag),
@@ -2896,9 +2897,13 @@ class _GroupChatConversationScreenState
     });
   }
 
-  void _navigateToPost(String postId) {
+  void _navigateToPost(String postId, {TransactionModel? transaction}) {
     HapticFeedback.lightImpact();
-    context.read<FeedController>().setTargetPostId(postId);
+    context.read<FeedController>().setTargetPostId(
+          postId,
+          groupId: widget.groupId,
+          preloadedTx: transaction,
+        );
     Navigator.of(context).pushNamedAndRemoveUntil(
       RouteNames.mainShell,
       (route) => false,
@@ -2943,7 +2948,7 @@ class _GroupChatConversationScreenState
     if (!mounted) return;
 
     if (isFriend) {
-      _navigateToPost(postId);
+      _navigateToPost(postId, transaction: tx);
     } else {
       _showMomentDetailModal(
         postId: postId,
@@ -3335,14 +3340,65 @@ class _GroupChatConversationScreenState
 
                       const SizedBox(height: 18),
 
-                      // Action Button (Send friend request or Close)
-                      if (authorUid != null && authorUid.isNotEmpty)
-                        _buildMomentAddFriendButton(
-                          authorUid: authorUid,
-                          author: author,
-                          isDark: isDark,
-                          l10n: l10n,
-                        ),
+                      // Action Buttons: Reply to Moment & Friend Request
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(sheetCtx);
+                                setState(() {
+                                  _replyingToMessage = null;
+                                  _currentPostReply = tx ??
+                                      TransactionModel(
+                                        id: postId,
+                                        userId: authorUid ?? msg.postOwnerId ?? '',
+                                        amount: amount,
+                                        type: isFund ? 'income' : 'expense',
+                                        category: tx?.category ?? '',
+                                        caption: caption ?? '',
+                                        note: tx?.note ?? '',
+                                        imageUrl: imageUrl ?? '',
+                                        createdAt: postTime,
+                                        locationName: tx?.locationName ?? '',
+                                        sharedToFeed: tx?.sharedToFeed ?? true,
+                                        privacy: 'group',
+                                        groupId: widget.groupId,
+                                      );
+                                  _currentPostAuthor = author;
+                                });
+                                _textFocusNode.requestFocus();
+                              },
+                              icon: const Icon(Icons.reply_rounded, size: 18),
+                              label: Text(
+                                isEn ? 'Reply to post' : 'Trả lời bài viết',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.primaryBlue,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                              ),
+                            ),
+                          ),
+                          if (authorUid != null && authorUid.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            _buildMomentAddFriendButton(
+                              authorUid: authorUid,
+                              author: author,
+                              isDark: isDark,
+                              l10n: l10n,
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -4996,6 +5052,61 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
     );
   }
 
+  Widget _buildPostReplyHeader(BuildContext context, String postAuthorDisplayName) {
+    final isMe = widget.isMe;
+    final isDark = widget.isDark;
+    final l10n = context.l10n;
+
+    String headerText;
+    if (isMe) {
+      if (widget.message.postOwnerId == widget.myUid) {
+        headerText = l10n.replyingToSelf;
+      } else {
+        headerText = l10n.replyingToPost(postAuthorDisplayName);
+      }
+    } else {
+      final senderDisplayName = widget.friend.name.isNotEmpty
+          ? widget.friend.name
+          : widget.friend.username;
+      if (widget.message.postOwnerId == widget.myUid) {
+        headerText = '$senderDisplayName đã trả lời bài viết của bạn';
+      } else if (widget.message.postOwnerId == widget.message.senderId) {
+        headerText = '$senderDisplayName đã trả lời bài viết của họ';
+      } else {
+        headerText = '$senderDisplayName đã trả lời bài viết của $postAuthorDisplayName';
+      }
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: 4,
+        left: isMe ? 0 : 36,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.reply_rounded,
+            size: 13.5,
+            color: isDark ? Colors.white54 : const Color(0xFF6B7280),
+          ),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              headerText,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white54 : const Color(0xFF6B7280),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildBubbleContent(BuildContext context) {
     // 0. Recalled Message State (Displays elegant recalled bubble for everyone)
@@ -5091,8 +5202,11 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
       widget.fetchSenderThemeIfNeeded(widget.message.senderId);
     }
 
-    final hasPost = widget.message.postImageUrl != null &&
+    final hasPostImage = widget.message.postImageUrl != null &&
         widget.message.postImageUrl!.isNotEmpty;
+    final isPostReply = widget.message.type == 'post_reply' ||
+        (widget.message.postId != null && widget.message.postId!.isNotEmpty);
+    final hasPost = hasPostImage || isPostReply;
     final isPureEmojiMessage = _isPureEmoji(widget.message.text);
 
     if (widget.message.isPoll || widget.message.poll != null) {
@@ -5202,6 +5316,7 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
               ),
             ),
           _buildQuotedReplyHeader(),
+          _buildPostReplyHeader(context, authorName),
 
           // Full Rounded Post Preview Card (tap to view post / double tap to heart)
           GestureDetector(
@@ -5235,12 +5350,24 @@ class _GroupChatMessageBubbleState extends State<_GroupChatMessageBubble>
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.network(
-                      widget.message.postImageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Container(color: const Color(0xFF1E2430)),
-                    ),
+                    if (hasPostImage)
+                      Image.network(
+                        widget.message.postImageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Container(color: const Color(0xFF1E2430)),
+                      )
+                    else
+                      Container(
+                        color: const Color(0xFF1E2430),
+                        child: const Center(
+                          child: Icon(
+                            Icons.receipt_long_rounded,
+                            color: Colors.white70,
+                            size: 40,
+                          ),
+                        ),
+                      ),
 
                     // Subtle dark gradient from top and bottom for readability
                     Positioned.fill(

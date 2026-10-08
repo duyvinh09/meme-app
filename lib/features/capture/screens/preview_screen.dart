@@ -33,9 +33,13 @@ import '../../../data/models/failed_post_model.dart';
 import '../controllers/capture_controller.dart';
 import '../widgets/amount_calculator_keypad_sheet.dart';
 import 'camera_screen.dart';
+import 'square_crop_screen.dart';
 
 class PreviewScreen extends StatefulWidget {
   final File? imageFile;
+  final File? originalImageFile;
+  final SquareCropState? initialCropState;
+  final bool isFromGallery;
   final File? videoFile;
   final String mediaType;
   final int? durationMs;
@@ -52,6 +56,9 @@ class PreviewScreen extends StatefulWidget {
   const PreviewScreen({
     super.key,
     required this.imageFile,
+    this.originalImageFile,
+    this.initialCropState,
+    this.isFromGallery = false,
     this.videoFile,
     this.mediaType = 'image',
     this.durationMs,
@@ -163,8 +170,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
   StreamSubscription<List<String>>? _closeFriendsSub;
   StreamSubscription<List<Map<String, dynamic>>>? _groupsSub;
 
+  File? _currentImageFile;
+  File? _originalImageFile;
+  SquareCropState? _lastCropState;
+
   bool get isVideo => widget.mediaType == 'video' && widget.videoFile != null;
-  bool get isImage => widget.mediaType == 'image' && widget.imageFile != null;
+  bool get isImage => widget.mediaType == 'image' && _currentImageFile != null;
 
   bool get hasMedia => isImage || isVideo;
 
@@ -351,6 +362,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
     if (widget.isGroupContribution) {
       category = 'Quỹ nhóm';
     }
+    _currentImageFile = widget.imageFile;
+    _originalImageFile = widget.originalImageFile;
+    _lastCropState = widget.initialCropState;
     _prepareVideoIfNeeded();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final uid = context.read<AuthController>().user?.uid;
@@ -385,6 +399,33 @@ class _PreviewScreenState extends State<PreviewScreen> {
         });
       }
     });
+  }
+
+  Future<void> _openCropEditor() async {
+    final imageToCrop = _originalImageFile ?? _currentImageFile;
+    if (imageToCrop == null) return;
+
+    SquareCropState? updatedCropState;
+    final cropped = await Navigator.push<File>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SquareCropScreen(
+          imageFile: imageToCrop,
+          initialState: _lastCropState,
+          onStateSaved: (state) {
+            updatedCropState = state;
+          },
+        ),
+      ),
+    );
+    if (cropped != null && mounted) {
+      setState(() {
+        _currentImageFile = cropped;
+        if (updatedCropState != null) {
+          _lastCropState = updatedCropState;
+        }
+      });
+    }
   }
 
   Future<void> _prepareVideoIfNeeded() async {
@@ -802,7 +843,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
       shareText.writeln(context.l10n.sharePrivacy(privacyText));
 
-      final mediaFile = isVideo ? widget.videoFile : widget.imageFile;
+      final mediaFile = isVideo ? widget.videoFile : _currentImageFile;
 
       if (mediaFile != null && await mediaFile.exists()) {
         final tempDir = await getTemporaryDirectory();
@@ -890,9 +931,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
         durationMs: _effectiveDurationMs,
         isFrontCamera: widget.isFrontCamera,
       );
-    } else if (widget.imageFile != null) {
+    } else if (_currentImageFile != null) {
       capture.setImage(
-        widget.imageFile!,
+        _currentImageFile!,
         isFrontCamera: widget.isFrontCamera,
       );
     } else {
@@ -940,7 +981,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
     final currentCaption = captionController.text.trim();
     final canonicalCategory = isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category);
-    final mediaFile = widget.imageFile ?? widget.videoFile;
+    final mediaFile = _currentImageFile ?? widget.videoFile;
 
     // Create draft failed post in local persistent storage so it persists if offline/error
     FailedPostModel? draftFailedPost;
@@ -980,6 +1021,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
     PostPublishingService.instance.publishPost(
       mediaFile: mediaFile,
       isVideo: isVideo,
+      category: canonicalCategory,
+      categoryIconCodePoint: selectedIcon.codePoint,
+      categoryColorHex: selectedColorHex,
       uploadTask: () async {
         final savedTx = await capture.saveTransaction(
           userId: uid,
@@ -1001,6 +1045,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
           longitude: location?.longitude,
           isGroupContribution: isContribution,
           isFrontCamera: widget.isFrontCamera,
+          explicitImageFile: isVideo ? null : mediaFile,
+          explicitVideoFile: isVideo ? mediaFile : null,
+          explicitMediaType: isVideo ? 'video' : 'image',
         );
 
         if (savedTx != null) {
@@ -1453,9 +1500,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         durationLabel: _formatDurationLabel(),
                         isFrontCamera: widget.isFrontCamera,
                       )
-                    : widget.imageFile != null
+                    : _currentImageFile != null
                         ? Image.file(
-                            widget.imageFile!,
+                            _currentImageFile!,
+                            key: ValueKey(_currentImageFile!.path),
                             fit: BoxFit.cover,
                             cacheWidth: 800,
                           )
@@ -1467,17 +1515,19 @@ class _PreviewScreenState extends State<PreviewScreen> {
               ),
 
               Positioned.fill(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.22),
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.05),
-                        Colors.black.withValues(alpha: 0.28),
-                      ],
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.22),
+                          Colors.transparent,
+                          Colors.black.withValues(alpha: 0.05),
+                          Colors.black.withValues(alpha: 0.28),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1510,7 +1560,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                 ),
               ),
 
-              // 2. Floating Category Dropdown Pill & Floating Menu in Top-Center (Rendered on top)
+              // 2. Floating Category Dropdown Pill & Floating Menu in Top-Center
               Positioned(
                 top: 8,
                 left: 12,
@@ -1600,6 +1650,55 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   ),
                 ),
               ),
+
+              // 3. Floating Crop Icon Button in Top-Right Corner (Only active for gallery images, top layer of Stack)
+              if (isImage && widget.isFromGallery && !categoryOpen && (_originalImageFile != null || _currentImageFile != null))
+                Positioned(
+                  top: 8,
+                  right: 12,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _openCropEditor();
+                    },
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF14161F).withValues(alpha: 0.85),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.25),
+                                width: 1.0,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.35),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.crop_rotate_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

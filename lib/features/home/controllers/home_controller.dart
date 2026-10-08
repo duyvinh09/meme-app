@@ -45,7 +45,7 @@ class HomeController extends ChangeNotifier {
     _profileSub = userRepository.streamUserProfile(uid).listen((userData) {
       profile = userData;
       notifyListeners();
-      AppWidgetService.instance.updateWidgets(
+      AppWidgetService.instance.cacheData(
         transactions: transactions,
         profile: userData,
       );
@@ -56,7 +56,7 @@ class HomeController extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
 
-      AppWidgetService.instance.updateWidgets(
+      AppWidgetService.instance.cacheData(
         transactions: data,
         profile: profile,
       );

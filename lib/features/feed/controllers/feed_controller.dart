@@ -29,16 +29,35 @@ class FeedController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> setTargetPostId(String? postId) async {
+  Future<void> setTargetPostId(
+    String? postId, {
+    String? groupId,
+    TransactionModel? preloadedTx,
+  }) async {
     targetPostId = postId;
-    if (postId != null && postId.isNotEmpty) {
+    if (preloadedTx != null) {
+      final alreadyIn = feedTransactions.any((t) => t.id == preloadedTx.id);
+      if (!alreadyIn) {
+        feedTransactions.add(preloadedTx);
+        feedTransactions.sort((a, b) {
+          if (a.isFailed && !b.isFailed) return -1;
+          if (!a.isFailed && b.isFailed) return 1;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+      }
+    } else if (postId != null && postId.isNotEmpty) {
       final exists = feedTransactions.any((tx) => tx.id == postId);
       if (!exists) {
-        final tx = await transactionRepository.fetchTransactionById(postId);
+        final tx = await transactionRepository.fetchTransactionById(postId, groupId: groupId);
         if (tx != null) {
           final alreadyIn = feedTransactions.any((t) => t.id == tx.id);
           if (!alreadyIn) {
-            feedTransactions.insert(0, tx);
+            feedTransactions.add(tx);
+            feedTransactions.sort((a, b) {
+              if (a.isFailed && !b.isFailed) return -1;
+              if (!a.isFailed && b.isFailed) return 1;
+              return b.createdAt.compareTo(a.createdAt);
+            });
           }
         }
       }
@@ -162,6 +181,13 @@ class FeedController extends ChangeNotifier {
       for (final tx in data) {
         dedupMap[tx.id] = tx;
       }
+      // Retain target post if it was preloaded or added into feedTransactions
+      if (targetPostId != null && targetPostId!.isNotEmpty) {
+        final existingTarget = feedTransactions.where((t) => t.id == targetPostId).firstOrNull;
+        if (existingTarget != null && !dedupMap.containsKey(targetPostId)) {
+          dedupMap[targetPostId!] = existingTarget;
+        }
+      }
       feedTransactions = dedupMap.values.toList();
       feedTransactions.sort((a, b) {
         if (a.isFailed && !b.isFailed) return -1;
@@ -183,7 +209,7 @@ class FeedController extends ChangeNotifier {
         VideoCacheService.instance.preloadBatch(videoUrls);
       }
 
-      AppWidgetService.instance.updateWidgets(
+      AppWidgetService.instance.cacheData(
         feedTransactions: feedTransactions,
       );
     } catch (e) {

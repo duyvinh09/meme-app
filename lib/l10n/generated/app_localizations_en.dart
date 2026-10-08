@@ -3282,4 +3282,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get changeWidgetFrame => 'Change widget frame';
+
+  @override
+  String get cropSquareTitle => 'Square Crop';
+
+  @override
+  String get cropRotateLeft => 'Rotate Left';
+
+  @override
+  String get cropRotateRight => 'Rotate Right';
+
+  @override
+  String get cropFlipHorizontal => 'Flip H';
+
+  @override
+  String get cropFlipVertical => 'Flip V';
+
+  @override
+  String get cropReset => 'Reset';
+
+  @override
+  String get cropDone => 'Done';
+
+  @override
+  String get cropFailed => 'Unable to crop image. Please try again!';
 }

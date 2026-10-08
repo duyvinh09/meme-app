@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/app_routes.dart';
+import '../../../core/services/app_widget_service.dart';
 import '../../../core/services/expense_parser.dart';
 import '../../../core/services/voice_input_service.dart';
 import '../../../core/utils/app_toast.dart';
@@ -453,6 +454,11 @@ class _QuickVoiceExpenseSheetState extends State<QuickVoiceExpenseSheet>
           context,
           isEnUI ? 'Expense saved successfully!' : 'Đã lưu chi tiêu thành công!',
         );
+
+        // Update home widget after expense is saved
+        unawaited(AppWidgetService.instance.updateWidgets(
+          transactions: [savedTx, ...AppWidgetService.instance.cachedTransactions],
+        ));
 
         final unlockedMilestone = capture.consumeLastUnlockedMilestone();
         Navigator.of(context).pop(true);

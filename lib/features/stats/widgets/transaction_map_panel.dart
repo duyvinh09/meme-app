@@ -1,12 +1,14 @@
+import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
-import 'package:iconsax_plus/iconsax_plus.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_icon_registry.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
@@ -15,7 +17,6 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
-
 import '../screens/transaction_map_screen.dart';
 
 String _localizedTransactionCategory(BuildContext context, String category) {
@@ -71,18 +72,31 @@ class TransactionMapPanel extends StatefulWidget {
 }
 
 class _TransactionMapPanelState extends State<TransactionMapPanel> {
-  late final MapController _mapController;
+  GoogleMapController? _mapController;
+  Set<Marker> _markers = {};
+  static final Map<String, BitmapDescriptor> _iconCache = {};
+  bool _isDark = false;
 
   @override
   void initState() {
     super.initState();
-    _mapController = MapController();
+    _buildMarkers();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isDarkNow = AppColors.isDark(context);
+    if (_isDark != isDarkNow) {
+      _isDark = isDarkNow;
+    }
   }
 
   @override
   void didUpdateWidget(covariant TransactionMapPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (_hasTransactionsChanged(oldWidget.transactions, widget.transactions)) {
+      _buildMarkers();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _fitAllMarkers();
@@ -143,45 +157,323 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
   }
 
   String _locationKey(double lat, double lng) {
-    // 4 chữ số giúp gom các giao dịch gần nhau trong cùng một địa điểm.
     return '${lat.toStringAsFixed(4)},${lng.toStringAsFixed(4)}';
   }
 
-  List<LatLng> _getPoints(List<_LocationGroup> groups) {
-    return groups.map((g) => LatLng(g.latitude, g.longitude)).toList();
+  Future<void> _buildMarkers() async {
+    final items = locatedTransactions;
+    if (items.isEmpty) {
+      if (mounted) setState(() => _markers = {});
+      return;
+    }
+
+    final groups = _groupTransactionsByLocation(items);
+    final pixelRatio =
+        WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+
+    final markers = <Marker>{};
+
+    for (final group in groups) {
+      final leadTx = group.latest;
+      final categoryColor = _resolveCategoryColor(leadTx);
+      final cacheKey =
+          '${leadTx.id}_${leadTx.imageUrl}_${group.count}_${categoryColor.toARGB32()}_${pixelRatio.toStringAsFixed(1)}';
+
+      BitmapDescriptor? icon = _iconCache[cacheKey];
+
+      if (icon == null) {
+        icon = await _generateMarkerIcon(
+          group: group,
+          categoryColor: categoryColor,
+          pixelRatio: pixelRatio,
+        );
+        _iconCache[cacheKey] = icon;
+      }
+
+      markers.add(
+        Marker(
+          markerId: MarkerId(
+            '${group.latitude.toStringAsFixed(4)}_${group.longitude.toStringAsFixed(4)}',
+          ),
+          position: LatLng(group.latitude, group.longitude),
+          icon: icon,
+          anchor: const Offset(0.5, 0.95),
+          onTap: () {
+            if (group.count == 1) {
+              _showTransactionBottomSheet(context, group.transactions.first);
+            } else {
+              _showLocationGroupBottomSheet(context, group);
+            }
+          },
+        ),
+      );
+    }
+
+    if (mounted) {
+      setState(() {
+        _markers = markers;
+      });
+    }
+  }
+
+  Future<BitmapDescriptor> _generateMarkerIcon({
+    required _LocationGroup group,
+    required Color categoryColor,
+    required double pixelRatio,
+  }) async {
+    final leadTx = group.latest;
+    ui.Image? momentImage;
+
+    final imageUrl = leadTx.imageUrl.trim();
+    if (imageUrl.isNotEmpty) {
+      try {
+        final file = await DefaultCacheManager().getSingleFile(imageUrl);
+        final bytes = await file.readAsBytes();
+        final codec = await ui.instantiateImageCodec(
+          bytes,
+          targetWidth: (54 * pixelRatio).round(),
+          targetHeight: (54 * pixelRatio).round(),
+        );
+        final frame = await codec.getNextFrame();
+        momentImage = frame.image;
+      } catch (_) {}
+    }
+
+    final ratio = pixelRatio.clamp(1.5, 3.0);
+    final isCluster = group.count > 1;
+    final baseWidth = isCluster ? 64.0 : 54.0;
+    final baseHeight = isCluster ? 62.0 : 58.0;
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(ratio);
+
+    final cardWidth = isCluster ? 50.0 : 48.0;
+    final cardHeight = isCluster ? 50.0 : 48.0;
+    final cardLeft = (baseWidth - cardWidth) / 2;
+    final cardTop = isCluster ? 6.0 : 2.0;
+
+    // Cluster stack background card
+    if (isCluster) {
+      final backCardRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(cardLeft - 4, cardTop - 3, cardWidth, cardHeight),
+        const Radius.circular(12),
+      );
+      final backPaint = Paint()
+        ..color = categoryColor.withValues(alpha: 0.5)
+        ..style = PaintingStyle.fill;
+      canvas.drawRRect(backCardRect, backPaint);
+    }
+
+    final cardRRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(cardLeft, cardTop, cardWidth, cardHeight),
+      const Radius.circular(14),
+    );
+
+    // Drop shadow
+    final shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.28)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawRRect(cardRRect.shift(const Offset(0, 3)), shadowPaint);
+
+    // Category Border / Background
+    final bgPaint = Paint()
+      ..color = categoryColor
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(cardRRect, bgPaint);
+
+    final strokePaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    canvas.drawRRect(cardRRect, strokePaint);
+
+    // Inner photo / placeholder
+    final innerRRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+        cardLeft + 2,
+        cardTop + 2,
+        cardWidth - 4,
+        cardHeight - 4,
+      ),
+      const Radius.circular(12),
+    );
+
+    if (momentImage != null) {
+      canvas.save();
+      canvas.clipRRect(innerRRect);
+      paintImage(
+        canvas: canvas,
+        rect: Rect.fromLTWH(
+          cardLeft + 2,
+          cardTop + 2,
+          cardWidth - 4,
+          cardHeight - 4,
+        ),
+        image: momentImage,
+        fit: BoxFit.cover,
+      );
+      canvas.restore();
+    } else {
+      // Fallback icon / symbol inside marker
+      final innerBgPaint = Paint()
+        ..color = Colors.white.withValues(alpha: 0.22)
+        ..style = PaintingStyle.fill;
+      canvas.drawRRect(innerRRect, innerBgPaint);
+
+      final iconData = (leadTx.categoryIconCodePoint != null &&
+              leadTx.categoryIconCodePoint! > 0)
+          ? AppIconRegistry.fromCodePoint(leadTx.categoryIconCodePoint!)
+          : Icons.account_balance_wallet_rounded;
+
+      final iconPainter = TextPainter(
+        text: TextSpan(
+          text: String.fromCharCode(iconData.codePoint),
+          style: TextStyle(
+            fontSize: 22,
+            fontFamily: iconData.fontFamily,
+            package: iconData.fontPackage,
+            color: Colors.white,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      iconPainter.paint(
+        canvas,
+        Offset(
+          cardLeft + (cardWidth - iconPainter.width) / 2,
+          cardTop + (cardHeight - iconPainter.height) / 2,
+        ),
+      );
+    }
+
+    // Pointer notch at bottom
+    final pointerPath = Path();
+    final centerX = baseWidth / 2;
+    final bottomY = cardTop + cardHeight;
+    pointerPath.moveTo(centerX - 5, bottomY - 1);
+    pointerPath.lineTo(centerX + 5, bottomY - 1);
+    pointerPath.lineTo(centerX, bottomY + 5);
+    pointerPath.close();
+
+    final pointerPaint = Paint()
+      ..color = categoryColor
+      ..style = PaintingStyle.fill;
+    canvas.drawPath(pointerPath, pointerPaint);
+
+    // Badge for cluster count
+    if (isCluster) {
+      final badgeText = group.count > 99 ? '99+' : '${group.count}';
+      final badgePainter = TextPainter(
+        text: TextSpan(
+          text: badgeText,
+          style: const TextStyle(
+            fontSize: 9.5,
+            fontWeight: FontWeight.w900,
+            color: Colors.white,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+
+      const badgePadding = 5.0;
+      final badgeW = math.max(18.0, badgePainter.width + badgePadding * 2);
+      const badgeH = 18.0;
+      final badgeLeft = baseWidth - badgeW;
+      const badgeTop = 0.0;
+
+      final badgeRRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(badgeLeft, badgeTop, badgeW, badgeH),
+        const Radius.circular(9),
+      );
+
+      final badgePaint = Paint()
+        ..color = AppColors.primaryBlue
+        ..style = PaintingStyle.fill;
+      canvas.drawRRect(badgeRRect, badgePaint);
+
+      final badgeBorder = Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5;
+      canvas.drawRRect(badgeRRect, badgeBorder);
+
+      badgePainter.paint(
+        canvas,
+        Offset(
+          badgeLeft + (badgeW - badgePainter.width) / 2,
+          badgeTop + (badgeH - badgePainter.height) / 2,
+        ),
+      );
+    }
+
+    final picture = recorder.endRecording();
+    final finalImg = await picture.toImage(
+      (baseWidth * ratio).round(),
+      (baseHeight * ratio).round(),
+    );
+    final byteData = await finalImg.toByteData(format: ui.ImageByteFormat.png);
+
+    return BitmapDescriptor.bytes(
+      byteData!.buffer.asUint8List(),
+      imagePixelRatio: ratio,
+    );
   }
 
   void _fitAllMarkers() {
     final items = locatedTransactions;
-    if (items.isEmpty) return;
+    if (items.isEmpty || _mapController == null) return;
     final groups = _groupTransactionsByLocation(items);
-    final points = _getPoints(groups);
-    if (points.isEmpty) return;
+    if (groups.isEmpty) return;
 
-    if (points.length == 1) {
-      _mapController.move(points.first, 14.0);
-    } else {
-      final bounds = LatLngBounds.fromPoints(points);
-      _mapController.fitCamera(
-        CameraFit.bounds(
-          bounds: bounds,
-          padding: const EdgeInsets.fromLTRB(45, 45, 45, 100),
-          maxZoom: 15.0,
+    if (groups.length == 1) {
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngZoom(
+          LatLng(groups.first.latitude, groups.first.longitude),
+          15.0,
         ),
+      );
+    } else {
+      double minLat = groups.first.latitude;
+      double maxLat = groups.first.latitude;
+      double minLng = groups.first.longitude;
+      double maxLng = groups.first.longitude;
+
+      for (final g in groups) {
+        if (g.latitude < minLat) minLat = g.latitude;
+        if (g.latitude > maxLat) maxLat = g.latitude;
+        if (g.longitude < minLng) minLng = g.longitude;
+        if (g.longitude > maxLng) maxLng = g.longitude;
+      }
+
+      if ((maxLat - minLat).abs() < 0.001) {
+        minLat -= 0.002;
+        maxLat += 0.002;
+      }
+      if ((maxLng - minLng).abs() < 0.001) {
+        minLng -= 0.002;
+        maxLng += 0.002;
+      }
+
+      final bounds = LatLngBounds(
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
+      );
+
+      final padding = widget.isFullScreen ? 90.0 : 50.0;
+      _mapController?.animateCamera(
+        CameraUpdate.newLatLngBounds(bounds, padding),
       );
     }
   }
 
   void _zoomIn() {
-    final currentZoom = _mapController.camera.zoom;
-    final targetZoom = (currentZoom + 1.0).clamp(3.0, 18.0);
-    _mapController.move(_mapController.camera.center, targetZoom);
+    _mapController?.animateCamera(CameraUpdate.zoomIn());
   }
 
   void _zoomOut() {
-    final currentZoom = _mapController.camera.zoom;
-    final targetZoom = (currentZoom - 1.0).clamp(3.0, 18.0);
-    _mapController.move(_mapController.camera.center, targetZoom);
+    _mapController?.animateCamera(CameraUpdate.zoomOut());
   }
 
   void _openFullScreen(BuildContext context) {
@@ -259,7 +551,8 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                           Navigator.maybePop(context);
                         }
                       },
-                      borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
+                      borderRadius:
+                          BorderRadius.circular(AppSizes.radiusXLarge),
                       child: Container(
                         width: 44,
                         height: 44,
@@ -303,67 +596,27 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
     }
 
     final groups = _groupTransactionsByLocation(items);
-    final points = _getPoints(groups);
-    final center = points.first;
-
-    final initialCameraFit = points.length > 1
-        ? CameraFit.bounds(
-            bounds: LatLngBounds.fromPoints(points),
-            padding: widget.isFullScreen
-                ? const EdgeInsets.fromLTRB(45, 90, 45, 120)
-                : const EdgeInsets.fromLTRB(45, 45, 45, 100),
-            maxZoom: 15.0,
-          )
-        : null;
+    final initialLat = groups.first.latitude;
+    final initialLng = groups.first.longitude;
 
     final mapContent = Stack(
       children: [
-        FlutterMap(
-          mapController: _mapController,
-          options: MapOptions(
-            initialCameraFit: initialCameraFit,
-            initialCenter: center,
-            initialZoom: 14.0,
-            minZoom: 3,
-            maxZoom: 18,
-            interactionOptions: const InteractionOptions(
-              flags: InteractiveFlag.all,
-            ),
+        GoogleMap(
+          initialCameraPosition: CameraPosition(
+            target: LatLng(initialLat, initialLng),
+            zoom: 14.0,
           ),
-          children: [
-            TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.duyvinh09.memeapp',
-            ),
-            MarkerLayer(
-              markers: groups.map((group) {
-                return Marker(
-                  point: LatLng(group.latitude, group.longitude),
-                  width: group.count > 1 ? 92 : 68,
-                  height: group.count > 1 ? 82 : 68,
-                  child: GestureDetector(
-                    onTap: () {
-                      if (group.count == 1) {
-                        _showTransactionBottomSheet(
-                          context,
-                          group.transactions.first,
-                        );
-                      } else {
-                        _showLocationGroupBottomSheet(context, group);
-                      }
-                    },
-                    child: group.count == 1
-                        ? _MapMomentMarker(
-                            transaction: group.transactions.first,
-                          )
-                        : _MapMomentClusterMarker(
-                            group: group,
-                          ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
+          onMapCreated: (controller) {
+            _mapController = controller;
+            _fitAllMarkers();
+          },
+          markers: _markers,
+          style: _isDark ? _darkMapStyle : _lightMapStyle,
+          zoomControlsEnabled: false,
+          myLocationButtonEnabled: false,
+          mapToolbarEnabled: false,
+          compassEnabled: false,
+          mapType: MapType.normal,
         ),
 
         // Full Screen mode overlays: Top Header Bar & Side Zoom controls
@@ -760,9 +1013,9 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
   }
 
   void _showLocationGroupBottomSheet(
-      BuildContext context,
-      _LocationGroup group,
-      ) {
+    BuildContext context,
+    _LocationGroup group,
+  ) {
     final latest = group.latest;
     final locationText = latest.locationName.trim().isEmpty
         ? '${latest.latitude?.toStringAsFixed(5)}, ${latest.longitude?.toStringAsFixed(5)}'
@@ -847,9 +1100,9 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
   }
 
   void _showTransactionBottomSheet(
-      BuildContext context,
-      TransactionModel tx,
-      ) {
+    BuildContext context,
+    TransactionModel tx,
+  ) {
     final locationText = tx.locationName.trim().isEmpty
         ? '${tx.latitude?.toStringAsFixed(5)}, ${tx.longitude?.toStringAsFixed(5)}'
         : tx.locationName;
@@ -885,13 +1138,15 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                           final localizedCategory =
                               _localizedTransactionCategory(context, tx.category);
                           final normalizedCaption = caption.toLowerCase();
-                          final normalizedCategory = tx.category.trim().toLowerCase();
+                          final normalizedCategory =
+                              tx.category.trim().toLowerCase();
                           final normalizedLocalizedCategory =
                               localizedCategory.toLowerCase();
 
                           if (caption.isEmpty ||
                               normalizedCaption == normalizedCategory ||
-                              normalizedCaption == normalizedLocalizedCategory) {
+                              normalizedCaption ==
+                                  normalizedLocalizedCategory) {
                             return localizedCategory;
                           }
 
@@ -937,10 +1192,6 @@ class _LocationGroup {
   int get count => transactions.length;
 
   TransactionModel get latest => transactions.first;
-
-  List<TransactionModel> get previews {
-    return transactions.take(3).toList();
-  }
 }
 
 Color _resolveCategoryColor(TransactionModel transaction) {
@@ -995,231 +1246,6 @@ Color _resolveCategoryColor(TransactionModel transaction) {
       ];
       final hash = transaction.category.hashCode.abs();
       return fallbackColors[hash % fallbackColors.length];
-  }
-}
-
-class _MapMomentMarker extends StatelessWidget {
-  final TransactionModel transaction;
-
-  const _MapMomentMarker({
-    required this.transaction,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final categoryColor = _resolveCategoryColor(transaction);
-
-    return Stack(
-      alignment: Alignment.bottomCenter,
-      children: [
-        Container(
-          width: 52,
-          height: 52,
-          padding: const EdgeInsets.all(1.5),
-          decoration: BoxDecoration(
-            color: categoryColor,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.35),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: categoryColor.withValues(alpha: 0.35),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.22),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: TransactionMomentImage(
-            imageUrl: transaction.imageUrl,
-            category: transaction.category,
-            categoryIconCodePoint: transaction.categoryIconCodePoint,
-            categoryColorHex: transaction.categoryColorHex,
-            width: 49,
-            height: 49,
-            fit: BoxFit.cover,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        Positioned(
-          bottom: 0,
-          child: Container(
-            width: 12,
-            height: 6,
-            decoration: BoxDecoration(
-              color: categoryColor,
-              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MapMomentClusterMarker extends StatelessWidget {
-  final _LocationGroup group;
-
-  const _MapMomentClusterMarker({
-    required this.group,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final previews = group.previews;
-    final leadCategoryColor = _resolveCategoryColor(group.latest);
-
-    return Stack(
-      clipBehavior: Clip.none,
-      alignment: Alignment.center,
-      children: [
-        for (int i = previews.length - 1; i >= 0; i--)
-          Transform.translate(
-            offset: _offsetFor(i, previews.length),
-            child: Transform.rotate(
-              angle: _angleFor(i),
-              child: _ClusterPhotoFrame(
-                transaction: previews[i],
-                size: i == 0 ? 54 : 48,
-              ),
-            ),
-          ),
-
-        Positioned(
-          right: 2,
-          top: 0,
-          child: Container(
-            constraints: const BoxConstraints(
-              minWidth: 26,
-              minHeight: 26,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 7),
-            decoration: BoxDecoration(
-              color: AppColors.primaryBlue,
-              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-              border: Border.all(
-                color: Colors.white,
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.20),
-                  blurRadius: 8,
-                  offset: const Offset(0, 3),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                group.count > 99 ? '99+' : '${group.count}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ),
-
-        Positioned(
-          bottom: 1,
-          child: Container(
-            width: 14,
-            height: 6,
-            decoration: BoxDecoration(
-              color: leadCategoryColor,
-              borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Offset _offsetFor(int index, int total) {
-    if (total == 1) return Offset.zero;
-
-    switch (index) {
-      case 0:
-        return const Offset(0, -2);
-      case 1:
-        return const Offset(-14, 4);
-      case 2:
-        return const Offset(14, 6);
-      default:
-        return Offset.zero;
-    }
-  }
-
-  double _angleFor(int index) {
-    switch (index) {
-      case 0:
-        return 0;
-      case 1:
-        return -10 * math.pi / 180;
-      case 2:
-        return 10 * math.pi / 180;
-      default:
-        return 0;
-    }
-  }
-}
-
-class _ClusterPhotoFrame extends StatelessWidget {
-  final TransactionModel transaction;
-  final double size;
-
-  const _ClusterPhotoFrame({
-    required this.transaction,
-    required this.size,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final categoryColor = _resolveCategoryColor(transaction);
-
-    return Container(
-      width: size,
-      height: size,
-      padding: const EdgeInsets.all(1.5),
-      decoration: BoxDecoration(
-        color: categoryColor,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.35),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: categoryColor.withValues(alpha: 0.3),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.22),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: TransactionMomentImage(
-        imageUrl: transaction.imageUrl,
-        category: transaction.category,
-        categoryIconCodePoint: transaction.categoryIconCodePoint,
-        categoryColorHex: transaction.categoryColorHex,
-        width: size - 3,
-        height: size - 3,
-        fit: BoxFit.cover,
-        borderRadius: BorderRadius.circular(12),
-      ),
-    );
   }
 }
 
@@ -1311,3 +1337,135 @@ class _LocationTransactionTile extends StatelessWidget {
     );
   }
 }
+
+const String _darkMapStyle = '''
+[
+  {
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#181A20"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.icon",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8E8E93"
+      }
+    ]
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [
+      {
+        "color": "#181A20"
+      }
+    ]
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#2C2C2E"
+      }
+    ]
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8E8E93"
+      }
+    ]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#1C241E"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.fill",
+    "stylers": [
+      {
+        "color": "#262A34"
+      }
+    ]
+  },
+  {
+    "featureType": "road",
+    "elementType": "labels.text.fill",
+    "stylers": [
+      {
+        "color": "#8E8E93"
+      }
+    ]
+  },
+  {
+    "featureType": "road.arterial",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#2E3340"
+      }
+    ]
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#3A4050"
+      }
+    ]
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [
+      {
+        "color": "#11141A"
+      }
+    ]
+  }
+]
+''';
+
+const String _lightMapStyle = '''
+[
+  {
+    "featureType": "poi",
+    "elementType": "labels.icon",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  },
+  {
+    "featureType": "transit",
+    "elementType": "labels.icon",
+    "stylers": [
+      {
+        "visibility": "off"
+      }
+    ]
+  }
+]
+''';
