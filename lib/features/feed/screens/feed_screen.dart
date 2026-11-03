@@ -4235,13 +4235,6 @@ class _FailedPostActionBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: const Color(0xFFDC2626), // Saturated vibrant red
                   borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.28),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -4284,13 +4277,6 @@ class _FailedPostActionBar extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.18),
                     width: 1,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.20),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
                 ),
                 child: const Center(
                   child: Icon(

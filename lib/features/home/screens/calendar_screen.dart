@@ -1601,9 +1601,7 @@ class _StickerFrame extends StatelessWidget {
     final isExpense =
         transaction.type == 'expense' && !transaction.isGroupContribution;
     final typeColor = isExpense ? AppColors.expense : AppColors.income;
-    final borderColor = isBirthday
-        ? const Color(0xFFFF4081)
-        : (isToday ? const Color(0xFF29B6F6) : typeColor);
+    final borderColor = isBirthday ? const Color(0xFFFF4081) : typeColor;
     final radius = BorderRadius.circular(size * 0.32);
 
     return Container(
@@ -1614,16 +1612,14 @@ class _StickerFrame extends StatelessWidget {
         borderRadius: radius,
         border: Border.all(
           color: borderColor,
-          width: (isToday || isBirthday) ? 2.0 : 1.6,
+          width: isBirthday ? 2.0 : 1.6,
         ),
         boxShadow: [
           BoxShadow(
             color: isBirthday
                 ? const Color(0xFFFF4081).withValues(alpha: 0.45)
-                : (isToday
-                    ? const Color(0xFF29B6F6).withValues(alpha: 0.45)
-                    : typeColor.withValues(alpha: 0.35)),
-            blurRadius: (isToday || isBirthday) ? 6 : 4,
+                : typeColor.withValues(alpha: 0.35),
+            blurRadius: isBirthday ? 6 : 4,
             offset: const Offset(0, 2),
           ),
         ],

@@ -45,10 +45,10 @@ class HomeController extends ChangeNotifier {
     _profileSub = userRepository.streamUserProfile(uid).listen((userData) {
       profile = userData;
       notifyListeners();
-      AppWidgetService.instance.cacheData(
+      unawaited(AppWidgetService.instance.updateWidgets(
         transactions: transactions,
         profile: userData,
-      );
+      ));
     });
 
     _txSub = transactionRepository.streamTransactions(uid).listen((data) {
@@ -56,10 +56,10 @@ class HomeController extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
 
-      AppWidgetService.instance.cacheData(
+      unawaited(AppWidgetService.instance.updateWidgets(
         transactions: data,
         profile: profile,
-      );
+      ));
 
       // Preload ngầm 2 video gần nhất cho Lịch, Recent moment và Home widget
       final videoUrls = data

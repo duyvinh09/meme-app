@@ -225,7 +225,8 @@ class AppWidgetService {
           }
         }
       } catch (e) {
-        debugPrint('[AppWidgetService] Error fallback fetching transactions: $e');
+        debugPrint(
+            '[AppWidgetService] Error fallback fetching transactions: $e');
       }
     }
 
@@ -421,7 +422,8 @@ class AppWidgetService {
           await _performUpdate(currency: currency);
         } while (_hasPendingUpdate);
       } catch (e, stack) {
-        debugPrint('[AppWidgetService] Error in updateWidgets loop: $e\n$stack');
+        debugPrint(
+            '[AppWidgetService] Error in updateWidgets loop: $e\n$stack');
       } finally {
         _isUpdating = false;
       }
@@ -429,8 +431,30 @@ class AppWidgetService {
   }
 
   Future<void> _performUpdate({String? currency}) async {
-    final currentTxs = _cachedTransactions;
-    final currentProfile = _cachedProfile;
+    List<TransactionModel> currentTxs = _cachedTransactions;
+    UserModel? currentProfile = _cachedProfile;
+
+    if (currentTxs.isEmpty || currentProfile == null) {
+      final navContext = AppRoutes.navigatorKey.currentContext;
+      if (navContext != null) {
+        try {
+          if (currentTxs.isEmpty) {
+            final homeTxs = navContext.read<HomeController>().transactions;
+            if (homeTxs.isNotEmpty) {
+              currentTxs = homeTxs;
+              _cachedTransactions = homeTxs;
+            }
+          }
+          if (currentProfile == null) {
+            final homeProfile = navContext.read<HomeController>().profile;
+            if (homeProfile != null) {
+              currentProfile = homeProfile;
+              _cachedProfile = homeProfile;
+            }
+          }
+        } catch (_) {}
+      }
+    }
 
     try {
       final now = DateTime.now();
@@ -459,7 +483,9 @@ class AppWidgetService {
 
       // Calculate Expenses & Incomes
       final double totalExpense = thisMonthTxs
-          .where((e) => (e.type == 'expense' && !e.isGroupExpense) || e.isGroupContribution)
+          .where((e) =>
+              (e.type == 'expense' && !e.isGroupExpense) ||
+              e.isGroupContribution)
           .fold(0.0, (sum, e) => sum + e.amount);
 
       final double totalIncome = thisMonthTxs
@@ -467,16 +493,21 @@ class AppWidgetService {
           .fold(0.0, (sum, e) => sum + e.amount);
 
       final double prevTotalExpense = prevMonthTxs
-          .where((e) => (e.type == 'expense' && !e.isGroupExpense) || e.isGroupContribution)
+          .where((e) =>
+              (e.type == 'expense' && !e.isGroupExpense) ||
+              e.isGroupContribution)
           .fold(0.0, (sum, e) => sum + e.amount);
 
       // 3. Category Breakdown for Donut Chart
       final Map<String, double> categoryMap = {};
       for (final tx in thisMonthTxs) {
-        if ((tx.type == 'expense' && !tx.isGroupExpense) || tx.isGroupContribution) {
-          final rawCat = tx.category.isNotEmpty ? tx.category : (isEn ? 'Other' : 'Khác');
+        if ((tx.type == 'expense' && !tx.isGroupExpense) ||
+            tx.isGroupContribution) {
+          final rawCat =
+              tx.category.isNotEmpty ? tx.category : (isEn ? 'Other' : 'Khác');
           final localizedCat = localizeCategory(rawCat, isEn: isEn);
-          categoryMap[localizedCat] = (categoryMap[localizedCat] ?? 0.0) + tx.amount;
+          categoryMap[localizedCat] =
+              (categoryMap[localizedCat] ?? 0.0) + tx.amount;
         }
       }
 
@@ -610,12 +641,9 @@ class AppWidgetService {
         streak: currentProfile?.currentStreak ?? 0,
         type: latestTx?.type ?? 'expense',
         amount: latestTx?.amount ?? 0.0,
-        formattedAmount: latestTx != null
-            ? _formatCompactVnd(latestTx.amount)
-            : '0đ',
-        caption: latestTx?.caption.isNotEmpty == true
-            ? latestTx!.caption
-            : '',
+        formattedAmount:
+            latestTx != null ? _formatCompactVnd(latestTx.amount) : '0đ',
+        caption: latestTx?.caption.isNotEmpty == true ? latestTx!.caption : '',
         category: localizedCat,
         categoryIconCodePoint: latestTx?.categoryIconCodePoint,
         categoryColorHex: latestTx?.categoryColorHex,
@@ -689,16 +717,18 @@ class AppWidgetService {
       if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
         try {
           // 1. Check local cache first for instant 0ms access
-          final cacheInfo = await DefaultCacheManager().getFileFromCache(trimmed);
+          final cacheInfo =
+              await DefaultCacheManager().getFileFromCache(trimmed);
           if (cacheInfo != null && await cacheInfo.file.exists()) {
             final bytes = await cacheInfo.file.readAsBytes();
             if (bytes.isNotEmpty) return bytes;
           }
 
           // 2. Fetch via Cache Manager with timeout
-          final file = await DefaultCacheManager().getSingleFile(trimmed).timeout(
-            const Duration(seconds: 5),
-          );
+          final file =
+              await DefaultCacheManager().getSingleFile(trimmed).timeout(
+                    const Duration(seconds: 5),
+                  );
           final bytes = await file.readAsBytes();
           if (bytes.isNotEmpty) return bytes;
         } catch (_) {
@@ -706,7 +736,8 @@ class AppWidgetService {
           final client = HttpClient();
           client.connectionTimeout = const Duration(seconds: 5);
           final request = await client.getUrl(Uri.parse(trimmed));
-          final response = await request.close().timeout(const Duration(seconds: 5));
+          final response =
+              await request.close().timeout(const Duration(seconds: 5));
           if (response.statusCode == 200) {
             final bytes = await consolidateHttpClientResponseBytes(response);
             if (bytes.isNotEmpty) return bytes;

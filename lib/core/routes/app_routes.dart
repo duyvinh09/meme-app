@@ -204,7 +204,8 @@ class AppRoutes {
         final args = settings.arguments;
         if (args is Map<String, dynamic>) {
           final friend = args['friend'] as UserModel;
-          final initialPostReply = args['initialPostReply'] as TransactionModel?;
+          final initialPostReply =
+              args['initialPostReply'] as TransactionModel?;
           return MaterialPageRoute(
             builder: (_) => ChatConversationScreen(
               friend: friend,
@@ -330,7 +331,8 @@ class _SplashGateState extends State<SplashGate> {
         ]).timeout(
           const Duration(milliseconds: 3200),
           onTimeout: () {
-            debugPrint('Preloading data timeout reached, continuing to main shell');
+            debugPrint(
+                'Preloading data timeout reached, continuing to main shell');
             return const [];
           },
         );
@@ -448,6 +450,7 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       }
     }
   }
+
   bool isNavbarCollapsed = false;
 
   bool showCaptureFab = true;
@@ -484,8 +487,11 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
         currentTabIndex: index,
       );
 
-      if (widget.initialTargetPostId != null && widget.initialTargetPostId!.isNotEmpty) {
-        context.read<FeedController>().setTargetPostId(widget.initialTargetPostId);
+      if (widget.initialTargetPostId != null &&
+          widget.initialTargetPostId!.isNotEmpty) {
+        context
+            .read<FeedController>()
+            .setTargetPostId(widget.initialTargetPostId);
       }
 
       final uid = context.read<AuthController>().user?.uid;
@@ -498,6 +504,7 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
         _updatePresence(true);
         _startPresenceHeartbeat();
         NotificationService.instance.checkAndShowInAppRewindNotification();
+        unawaited(AppWidgetService.instance.updateWidgets());
       }
 
       if (index == 0) {
@@ -518,6 +525,7 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       _startPresenceHeartbeat();
       NotificationService.instance.checkAndShowInAppRewindNotification();
       CameraScreen.warmUp();
+      unawaited(AppWidgetService.instance.updateWidgets());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
         state == AppLifecycleState.hidden ||
@@ -531,7 +539,9 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
   void _updatePresence(bool isOnline) {
     final uid = context.read<AuthController>().user?.uid;
     if (uid != null) {
-      context.read<UserRepository>().updateUserPresence(uid, isOnline: isOnline);
+      context
+          .read<UserRepository>()
+          .updateUserPresence(uid, isOnline: isOnline);
     }
   }
 
@@ -547,8 +557,6 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
     _presenceHeartbeatTimer?.cancel();
     _presenceHeartbeatTimer = null;
   }
-
-
 
   Future<void> _reloadFeed(BuildContext context) async {
     final uid = context.read<AuthController>().user?.uid;
@@ -678,7 +686,8 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
                 }
 
                 final metrics = notification.metrics;
-                final isAtTop = metrics.pixels <= metrics.minScrollExtent || metrics.extentBefore <= 0;
+                final isAtTop = metrics.pixels <= metrics.minScrollExtent ||
+                    metrics.extentBefore <= 0;
 
                 // 1. CHỈ khi cuộn lên HẾT CỠ ĐẦU TRANG -> Mới mở rộng lại Navbar
                 if (isAtTop ||
@@ -735,7 +744,8 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
 
           AnimatedPositioned(
             duration: Duration(milliseconds: isNavbarCollapsed ? 280 : 240),
-            curve: isNavbarCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
+            curve:
+                isNavbarCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
             left: AppSizes.pagePadding,
             bottom: isKeyboardOpen ? -120 : 24,
             width: isNavbarCollapsed
@@ -767,7 +777,9 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
           if (index == 0)
             AnimatedPositioned(
               duration: Duration(milliseconds: isNavbarCollapsed ? 280 : 240),
-              curve: isNavbarCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
+              curve: isNavbarCollapsed
+                  ? Curves.easeInOutCubic
+                  : Curves.easeOutCubic,
               right: 20,
               bottom: isKeyboardOpen ? -120 : (isNavbarCollapsed ? 24 : 104),
               child: AnimatedOpacity(
@@ -836,19 +848,22 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
   // ===========================================================================
   // ⚙️ CẤU HÌNH KÍCH THƯỚC & TỌA ĐỘ CÁC NÚT
   // ===========================================================================
-  static const double mainFabSize = 62.0;  // Kích thước nút chính (+ / ×)
-  static const double subFabSize = 42.0;   // Kích thước nút phụ (Camera, Mic)
-  static const double chatFabSize = 46.0;  // Kích thước nút Nhắn tin
-  static const double borderWidth = 1.5;   // Độ mỏng của viền nút
+  static const double mainFabSize = 62.0; // Kích thước nút chính (+ / ×)
+  static const double subFabSize = 42.0; // Kích thước nút phụ (Camera, Mic)
+  static const double chatFabSize = 46.0; // Kích thước nút Nhắn tin
+  static const double borderWidth = 1.5; // Độ mỏng của viền nút
 
   // Tọa độ đích khi bung ra (X: âm là sang trái, Y: âm là lên trên)
   static const Offset cameraOffset = Offset(-16.0, -70.0); // Nút Camera ở trên
-  static const Offset micOffset = Offset(-70.0, -16.0);    // Nút Mic ở ngoài/trái
+  static const Offset micOffset = Offset(-70.0, -16.0); // Nút Mic ở ngoài/trái
 
   // Vị trí nút Nhắn tin (Chat)
-  static const double chatClosedY = -72.0;           // Khoảng cách nút Chat khi ĐÓNG (navbar mở rộng)
-  static const double chatCollapsedClosedY = -65.0;  // Khoảng cách nút Chat khi ĐÓNG (navbar thu gọn, cân đối với nút + 55x55)
-  static const double chatOpenSlideDelta = -53.0;    // Độ cao trượt thêm khi MỞ menu
+  static const double chatClosedY =
+      -72.0; // Khoảng cách nút Chat khi ĐÓNG (navbar mở rộng)
+  static const double chatCollapsedClosedY =
+      -65.0; // Khoảng cách nút Chat khi ĐÓNG (navbar thu gọn, cân đối với nút + 55x55)
+  static const double chatOpenSlideDelta =
+      -53.0; // Độ cao trượt thêm khi MỞ menu
   // ===========================================================================
 
   late AnimationController _controller;
@@ -1028,7 +1043,9 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
           // 1. Nút Chat (Trượt lên cao khi mở menu và hạ xuống khi đóng, tự động cân đối khoảng cách khi navbar thu gọn)
           TweenAnimationBuilder<double>(
             duration: Duration(milliseconds: widget.isCollapsed ? 280 : 240),
-            curve: widget.isCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
+            curve: widget.isCollapsed
+                ? Curves.easeInOutCubic
+                : Curves.easeOutCubic,
             tween: Tween<double>(
               end: widget.isCollapsed ? chatCollapsedClosedY : chatClosedY,
             ),
@@ -1050,102 +1067,98 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                 HapticFeedback.selectionClick();
                 widget.onChatTap();
               },
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Container(
-                        width: chatFabSize,
-                        height: chatFabSize,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isDark
-                              ? const Color(0xFF262938)
-                              : Colors.white,
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.20)
-                                : AppColors.primaryBlue.withValues(alpha: 0.25),
-                            width: borderWidth,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.28 : 0.10,
-                              ),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          IconsaxPlusBold.messages_2,
-                          color: isDark
-                              ? Colors.white
-                              : AppColors.primaryBlue,
-                          size: 21,
-                        ),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: chatFabSize,
+                    height: chatFabSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isDark ? const Color(0xFF262938) : Colors.white,
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.20)
+                            : AppColors.primaryBlue.withValues(alpha: 0.25),
+                        width: borderWidth,
                       ),
-                      // Realtime Unread Count Badge (filters out muted chats, max 99+)
-                      if (_unreadStream != null)
-                        StreamBuilder<int>(
-                          stream: _unreadStream,
-                          initialData: _lastKnownUnreadCount,
-                          builder: (context, snapshot) {
-                            if (snapshot.hasData) {
-                              _lastKnownUnreadCount = snapshot.data!;
-                            }
-                            final unreadCount =
-                                snapshot.data ?? _lastKnownUnreadCount;
-                            if (unreadCount <= 0) {
-                              return const SizedBox.shrink();
-                            }
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(
+                            alpha: isDark ? 0.28 : 0.10,
+                          ),
+                          blurRadius: 10,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      IconsaxPlusBold.messages_2,
+                      color: isDark ? Colors.white : AppColors.primaryBlue,
+                      size: 21,
+                    ),
+                  ),
+                  // Realtime Unread Count Badge (filters out muted chats, max 99+)
+                  if (_unreadStream != null)
+                    StreamBuilder<int>(
+                      stream: _unreadStream,
+                      initialData: _lastKnownUnreadCount,
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          _lastKnownUnreadCount = snapshot.data!;
+                        }
+                        final unreadCount =
+                            snapshot.data ?? _lastKnownUnreadCount;
+                        if (unreadCount <= 0) {
+                          return const SizedBox.shrink();
+                        }
 
-                            final String badgeText =
-                                unreadCount > 99 ? '99+' : '$unreadCount';
+                        final String badgeText =
+                            unreadCount > 99 ? '99+' : '$unreadCount';
 
-                            return Positioned(
-                              top: -4,
-                              right: -4,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                   horizontal: 5,
-                                   vertical: 2,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 20,
-                                  minHeight: 20,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFF3B30),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: isDark
-                                        ? const Color(0xFF1E212B)
-                                        : Colors.white,
-                                    width: 1.8,
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    badgeText,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10.5,
-                                      fontWeight: FontWeight.w900,
-                                      height: 1.0,
-                                      letterSpacing: -0.3,
-                                    ),
-                                  ),
+                        return Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 20,
+                              minHeight: 20,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF3B30),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF1E212B)
+                                    : Colors.white,
+                                width: 1.8,
+                              ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                badgeText,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w900,
+                                  height: 1.0,
+                                  letterSpacing: -0.3,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                    ],
-                  ),
-                ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
               ),
+            ),
+          ),
 
           // 2. Nút Camera (Bung ra phía trên theo cánh cung)
           _buildSubItem(
@@ -1170,13 +1183,17 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
             onTap: widget.onToggle,
             child: AnimatedContainer(
               duration: Duration(milliseconds: widget.isCollapsed ? 280 : 240),
-              curve: widget.isCollapsed ? Curves.easeInOutCubic : Curves.easeOutCubic,
+              curve: widget.isCollapsed
+                  ? Curves.easeInOutCubic
+                  : Curves.easeOutCubic,
               width: widget.isCollapsed ? 55.0 : mainFabSize,
               height: widget.isCollapsed ? 55.0 : mainFabSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: widget.isOpen
-                    ? (isDark ? const Color(0xFF384050) : const Color(0xFF374151))
+                    ? (isDark
+                        ? const Color(0xFF384050)
+                        : const Color(0xFF374151))
                     : AppColors.primaryBlue,
                 border: Border.all(
                   color: Colors.white.withValues(
@@ -1186,10 +1203,9 @@ class _GenZExpandableFabState extends State<_GenZExpandableFab>
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (widget.isOpen
-                            ? Colors.black
-                            : AppColors.primaryBlue)
-                        .withValues(alpha: 0.35),
+                    color:
+                        (widget.isOpen ? Colors.black : AppColors.primaryBlue)
+                            .withValues(alpha: 0.35),
                     blurRadius: 14,
                     offset: const Offset(0, 3),
                   ),
@@ -1234,15 +1250,13 @@ class _FloatingGlassNavbar extends StatelessWidget {
     final isDark = AppColors.isDark(context);
 
     // Active text & icon: Dùng primaryBlue cho dark mode, và xanh đậm hơn rõ nét (0xFF2563EB) cho light mode để dễ nhìn
-    final activeTextColor = isDark
-        ? AppColors.primaryBlue
-        : const Color(0xFF2563EB);
+    final activeTextColor =
+        isDark ? AppColors.primaryBlue : const Color(0xFF2563EB);
     // Màu pill nền indicator: Đồng bộ tone màu xanh thương hiệu AppColors.primaryBlue
     final indicatorColor = AppColors.primaryBlue;
 
-    final unselectedColor = isDark
-        ? Colors.white.withValues(alpha: 0.82)
-        : const Color(0xFF334155);
+    final unselectedColor =
+        isDark ? Colors.white.withValues(alpha: 0.82) : const Color(0xFF334155);
 
     final l10n = context.l10n;
     final items = <_NavBarItemData>[
@@ -1385,17 +1399,21 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                     behavior: HitTestBehavior.opaque,
                                     child: Container(
                                       color: Colors.transparent,
-                                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 4, horizontal: 2),
                                       child: Builder(
                                         builder: (context) {
-                                          final iconSize = selected ? 32.0 : 29.0;
+                                          final iconSize =
+                                              selected ? 32.0 : 29.0;
 
                                           return Column(
-                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
                                             children: [
                                               if (i == 2)
                                                 _SpinningFeedIcon(
-                                                  spinning: isRefreshingFeed && currentIndex == 2,
+                                                  spinning: isRefreshingFeed &&
+                                                      currentIndex == 2,
                                                   icon: selected
                                                       ? item.activeIcon
                                                       : item.icon,
@@ -1406,24 +1424,31 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                                 )
                                               else
                                                 AnimatedSwitcher(
-                                                  duration: const Duration(milliseconds: 200),
-                                                  transitionBuilder: (child, anim) => FadeTransition(
+                                                  duration: const Duration(
+                                                      milliseconds: 200),
+                                                  transitionBuilder:
+                                                      (child, anim) =>
+                                                          FadeTransition(
                                                     opacity: anim,
                                                     child: child,
                                                   ),
                                                   child: Icon(
-                                                    selected ? item.activeIcon : item.icon,
-                                                    key: ValueKey('${item.label}_$selected'),
+                                                    selected
+                                                        ? item.activeIcon
+                                                        : item.icon,
+                                                    key: ValueKey(
+                                                        '${item.label}_$selected'),
                                                     size: iconSize,
                                                     color: selected
-                                                      ? activeTextColor
-                                                      : unselectedColor,
+                                                        ? activeTextColor
+                                                        : unselectedColor,
                                                   ),
                                                 ),
                                               const SizedBox(height: 1.5),
                                               Flexible(
                                                 child: AnimatedDefaultTextStyle(
-                                                  duration: const Duration(milliseconds: 200),
+                                                  duration: const Duration(
+                                                      milliseconds: 200),
                                                   style: AppTextStyles.navLabel(
                                                     selected: selected,
                                                     color: selected
@@ -1435,7 +1460,8 @@ class _FloatingGlassNavbar extends StatelessWidget {
                                                         ? l10n.tabLoading
                                                         : item.label,
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     softWrap: false,
                                                     textAlign: TextAlign.center,
                                                   ),

@@ -82,16 +82,16 @@ class _CalendarSectionState extends State<CalendarSection> {
   }
 
   List<TransactionModel> _transactionsOfDay(
-      List<TransactionModel> all,
-      DateTime date,
-      ) {
+    List<TransactionModel> all,
+    DateTime date,
+  ) {
     return all.where((tx) => _sameDate(tx.createdAt, date)).toList()
       ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
   }
 
   List<TransactionModel> _previewTransactionsOfDay(
-      List<TransactionModel> dayTransactions,
-      ) {
+    List<TransactionModel> dayTransactions,
+  ) {
     return dayTransactions.take(2).toList();
   }
 
@@ -106,7 +106,8 @@ class _CalendarSectionState extends State<CalendarSection> {
     final locale = Localizations.localeOf(context).toLanguageTag();
     final monday = DateTime(2024, 1, 1); // Monday
     return List.generate(7, (index) {
-      final label = DateFormat.E(locale).format(monday.add(Duration(days: index)));
+      final label =
+          DateFormat.E(locale).format(monday.add(Duration(days: index)));
       return _capitalizedWeekdayAbbrev(label);
     });
   }
@@ -125,7 +126,8 @@ class _CalendarSectionState extends State<CalendarSection> {
       setState(() {
         currentMonth = DateTime(picked.year, picked.month);
         if (_isWeekView) {
-          currentWeekStart = _startOfWeek(DateTime(picked.year, picked.month, 1));
+          currentWeekStart =
+              _startOfWeek(DateTime(picked.year, picked.month, 1));
         }
       });
     }
@@ -384,12 +386,14 @@ class _CalendarSectionState extends State<CalendarSection> {
                                 Center(child: _WeekdayText(weekdayLabels[4]))),
                         Expanded(
                           child: Center(
-                            child: _WeekdayText(weekdayLabels[5], weekend: true),
+                            child:
+                                _WeekdayText(weekdayLabels[5], weekend: true),
                           ),
                         ),
                         Expanded(
                           child: Center(
-                            child: _WeekdayText(weekdayLabels[6], weekend: true),
+                            child:
+                                _WeekdayText(weekdayLabels[6], weekend: true),
                           ),
                         ),
                       ],
@@ -539,9 +543,9 @@ class _WeekdayText extends StatelessWidget {
   final bool weekend;
 
   const _WeekdayText(
-      this.text, {
-        this.weekend = false,
-      });
+    this.text, {
+    this.weekend = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -550,9 +554,8 @@ class _WeekdayText extends StatelessWidget {
       style: AppTextStyles.caption(context).copyWith(
         fontSize: 12,
         fontWeight: FontWeight.w800,
-        color: weekend
-            ? AppColors.primaryBlue
-            : AppColors.textSecondary(context),
+        color:
+            weekend ? AppColors.primaryBlue : AppColors.textSecondary(context),
       ),
     );
   }
@@ -570,11 +573,16 @@ Widget _buildDayVisualMarker({
 }) {
   final isDark = AppColors.isDark(context);
 
+  final Color fallbackDataColor = imageTransactions.isNotEmpty
+      ? (imageTransactions.first.type == 'expense' &&
+              !imageTransactions.first.isGroupContribution
+          ? AppColors.expense
+          : AppColors.income)
+      : AppColors.expense;
+
   final markerColor = isBirthday
       ? const Color(0xFFFF4081)
-      : (isToday
-          ? AppColors.primaryBlue
-          : const Color(0xFF6DB7FF));
+      : fallbackDataColor;
 
   Widget topWidget;
 
@@ -636,8 +644,7 @@ Widget _buildDayVisualMarker({
               top: 1,
               right: 2,
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 constraints: const BoxConstraints(
                   minWidth: 15,
                   minHeight: 15,
@@ -781,8 +788,7 @@ class _WeekDayCell extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isToday
-                ? AppColors.primaryBlue
-                    .withValues(alpha: isDark ? 0.70 : 0.50)
+                ? AppColors.primaryBlue.withValues(alpha: isDark ? 0.70 : 0.50)
                 : AppColors.innerBorder(context),
             width: isToday ? 1.5 : 1.0,
           ),
@@ -976,8 +982,6 @@ class _CalendarStickerCell extends StatelessWidget {
   }
 }
 
-
-
 class _TodayDot extends StatelessWidget {
   const _TodayDot();
 
@@ -1137,7 +1141,7 @@ class _StickerFrame extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final categoryColor = transaction.categoryColorHex != null &&
-        transaction.categoryColorHex!.trim().isNotEmpty
+            transaction.categoryColorHex!.trim().isNotEmpty
         ? _parseHexColor(transaction.categoryColorHex!)
         : borderColor;
 
@@ -1365,8 +1369,7 @@ class _HomeScreenMonthPickerSheetState
 
               // Hộp chọn Năm [ < ] [ 2026 ] [ > ]
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
                   color: innerTileBg,
                   borderRadius: BorderRadius.circular(20),
@@ -1514,9 +1517,7 @@ class _HomeScreenMonthGridItem extends StatelessWidget {
         child: Text(
           monthName,
           style: TextStyle(
-            color: isDark
-                ? const Color(0xFF454B5A)
-                : const Color(0xFFB0B7C3),
+            color: isDark ? const Color(0xFF454B5A) : const Color(0xFFB0B7C3),
             fontSize: 13.5,
             fontWeight: FontWeight.w600,
           ),
@@ -1573,8 +1574,9 @@ class _HomeScreenMonthGridItem extends StatelessWidget {
                   style: TextStyle(
                     color: textColor,
                     fontSize: 13.5,
-                    fontWeight:
-                        isSelected || isCurrent ? FontWeight.w900 : FontWeight.w700,
+                    fontWeight: isSelected || isCurrent
+                        ? FontWeight.w900
+                        : FontWeight.w700,
                   ),
                 ),
                 if (txCount > 0) ...[
