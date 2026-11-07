@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -5,6 +6,10 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/constants/widget_frames.dart';
+import '../../../core/services/app_widget_service.dart';
+import '../../../core/widgets/app_widgets/calendar_app_widget_view.dart';
+import '../../../core/widgets/app_widgets/stats_app_widget_view.dart';
+import '../../home/controllers/home_controller.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/widgets/app_back_button.dart';
 import '../controllers/profile_controller.dart';
@@ -445,235 +450,239 @@ class _HomeWidgetsScreenState extends State<HomeWidgetsScreen> {
   }
 
   Widget _buildStatsWidgetPreview(BuildContext context) {
-    final l10n = context.l10n;
+    final home = context.watch<HomeController>();
+    final profileCtrl = context.watch<ProfileController>();
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final currentMonth = now.month;
+    final isEn = profileCtrl.languageCode == 'en';
+    final userCurrency = profileCtrl.currency;
 
-    return Container(
-      width: 310,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B1B1E),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white12),
+    final thisMonthTxs = home.transactions.where((tx) {
+      return !tx.isFailed &&
+          tx.createdAt.year == currentYear &&
+          tx.createdAt.month == currentMonth;
+    }).toList();
+
+    final prevMonthDate = DateTime(currentYear, currentMonth - 1);
+    final prevMonthTxs = home.transactions.where((tx) {
+      return !tx.isFailed &&
+          tx.createdAt.year == prevMonthDate.year &&
+          tx.createdAt.month == prevMonthDate.month;
+    }).toList();
+
+    final double totalExpense = thisMonthTxs
+        .where((e) =>
+            (e.type == 'expense' && !e.isGroupExpense) || e.isGroupContribution)
+        .fold(0.0, (sum, e) => sum + e.amount);
+
+    final double todayExpense = home.transactions.where((tx) {
+      return !tx.isFailed &&
+          tx.createdAt.year == currentYear &&
+          tx.createdAt.month == currentMonth &&
+          tx.createdAt.day == now.day &&
+          ((tx.type == 'expense' && !tx.isGroupExpense) ||
+              tx.isGroupContribution);
+    }).fold(0.0, (sum, e) => sum + e.amount);
+
+    final double todayIncome = home.transactions.where((tx) {
+      return !tx.isFailed &&
+          tx.createdAt.year == currentYear &&
+          tx.createdAt.month == currentMonth &&
+          tx.createdAt.day == now.day &&
+          (tx.type == 'income' && !tx.isGroupContribution);
+    }).fold(0.0, (sum, e) => sum + e.amount);
+
+    final double prevTotalExpense = prevMonthTxs
+        .where((e) =>
+            (e.type == 'expense' && !e.isGroupExpense) || e.isGroupContribution)
+        .fold(0.0, (sum, e) => sum + e.amount);
+
+    final Map<String, double> categoryMap = {};
+    for (final tx in thisMonthTxs) {
+      if ((tx.type == 'expense' && !tx.isGroupExpense) ||
+          tx.isGroupContribution) {
+        final rawCat =
+            tx.category.isNotEmpty ? tx.category : (isEn ? 'Other' : 'Khác');
+        final localizedCat =
+            AppWidgetService.localizeCategory(rawCat, isEn: isEn);
+        categoryMap[localizedCat] =
+            (categoryMap[localizedCat] ?? 0.0) + tx.amount;
+      }
+    }
+
+    final sortedCategories = categoryMap.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+
+    final List<CategoryShare> categoryShares = [];
+    final categoryColors = const [
+      Color(0xFFFF5B5B),
+      Color(0xFFFFC857),
+      Color(0xFF7DDC86),
+      Color(0xFF79AFFF),
+      Color(0xFFB68CFF),
+      Color(0xFF59D4C8),
+      Color(0xFFFFA45B),
+      Color(0xFF8E8E93),
+    ];
+
+    for (int i = 0; i < sortedCategories.length; i++) {
+      final entry = sortedCategories[i];
+      final pct = totalExpense > 0 ? (entry.value / totalExpense) * 100 : 0.0;
+      categoryShares.add(
+        CategoryShare(
+          name: entry.key,
+          amount: entry.value,
+          percentage: pct,
+          color: categoryColors[i % categoryColors.length],
+        ),
+      );
+    }
+
+    // Dữ liệu mẫu nếu người dùng chưa có giao dịch trong tháng
+    final sampleCategories = [
+      CategoryShare(
+        name: isEn ? 'Food' : 'Ăn uống',
+        amount: 3200000,
+        percentage: 45.2,
+        color: categoryColors[0],
       ),
-      child: Row(
-        children: [
-          // Mini Donut preview
-          SizedBox(
-            width: 68,
-            height: 68,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 66,
-                  height: 66,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: const Color(0xFFFF5B5B),
-                      width: 10,
-                    ),
-                  ),
-                ),
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF1B1B1E),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.thisMonthLabel,
-                  style: const TextStyle(
-                    fontFamily: 'ProximaSoft',
-                    fontSize: 11,
-                    color: Color(0xFF8E8E93),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  '7.363.897đ',
-                  style: TextStyle(
-                    fontFamily: 'ProximaSoft',
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFFFF5B5B),
-                  ),
-                ),
-                const Text(
-                  '↓ 74.8%',
-                  style: TextStyle(
-                    fontFamily: 'ProximaSoft',
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF7DDC86),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.previewCategoriesSample,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'ProximaSoft',
-                    fontSize: 9.5,
-                    color: Color(0xFFD1D1D6),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+      CategoryShare(
+        name: isEn ? 'Shopping' : 'Mua sắm',
+        amount: 1800000,
+        percentage: 24.5,
+        color: categoryColors[1],
       ),
+      CategoryShare(
+        name: isEn ? 'Transport' : 'Di chuyển',
+        amount: 1200000,
+        percentage: 16.3,
+        color: categoryColors[2],
+      ),
+      CategoryShare(
+        name: isEn ? 'Other' : 'Khác',
+        amount: 1163897,
+        percentage: 14.0,
+        color: categoryColors[3],
+      ),
+    ];
+
+    final statsData = StatsWidgetData(
+      totalExpense: totalExpense > 0 ? totalExpense : 7363897,
+      todayExpense:
+          (todayExpense > 0 || todayIncome > 0) ? todayExpense : 150000,
+      todayIncome: (todayExpense > 0 || todayIncome > 0) ? todayIncome : 200000,
+      previousMonthExpense: prevTotalExpense > 0 ? prevTotalExpense : 29200000,
+      categories: categoryShares.isNotEmpty ? categoryShares : sampleCategories,
+      currency: userCurrency,
+      monthLabel: isEn ? 'This Month' : 'Tháng này',
+      noExpenseLabel: isEn ? 'No spending yet' : 'Chưa có chi tiêu',
+      isDark: true,
+      isEn: isEn,
     );
+
+    return StatsAppWidgetView(data: statsData);
   }
 
   Widget _buildCalendarWidgetPreview(BuildContext context) {
-    final l10n = context.l10n;
+    final home = context.watch<HomeController>();
+    final profileCtrl = context.watch<ProfileController>();
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final currentMonth = now.month;
+    final isEn = profileCtrl.languageCode == 'en';
+    final userCurrency = profileCtrl.currency;
 
-    return Container(
-      width: 310,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B1B1E),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white12),
+    final thisMonthTxs = home.transactions.where((tx) {
+      return !tx.isFailed &&
+          tx.createdAt.year == currentYear &&
+          tx.createdAt.month == currentMonth;
+    }).toList();
+
+    final double totalExpense = thisMonthTxs
+        .where((e) =>
+            (e.type == 'expense' && !e.isGroupExpense) || e.isGroupContribution)
+        .fold(0.0, (sum, e) => sum + e.amount);
+
+    final double totalIncome = thisMonthTxs
+        .where((e) => e.type == 'income' && !e.isGroupContribution)
+        .fold(0.0, (sum, e) => sum + e.amount);
+
+    final lastDayOfMonth = DateTime(currentYear, currentMonth + 1, 0).day;
+    final Map<int, double> dayExpenseMap = {};
+    final Map<int, double> dayIncomeMap = {};
+    final Map<int, bool> dayHasPhotoMap = {};
+    final Set<int> daysWithSpending = {};
+    final Set<int> daysWithPhoto = {};
+
+    for (final tx in thisMonthTxs) {
+      final day = tx.createdAt.day;
+      final isExpense = (tx.type == 'expense' && !tx.isGroupExpense) ||
+          tx.isGroupContribution;
+      final isIncome = tx.type == 'income' && !tx.isGroupContribution;
+
+      if (isExpense) {
+        dayExpenseMap[day] = (dayExpenseMap[day] ?? 0.0) + tx.amount;
+        daysWithSpending.add(day);
+      } else if (isIncome) {
+        dayIncomeMap[day] = (dayIncomeMap[day] ?? 0.0) + tx.amount;
+      }
+
+      final hasMedia = tx.thumbnailUrl.trim().isNotEmpty ||
+          tx.imageUrl.trim().isNotEmpty ||
+          tx.mediaUrl.trim().isNotEmpty;
+      if (hasMedia) {
+        dayHasPhotoMap[day] = true;
+        daysWithPhoto.add(day);
+      }
+    }
+
+    final Map<int, CalendarDayInfo> dayInfoMap = {};
+    for (int d = 1; d <= lastDayOfMonth; d++) {
+      dayInfoMap[d] = CalendarDayInfo(
+        day: d,
+        expense: dayExpenseMap[d] ?? 0.0,
+        income: dayIncomeMap[d] ?? 0.0,
+        hasPhoto: dayHasPhotoMap[d] ?? false,
+        isToday: d == now.day,
+      );
+    }
+
+    final monthLabel = isEn
+        ? DateFormat('MMMM yyyy', 'en_US').format(now)
+        : 'Tháng $currentMonth $currentYear';
+
+    final calendarData = CalendarWidgetData(
+      monthLabel: monthLabel,
+      streak:
+          home.profile?.currentStreak ?? profileCtrl.user?.currentStreak ?? 0,
+      totalExpenseCompact: AppWidgetService.instance.formatCompactCurrency(
+        totalExpense,
+        currency: userCurrency,
+        isEn: isEn,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                l10n.previewMonthSample,
-                style: const TextStyle(
-                  fontFamily: 'ProximaSoft',
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFF5722),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.local_fire_department_rounded,
-                      size: 13,
-                      color: Colors.white,
-                    ),
-                    SizedBox(width: 2),
-                    Text(
-                      '5',
-                      style: TextStyle(
-                        fontFamily: 'ProximaSoft',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFF26262B),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Text(
-                  '${l10n.previewExpenseLabel}: 7.4Mđ',
-                  style: const TextStyle(
-                    fontFamily: 'ProximaSoft',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFFFF5B5B),
-                  ),
-                ),
-                Text(
-                  '${l10n.previewTxnCountLabel}: 38',
-                  style: const TextStyle(
-                    fontFamily: 'ProximaSoft',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF7DDC86),
-                  ),
-                ),
-                Text(
-                  '${l10n.previewIncomeLabel}: 150Kđ',
-                  style: const TextStyle(
-                    fontFamily: 'ProximaSoft',
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF59D4C8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Sample mini grid
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: List.generate(7, (i) {
-              final isPhoto = i >= 2 && i <= 5;
-              return Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: isPhoto
-                      ? const Color(0xFF4A2514)
-                      : const Color(0xFF242632),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: isPhoto
-                        ? const Color(0xFFFF6A3D)
-                        : const Color(0xFF35394A),
-                    width: isPhoto ? 1.2 : 0.8,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    '${i + 1}',
-                    style: TextStyle(
-                      fontFamily: 'ProximaSoft',
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.bold,
-                      color: isPhoto
-                          ? const Color(0xFFFFD4C4)
-                          : const Color(0xFF9095A8),
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ],
+      transactionCount: thisMonthTxs.length,
+      totalIncomeCompact: AppWidgetService.instance.formatCompactCurrency(
+        totalIncome,
+        currency: userCurrency,
+        isEn: isEn,
       ),
+      year: currentYear,
+      month: currentMonth,
+      days: dayInfoMap,
+      today: now.day,
+      isDark: true,
+      currency: userCurrency,
+      isEn: isEn,
+      expenseLabel: isEn ? 'Expense' : 'Chi tiêu',
+      txCountLabel: isEn ? 'Transactions' : 'Số giao dịch',
+      incomeLabel: isEn ? 'Income' : 'Thu vào',
+      weekdayLabels: isEn
+          ? const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+          : const ['Th 2', 'Th 3', 'Th 4', 'Th 5', 'Th 6', 'Th 7', 'CN'],
     );
+
+    return CalendarAppWidgetView(data: calendarData);
   }
 
   Widget _buildMomentWidgetPreview(BuildContext context) {

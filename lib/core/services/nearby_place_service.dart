@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../data/models/nearby_place_model.dart';
+import 'local_place_dataset_service.dart';
 
 // ─────────────────────────────────────────────────────────────
 // ABSTRACT INTERFACE
@@ -251,49 +253,160 @@ class OverpassNearbyPlaceService implements NearbyPlaceService {
       return cached.places;
     }
 
-    // 2. Validate OSM filter
-    final osmFilter = NearbyPlaceConfig.osmFilterForCategory(normCategory);
-    if (osmFilter == null) {
-      debugPrint('OverpassService: No OSM filter for category "$normCategory"');
-      return [];
-    }
-
-    final radiusMeters = (radiusKm * 1000).toInt();
-    final query = _buildOverpassQuery(
-      lat: latitude,
-      lon: longitude,
-      radiusMeters: radiusMeters,
-      osmFilter: osmFilter,
-    );
-
-    // 3. Apply Rate Limiting
-    await _throttle();
-
-    // 4. Fast-Fallback Concurrent Mirror Request
-    final responseData = await _queryOverpassWithFastFallback(query);
-
-    if (responseData == null) {
-      debugPrint('OverpassService: All Overpass mirrors failed or timed out');
-      return [];
-    }
-
-    // 5. Parse OSM elements
-    final elements = responseData['elements'] as List<dynamic>? ?? [];
-    final places = _parseElements(
-      elements: elements,
-      category: normCategory,
+    // 2. Concurrently fetch local dataset places (Google Maps scraped data)
+    final localDatasetFuture = LocalPlaceDatasetService.instance.getNearbyPlaces(
       userLat: latitude,
       userLon: longitude,
-      maxRadiusMeters: radiusKm * 1000,
+      category: normCategory,
+      radiusKm: radiusKm,
     );
 
-    // 6. Sort by nearest distance first
-    places.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
+    // 3. Query Overpass OSM API
+    final osmFilter = NearbyPlaceConfig.osmFilterForCategory(normCategory);
+    List<NearbyPlace> osmPlaces = [];
+    if (osmFilter != null) {
+      try {
+        final radiusMeters = (radiusKm * 1000).toInt();
+        final query = _buildOverpassQuery(
+          lat: latitude,
+          lon: longitude,
+          radiusMeters: radiusMeters,
+          osmFilter: osmFilter,
+        );
+
+        await _throttle();
+        final responseData = await _queryOverpassWithFastFallback(query);
+
+        if (responseData != null) {
+          final elements = responseData['elements'] as List<dynamic>? ?? [];
+          osmPlaces = _parseElements(
+            elements: elements,
+            category: normCategory,
+            userLat: latitude,
+            userLon: longitude,
+            maxRadiusMeters: radiusKm * 1000,
+          );
+        }
+      } catch (e) {
+        debugPrint('OverpassService: Error querying OSM mirror: $e');
+      }
+    }
+
+    // 4. Await local dataset places
+    final localPlaces = await localDatasetFuture;
+
+    // 5. Smart Fusion: Merge OSM places and Local dataset places
+    final mergedPlaces = _mergePlaces(
+      osmPlaces: osmPlaces,
+      localPlaces: localPlaces,
+    );
+
+    // 6. Sort by nearest distance first (Priority on proximity)
+    mergedPlaces.sort((a, b) => a.distanceMeters.compareTo(b.distanceMeters));
 
     // 7. Store in Cache
-    _cache[cacheKey] = _CacheEntry(places: places, createdAt: DateTime.now());
-    debugPrint('OverpassService: Found ${places.length} places for "$normCategory"');
-    return places;
+    if (mergedPlaces.isNotEmpty) {
+      _cache[cacheKey] = _CacheEntry(places: mergedPlaces, createdAt: DateTime.now());
+    }
+
+    debugPrint(
+      'OverpassService: Found ${mergedPlaces.length} places for "$normCategory" '
+      '(OSM: ${osmPlaces.length}, Local: ${localPlaces.length})',
+    );
+    return mergedPlaces;
+  }
+
+  /// Merges OSM places with Local scraped Google Maps places:
+  /// - Enriches matching places with rating, reviews, price range, and photos.
+  /// - Includes all local places found within the radius.
+  List<NearbyPlace> _mergePlaces({
+    required List<NearbyPlace> osmPlaces,
+    required List<NearbyPlace> localPlaces,
+  }) {
+    if (localPlaces.isEmpty) return osmPlaces;
+    if (osmPlaces.isEmpty) return localPlaces;
+
+    final merged = <NearbyPlace>[];
+    final matchedLocalIds = <String>{};
+
+    for (final osm in osmPlaces) {
+      final osmNorm = _simplifyForMatching(osm.name);
+      NearbyPlace? bestMatch;
+      double bestDist = double.infinity;
+
+      for (final loc in localPlaces) {
+        if (matchedLocalIds.contains(loc.id)) continue;
+
+        final dist = NearbyPlace.haversineDistance(
+          lat1: osm.latitude,
+          lon1: osm.longitude,
+          lat2: loc.latitude,
+          lon2: loc.longitude,
+        );
+
+        // Immediate match if coordinates are under 40 meters
+        if (dist < 40) {
+          bestMatch = loc;
+          break;
+        }
+
+        // Match if names are similar and within 200 meters
+        if (dist < 200) {
+          final locNorm = _simplifyForMatching(loc.name);
+          if (osmNorm.isNotEmpty && locNorm.isNotEmpty) {
+            if (osmNorm == locNorm ||
+                osmNorm.contains(locNorm) ||
+                locNorm.contains(osmNorm)) {
+              if (dist < bestDist) {
+                bestMatch = loc;
+                bestDist = dist;
+              }
+            }
+          }
+        }
+      }
+
+      if (bestMatch != null) {
+        matchedLocalIds.add(bestMatch.id);
+        merged.add(osm.copyWith(
+          name: bestMatch.name.isNotEmpty ? bestMatch.name : osm.name,
+          address: bestMatch.address ?? osm.address,
+          rating: bestMatch.rating ?? osm.rating,
+          reviewCount: bestMatch.reviewCount ?? osm.reviewCount,
+          priceRange: bestMatch.priceRange ?? osm.priceRange,
+          phone: bestMatch.phone ?? osm.phone,
+          placeType: bestMatch.placeType ?? osm.placeType,
+          imageUrl: (bestMatch.imageUrl?.isNotEmpty ?? false)
+              ? bestMatch.imageUrl
+              : osm.imageUrl,
+          distanceMeters: math.min(osm.distanceMeters, bestMatch.distanceMeters),
+        ));
+      } else {
+        merged.add(osm);
+      }
+    }
+
+    // Add all unmatched local dataset places in the area
+    for (final loc in localPlaces) {
+      if (!matchedLocalIds.contains(loc.id)) {
+        merged.add(loc);
+      }
+    }
+
+    return merged;
+  }
+
+  @visibleForTesting
+  List<NearbyPlace> mergePlacesForTesting({
+    required List<NearbyPlace> osmPlaces,
+    required List<NearbyPlace> localPlaces,
+  }) => _mergePlaces(osmPlaces: osmPlaces, localPlaces: localPlaces);
+
+  static String _simplifyForMatching(String name) {
+    return name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), '')
+        .trim();
   }
 
   /// Sends request to the fastest mirror; if it doesn't respond within 1.2s,

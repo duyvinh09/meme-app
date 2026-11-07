@@ -964,6 +964,15 @@ class _StatsScreenState extends State<StatsScreen> {
                       transactions: currentTransactions
                           .whereType<TransactionModel>()
                           .toList(),
+                      allTransactions: stats.transactions
+                          .whereType<TransactionModel>()
+                          .toList(),
+                      selectedDate: selectedDate,
+                      onMonthChanged: (newDate) {
+                        setState(() {
+                          selectedDate = newDate;
+                        });
+                      },
                     )
                   else
                     _InteractiveStatsPieChartCard(
@@ -1057,18 +1066,37 @@ class _SafeMapPanel extends StatelessWidget {
   final bool interactionEnabled;
   final VoidCallback onToggleInteraction;
   final List<TransactionModel> transactions;
+  final List<TransactionModel>? allTransactions;
+  final DateTime? selectedDate;
+  final ValueChanged<DateTime>? onMonthChanged;
 
   const _SafeMapPanel({
     required this.palette,
     required this.interactionEnabled,
     required this.onToggleInteraction,
     required this.transactions,
+    this.allTransactions,
+    this.selectedDate,
+    this.onMonthChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final mapHeight = (screenHeight * 0.44).clamp(310.0, 420.0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final overlayBg = isDark
+        ? const Color(0xFF161922).withValues(alpha: 0.48)
+        : Colors.white.withValues(alpha: 0.52);
+    final overlayBorder = isDark
+        ? Colors.white.withValues(alpha: 0.18)
+        : const Color(0xFFD1D5DB).withValues(alpha: 0.55);
+    final overlayTextColor =
+        isDark ? Colors.white : const Color(0xFF1F2937);
+    final overlayShadow = isDark
+        ? Colors.black.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.05);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 28),
@@ -1180,25 +1208,33 @@ class _SafeMapPanel extends StatelessWidget {
                               vertical: 5.5,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.52),
+                              color: overlayBg,
                               borderRadius: BorderRadius.circular(999),
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.18),
+                                color: overlayBorder,
+                                width: 0.8,
                               ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: overlayShadow,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 const Icon(
                                   Icons.touch_app_rounded,
-                                  color: Colors.white,
+                                  color: AppColors.primaryBlue,
                                   size: 14,
                                 ),
                                 const SizedBox(width: 5),
                                 Text(
                                   context.l10n.tapToControlMap,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: overlayTextColor,
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -1224,17 +1260,18 @@ class _SafeMapPanel extends StatelessWidget {
                               vertical: 5.5,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.65),
+                              color: overlayBg,
                               borderRadius: BorderRadius.circular(999),
                               border: Border.all(
-                                color: const Color(0xFF388AF6),
-                                width: 1.2,
+                                color: const Color(0xFF388AF6)
+                                    .withValues(alpha: isDark ? 0.65 : 0.50),
+                                width: 1.0,
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.25),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
+                                  color: overlayShadow,
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 1),
                                 ),
                               ],
                             ),
@@ -1249,8 +1286,8 @@ class _SafeMapPanel extends StatelessWidget {
                                 const SizedBox(width: 4),
                                 Text(
                                   context.l10n.controlling,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: overlayTextColor,
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -1267,37 +1304,44 @@ class _SafeMapPanel extends StatelessWidget {
                     child: Material(
                       color: Colors.transparent,
                       child: InkWell(
-                        onTap: () {
-                          Navigator.push(
+                        onTap: () async {
+                          final picked = await Navigator.push<DateTime>(
                             context,
                             MaterialPageRoute(
                               builder: (_) => TransactionMapScreen(
                                 transactions: transactions,
+                                allTransactions: allTransactions,
+                                initialMonth: selectedDate,
+                                onMonthChanged: onMonthChanged,
                               ),
                             ),
                           );
+                          if (picked != null && context.mounted) {
+                            onMonthChanged?.call(picked);
+                          }
                         },
                         borderRadius: BorderRadius.circular(999),
                         child: Container(
                           width: 38,
                           height: 38,
                           decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.60),
+                            color: overlayBg,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.22),
+                              color: overlayBorder,
+                              width: 0.8,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.22),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+                                color: overlayShadow,
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.fullscreen_rounded,
-                            color: Colors.white,
+                            color: overlayTextColor,
                             size: 22,
                           ),
                         ),

@@ -16,8 +16,10 @@ import '../../features/auth/controllers/auth_controller.dart';
 import '../../features/feed/controllers/feed_controller.dart';
 import '../../features/home/controllers/home_controller.dart';
 import '../../features/home/screens/moment_viewer_screen.dart';
+import '../../features/profile/controllers/profile_controller.dart';
 import '../routes/app_routes.dart';
 import '../routes/route_names.dart';
+import '../utils/currency_formatter.dart';
 import '../widgets/app_widgets/calendar_app_widget_view.dart';
 import '../widgets/app_widgets/moment_app_widget_view.dart';
 import '../widgets/app_widgets/stats_app_widget_view.dart';
@@ -33,6 +35,7 @@ class AppWidgetService {
   String? _pendingWidgetTarget;
   String? _pendingMomentId;
   Timer? _debounceTimer;
+  Timer? _midnightTimer;
   bool _isUpdating = false;
   bool _hasPendingUpdate = false;
 
@@ -98,6 +101,23 @@ class AppWidgetService {
     } catch (e) {
       debugPrint('[AppWidgetService] Error listening to HomeWidget: $e');
     }
+
+    scheduleMidnightUpdate();
+  }
+
+  /// Automatically trigger a widget refresh 5 seconds after midnight to ensure
+  /// the current day highlight ("vùng xanh") moves accurately to the new day.
+  void scheduleMidnightUpdate() {
+    _midnightTimer?.cancel();
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1, 0, 0, 5);
+    final diff = tomorrow.difference(now);
+    _midnightTimer = Timer(diff, () {
+      debugPrint(
+          '[AppWidgetService] Midnight arrived, refreshing widgets for new day...');
+      updateWidgets();
+      scheduleMidnightUpdate();
+    });
   }
 
   void handleUriString(String uriStr) {
@@ -251,22 +271,52 @@ class AppWidgetService {
     }
   }
 
-  /// Compact number formatter (e.g. 7.4Mđ, 150Kđ, 500đ)
-  String _formatCompactVnd(double amount) {
-    if (amount <= 0) return '0đ';
-    if (amount >= 1000000000) {
-      final val = amount / 1000000000;
-      return '${val.toStringAsFixed(1).replaceAll('.0', '')}Bđ';
+  /// Format compact money supporting VND and USD, VI and EN (e.g. 7.4tr / 7.4M, 150k, $25, $1.5k)
+  String formatCompactCurrency(
+    double amountVnd, {
+    required String currency,
+    required bool isEn,
+  }) {
+    if (amountVnd <= 0) {
+      return AppCurrencyFormatter.normalizeCurrency(currency) == 'USD'
+          ? '\$0'
+          : '0đ';
     }
-    if (amount >= 1000000) {
-      final val = amount / 1000000;
-      return '${val.toStringAsFixed(1).replaceAll('.0', '')}Mđ';
+    final normCurrency = AppCurrencyFormatter.normalizeCurrency(currency);
+    if (normCurrency == 'USD') {
+      final usd =
+          AppCurrencyFormatter.fromVnd(amountVnd: amountVnd, currency: 'USD');
+      if (usd >= 1000000000) {
+        final val = usd / 1000000000;
+        return '\$${val.toStringAsFixed(1).replaceAll('.0', '')}B';
+      }
+      if (usd >= 1000000) {
+        final val = usd / 1000000;
+        return '\$${val.toStringAsFixed(1).replaceAll('.0', '')}M';
+      }
+      if (usd >= 1000) {
+        final val = usd / 1000;
+        return '\$${val.toStringAsFixed(1).replaceAll('.0', '')}k';
+      }
+      return '\$${usd.round()}';
     }
-    if (amount >= 1000) {
-      final val = amount / 1000;
-      return '${val.toStringAsFixed(0)}Kđ';
+
+    // VND
+    if (amountVnd >= 1000000000) {
+      final val = amountVnd / 1000000000;
+      final unit = isEn ? 'B' : 'tỷ';
+      return '${val.toStringAsFixed(1).replaceAll('.0', '')}$unit';
     }
-    return '${amount.toInt()}đ';
+    if (amountVnd >= 1000000) {
+      final val = amountVnd / 1000000;
+      final unit = isEn ? 'M' : 'tr';
+      return '${val.toStringAsFixed(1).replaceAll('.0', '')}$unit';
+    }
+    if (amountVnd >= 1000) {
+      final val = amountVnd / 1000;
+      return '${val.toStringAsFixed(0)}k';
+    }
+    return '${amountVnd.toInt()}đ';
   }
 
   List<TransactionModel> _cachedTransactions = [];
@@ -457,10 +507,30 @@ class AppWidgetService {
     }
 
     try {
+      final navContext = AppRoutes.navigatorKey.currentContext;
+      String userCurrency = currency ?? currentProfile?.currency ?? 'VND';
+      bool isEn = currentProfile?.language == 'en';
+
+      if (navContext != null) {
+        try {
+          final profileCtrl = navContext.read<ProfileController>();
+          if (currency == null && profileCtrl.currency.isNotEmpty) {
+            userCurrency = profileCtrl.currency;
+          }
+          if (currentProfile == null && profileCtrl.user != null) {
+            currentProfile = profileCtrl.user;
+            _cachedProfile = profileCtrl.user;
+          }
+          if (profileCtrl.languageCode.isNotEmpty) {
+            isEn = profileCtrl.languageCode == 'en';
+          }
+        } catch (_) {}
+      }
+      userCurrency = AppCurrencyFormatter.normalizeCurrency(userCurrency);
+
       final now = DateTime.now();
       final currentYear = now.year;
       final currentMonth = now.month;
-      final isEn = currentProfile?.language == 'en';
       final statsMonthLabel = isEn ? 'This Month' : 'Tháng này';
       final calendarMonthLabel = isEn
           ? DateFormat('MMMM yyyy', 'en_US').format(now)
@@ -487,6 +557,23 @@ class AppWidgetService {
               (e.type == 'expense' && !e.isGroupExpense) ||
               e.isGroupContribution)
           .fold(0.0, (sum, e) => sum + e.amount);
+
+      final double todayExpense = currentTxs.where((tx) {
+        return !tx.isFailed &&
+            tx.createdAt.year == currentYear &&
+            tx.createdAt.month == currentMonth &&
+            tx.createdAt.day == now.day &&
+            ((tx.type == 'expense' && !tx.isGroupExpense) ||
+                tx.isGroupContribution);
+      }).fold(0.0, (sum, e) => sum + e.amount);
+
+      final double todayIncome = currentTxs.where((tx) {
+        return !tx.isFailed &&
+            tx.createdAt.year == currentYear &&
+            tx.createdAt.month == currentMonth &&
+            tx.createdAt.day == now.day &&
+            (tx.type == 'income' && !tx.isGroupContribution);
+      }).fold(0.0, (sum, e) => sum + e.amount);
 
       final double totalIncome = thisMonthTxs
           .where((e) => e.type == 'income' && !e.isGroupContribution)
@@ -534,43 +621,76 @@ class AppWidgetService {
 
       final statsData = StatsWidgetData(
         totalExpense: totalExpense,
+        todayExpense: todayExpense,
+        todayIncome: todayIncome,
         previousMonthExpense: prevTotalExpense > 0 ? prevTotalExpense : null,
         categories: categoryShares,
-        currency: currency ?? currentProfile?.currency ?? 'VND',
+        currency: userCurrency,
         monthLabel: statsMonthLabel,
         noExpenseLabel: isEn ? 'No spending yet' : 'Chưa có chi tiêu',
         isDark: isDark,
         isEn: isEn,
       );
 
-      // 4. Calendar Days: Spending Days & Photo Moment Days (No heavy image decoding to save RAM)
+      // 4. Calendar Days: Spending Days & Photo Moment Days & Day Amounts
+      final lastDayOfMonth = DateTime(currentYear, currentMonth + 1, 0).day;
+      final Map<int, double> dayExpenseMap = {};
+      final Map<int, double> dayIncomeMap = {};
+      final Map<int, bool> dayHasPhotoMap = {};
       final Set<int> daysWithSpending = {};
       final Set<int> daysWithPhoto = {};
 
       for (final tx in thisMonthTxs) {
         final day = tx.createdAt.day;
-        daysWithSpending.add(day);
+        final isExpense = (tx.type == 'expense' && !tx.isGroupExpense) ||
+            tx.isGroupContribution;
+        final isIncome = tx.type == 'income' && !tx.isGroupContribution;
+
+        if (isExpense) {
+          dayExpenseMap[day] = (dayExpenseMap[day] ?? 0.0) + tx.amount;
+          daysWithSpending.add(day);
+        } else if (isIncome) {
+          dayIncomeMap[day] = (dayIncomeMap[day] ?? 0.0) + tx.amount;
+        }
+
         final hasMedia = tx.thumbnailUrl.trim().isNotEmpty ||
             tx.imageUrl.trim().isNotEmpty ||
             tx.mediaUrl.trim().isNotEmpty;
         if (hasMedia) {
+          dayHasPhotoMap[day] = true;
           daysWithPhoto.add(day);
         }
+      }
+
+      final Map<int, CalendarDayInfo> dayInfoMap = {};
+      for (int d = 1; d <= lastDayOfMonth; d++) {
+        dayInfoMap[d] = CalendarDayInfo(
+          day: d,
+          expense: dayExpenseMap[d] ?? 0.0,
+          income: dayIncomeMap[d] ?? 0.0,
+          hasPhoto: dayHasPhotoMap[d] ?? false,
+          isToday: d == now.day,
+        );
       }
 
       final calendarData = CalendarWidgetData(
         monthLabel: calendarMonthLabel,
         streak: currentProfile?.currentStreak ?? 0,
-        totalExpenseCompact: _formatCompactVnd(totalExpense),
+        totalExpenseCompact: formatCompactCurrency(totalExpense,
+            currency: userCurrency, isEn: isEn),
         transactionCount: thisMonthTxs.length,
-        totalIncomeCompact: _formatCompactVnd(totalIncome),
+        totalIncomeCompact: formatCompactCurrency(totalIncome,
+            currency: userCurrency, isEn: isEn),
         year: currentYear,
         month: currentMonth,
+        days: dayInfoMap,
         dayThumbnails: const {},
         daysWithSpending: daysWithSpending,
         daysWithPhoto: daysWithPhoto,
         today: now.day,
         isDark: isDark,
+        currency: userCurrency,
+        isEn: isEn,
         expenseLabel: isEn ? 'Expense' : 'Chi tiêu',
         txCountLabel: isEn ? 'Transactions' : 'Số giao dịch',
         incomeLabel: isEn ? 'Income' : 'Thu vào',
@@ -641,8 +761,10 @@ class AppWidgetService {
         streak: currentProfile?.currentStreak ?? 0,
         type: latestTx?.type ?? 'expense',
         amount: latestTx?.amount ?? 0.0,
-        formattedAmount:
-            latestTx != null ? _formatCompactVnd(latestTx.amount) : '0đ',
+        formattedAmount: latestTx != null
+            ? formatCompactCurrency(latestTx.amount,
+                currency: userCurrency, isEn: isEn)
+            : (userCurrency == 'USD' ? '\$0' : '0đ'),
         caption: latestTx?.caption.isNotEmpty == true ? latestTx!.caption : '',
         category: localizedCat,
         categoryIconCodePoint: latestTx?.categoryIconCodePoint,
@@ -761,6 +883,7 @@ class AppWidgetService {
 
   void dispose() {
     _debounceTimer?.cancel();
+    _midnightTimer?.cancel();
     _homeWidgetSub?.cancel();
   }
 }

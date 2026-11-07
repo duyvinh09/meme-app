@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -290,6 +291,14 @@ class _NearbyPlaceBottomSheetState extends State<NearbyPlaceBottomSheet>
         backgroundColor: AppColors.darkCard,
       ),
     );
+  }
+
+  Future<void> _callPlace(String phone) async {
+    final cleaned = phone.replaceAll(RegExp(r'[^\d+]'), '');
+    final uri = Uri(scheme: 'tel', path: cleaned);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   // ── Build ───────────────────────────────────────────────────────────────────
@@ -676,6 +685,7 @@ class _NearbyPlaceBottomSheetState extends State<NearbyPlaceBottomSheet>
           onNavigate: () => _openDirections(place),
           onShare: () => _sharePlace(place, isEn),
           onCopyAddress: (addr) => _copyAddress(addr, isEn),
+          onCall: (phone) => _callPlace(phone),
         );
       },
     );
@@ -974,6 +984,7 @@ class _PlaceCard extends StatelessWidget {
   final VoidCallback onNavigate;
   final VoidCallback onShare;
   final ValueChanged<String> onCopyAddress;
+  final ValueChanged<String>? onCall;
 
   const _PlaceCard({
     required this.place,
@@ -982,6 +993,7 @@ class _PlaceCard extends StatelessWidget {
     required this.onNavigate,
     required this.onShare,
     required this.onCopyAddress,
+    this.onCall,
   });
 
   @override
@@ -1065,6 +1077,108 @@ class _PlaceCard extends StatelessWidget {
                                 ),
                               ),
                             ),
+                            // Specific Sub-type Tag (if distinct from Category)
+                            if (place.placeType != null &&
+                                place.placeType!.trim().isNotEmpty &&
+                                place.placeType!.trim().toLowerCase() !=
+                                    categoryLabel.toLowerCase())
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.06)
+                                      : Colors.black.withValues(alpha: 0.04),
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: Text(
+                                  place.placeType!,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textSecondary(context),
+                                  ),
+                                ),
+                              ),
+                            // Rating & Reviews Tag
+                            if (place.rating != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.warning
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      size: 13,
+                                      color: AppColors.warning,
+                                    ),
+                                    const SizedBox(width: 2.5),
+                                    Text(
+                                      place.rating!.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.warning,
+                                      ),
+                                    ),
+                                    if (place.formattedReviewCount != null) ...[
+                                      const SizedBox(width: 2.5),
+                                      Text(
+                                        '(${place.formattedReviewCount})',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w700,
+                                          color: AppColors.warning
+                                              .withValues(alpha: 0.85),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            // Price Range Tag
+                            if (place.priceRange != null &&
+                                place.priceRange!.trim().isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF10B981)
+                                      .withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(7),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.payments_outlined,
+                                      size: 12,
+                                      color: Color(0xFF10B981),
+                                    ),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      place.priceRange!,
+                                      style: const TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             // Travel Time Tag
                             Container(
                               padding: const EdgeInsets.symmetric(
@@ -1087,38 +1201,6 @@ class _PlaceCard extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            // Rating Tag (if available)
-                            if (place.rating != null)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 7,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning
-                                      .withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(7),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(
-                                      Icons.star_rounded,
-                                      size: 13,
-                                      color: AppColors.warning,
-                                    ),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      place.rating!.toStringAsFixed(1),
-                                      style: const TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.warning,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                           ],
                         ),
                       ],
@@ -1175,7 +1257,7 @@ class _PlaceCard extends StatelessWidget {
               ],
 
               const SizedBox(height: 11),
-              // Action Buttons Row: "Chỉ đường" (Directions) + "Chia sẻ" (Share)
+              // Action Buttons Row: "Chỉ đường" (Directions) + "Gọi" (Call) + "Chia sẻ" (Share)
               Row(
                 children: [
                   // Directions Button (Primary)
@@ -1218,6 +1300,49 @@ class _PlaceCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // Call Button (if phone is available)
+                  if (place.phone != null &&
+                      place.phone!.trim().isNotEmpty &&
+                      onCall != null) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => onCall!(place.phone!),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 13,
+                          vertical: 9,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981)
+                              .withValues(alpha: isDark ? 0.2 : 0.12),
+                          borderRadius: BorderRadius.circular(13),
+                          border: Border.all(
+                            color: const Color(0xFF10B981)
+                                .withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.phone_rounded,
+                              size: 15,
+                              color: Color(0xFF10B981),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              isEn ? 'Call' : 'Gọi',
+                              style: const TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   // Share Button (Secondary)
                   GestureDetector(
@@ -1267,6 +1392,8 @@ class _PlaceCard extends StatelessWidget {
   }
 
   Widget _buildThumbnail(BuildContext context, String icon) {
+    final hasImg = place.imageUrl != null && place.imageUrl!.trim().isNotEmpty;
+
     return Column(
       children: [
         Container(
@@ -1279,8 +1406,24 @@ class _PlaceCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: AppColors.border(context)),
           ),
-          child: Center(
-            child: Text(icon, style: const TextStyle(fontSize: 24)),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: hasImg
+                ? CachedNetworkImage(
+                    imageUrl: place.imageUrl!,
+                    fit: BoxFit.cover,
+                    width: 50,
+                    height: 50,
+                    placeholder: (_, __) => Center(
+                      child: Text(icon, style: const TextStyle(fontSize: 22)),
+                    ),
+                    errorWidget: (_, __, ___) => Center(
+                      child: Text(icon, style: const TextStyle(fontSize: 22)),
+                    ),
+                  )
+                : Center(
+                    child: Text(icon, style: const TextStyle(fontSize: 24)),
+                  ),
           ),
         ),
         const SizedBox(height: 5),

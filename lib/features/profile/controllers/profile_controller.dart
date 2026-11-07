@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/services/app_widget_service.dart';
 import '../../../core/services/cloudinary_service.dart';
 import '../../../core/services/exchange_rate_service.dart';
 import '../../../core/services/local_settings_service.dart';
@@ -144,6 +145,7 @@ class ProfileController extends ChangeNotifier {
 
   Future<void> setLanguage(String value, [String? uid]) async {
     await localSettingsService.setLanguageCode(value);
+    unawaited(AppWidgetService.instance.updateWidgets());
     if (uid != null && uid.isNotEmpty) {
       await userRepository.updateUserProfile(uid, {'language': value});
     }
@@ -152,6 +154,7 @@ class ProfileController extends ChangeNotifier {
 
   Future<void> setCurrency(String value, [String? uid]) async {
     await localSettingsService.setCurrency(value);
+    unawaited(AppWidgetService.instance.updateWidgets(currency: value));
     if (uid != null && uid.isNotEmpty) {
       await userRepository.updateUserProfile(uid, {'currency': value});
     }

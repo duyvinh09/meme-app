@@ -260,7 +260,7 @@ class LocketUploadService {
       final compressor = LightCompressor();
       final result = await compressor.compressVideo(
         path: file.path,
-        videoQuality: VideoQuality.medium,
+        videoQuality: VideoQuality.high,
         isMinBitrateCheckEnabled: false,
         video: Video(videoName: 'locket_${DateTime.now().millisecondsSinceEpoch}.mp4'),
         android: AndroidConfig(isSharedStorage: false),

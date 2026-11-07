@@ -1115,7 +1115,7 @@ class _CameraScreenState extends State<CameraScreen>
             final compressor = LightCompressor();
             final result = await compressor.compressVideo(
               path: finalVideoFile.path,
-              videoQuality: VideoQuality.medium,
+              videoQuality: VideoQuality.high,
               isMinBitrateCheckEnabled: false,
               video: Video(videoName: 'meme_vid_${DateTime.now().millisecondsSinceEpoch}.mp4'),
               android: AndroidConfig(isSharedStorage: false),

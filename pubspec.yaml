@@ -71,6 +71,7 @@ flutter:
     - assets/icons/stickers/
     - assets/sounds/
     - assets/fcm_service_account.json
+    - assets/data/
 
   fonts:
     - family: ProximaSoft

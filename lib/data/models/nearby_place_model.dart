@@ -8,6 +8,10 @@ class NearbyPlace {
   final double longitude;
   final String? address;
   final double? rating;
+  final int? reviewCount;
+  final String? priceRange;
+  final String? phone;
+  final String? placeType;
   final String? imageUrl;
   final double distanceMeters;
 
@@ -19,9 +23,23 @@ class NearbyPlace {
     required this.longitude,
     this.address,
     this.rating,
+    this.reviewCount,
+    this.priceRange,
+    this.phone,
+    this.placeType,
     this.imageUrl,
     required this.distanceMeters,
   });
+
+  /// Formatted review count: "350", "1.2k", "2.6k"
+  String? get formattedReviewCount {
+    if (reviewCount == null || reviewCount! <= 0) return null;
+    if (reviewCount! < 1000) {
+      return '$reviewCount';
+    }
+    final k = reviewCount! / 1000.0;
+    return '${k.toStringAsFixed(1)}k';
+  }
 
   /// Distance formatted for display: "350 m", "1.2 km", "2.7 km"
   String get distanceLabel {
@@ -80,16 +98,34 @@ class NearbyPlace {
 
   static double _deg2rad(double deg) => deg * math.pi / 180.0;
 
-  NearbyPlace copyWith({double? distanceMeters}) {
+  NearbyPlace copyWith({
+    String? id,
+    String? name,
+    String? category,
+    double? latitude,
+    double? longitude,
+    String? address,
+    double? rating,
+    int? reviewCount,
+    String? priceRange,
+    String? phone,
+    String? placeType,
+    String? imageUrl,
+    double? distanceMeters,
+  }) {
     return NearbyPlace(
-      id: id,
-      name: name,
-      category: category,
-      latitude: latitude,
-      longitude: longitude,
-      address: address,
-      rating: rating,
-      imageUrl: imageUrl,
+      id: id ?? this.id,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      address: address ?? this.address,
+      rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
+      priceRange: priceRange ?? this.priceRange,
+      phone: phone ?? this.phone,
+      placeType: placeType ?? this.placeType,
+      imageUrl: imageUrl ?? this.imageUrl,
       distanceMeters: distanceMeters ?? this.distanceMeters,
     );
   }

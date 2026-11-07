@@ -5,8 +5,10 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -19,6 +21,7 @@ import '../../../core/utils/currency_formatter.dart';
 import '../../../data/models/transaction_model.dart';
 import '../../capture/widgets/transaction_moment_image.dart';
 import '../../profile/controllers/profile_controller.dart';
+import '../controllers/stats_controller.dart';
 import '../screens/transaction_map_screen.dart';
 
 String _localizedTransactionCategory(BuildContext context, String category) {
@@ -55,6 +58,9 @@ String _localizedTransactionCategory(BuildContext context, String category) {
 
 class TransactionMapPanel extends StatefulWidget {
   final List<TransactionModel> transactions;
+  final List<TransactionModel>? allTransactions;
+  final DateTime? initialMonth;
+  final ValueChanged<DateTime>? onMonthChanged;
   final bool isFullScreen;
   final String? title;
   final VoidCallback? onBack;
@@ -63,6 +69,9 @@ class TransactionMapPanel extends StatefulWidget {
   const TransactionMapPanel({
     super.key,
     required this.transactions,
+    this.allTransactions,
+    this.initialMonth,
+    this.onMonthChanged,
     this.isFullScreen = false,
     this.title,
     this.onBack,
@@ -78,10 +87,13 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
   Set<Marker> _markers = {};
   static final Map<String, BitmapDescriptor> _iconCache = {};
   bool _isDark = false;
+  late DateTime _selectedMonth;
 
   @override
   void initState() {
     super.initState();
+    final init = widget.initialMonth ?? DateTime.now();
+    _selectedMonth = DateTime(init.year, init.month);
     _buildMarkers();
   }
 
@@ -119,7 +131,23 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
   @override
   void didUpdateWidget(covariant TransactionMapPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_hasTransactionsChanged(oldWidget.transactions, widget.transactions)) {
+    final transactionsChanged =
+        _hasTransactionsChanged(oldWidget.transactions, widget.transactions) ||
+        _hasTransactionsChanged(
+          oldWidget.allTransactions ?? const [],
+          widget.allTransactions ?? const [],
+        );
+    final monthChanged = widget.initialMonth != null &&
+        (oldWidget.initialMonth == null ||
+            oldWidget.initialMonth!.year != widget.initialMonth!.year ||
+            oldWidget.initialMonth!.month != widget.initialMonth!.month);
+
+    if (monthChanged) {
+      _selectedMonth =
+          DateTime(widget.initialMonth!.year, widget.initialMonth!.month);
+    }
+
+    if (transactionsChanged || monthChanged) {
       _buildMarkers();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -140,9 +168,29 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
     return false;
   }
 
+  List<TransactionModel> get _sourceTransactions {
+    if (widget.allTransactions != null && widget.allTransactions!.isNotEmpty) {
+      return widget.allTransactions!;
+    }
+    try {
+      final stats = Provider.of<StatsController>(context, listen: false);
+      if (stats.transactions.isNotEmpty) {
+        return stats.transactions;
+      }
+    } catch (_) {}
+    return widget.transactions;
+  }
+
   List<TransactionModel> get locatedTransactions {
-    final items = widget.transactions.where((tx) {
-      return tx.latitude != null && tx.longitude != null;
+    final source =
+        widget.isFullScreen ? _sourceTransactions : widget.transactions;
+    final items = source.where((tx) {
+      if (tx.latitude == null || tx.longitude == null) return false;
+      if (widget.isFullScreen) {
+        return tx.createdAt.year == _selectedMonth.year &&
+            tx.createdAt.month == _selectedMonth.month;
+      }
+      return true;
     }).toList();
 
     items.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -505,7 +553,371 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
       MaterialPageRoute(
         builder: (_) => TransactionMapScreen(
           transactions: widget.transactions,
+          allTransactions: widget.allTransactions,
+          initialMonth: _selectedMonth,
           title: widget.title,
+          onMonthChanged: (newMonth) {
+            setState(() {
+              _selectedMonth = newMonth;
+            });
+            _buildMarkers();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) _fitAllMarkers();
+            });
+            widget.onMonthChanged?.call(newMonth);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _onSelectMonth(DateTime newMonth) {
+    final normalized = DateTime(newMonth.year, newMonth.month);
+    if (_selectedMonth.year == normalized.year &&
+        _selectedMonth.month == normalized.month) {
+      return;
+    }
+    setState(() {
+      _selectedMonth = normalized;
+    });
+    _buildMarkers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _fitAllMarkers();
+      }
+    });
+    widget.onMonthChanged?.call(normalized);
+  }
+
+  String _formatMonthYear(BuildContext context, DateTime date) {
+    final locale = Localizations.localeOf(context).toString();
+    final isVi = locale.toLowerCase().startsWith('vi');
+    if (isVi) {
+      return 'Tháng ${date.month}, ${date.year}';
+    }
+    try {
+      return DateFormat('MMMM, yyyy', locale).format(date);
+    } catch (_) {
+      return 'Month ${date.month}, ${date.year}';
+    }
+  }
+
+  Future<void> _showMonthPickerSheet(BuildContext context) async {
+    HapticFeedback.lightImpact();
+    final now = DateTime.now();
+    int sheetYear = _selectedMonth.year;
+
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      backgroundColor: AppColors.card(context),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final isDark = AppColors.isDark(context);
+            final locale = Localizations.localeOf(context).toString();
+            final isVi = locale.toLowerCase().startsWith('vi');
+
+            // Đếm số lượng giao dịch có vị trí theo từng tháng trong năm sheetYear
+            final Map<int, int> monthLocationsCountMap = {};
+            for (final tx in _sourceTransactions) {
+              if (tx.createdAt.year == sheetYear &&
+                  tx.latitude != null &&
+                  tx.longitude != null) {
+                monthLocationsCountMap[tx.createdAt.month] =
+                    (monthLocationsCountMap[tx.createdAt.month] ?? 0) + 1;
+              }
+            }
+
+            final innerTileBg = isDark
+                ? const Color(0xFF1E212A)
+                : const Color(0xFFF3F5F9);
+            final innerTileBorder = isDark
+                ? const Color(0xFF2C3241)
+                : const Color(0xFFE2E7F0);
+            final textPrimary = AppColors.textPrimary(context);
+            final textSecondary = AppColors.textSecondary(context);
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 22),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: textSecondary.withValues(alpha: 0.28),
+                        borderRadius:
+                            BorderRadius.circular(AppSizes.radiusPill),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            isVi
+                                ? 'Chọn tháng xem vị trí'
+                                : context.l10n.selectMonthStats,
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 19,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(
+                              sheetContext,
+                              DateTime(now.year, now.month),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: AppColors.primaryBlue,
+                            textStyle: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          child: Text(
+                            isVi ? 'Tháng này' : context.l10n.thisMonthLabel,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: innerTileBg,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: innerTileBorder),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left_rounded),
+                            color: textPrimary,
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              setSheetState(() {
+                                sheetYear--;
+                              });
+                            },
+                          ),
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                '$sheetYear',
+                                style: TextStyle(
+                                  color: textPrimary,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right_rounded),
+                            color: textPrimary,
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              setSheetState(() {
+                                sheetYear++;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: 12,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 1.85,
+                      ),
+                      itemBuilder: (context, index) {
+                        final month = index + 1;
+                        final isSelected = sheetYear == _selectedMonth.year &&
+                            month == _selectedMonth.month;
+                        final isCurrent =
+                            sheetYear == now.year && month == now.month;
+                        final locCount = monthLocationsCountMap[month] ?? 0;
+
+                        final monthLabel = isVi
+                            ? 'Tháng $month'
+                            : DateFormat('MMM', locale)
+                                .format(DateTime(2024, month, 1));
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            Navigator.pop(
+                              sheetContext,
+                              DateTime(sheetYear, month),
+                            );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 160),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? AppColors.primaryBlue
+                                      .withValues(alpha: 0.16)
+                                  : innerTileBg,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: isSelected
+                                    ? AppColors.primaryBlue
+                                    : isCurrent
+                                        ? AppColors.primaryBlue
+                                            .withValues(alpha: 0.45)
+                                        : innerTileBorder,
+                                width: isSelected ? 1.8 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  monthLabel,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? AppColors.primaryBlue
+                                        : textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w800
+                                        : FontWeight.w600,
+                                  ),
+                                ),
+                                if (locCount > 0) ...[
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.location_on_rounded,
+                                        size: 11,
+                                        color: isSelected
+                                            ? AppColors.primaryBlue
+                                            : const Color(0xFF10B981),
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '$locCount',
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? AppColors.primaryBlue
+                                              : (isDark
+                                                  ? const Color(0xFF34D399)
+                                                  : const Color(0xFF059669)),
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (picked != null && mounted) {
+      _onSelectMonth(picked);
+    }
+  }
+
+  Widget _buildMonthSelectorPill(BuildContext context, bool isDark) {
+    final bg = isDark
+        ? const Color(0xFF161922).withValues(alpha: 0.58)
+        : Colors.white.withValues(alpha: 0.66);
+    final border = isDark
+        ? Colors.white.withValues(alpha: 0.18)
+        : const Color(0xFFD1D5DB).withValues(alpha: 0.60);
+    final textColor = isDark ? Colors.white : const Color(0xFF1F2937);
+    final iconColor =
+        isDark ? const Color(0xFF9EACB9) : const Color(0xFF6B7280);
+    final shadowColor = isDark
+        ? Colors.black.withValues(alpha: 0.18)
+        : Colors.black.withValues(alpha: 0.06);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showMonthPickerSheet(context),
+        borderRadius: BorderRadius.circular(999),
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: bg,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: border,
+              width: 0.8,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: shadowColor,
+                blurRadius: 6,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
+                  _formatMonthYear(context, _selectedMonth),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Icon(
+                Icons.unfold_more_rounded,
+                size: 18,
+                color: iconColor,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -527,10 +939,45 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
       });
     }
 
+    final isDark = isDarkNow;
+
+    // Full screen floating controls theme styling (transparent & sleek)
+    final fsControlBg = isDark
+        ? const Color(0xFF161922).withValues(alpha: 0.58)
+        : Colors.white.withValues(alpha: 0.66);
+    final fsControlBorder = isDark
+        ? Colors.white.withValues(alpha: 0.18)
+        : const Color(0xFFD1D5DB).withValues(alpha: 0.60);
+    final fsControlTextColor =
+        isDark ? Colors.white : const Color(0xFF1F2937);
+    final fsControlSubColor =
+        isDark ? const Color(0xFF9EACB9) : const Color(0xFF6B7280);
+    final fsControlShadow = isDark
+        ? Colors.black.withValues(alpha: 0.18)
+        : Colors.black.withValues(alpha: 0.06);
+    final fsControlDivider = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : const Color(0xFFE5E7EB).withValues(alpha: 0.65);
+
+    // Embedded mode overlay styling (transparent & light to clearly see map underneath)
+    final emControlBg = isDark
+        ? const Color(0xFF161922).withValues(alpha: 0.48)
+        : Colors.white.withValues(alpha: 0.52);
+    final emControlBorder = isDark
+        ? Colors.white.withValues(alpha: 0.18)
+        : const Color(0xFFD1D5DB).withValues(alpha: 0.55);
+    final emControlTextColor =
+        isDark ? Colors.white : const Color(0xFF1F2937);
+    final emControlSubColor =
+        isDark ? Colors.white70 : const Color(0xFF6B7280);
+    final emControlShadow = isDark
+        ? Colors.black.withValues(alpha: 0.14)
+        : Colors.black.withValues(alpha: 0.05);
+
     final items = locatedTransactions;
 
-    if (items.isEmpty) {
-      final emptyWidget = Container(
+    if (items.isEmpty && !widget.isFullScreen) {
+      return Container(
         padding: const EdgeInsets.symmetric(
           horizontal: 20,
           vertical: 34,
@@ -572,70 +1019,13 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
           ],
         ),
       );
-
-      if (widget.isFullScreen) {
-        return SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Row(
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        if (widget.onBack != null) {
-                          widget.onBack!();
-                        } else {
-                          Navigator.maybePop(context);
-                        }
-                      },
-                      borderRadius:
-                          BorderRadius.circular(AppSizes.radiusXLarge),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: AppColors.card(context),
-                          border: Border.all(color: AppColors.border(context)),
-                        ),
-                        child: Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: AppColors.textPrimary(context),
-                          size: 19,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Text(
-                      widget.title ?? context.l10n.transactionMap,
-                      style: AppTextStyles.sectionTitle(context).copyWith(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: emptyWidget,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-
-      return emptyWidget;
     }
 
     final groups = _groupTransactionsByLocation(items);
-    final initialLat = groups.first.latitude;
-    final initialLng = groups.first.longitude;
+    final double initialLat =
+        groups.isNotEmpty ? groups.first.latitude : 10.7769;
+    final double initialLng =
+        groups.isNotEmpty ? groups.first.longitude : 106.7009;
 
     final mapContent = Stack(
       children: [
@@ -650,7 +1040,9 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
             Future.delayed(const Duration(milliseconds: 200), () {
               if (mounted) _applyMapStyle();
             });
-            _fitAllMarkers();
+            if (items.isNotEmpty) {
+              _fitAllMarkers();
+            }
           },
           markers: _markers,
           style: _lightMapStyle,
@@ -668,7 +1060,7 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
 
         // Full Screen mode overlays: Top Header Bar & Side Zoom controls
         if (widget.isFullScreen) ...[
-          // Top Bar with Back Button, Title, and Recenter action
+          // Top Bar with Back Button, Title, Recenter action, and Month Selector Pill
           Positioned(
             top: 0,
             left: 0,
@@ -686,7 +1078,7 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                           if (widget.onBack != null) {
                             widget.onBack!();
                           } else {
-                            Navigator.maybePop(context);
+                            Navigator.maybePop(context, _selectedMonth);
                           }
                         },
                         borderRadius: BorderRadius.circular(999),
@@ -695,21 +1087,22 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                           height: 44,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.black.withValues(alpha: 0.60),
+                            color: fsControlBg,
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.22),
+                              color: fsControlBorder,
+                              width: 0.8,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
+                                color: fsControlShadow,
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.arrow_back_ios_new_rounded,
-                            color: Colors.white,
+                            color: fsControlTextColor,
                             size: 19,
                           ),
                         ),
@@ -717,48 +1110,7 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 11,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.60),
-                          borderRadius: BorderRadius.circular(999),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.22),
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.25),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.map_rounded,
-                              color: Colors.white,
-                              size: 19,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                widget.title ?? context.l10n.transactionMap,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      child: _buildMonthSelectorPill(context, isDark),
                     ),
                     const SizedBox(width: 10),
                     Material(
@@ -771,21 +1123,22 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                           height: 44,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: Colors.black.withValues(alpha: 0.60),
+                            color: fsControlBg,
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.22),
+                              color: fsControlBorder,
+                              width: 0.8,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 10,
-                                offset: const Offset(0, 3),
+                                color: fsControlShadow,
+                                blurRadius: 6,
+                                offset: const Offset(0, 1),
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.center_focus_strong_rounded,
-                            color: Colors.white,
+                            color: fsControlTextColor,
                             size: 20,
                           ),
                         ),
@@ -797,6 +1150,77 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
             ),
           ),
 
+          // Thông báo khi tháng đã chọn không có vị trí nào
+          if (items.isEmpty)
+            Center(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF161922).withValues(alpha: 0.68)
+                      : Colors.white.withValues(alpha: 0.76),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: fsControlBorder,
+                    width: 0.8,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: fsControlShadow,
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.location_off_rounded,
+                      color: isDark ? Colors.white70 : const Color(0xFF6B7280),
+                      size: 34,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      Localizations.localeOf(context)
+                              .toString()
+                              .toLowerCase()
+                              .startsWith('vi')
+                          ? 'Chưa có vị trí trong tháng này'
+                          : context.l10n.mapEmptyTitle,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: fsControlTextColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      Localizations.localeOf(context)
+                              .toString()
+                              .toLowerCase()
+                              .startsWith('vi')
+                          ? 'Chạm nút chọn tháng phía trên để xem các vị trí đã lưu'
+                          : 'Tap month picker above to view recorded locations',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.8)
+                            : const Color(0xFF6B7280),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // Floating Zoom Controls on Right Side
           Positioned(
             right: 16,
@@ -806,16 +1230,17 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
               left: false,
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.60),
+                  color: fsControlBg,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.22),
+                    color: fsControlBorder,
+                    width: 0.8,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+                      color: fsControlShadow,
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
@@ -829,11 +1254,11 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(16),
                         ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(11),
+                        child: Padding(
+                          padding: const EdgeInsets.all(11),
                           child: Icon(
                             Icons.add_rounded,
-                            color: Colors.white,
+                            color: fsControlTextColor,
                             size: 22,
                           ),
                         ),
@@ -842,7 +1267,7 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                     Container(
                       height: 1,
                       width: 32,
-                      color: Colors.white.withValues(alpha: 0.15),
+                      color: fsControlDivider,
                     ),
                     Material(
                       color: Colors.transparent,
@@ -851,11 +1276,11 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                         borderRadius: const BorderRadius.vertical(
                           bottom: Radius.circular(16),
                         ),
-                        child: const Padding(
-                          padding: EdgeInsets.all(11),
+                        child: Padding(
+                          padding: const EdgeInsets.all(11),
                           child: Icon(
                             Icons.remove_rounded,
-                            color: Colors.white,
+                            color: fsControlTextColor,
                             size: 22,
                           ),
                         ),
@@ -882,22 +1307,23 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.60),
+                    color: emControlBg,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.22),
+                      color: emControlBorder,
+                      width: 0.8,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                        color: emControlShadow,
+                        blurRadius: 6,
+                        offset: const Offset(0, 1),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.fullscreen_rounded,
-                    color: Colors.white,
+                    color: emControlTextColor,
                     size: 22,
                   ),
                 ),
@@ -906,7 +1332,7 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
           ),
 
         // Bottom Summary Pill (compact in embedded mode, roomy in full screen mode)
-        if (widget.isFullScreen)
+        if (widget.isFullScreen && items.isNotEmpty)
           Positioned(
             left: 14,
             right: 14,
@@ -921,24 +1347,25 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                   child: Container(
                     padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.60),
+                      color: fsControlBg,
                       borderRadius: BorderRadius.circular(22),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.22),
+                        color: fsControlBorder,
+                        width: 0.8,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.22),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          color: fsControlShadow,
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Row(
                       children: [
                         const Icon(
-                          Icons.location_on_outlined,
-                          color: Colors.white,
+                          Icons.location_on_rounded,
+                          color: AppColors.primaryBlue,
                           size: 24,
                         ),
                         const SizedBox(width: 10),
@@ -946,8 +1373,8 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                           child: Text(
                             context.l10n
                                 .mapSummary(items.length, groups.length),
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: fsControlTextColor,
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                             ),
@@ -958,12 +1385,14 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                           Container(
                             padding: const EdgeInsets.all(4),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : const Color(0xFFF1F5F9),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.center_focus_strong_rounded,
-                              color: Colors.white,
+                              color: fsControlSubColor,
                               size: 14,
                             ),
                           ),
@@ -989,19 +1418,20 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 11,
-                      vertical: 5,
+                      vertical: 5.5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.60),
+                      color: emControlBg,
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.20),
+                        color: emControlBorder,
+                        width: 0.8,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.18),
+                          color: emControlShadow,
                           blurRadius: 6,
-                          offset: const Offset(0, 2),
+                          offset: const Offset(0, 1),
                         ),
                       ],
                     ),
@@ -1009,24 +1439,24 @@ class _TransactionMapPanelState extends State<TransactionMapPanel> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.location_on_outlined,
-                          color: Colors.white,
-                          size: 14,
+                          Icons.location_on_rounded,
+                          color: AppColors.primaryBlue,
+                          size: 13,
                         ),
-                        const SizedBox(width: 5),
+                        const SizedBox(width: 4),
                         Text(
                           context.l10n.mapSummary(items.length, groups.length),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: emControlTextColor,
                             fontSize: 11.5,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         if (groups.length > 1) ...[
-                          const SizedBox(width: 5),
-                          const Icon(
+                          const SizedBox(width: 4),
+                          Icon(
                             Icons.center_focus_strong_rounded,
-                            color: Colors.white70,
+                            color: emControlSubColor,
                             size: 11,
                           ),
                         ],

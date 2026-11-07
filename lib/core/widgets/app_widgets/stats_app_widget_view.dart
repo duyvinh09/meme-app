@@ -4,6 +4,8 @@ import '../../utils/currency_formatter.dart';
 
 class StatsWidgetData {
   final double totalExpense;
+  final double todayExpense;
+  final double todayIncome;
   final double? previousMonthExpense;
   final List<CategoryShare> categories;
   final String currency;
@@ -14,6 +16,8 @@ class StatsWidgetData {
 
   const StatsWidgetData({
     required this.totalExpense,
+    this.todayExpense = 0.0,
+    this.todayIncome = 0.0,
     this.previousMonthExpense,
     required this.categories,
     this.currency = 'VND',
@@ -27,7 +31,8 @@ class StatsWidgetData {
     if (previousMonthExpense == null || previousMonthExpense! <= 0) {
       return null;
     }
-    return ((totalExpense - previousMonthExpense!) / previousMonthExpense!) * 100;
+    return ((totalExpense - previousMonthExpense!) / previousMonthExpense!) *
+        100;
   }
 }
 
@@ -53,6 +58,64 @@ class StatsAppWidgetView extends StatelessWidget {
     required this.data,
   });
 
+  static String formatCompactAmount({
+    required double amountVnd,
+    required String currency,
+    required bool isEn,
+    bool showPlus = false,
+  }) {
+    final prefix = showPlus ? '+' : '';
+    if (amountVnd <= 0) {
+      return AppCurrencyFormatter.normalizeCurrency(currency) == 'USD'
+          ? '\$0'
+          : '0đ';
+    }
+    final normCurrency = AppCurrencyFormatter.normalizeCurrency(currency);
+
+    if (normCurrency == 'USD') {
+      final usd =
+          AppCurrencyFormatter.fromVnd(amountVnd: amountVnd, currency: 'USD');
+      if (usd < 1000) {
+        final val = (usd >= 10 || usd % 1 == 0)
+            ? usd.round().toString()
+            : usd.toStringAsFixed(1);
+        return '$prefix\$$val';
+      } else if (usd < 1000000) {
+        final k = usd / 1000;
+        final text = (k >= 10 || k % 1 == 0)
+            ? k.round().toString()
+            : k.toStringAsFixed(1);
+        return '$prefix\$${text}k';
+      } else {
+        final m = usd / 1000000;
+        final text = (m >= 10 || m % 1 == 0)
+            ? m.round().toString()
+            : m.toStringAsFixed(1);
+        return '$prefix\$${text}M';
+      }
+    }
+
+    // VND
+    if (amountVnd < 1000) {
+      return '$prefix${amountVnd.round()}đ';
+    } else if (amountVnd < 1000000) {
+      final k = (amountVnd / 1000).round();
+      return '$prefix${k}k';
+    } else if (amountVnd < 1000000000) {
+      final m = amountVnd / 1000000;
+      final text =
+          (m >= 10 || m % 1 == 0) ? m.round().toString() : m.toStringAsFixed(1);
+      final unit = isEn ? 'M' : 'tr';
+      return '$prefix$text$unit';
+    } else {
+      final b = amountVnd / 1000000000;
+      final text =
+          (b >= 10 || b % 1 == 0) ? b.round().toString() : b.toStringAsFixed(1);
+      final unit = isEn ? 'B' : 'tỷ';
+      return '$prefix$text$unit';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = data.isDark;
@@ -74,11 +137,12 @@ class StatsAppWidgetView extends StatelessWidget {
 
     // Dynamic Theme Colors
     final bgColor = isDark ? const Color(0xFF18191E) : Colors.white;
-    final borderColor = isDark
-        ? Colors.white.withValues(alpha: 0.08)
-        : const Color(0xFFE5E9F2);
-    final textSubColor = isDark ? const Color(0xFF9E9EA7) : const Color(0xFF74788A);
-    final amountColor = isDark ? const Color(0xFFFF5B5B) : const Color(0xFFE53935);
+    final borderColor =
+        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE5E9F2);
+    final textSubColor =
+        isDark ? const Color(0xFF9E9EA7) : const Color(0xFF74788A);
+    final amountColor =
+        isDark ? const Color(0xFFFF5B5B) : const Color(0xFFE53935);
 
     return MediaQuery(
       data: const MediaQueryData(
@@ -125,15 +189,27 @@ class StatsAppWidgetView extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Month Label
-                      Text(
-                        data.monthLabel,
-                        style: TextStyle(
-                          fontFamily: 'ProximaSoft',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: textSubColor,
-                        ),
+                      // Top Row: Month Label on Left + Today Income/Expense Badge on Right
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              data.monthLabel,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontFamily: 'ProximaSoft',
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: textSubColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _buildTodayBadge(isDark, textSubColor),
+                        ],
                       ),
                       const SizedBox(height: 2),
 
@@ -178,6 +254,126 @@ class StatsAppWidgetView extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildTodayBadge(bool isDark, Color textSubColor) {
+    final hasIncome = data.todayIncome > 0;
+    final hasExpense = data.todayExpense > 0;
+
+    final incomeText = hasIncome
+        ? formatCompactAmount(
+            amountVnd: data.todayIncome,
+            currency: data.currency,
+            isEn: data.isEn,
+            showPlus: true,
+          )
+        : null;
+
+    final expenseText = hasExpense
+        ? '-${formatCompactAmount(
+            amountVnd: data.todayExpense,
+            currency: data.currency,
+            isEn: data.isEn,
+          )}'
+        : null;
+
+    final incomeColor =
+        isDark ? const Color(0xFF4ADE80) : const Color(0xFF059669);
+    final expenseColor =
+        isDark ? const Color(0xFFFF6B6B) : const Color(0xFFE53935);
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: 7,
+        vertical: (hasIncome && hasExpense) ? 2.0 : 2.5,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF242632) : const Color(0xFFEFF2F8),
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFDCE2EE),
+          width: 0.8,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            data.isEn ? 'Today: ' : 'Hôm nay: ',
+            style: TextStyle(
+              fontFamily: 'ProximaSoft',
+              fontSize: (hasIncome && hasExpense) ? 9.0 : 9.5,
+              fontWeight: FontWeight.w600,
+              color: textSubColor,
+            ),
+          ),
+          if (hasIncome && hasExpense)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  incomeText!,
+                  style: TextStyle(
+                    fontFamily: 'ProximaSoft',
+                    fontSize: 9.0,
+                    fontWeight: FontWeight.w900,
+                    color: incomeColor,
+                    height: 1.1,
+                  ),
+                ),
+                Text(
+                  expenseText!,
+                  style: TextStyle(
+                    fontFamily: 'ProximaSoft',
+                    fontSize: 9.0,
+                    fontWeight: FontWeight.w900,
+                    color: expenseColor,
+                    height: 1.1,
+                  ),
+                ),
+              ],
+            )
+          else if (hasIncome)
+            Text(
+              incomeText!,
+              style: TextStyle(
+                fontFamily: 'ProximaSoft',
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: incomeColor,
+              ),
+            )
+          else if (hasExpense)
+            Text(
+              expenseText!,
+              style: TextStyle(
+                fontFamily: 'ProximaSoft',
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: expenseColor,
+              ),
+            )
+          else
+            Text(
+              formatCompactAmount(
+                amountVnd: 0,
+                currency: data.currency,
+                isEn: data.isEn,
+              ),
+              style: TextStyle(
+                fontFamily: 'ProximaSoft',
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: textSubColor,
+              ),
+            ),
+        ],
       ),
     );
   }
