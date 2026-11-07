@@ -3,691 +3,614 @@
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="color-scheme" content="light only" />
-        <title>Meme - Tai ung dung</title>
+        <meta name="color-scheme" content="light" />
+        <meta
+            name="description"
+            content="Meme là ứng dụng ghi chép chi tiêu kết hợp lưu giữ khoảnh khắc và kết nối bạn bè."
+        />
+        <title>Meme — Quản lý chi tiêu theo cách của bạn</title>
         <style>
+            @font-face {
+                font-family: "ProximaSoft";
+                src: url("./assets/fonts/ProximaSoft-Bold.ttf") format("truetype");
+                font-weight: 700 900;
+                font-display: swap;
+            }
+
             :root {
-                --bg-top: #eff7fd;
-                --bg-bottom: #dfeef9;
+                --background: #eaf6ff;
                 --surface: rgba(255, 255, 255, 0.94);
-                --surface-border: rgba(14, 165, 233, 0.16);
-                --surface-shadow: 0 30px 70px rgba(2, 132, 199, 0.14);
-                --text-primary: #08263b;
-                --text-secondary: #527083;
-                --accent: #0ea5e9;
-                --accent-strong: #0284c7;
-                --accent-teal: #14b8a6;
-                --accent-soft: rgba(14, 165, 233, 0.12);
-                --line: rgba(2, 132, 199, 0.12);
-                --page-max: 1080px;
-                --card-max: 430px;
-                --radius-xl: 30px;
-                --radius-lg: 22px;
-                --radius-md: 16px;
-                --radius-sm: 999px;
-                --font-stack: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+                --surface-soft: #dff2ff;
+                --ink: #102a43;
+                --muted: #58728a;
+                --primary: #087fce;
+                --primary-dark: #075985;
+                --secondary: #0f9f8c;
+                --line: #cfe2f3;
+                --shadow: 0 24px 70px rgba(20, 84, 125, 0.16);
+                --radius-lg: 28px;
+                --radius-md: 18px;
+                --content-width: 1080px;
+                --font: "Segoe UI", sans-serif;
+                --display-font: "ProximaSoft", "Segoe UI", sans-serif;
             }
 
-            * {
-                box-sizing: border-box;
-            }
+            * { box-sizing: border-box; }
 
-            html,
+            html { scroll-behavior: smooth; }
+
             body {
                 margin: 0;
-                min-height: 100%;
-                font-family: var(--font-stack);
+                min-width: 320px;
+                color: var(--ink);
+                font-family: var(--font);
                 background:
-                    radial-gradient(
-                        circle at top left,
-                        rgba(14, 165, 233, 0.1),
-                        transparent 32%
-                    ),
-                    radial-gradient(
-                        circle at 100% 15%,
-                        rgba(56, 189, 248, 0.14),
-                        transparent 26%
-                    ),
-                    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
-                color: var(--text-primary);
+                    radial-gradient(circle at 8% 0%, #dff3ff 0, transparent 30rem),
+                    radial-gradient(circle at 100% 12%, #ddfff6 0, transparent 28rem),
+                    var(--background);
+                background-attachment: fixed;
             }
 
-            body {
-                position: relative;
-                overflow-x: hidden;
+            a { color: inherit; }
+
+            :focus-visible {
+                outline: 3px solid #f59e0b;
+                outline-offset: 3px;
             }
 
-            body::before,
-            body::after {
-                content: "";
-                position: fixed;
-                z-index: 0;
-                pointer-events: none;
-                border-radius: 999px;
-                filter: blur(2px);
-            }
-
-            body::before {
-                top: -90px;
-                right: -110px;
-                width: 280px;
-                height: 280px;
-                background: radial-gradient(
-                    circle,
-                    rgba(14, 165, 233, 0.18),
-                    transparent 68%
-                );
-            }
-
-            body::after {
-                bottom: -120px;
-                left: -90px;
-                width: 260px;
-                height: 260px;
-                background: radial-gradient(
-                    circle,
-                    rgba(20, 184, 166, 0.12),
-                    transparent 66%
-                );
-            }
-
-            .shell {
-                position: relative;
-                z-index: 1;
-                min-height: 100vh;
-                width: 100%;
-                max-width: var(--page-max);
+            .page {
+                width: min(100% - 32px, var(--content-width));
                 margin: 0 auto;
-                padding: 18px 16px 28px;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
+                padding: 22px 0 40px;
             }
 
-            .topbar {
+            .topbar,
+            .brand,
+            .language-switcher,
+            .hero-actions,
+            .feature-icon,
+            .language-option {
                 display: flex;
                 align-items: center;
-                justify-content: flex-end;
-                margin-bottom: 18px;
             }
 
-            .lang-toggle {
-                display: inline-flex;
-                align-items: center;
+            .topbar { justify-content: space-between; gap: 20px; }
+
+            .brand { gap: 12px; text-decoration: none; font-weight: 800; }
+
+            .brand-mark {
+                width: 44px;
+                height: 44px;
+                border-radius: 14px;
+                object-fit: cover;
+                box-shadow: 0 8px 18px rgba(8, 127, 206, 0.24);
+            }
+
+            .brand-name { font-size: 1.15rem; }
+
+            .language-switcher {
                 gap: 4px;
                 padding: 4px;
-                border-radius: var(--radius-sm);
-                border: 1px solid rgba(255, 255, 255, 0.65);
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(14px);
-                box-shadow: 0 14px 26px rgba(14, 98, 144, 0.08);
+                border: 1px solid var(--line);
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.8);
             }
 
-            .lang-option {
+            .language-option {
+                min-width: 52px;
+                min-height: 44px;
+                justify-content: center;
+                padding: 8px 12px;
                 border: 0;
-                min-width: 44px;
-                padding: 8px 10px;
-                border-radius: var(--radius-sm);
+                border-radius: 999px;
+                color: var(--muted);
                 background: transparent;
-                color: var(--text-secondary);
+                font: inherit;
                 font-size: 0.8rem;
-                font-weight: 700;
-                letter-spacing: 0.02em;
+                font-weight: 800;
                 cursor: pointer;
-                transition:
-                    background-color 160ms ease,
-                    color 160ms ease,
-                    transform 160ms ease;
             }
 
-            .lang-option:hover,
-            .lang-option:focus-visible {
-                transform: translateY(-1px);
-                outline: none;
-            }
-
-            .lang-option.is-active {
-                background: linear-gradient(
-                    180deg,
-                    var(--accent),
-                    var(--accent-strong)
-                );
-                color: #ffffff;
-                box-shadow: 0 8px 18px rgba(14, 165, 233, 0.24);
+            .language-option[aria-pressed="true"] {
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
             }
 
             .hero {
                 display: grid;
-                gap: 20px;
-                justify-items: center;
+                grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+                gap: 56px;
+                align-items: center;
+                padding: 92px 0 76px;
             }
 
-            .card.is-language-switching [data-i18n],
-            .bottom-note.is-language-switching {
-                opacity: 0;
-                transform: translateY(8px);
-            }
-
-            [data-i18n],
-            .bottom-note {
-                transition:
-                    opacity 180ms ease,
-                    transform 220ms ease;
-                will-change: opacity, transform;
-            }
-
-            .card {
-                width: min(100%, var(--card-max));
-                padding: 28px 22px 24px;
-                border-radius: var(--radius-xl);
-                border: 1px solid var(--surface-border);
-                background: var(--surface);
-                box-shadow: var(--surface-shadow);
-                backdrop-filter: blur(18px);
-            }
-
-            .logo-wrap {
-                width: 82px;
-                height: 82px;
-                margin: 0 auto 18px;
-                border-radius: 24px;
-                overflow: hidden;
-                box-shadow: 0 16px 30px rgba(14, 165, 233, 0.22);
-                background: #ffffff;
-            }
-
-            .logo-wrap img {
-                width: 100%;
-                height: 100%;
-                display: block;
-                object-fit: cover;
-            }
-
-            .title {
-                margin: 0;
-                text-align: center;
-                font-size: clamp(2rem, 6vw, 2.4rem);
-                line-height: 1.06;
-                letter-spacing: -0.04em;
+            .eyebrow {
+                display: inline-block;
+                margin: 0 0 18px;
+                padding: 8px 14px;
+                border-radius: 999px;
+                color: var(--primary-dark);
+                background: #dff2ff;
+                font-size: 0.8rem;
                 font-weight: 800;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
             }
 
-            .subtitle {
-                margin: 12px auto 0;
-                max-width: 320px;
-                text-align: center;
-                color: var(--text-secondary);
-                font-size: 1rem;
+            h1, h2, p { margin-top: 0; }
+
+            h1 {
+                max-width: 700px;
+                margin-bottom: 20px;
+                font-family: var(--display-font);
+                font-size: clamp(2.6rem, 7vw, 5.2rem);
+                line-height: 0.98;
+                letter-spacing: -0.06em;
+            }
+
+            .hero-copy {
+                max-width: 650px;
+                color: var(--muted);
+                font-size: clamp(1.05rem, 2vw, 1.25rem);
                 line-height: 1.7;
             }
 
-            .download-button {
+            .hero-actions { flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+
+            .button {
                 display: inline-flex;
+                min-height: 52px;
                 align-items: center;
                 justify-content: center;
-                gap: 10px;
-                width: 100%;
-                min-height: 58px;
-                margin-top: 24px;
-                padding: 14px 20px;
-                border: 0;
-                border-radius: 18px;
-                background: linear-gradient(
-                    135deg,
-                    var(--accent),
-                    var(--accent-teal)
-                );
-                color: #ffffff;
-                text-decoration: none;
-                font-size: 1.06rem;
+                gap: 9px;
+                padding: 13px 20px;
+                border-radius: 15px;
                 font-weight: 800;
-                box-shadow: 0 16px 28px rgba(14, 165, 233, 0.22);
-                transition:
-                    transform 160ms ease,
-                    box-shadow 160ms ease,
-                    filter 160ms ease;
+                text-decoration: none;
+                transition: transform 160ms ease, box-shadow 160ms ease;
             }
 
-            .download-button:hover,
-            .download-button:focus-visible {
-                transform: translateY(-1px);
-                box-shadow: 0 22px 34px rgba(14, 165, 233, 0.26);
-                filter: saturate(1.05);
-                outline: none;
+            .button:hover { transform: translateY(-2px); }
+
+            .button-primary {
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
+                box-shadow: 0 14px 28px rgba(8, 127, 206, 0.22);
             }
 
-            .download-button:active {
-                transform: translateY(1px) scale(0.995);
+            .button-secondary {
+                color: var(--primary-dark);
+                border: 1px solid var(--line);
+                background: rgba(255, 255, 255, 0.8);
             }
 
-            .download-button.is-disabled {
-                opacity: 0.72;
-                cursor: not-allowed;
-            }
-
-            .helper {
-                margin: 12px 0 0;
-                text-align: center;
-                color: var(--text-secondary);
-                font-size: 0.92rem;
-                line-height: 1.6;
-            }
-
-            .section-divider {
-                display: flex;
-                align-items: center;
-                gap: 14px;
-                margin: 24px 0 18px;
-                color: var(--text-secondary);
+            .download-note {
+                margin: 14px 0 0;
+                color: var(--muted);
                 font-size: 0.88rem;
-                font-weight: 700;
             }
 
-            .section-divider::before,
-            .section-divider::after {
-                content: "";
-                flex: 1;
-                height: 1px;
-                background: var(--line);
+            .hero-card {
+                position: relative;
+                padding: 30px;
+                border: 1px solid rgba(255, 255, 255, 0.9);
+                border-radius: var(--radius-lg);
+                background: var(--surface);
+                box-shadow: var(--shadow);
+                transform: rotate(1deg);
+                animation: float-card 5s ease-in-out infinite;
             }
 
-            .steps {
+            .hero-card::before {
+                position: absolute;
+                top: -18px;
+                right: 24px;
+                content: "M";
+                width: 58px;
+                height: 58px;
                 display: grid;
+                place-items: center;
+                border-radius: 18px;
+                color: #fff;
+                background: linear-gradient(135deg, var(--primary), var(--secondary));
+                font-size: 1.8rem;
+                font-weight: 900;
+                transform: rotate(8deg);
+            }
+
+            .hero-card h2 { margin-bottom: 10px; font-family: var(--display-font); font-size: 1.5rem; }
+            .hero-card p { color: var(--muted); line-height: 1.65; }
+
+            .mini-stat {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 8px;
+                padding: 16px 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .mini-stat:last-child { border-bottom: 0; }
+            .mini-stat strong { color: var(--primary-dark); }
+            .mini-stat span { color: var(--muted); font-size: 0.92rem; }
+
+            .section { padding: 28px 0 70px; }
+            .section-heading { max-width: 680px; margin-bottom: 28px; }
+            .section-heading h2 { margin-bottom: 10px; font-size: clamp(1.9rem, 4vw, 3rem); letter-spacing: -0.04em; }
+            .section-heading p { color: var(--muted); line-height: 1.7; }
+
+            .ai-roadmap {
+                position: relative;
+                overflow: hidden;
+                padding: 30px;
+                border-radius: var(--radius-lg);
+                color: #fff;
+                background: linear-gradient(135deg, #075985, #087fce 55%, #0f9f8c);
+                box-shadow: 0 22px 50px rgba(8, 127, 206, 0.24);
+            }
+
+            .ai-roadmap::after {
+                position: absolute;
+                right: -34px;
+                bottom: -66px;
+                content: "✦";
+                color: rgba(255, 255, 255, 0.16);
+                font-size: 10rem;
+                transform: rotate(15deg);
+            }
+
+            .ai-roadmap h2 {
+                position: relative;
+                z-index: 1;
+                max-width: 650px;
+                margin-bottom: 10px;
+                font-family: var(--display-font);
+                font-size: clamp(1.9rem, 4vw, 3rem);
+            }
+
+            .ai-roadmap > p {
+                position: relative;
+                z-index: 1;
+                max-width: 680px;
+                color: #e1f4ff;
+                line-height: 1.7;
+            }
+
+            .ai-list {
+                position: relative;
+                z-index: 1;
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+                margin-top: 22px;
+            }
+
+            .ai-item {
+                padding: 15px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 15px;
+                background: rgba(255, 255, 255, 0.12);
+                line-height: 1.45;
+            }
+
+            .ai-item strong { display: block; margin-bottom: 4px; }
+            .ai-item span { color: #d7efff; font-size: 0.9rem; }
+
+            @keyframes float-card {
+                0%, 100% { transform: rotate(1deg) translateY(0); }
+                50% { transform: rotate(-1deg) translateY(-8px); }
+            }
+
+            .feature-grid {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
+                gap: 16px;
+            }
+
+            .feature {
+                padding: 22px;
+                border: 1px solid var(--line);
+                border-radius: var(--radius-md);
+                background: var(--surface);
+            }
+
+            .feature-icon {
+                width: 44px;
+                height: 44px;
+                justify-content: center;
+                margin-bottom: 16px;
+                border-radius: 14px;
+                color: var(--primary-dark);
+                background: var(--surface-soft);
+                font-size: 1.3rem;
+            }
+
+            .feature h3 { margin: 0 0 8px; font-size: 1.05rem; }
+            .feature p { margin: 0; color: var(--muted); line-height: 1.6; }
+
+            .guide {
+                display: grid;
+                grid-template-columns: repeat(3, 1fr);
                 gap: 16px;
             }
 
             .step {
-                display: grid;
-                grid-template-columns: auto 1fr;
-                gap: 12px;
-                align-items: start;
+                padding: 22px;
+                border-radius: var(--radius-md);
+                background: #102a43;
+                color: #fff;
             }
 
-            .step-index {
-                width: 26px;
-                height: 26px;
+            .step-number {
                 display: inline-grid;
+                width: 34px;
+                height: 34px;
                 place-items: center;
+                margin-bottom: 18px;
                 border-radius: 50%;
-                background: var(--accent-soft);
-                color: var(--accent-strong);
-                font-size: 0.84rem;
-                font-weight: 800;
-                flex-shrink: 0;
-                margin-top: 2px;
+                color: #102a43;
+                background: #a7f3d0;
+                font-weight: 900;
             }
 
-            .step-title {
-                margin: 0;
-                font-size: 0.98rem;
-                font-weight: 800;
-                line-height: 1.45;
-            }
-
-            .step-text {
-                margin: 4px 0 0;
-                color: var(--text-secondary);
-                font-size: 0.95rem;
-                line-height: 1.58;
-            }
+            .step h3 { margin: 0 0 8px; }
+            .step p { margin: 0; color: #d5e7f5; line-height: 1.6; }
 
             .footer {
-                margin-top: 22px;
-                padding-top: 18px;
-                border-top: 1px solid var(--line);
                 display: flex;
                 flex-wrap: wrap;
-                justify-content: center;
-                gap: 10px 14px;
-                color: var(--text-secondary);
-                font-size: 0.88rem;
+                justify-content: space-between;
+                gap: 14px;
+                padding-top: 24px;
+                border-top: 1px solid var(--line);
+                color: var(--muted);
+                font-size: 0.9rem;
             }
 
-            .pill {
-                padding: 8px 12px;
-                border-radius: var(--radius-sm);
-                background: linear-gradient(
-                    180deg,
-                    rgba(235, 245, 255, 0.96),
-                    rgba(247, 251, 255, 0.98)
-                );
-                border: 1px solid rgba(14, 165, 233, 0.22);
-                box-shadow:
-                    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-                    0 8px 18px rgba(2, 132, 199, 0.08);
-                color: #33566c;
+            .footer a { color: var(--primary-dark); font-weight: 700; }
+
+            @media (max-width: 780px) {
+                .hero { grid-template-columns: 1fr; gap: 28px; padding: 64px 0 50px; }
+                .feature-grid, .guide { grid-template-columns: 1fr 1fr; }
             }
 
-            .bottom-note {
-                width: min(100%, var(--card-max));
-                margin-top: 10px;
-                padding: 0 8px;
-                text-align: center;
-                color: rgba(8, 38, 59, 0.58);
-                font-size: 0.82rem;
-                line-height: 1.5;
+            @media (max-width: 520px) {
+                .page { width: min(100% - 24px, var(--content-width)); }
+                .topbar { align-items: flex-start; }
+                .hero { padding-top: 52px; }
+                .feature-grid, .guide { grid-template-columns: 1fr; }
+                .hero-actions .button { width: 100%; }
+                .hero-card { padding: 24px; }
+                .ai-roadmap { padding: 24px; }
+                .ai-list { grid-template-columns: 1fr; }
             }
 
-            @media (min-width: 720px) {
-                .shell {
-                    padding: 26px 26px 36px;
-                }
-
-                .topbar {
-                    margin-bottom: 24px;
-                }
-
-                .card {
-                    padding: 34px 30px 28px;
-                }
-            }
-
-            @media (max-width: 420px) {
-                .shell {
-                    padding-inline: 12px;
-                }
-
-                .card {
-                    padding-inline: 18px;
-                }
-
-                .download-button {
-                    min-height: 54px;
-                    font-size: 1rem;
-                }
-
-                .lang-option {
-                    min-width: 40px;
-                    padding: 7px 9px;
-                    font-size: 0.76rem;
-                }
+            @media (prefers-reduced-motion: reduce) {
+                html { scroll-behavior: auto; }
+                *, *::before, *::after { transition-duration: 0.01ms !important; }
+                .hero-card { animation: none; }
             }
         </style>
     </head>
     <body>
-        <main class="shell">
-            <div class="topbar">
-                <div
-                    class="lang-toggle"
-                    role="group"
-                    aria-label="Language toggle"
-                >
-                    <button
-                        class="lang-option is-active"
-                        type="button"
-                        data-lang-option="vi"
-                    >
-                        VI
-                    </button>
-                    <button
-                        class="lang-option"
-                        type="button"
-                        data-lang-option="en"
-                    >
-                        EN
-                    </button>
+        <div class="page">
+            <header class="topbar">
+                <a class="brand" href="#" aria-label="Meme">
+                    <img class="brand-mark" src="./assets/icons/memeapp_icon2.png" alt="" />
+                    <span class="brand-name">Meme</span>
+                </a>
+                <div class="language-switcher" role="group" aria-label="Language">
+                    <button class="language-option" type="button" data-language="vi" aria-pressed="true">VI</button>
+                    <button class="language-option" type="button" data-language="en" aria-pressed="false">EN</button>
                 </div>
-            </div>
+            </header>
 
-            <section class="hero">
-                <article class="card">
-                    <div class="logo-wrap">
-                        <img src="./assets/icons/memeapp_icon2.png" alt="Meme logo" />
+            <main>
+                <section class="hero" aria-labelledby="hero-title">
+                    <div>
+                        <p class="eyebrow" data-i18n="eyebrow">Chi tiêu, nhưng là chuyện của bạn</p>
+                        <h1 id="hero-title" data-i18n="title">Ghi lại mỗi khoản chi. Giữ lại cả khoảnh khắc.</h1>
+                        <p class="hero-copy" data-i18n="intro">
+                            Meme giúp bạn quản lý thu chi theo cách gần gũi hơn: ghi nhanh giao dịch, lưu ảnh hoặc video, xem lại hành trình tài chính và chia sẻ cùng những người quan trọng.
+                        </p>
+                        <div class="hero-actions">
+                            <a class="button button-primary" href="https://github.com/duyvinh09/meme-app/releases/latest/download/Meme.apk" data-i18n="download" download>
+                                Tải Meme cho Android
+                            </a>
+                            <a class="button button-secondary" href="https://github.com/duyvinh09/meme-app/releases" data-i18n="releases" target="_blank" rel="noopener">
+                                Xem các bản phát hành
+                            </a>
+                        </div>
+                        <p class="download-note" data-i18n="downloadNote">Bản tải trực tiếp hiện dành cho Android. iOS có thể chạy từ mã nguồn theo hướng dẫn bên dưới.</p>
                     </div>
 
-                    <h1 class="title" data-i18n="title">Meme</h1>
-                    <p class="subtitle" data-i18n="subtitle">
-                        Ung dung quan ly chi tieu phong cach Gen z giup luu lai khoanh khac sau moi lan tiu tien.
-                    </p>
+                    <aside class="hero-card" aria-label="Meme highlights">
+                        <h2 data-i18n="cardTitle">Một nơi cho tài chính và kỷ niệm</h2>
+                        <p data-i18n="cardIntro">Từ một giao dịch nhỏ đến cả câu chuyện phía sau nó.</p>
+                        <div class="mini-stat"><span data-i18n="statOne">Ghi thu và chi</span><strong>01</strong></div>
+                        <div class="mini-stat"><span data-i18n="statTwo">Khoảnh khắc ảnh / video</span><strong>02</strong></div>
+                        <div class="mini-stat"><span data-i18n="statThree">Feed, bạn bè và chat</span><strong>03</strong></div>
+                        <div class="mini-stat"><span data-i18n="statFour">Ngân sách và thống kê</span><strong>04</strong></div>
+                    </aside>
+                </section>
 
-                    <a
-                        id="downloadButton"
-                        class="download-button is-disabled"
-                        href="#"
-                        aria-disabled="true"
-                    >
-                        <span data-i18n="downloadCta">Tai ung dung (APK)</span>
-                    </a>
-
-                    <p class="helper" data-i18n="helper">
-                        Link APK chua duoc cau hinh. Chi can thay bien APK_URL
-                        trong file index.html la nut se hoat dong.
-                    </p>
-
-                    <div class="section-divider" data-i18n="guideTitle">
-                        Huong dan cai dat
+                <section class="section" aria-labelledby="features-title">
+                    <div class="section-heading">
+                        <h2 id="features-title" data-i18n="featuresTitle">Những gì Meme đang có</h2>
+                        <p data-i18n="featuresIntro">Các tính năng dưới đây được xây dựng trong ứng dụng hiện tại, tập trung vào việc ghi chép nhanh và nhìn lại dễ dàng.</p>
                     </div>
+                    <div class="feature-grid">
+                        <article class="feature"><div class="feature-icon" aria-hidden="true">₫</div><h3 data-i18n="featureOneTitle">Ghi thu chi nhanh</h3><p data-i18n="featureOneText">Nhập số tiền, danh mục, ghi chú, vị trí và chỉnh sửa giao dịch khi cần.</p></article>
+                        <article class="feature"><div class="feature-icon" aria-hidden="true">◉</div><h3 data-i18n="featureTwoTitle">Khoảnh khắc đa phương tiện</h3><p data-i18n="featureTwoText">Chụp ảnh, quay video ngắn và lưu lại bối cảnh phía sau mỗi giao dịch.</p></article>
+                        <article class="feature"><div class="feature-icon" aria-hidden="true">⌁</div><h3 data-i18n="featureThreeTitle">Nhập bằng giọng nói</h3><p data-i18n="featureThreeText">Dùng giọng nói tiếng Việt hoặc tiếng Anh để tạo giao dịch nhanh hơn.</p></article>
+                        <article class="feature"><div class="feature-icon" aria-hidden="true">♡</div><h3 data-i18n="featureFourTitle">Kết nối bạn bè</h3><p data-i18n="featureFourText">Chia sẻ khoảnh khắc, reaction, bình luận và trò chuyện 1-1 hoặc theo nhóm.</p></article>
+                        <article class="feature"><div class="feature-icon" aria-hidden="true">▥</div><h3 data-i18n="featureFiveTitle">Ngân sách và thống kê</h3><p data-i18n="featureFiveText">Theo dõi ngân sách, biểu đồ, so sánh chu kỳ và các điểm chi tiêu trên bản đồ.</p></article>
+                        <article class="feature"><div class="feature-icon" aria-hidden="true">✦</div><h3 data-i18n="featureSixTitle">Rewind và streak</h3><p data-i18n="featureSixText">Xem lại hành trình chi tiêu theo tháng hoặc năm và duy trì thói quen ghi chép.</p></article>
+                    </div>
+                </section>
 
-                    <div class="steps">
-                        <div class="step">
-                            <div class="step-index">1</div>
-                            <div>
-                                <p class="step-title" data-i18n="step1Title">
-                                    Tai file APK
-                                </p>
-                                <p class="step-text" data-i18n="step1Text">
-                                    Bam vao nut tai ung dung. Tep se duoc luu
-                                    trong thu muc Downloads tren dien thoai.
-                                </p>
-                            </div>
-                        </div>
+                <section class="section" id="install" aria-labelledby="guide-title">
+                    <div class="section-heading">
+                        <h2 id="guide-title" data-i18n="guideTitle">Cách tải và cài đặt</h2>
+                        <p data-i18n="guideIntro">Bạn có thể tải APK Android từ GitHub Releases. Chỉ cài APK từ nguồn bạn tin cậy.</p>
+                    </div>
+                    <div class="guide">
+                        <article class="step"><span class="step-number">1</span><h3 data-i18n="stepOneTitle">Tải APK</h3><p data-i18n="stepOneText">Nhấn nút tải ở đầu trang hoặc mở trang Releases và chọn tệp Meme.apk mới nhất.</p></article>
+                        <article class="step"><span class="step-number">2</span><h3 data-i18n="stepTwoTitle">Cho phép cài đặt</h3><p data-i18n="stepTwoText">Nếu Android hỏi, cấp quyền cài ứng dụng từ nguồn này trong phần cài đặt bảo mật.</p></article>
+                        <article class="step"><span class="step-number">3</span><h3 data-i18n="stepThreeTitle">Mở Meme</h3><p data-i18n="stepThreeText">Mở ứng dụng, đăng nhập hoặc tạo tài khoản rồi bắt đầu ghi lại giao dịch đầu tiên.</p></article>
+                    </div>
+                </section>
 
-                        <div class="step">
-                            <div class="step-index">2</div>
-                            <div>
-                                <p class="step-title" data-i18n="step2Title">
-                                    Cho phep cai dat tu nguon ngoai
-                                </p>
-                                <p class="step-text" data-i18n="step2Text">
-                                    Neu Android can xac nhan, hay bat quyen cai
-                                    dat ung dung tu nguon khong ro.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="step">
-                            <div class="step-index">3</div>
-                            <div>
-                                <p class="step-title" data-i18n="step3Title">
-                                    Mo APK va cai dat
-                                </p>
-                                <p class="step-text" data-i18n="step3Text">
-                                    Sau khi cai xong, mo Meme de bat dau
-                                    kham pha, nghe audio va trai nghiem ban do.
-                                </p>
-                            </div>
+                <section class="section" aria-labelledby="ai-title">
+                    <div class="ai-roadmap">
+                        <h2 id="ai-title" data-i18n="aiTitle">Meme sẽ còn hiểu bạn hơn nữa ✨</h2>
+                        <p data-i18n="aiIntro">AI là roadmap tiếp theo của Meme — giúp biến việc nhập chi tiêu thành một thao tác nhanh, vui và thông minh hơn.</p>
+                        <div class="ai-list">
+                            <div class="ai-item"><strong data-i18n="aiOneTitle">🤖 Tự phân loại ảnh</strong><span data-i18n="aiOneText">Nhận diện bữa ăn, mua sắm, di chuyển và gợi ý danh mục.</span></div>
+                            <div class="ai-item"><strong data-i18n="aiTwoTitle">🧾 Quét hóa đơn</strong><span data-i18n="aiTwoText">Đọc tổng tiền, cửa hàng và mặt hàng chỉ với một lần chụp.</span></div>
+                            <div class="ai-item"><strong data-i18n="aiThreeTitle">✨ Caption thông minh</strong><span data-i18n="aiThreeText">Gợi ý caption vui đúng mood và câu chuyện của bạn.</span></div>
+                            <div class="ai-item"><strong data-i18n="aiFourTitle">🧠 Trợ lý tài chính</strong><span data-i18n="aiFourText">Hỏi đáp về chi tiêu, ngân sách và nhận lời khuyên cá nhân.</span></div>
                         </div>
                     </div>
+                </section>
+            </main>
 
-                    <div class="footer">
-                        <span class="pill" data-i18n="tagAndroid"
-                            >Chi ho tro Android</span
-                        >
-                        <span class="pill" data-i18n="tagFree"
-                            >Ban tai mien phi</span
-                        >
-                        <span class="pill" data-i18n="tagNoAds"
-                            >Khong quang cao</span
-                        >
-                    </div>
-                </article>
-
-            </section>
-        </main>
+            <footer class="footer">
+                <span data-i18n="footer">Meme — Every expense tells a story.</span>
+                <span><a href="https://github.com/duyvinh09/meme-app" target="_blank" rel="noopener" data-i18n="source">Mã nguồn trên GitHub</a></span>
+            </footer>
+        </div>
 
         <script>
-            const APK_URL =
-                "https://github.com/duyvinh09/meme-app/releases/latest/download/Meme.apk";
-
             const translations = {
                 vi: {
-                    title: "Meme",
-                    subtitle:
-                        "Ứng dụng quản lý chi tiêu phong cách Gen Z giúp lưu lại khoảnh khắc phía sau mỗi lần tiêu tiền.",
-                    downloadCta: "Tải ứng dụng Meme (APK)",
-                    helper: "Link APK chưa được cấu hình.",
-                    guideTitle: "Hướng dẫn cài đặt",
-                    step1Title: "Tải file APK",
-                    step1Text:
-                        "Nhấn vào nút tải ứng dụng. File APK sẽ được lưu trong thư mục Downloads trên điện thoại.",
-                    step2Title: "Cho phép cài từ nguồn ngoài",
-                    step2Text:
-                        "Nếu Android yêu cầu xác nhận, hãy bật quyền cài đặt ứng dụng từ nguồn không xác định.",
-                    step3Title: "Mở APK và cài đặt",
-                    step3Text:
-                        "Sau khi cài đặt xong, mở Meme để bắt đầu quản lý chi tiêu và lưu lại những khoảnh khắc hằng ngày.",
-                    tagAndroid: "Chỉ hỗ trợ Android",
-                    tagFree: "Tải miễn phí",
-                    tagNoAds: "Không quảng cáo",
+                    eyebrow: "Chi tiêu, nhưng là chuyện của bạn",
+                    title: "Ghi lại mỗi khoản chi. Giữ lại cả khoảnh khắc.",
+                    intro: "Meme giúp bạn quản lý thu chi theo cách gần gũi hơn: ghi nhanh giao dịch, lưu ảnh hoặc video, xem lại hành trình tài chính và chia sẻ cùng những người quan trọng.",
+                    download: "Tải Meme cho Android",
+                    releases: "Xem các bản phát hành",
+                    downloadNote: "Bản tải trực tiếp hiện dành cho Android. iOS có thể chạy từ mã nguồn theo hướng dẫn bên dưới.",
+                    cardTitle: "Một nơi cho tài chính và kỷ niệm",
+                    cardIntro: "Từ một giao dịch nhỏ đến cả câu chuyện phía sau nó.",
+                    statOne: "Ghi thu và chi",
+                    statTwo: "Khoảnh khắc ảnh / video",
+                    statThree: "Feed, bạn bè và chat",
+                    statFour: "Ngân sách và thống kê",
+                    featuresTitle: "Những gì Meme đang có",
+                    featuresIntro: "Các tính năng dưới đây được xây dựng trong ứng dụng hiện tại, tập trung vào việc ghi chép nhanh và nhìn lại dễ dàng.",
+                    featureOneTitle: "Ghi thu chi nhanh",
+                    featureOneText: "Nhập số tiền, danh mục, ghi chú, vị trí và chỉnh sửa giao dịch khi cần.",
+                    featureTwoTitle: "Khoảnh khắc đa phương tiện",
+                    featureTwoText: "Chụp ảnh, quay video ngắn và lưu lại bối cảnh phía sau mỗi giao dịch.",
+                    featureThreeTitle: "Nhập bằng giọng nói",
+                    featureThreeText: "Dùng giọng nói tiếng Việt hoặc tiếng Anh để tạo giao dịch nhanh hơn.",
+                    featureFourTitle: "Kết nối bạn bè",
+                    featureFourText: "Chia sẻ khoảnh khắc, reaction, bình luận và trò chuyện 1-1 hoặc theo nhóm.",
+                    featureFiveTitle: "Ngân sách và thống kê",
+                    featureFiveText: "Theo dõi ngân sách, biểu đồ, so sánh chu kỳ và các điểm chi tiêu trên bản đồ.",
+                    featureSixTitle: "Rewind và streak",
+                    featureSixText: "Xem lại hành trình chi tiêu theo tháng hoặc năm và duy trì thói quen ghi chép.",
+                    guideTitle: "Cách tải và cài đặt",
+                    guideIntro: "Bạn có thể tải APK Android từ GitHub Releases. Chỉ cài APK từ nguồn bạn tin cậy.",
+                    stepOneTitle: "Tải APK",
+                    stepOneText: "Nhấn nút tải ở đầu trang hoặc mở trang Releases và chọn tệp Meme.apk mới nhất.",
+                    stepTwoTitle: "Cho phép cài đặt",
+                    stepTwoText: "Nếu Android hỏi, cấp quyền cài ứng dụng từ nguồn này trong phần cài đặt bảo mật.",
+                    stepThreeTitle: "Mở Meme",
+                    stepThreeText: "Mở ứng dụng, đăng nhập hoặc tạo tài khoản rồi bắt đầu ghi lại giao dịch đầu tiên.",
+                    aiTitle: "Meme sẽ còn hiểu bạn hơn nữa ✨",
+                    aiIntro: "AI là roadmap tiếp theo của Meme — giúp biến việc nhập chi tiêu thành một thao tác nhanh, vui và thông minh hơn.",
+                    aiOneTitle: "🤖 Tự phân loại ảnh",
+                    aiOneText: "Nhận diện bữa ăn, mua sắm, di chuyển và gợi ý danh mục.",
+                    aiTwoTitle: "🧾 Quét hóa đơn",
+                    aiTwoText: "Đọc tổng tiền, cửa hàng và mặt hàng chỉ với một lần chụp.",
+                    aiThreeTitle: "✨ Caption thông minh",
+                    aiThreeText: "Gợi ý caption vui đúng mood và câu chuyện của bạn.",
+                    aiFourTitle: "🧠 Trợ lý tài chính",
+                    aiFourText: "Hỏi đáp về chi tiêu, ngân sách và nhận lời khuyên cá nhân.",
+                    footer: "Meme — Every expense tells a story.",
+                    source: "Mã nguồn trên GitHub"
                 },
                 en: {
-                    title: "Meme",
-                    subtitle:
-                        "A Gen Z expense tracker that helps you save the moments behind every spending experience.",
-                    downloadCta: "Download Meme App (APK)",
-                    helper: "APK link is not configured.",
-                    guideTitle: "Installation Guide",
-                    step1Title: "Download the APK",
-                    step1Text:
-                        "Tap the download button. The APK file will be saved to your Downloads folder.",
-                    step2Title: "Allow installs from unknown sources",
-                    step2Text:
-                        "If Android asks for confirmation, allow installation from unknown sources.",
-                    step3Title: "Open the APK and install",
-                    step3Text:
-                        "After installation, open Meme to start tracking expenses and saving your daily moments.",
-                    tagAndroid: "Android only",
-                    tagFree: "Free download",
-                    tagNoAds: "No ads",
-                },
+                    eyebrow: "Spending, but make it yours",
+                    title: "Track every expense. Keep the moment behind it.",
+                    intro: "Meme makes money tracking feel more personal: record transactions quickly, save photos or videos, revisit your financial journey, and share it with the people who matter.",
+                    download: "Download Meme for Android",
+                    releases: "View releases",
+                    downloadNote: "Direct download is currently available for Android. iOS can be run from source using the setup guide below.",
+                    cardTitle: "One place for money and memories",
+                    cardIntro: "From a small transaction to the story behind it.",
+                    statOne: "Income and expenses",
+                    statTwo: "Photo and video moments",
+                    statThree: "Feed, friends and chat",
+                    statFour: "Budgets and insights",
+                    featuresTitle: "What Meme includes",
+                    featuresIntro: "These features are available in the current app, designed to make tracking quick and reflection easy.",
+                    featureOneTitle: "Quick expense tracking",
+                    featureOneText: "Record amount, category, note and location, then edit a transaction whenever you need.",
+                    featureTwoTitle: "Multimedia moments",
+                    featureTwoText: "Take photos, record short videos, and keep the context behind every transaction.",
+                    featureThreeTitle: "Voice input",
+                    featureThreeText: "Use Vietnamese or English voice input to create a transaction faster.",
+                    featureFourTitle: "Connect with friends",
+                    featureFourText: "Share moments, react, comment, and chat one-to-one or in groups.",
+                    featureFiveTitle: "Budgets and insights",
+                    featureFiveText: "Follow budgets, charts, period comparisons, and spending locations on a map.",
+                    featureSixTitle: "Rewind and streaks",
+                    featureSixText: "Review your monthly or yearly spending journey and keep a tracking habit.",
+                    guideTitle: "Download and install",
+                    guideIntro: "Download the Android APK from GitHub Releases. Only install APKs from a source you trust.",
+                    stepOneTitle: "Download the APK",
+                    stepOneText: "Use the download button above or open Releases and choose the latest Meme.apk file.",
+                    stepTwoTitle: "Allow installation",
+                    stepTwoText: "If Android asks, allow installs from this source in your security settings.",
+                    stepThreeTitle: "Open Meme",
+                    stepThreeText: "Open the app, sign in or create an account, then record your first transaction.",
+                    aiTitle: "Meme will understand you even better ✨",
+                    aiIntro: "AI is next on Meme's roadmap — making expense input faster, more playful, and more helpful.",
+                    aiOneTitle: "🤖 Automatic photo categories",
+                    aiOneText: "Recognize food, shopping, transport, and suggest a category.",
+                    aiTwoTitle: "🧾 Receipt scanning",
+                    aiTwoText: "Read totals, shops, and line items from a single photo.",
+                    aiThreeTitle: "✨ Smart captions",
+                    aiThreeText: "Suggest a fun caption that matches your mood and story.",
+                    aiFourTitle: "🧠 Financial assistant",
+                    aiFourText: "Ask about spending, budgets, and get personal guidance.",
+                    footer: "Meme — Every expense tells a story.",
+                    source: "View source on GitHub"
+                }
             };
 
-            const storedLanguage = window.localStorage.getItem(
-                "meme-download-lang",
-            );
-
-            const browserLanguage =
-                navigator.language &&
-                navigator.language.toLowerCase().startsWith("vi")
-                    ? "vi"
-                    : "en";
-
-            let currentLanguage = storedLanguage || browserLanguage || "vi";
-
+            const languageKey = "meme-language";
+            const browserLanguage = (navigator.languages || [navigator.language || "en"])
+                .some((language) => language.toLowerCase().startsWith("vi")) ? "vi" : "en";
+            const savedLanguage = window.localStorage.getItem(languageKey);
+            const languageButtons = document.querySelectorAll("[data-language]");
             const textNodes = document.querySelectorAll("[data-i18n]");
-            const languageButtons =
-                document.querySelectorAll("[data-lang-option]");
-            const downloadButton = document.getElementById("downloadButton");
-            const helperText = document.querySelector("[data-i18n='helper']");
-            const card = document.querySelector(".card");
-
-            let languageAnimationTimer = null;
-
-            function isConfiguredApkUrl() {
-                return (
-                    APK_URL &&
-                    APK_URL !== "PASTE_APK_URL_HERE" &&
-                    APK_URL !== "#"
-                );
-            }
 
             function renderLanguage(language) {
-                const dictionary = translations[language] || translations.vi;
-
-                currentLanguage = language;
+                const dictionary = translations[language] || translations.en;
                 document.documentElement.lang = language;
-
                 textNodes.forEach((node) => {
-                    const key = node.getAttribute("data-i18n");
-
-                    if (dictionary[key]) {
-                        node.textContent = dictionary[key];
-                    }
+                    const key = node.dataset.i18n;
+                    if (dictionary[key]) node.textContent = dictionary[key];
                 });
-
                 languageButtons.forEach((button) => {
-                    const isActive =
-                        button.getAttribute("data-lang-option") === language;
-
-                    button.classList.toggle("is-active", isActive);
-
-                    button.setAttribute(
-                        "aria-pressed",
-                        isActive ? "true" : "false",
-                    );
+                    button.setAttribute("aria-pressed", String(button.dataset.language === language));
                 });
-
-                window.localStorage.setItem(
-                    "meme-download-lang",
-                    language,
-                );
-
-                document.title =
-                    language === "vi"
-                        ? "Meme - Tải ứng dụng"
-                        : "Meme - Download App";
-            }
-
-            function applyLanguage(language) {
-                const targetLanguage =
-                    translations[language] ? language : "vi";
-
-                if (languageAnimationTimer) {
-                    window.clearTimeout(languageAnimationTimer);
-                    languageAnimationTimer = null;
-                }
-
-                if (card) {
-                    card.classList.add("is-language-switching");
-                }
-
-                languageAnimationTimer = window.setTimeout(() => {
-                    renderLanguage(targetLanguage);
-
-                    requestAnimationFrame(() => {
-                        if (card) {
-                            card.classList.remove("is-language-switching");
-                        }
-                    });
-                }, 110);
-            }
-
-            function applyApkState() {
-                if (isConfiguredApkUrl()) {
-                    downloadButton.href = APK_URL;
-
-                    downloadButton.classList.remove("is-disabled");
-
-                    downloadButton.removeAttribute("aria-disabled");
-
-                    helperText.style.display = "none";
-                } else {
-                    downloadButton.href = "#";
-
-                    downloadButton.classList.add("is-disabled");
-
-                    downloadButton.setAttribute("aria-disabled", "true");
-                }
+                document.title = language === "vi"
+                    ? "Meme — Quản lý chi tiêu theo cách của bạn"
+                    : "Meme — Track spending your way";
             }
 
             languageButtons.forEach((button) => {
                 button.addEventListener("click", () => {
-                    const language =
-                        button.getAttribute("data-lang-option") || "vi";
-
-                    applyLanguage(language);
+                    const language = button.dataset.language;
+                    window.localStorage.setItem(languageKey, language);
+                    renderLanguage(language);
                 });
             });
 
-            downloadButton.addEventListener("click", (event) => {
-                if (!isConfiguredApkUrl()) {
-                    event.preventDefault();
-                }
-            });
-
-            renderLanguage(currentLanguage);
-
-            applyApkState();
+            renderLanguage(savedLanguage || browserLanguage);
         </script>
     </body>
 </html>
