@@ -16,7 +16,7 @@ class AvatarFramePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size canvasSize) {
     final center = Offset(canvasSize.width / 2, canvasSize.height / 2);
-    final radius = size / 2;
+    final radius = math.min(canvasSize.width, canvasSize.height) / 2;
 
     switch (frame.id) {
       case 'flame':
@@ -109,7 +109,9 @@ class AvatarFramePainter extends CustomPainter {
     // Base points at 80% of half-angle (narrower opening, same ratio as original)
     final leftBaseAngle = centerAngle - halfAngle * 0.8;
     final rightBaseAngle = centerAngle + halfAngle * 0.8;
-    final tipR = radius + radius * heightFactor;
+    final height =
+        math.min(radius * heightFactor * 0.6, (radius * 0.24).clamp(2.0, 8.0));
+    final tipR = radius + height;
 
     final leftBase = Offset(center.dx + math.cos(leftBaseAngle) * radius,
         center.dy + math.sin(leftBaseAngle) * radius);
@@ -120,7 +122,7 @@ class AvatarFramePainter extends CustomPainter {
 
     // Control points go OUTWARD (1.15x half-angle) at 45% flame height
     // This replicates the outward belly-bulge of the original _buildFlameTongue.
-    final ctrlR = radius + radius * heightFactor * 0.45;
+    final ctrlR = radius + height * 0.45;
     final leftCtrlAngle =
         centerAngle - halfAngle * 1.15; // wider than base → bulges out
     final rightCtrlAngle = centerAngle + halfAngle * 1.15;
@@ -142,7 +144,7 @@ class AvatarFramePainter extends CustomPainter {
     // 4 bright 4-point stars hugging the frame border at diagonal positions
     for (int i = 0; i < 4; i++) {
       final angle = i * (math.pi / 2) - math.pi / 4;
-      final dist = radius + 3;
+      final dist = radius + math.min(2.0, radius * 0.06);
       final sx = center.dx + math.cos(angle) * dist;
       final sy = center.dy + math.sin(angle) * dist;
       _draw4PointStar(canvas, Offset(sx, sy), radius * 0.18,
@@ -154,8 +156,10 @@ class AvatarFramePainter extends CustomPainter {
       ..color = const Color(0xFF38EF7D).withValues(alpha: 0.85);
     for (int i = 0; i < 4; i++) {
       final angle = i * (math.pi / 2);
-      final sx = center.dx + math.cos(angle) * (radius + 3);
-      final sy = center.dy + math.sin(angle) * (radius + 3);
+      final sx =
+          center.dx + math.cos(angle) * (radius + math.min(2.0, radius * 0.06));
+      final sy =
+          center.dy + math.sin(angle) * (radius + math.min(2.0, radius * 0.06));
       canvas.drawCircle(Offset(sx, sy), radius * 0.055, dotPaint);
     }
 
@@ -177,7 +181,7 @@ class AvatarFramePainter extends CustomPainter {
     // 4 aurora gem stars hugging the border at diagonal positions
     for (int i = 0; i < 4; i++) {
       final angle = i * (math.pi / 2) + (math.pi / 4);
-      final dist = radius + 3;
+      final dist = radius + math.min(2.0, radius * 0.06);
       final sx = center.dx + math.cos(angle) * dist;
       final sy = center.dy + math.sin(angle) * dist;
       _draw4PointStar(canvas, Offset(sx, sy), radius * 0.15,
@@ -193,8 +197,10 @@ class AvatarFramePainter extends CustomPainter {
     ];
     for (int i = 0; i < 4; i++) {
       final angle = i * (math.pi / 2);
-      final sx = center.dx + math.cos(angle) * (radius + 3);
-      final sy = center.dy + math.sin(angle) * (radius + 3);
+      final sx =
+          center.dx + math.cos(angle) * (radius + math.min(2.0, radius * 0.06));
+      final sy =
+          center.dy + math.sin(angle) * (radius + math.min(2.0, radius * 0.06));
       canvas.drawCircle(Offset(sx, sy), radius * 0.055,
           Paint()..color = auroraColors[i].withValues(alpha: 0.85));
     }
@@ -245,8 +251,10 @@ class AvatarFramePainter extends CustomPainter {
     // 4 celestial cross stars tight on the border
     for (int i = 0; i < 4; i++) {
       final angle = i * (math.pi / 2) + math.pi / 4;
-      final sx = center.dx + math.cos(angle) * (radius + 3);
-      final sy = center.dy + math.sin(angle) * (radius + 3);
+      final sx =
+          center.dx + math.cos(angle) * (radius + math.min(2.0, radius * 0.06));
+      final sy =
+          center.dy + math.sin(angle) * (radius + math.min(2.0, radius * 0.06));
       _draw4PointStar(canvas, Offset(sx, sy), radius * 0.17,
           Paint()..color = const Color(0xFFFF0080));
     }
@@ -256,8 +264,10 @@ class AvatarFramePainter extends CustomPainter {
       ..color = const Color(0xFF00DFD8).withValues(alpha: 0.70);
     for (int i = 0; i < 4; i++) {
       final angle = i * (math.pi / 2);
-      final sx = center.dx + math.cos(angle) * (radius + 3);
-      final sy = center.dy + math.sin(angle) * (radius + 3);
+      final sx =
+          center.dx + math.cos(angle) * (radius + math.min(2.0, radius * 0.06));
+      final sy =
+          center.dy + math.sin(angle) * (radius + math.min(2.0, radius * 0.06));
       canvas.drawCircle(Offset(sx, sy), radius * 0.045, dotPaint);
     }
   }
@@ -307,7 +317,7 @@ class AvatarFramePainter extends CustomPainter {
     for (int i = 0; i < rayCount; i++) {
       final angle = i * (2 * math.pi / rayCount) - math.pi / 2;
       final isMain = i % 2 == 0;
-      final outerDist = radius + (isMain ? radius * 0.30 : radius * 0.16);
+      final outerDist = radius + (isMain ? radius * 0.20 : radius * 0.12);
       final halfAngle = isMain ? 0.11 : 0.07;
 
       final p1 = Offset(center.dx + math.cos(angle - halfAngle) * (radius - 1),
@@ -326,13 +336,13 @@ class AvatarFramePainter extends CustomPainter {
           rayPaint);
     }
 
-    final topY = center.dy - radius - radius * 0.16;
+    final topY = center.dy - radius - radius * 0.04;
     final jewel1 = Paint()
       ..shader = const LinearGradient(
         colors: [Color(0xFFFFFFFF), Color(0xFFFFE600)],
       ).createShader(
           Rect.fromCircle(center: Offset(0, 0), radius: radius * 0.22));
-    _drawDiamond(canvas, Offset(center.dx, topY), radius * 0.22, jewel1);
+    _drawDiamond(canvas, Offset(center.dx, topY), radius * 0.14, jewel1);
     _drawDiamond(
         canvas,
         Offset(center.dx - radius * 0.20, topY + radius * 0.14),
@@ -369,13 +379,16 @@ class AvatarFramePainter extends CustomPainter {
           Color(0xFF764BA2),
           Color(0xFFFA709A),
         ],
-      ).createShader(Rect.fromCircle(center: center, radius: radius + 6));
+      ).createShader(Rect.fromCircle(
+          center: center, radius: radius + math.min(2.0, radius * 0.06)));
 
     final hexPath = Path();
     for (int i = 0; i < gemCount; i++) {
       final angle = i * (2 * math.pi / gemCount) - (math.pi / 2);
-      final hx = center.dx + math.cos(angle) * (radius + 6);
-      final hy = center.dy + math.sin(angle) * (radius + 6);
+      final hx =
+          center.dx + math.cos(angle) * (radius + math.min(2.0, radius * 0.06));
+      final hy =
+          center.dy + math.sin(angle) * (radius + math.min(2.0, radius * 0.06));
       i == 0 ? hexPath.moveTo(hx, hy) : hexPath.lineTo(hx, hy);
     }
     hexPath.close();
@@ -383,10 +396,12 @@ class AvatarFramePainter extends CustomPainter {
 
     for (int i = 0; i < gemCount; i++) {
       final angle = i * (2 * math.pi / gemCount) - (math.pi / 2);
-      final gx = center.dx + math.cos(angle) * (radius + 6);
-      final gy = center.dy + math.sin(angle) * (radius + 6);
+      final gx =
+          center.dx + math.cos(angle) * (radius + math.min(2.0, radius * 0.06));
+      final gy =
+          center.dy + math.sin(angle) * (radius + math.min(2.0, radius * 0.06));
       _drawDiamond(
-          canvas, Offset(gx, gy), radius * 0.22, Paint()..color = gemColors[i]);
+          canvas, Offset(gx, gy), radius * 0.15, Paint()..color = gemColors[i]);
       canvas.drawCircle(
         Offset(gx - radius * 0.04, gy - radius * 0.04),
         radius * 0.065,
@@ -400,8 +415,10 @@ class AvatarFramePainter extends CustomPainter {
     for (int i = 0; i < gemCount; i++) {
       final angle =
           i * (2 * math.pi / gemCount) - (math.pi / 2) + (math.pi / gemCount);
-      final sx = center.dx + math.cos(angle) * (radius + 3);
-      final sy = center.dy + math.sin(angle) * (radius + 3);
+      final sx =
+          center.dx + math.cos(angle) * (radius + math.min(2.0, radius * 0.06));
+      final sy =
+          center.dy + math.sin(angle) * (radius + math.min(2.0, radius * 0.06));
       _drawShardSpike(canvas, Offset(sx, sy), radius * 0.11, angle, shardPaint);
     }
   }
@@ -536,10 +553,10 @@ class AvatarFramePainter extends CustomPainter {
       ..moveTo(center.dx - radius * 0.28, center.dy - radius * 0.86)
       ..cubicTo(
         center.dx - radius * 0.62,
-        center.dy - radius * 1.12,
+        center.dy - radius * 1.08,
         center.dx - radius * 0.95,
-        center.dy - radius * 1.20,
-        center.dx - radius * 1.10,
+        center.dy - radius * 1.06,
+        center.dx - radius * 1.06,
         center.dy - radius * 1.04,
       )
       ..cubicTo(
@@ -558,10 +575,10 @@ class AvatarFramePainter extends CustomPainter {
       ..moveTo(center.dx + radius * 0.28, center.dy - radius * 0.86)
       ..cubicTo(
         center.dx + radius * 0.62,
-        center.dy - radius * 1.12,
+        center.dy - radius * 1.08,
         center.dx + radius * 0.95,
-        center.dy - radius * 1.20,
-        center.dx + radius * 1.10,
+        center.dy - radius * 1.06,
+        center.dx + radius * 1.06,
         center.dy - radius * 1.04,
       )
       ..cubicTo(
@@ -577,20 +594,20 @@ class AvatarFramePainter extends CustomPainter {
 
     // Horn tip glints
     canvas.drawCircle(
-        Offset(center.dx - radius * 1.10, center.dy - radius * 1.04),
+        Offset(center.dx - radius * 1.06, center.dy - radius * 1.04),
         radius * 0.065,
         Paint()..color = Colors.white.withValues(alpha: 0.60));
     canvas.drawCircle(
-        Offset(center.dx + radius * 1.10, center.dy - radius * 1.04),
+        Offset(center.dx + radius * 1.06, center.dy - radius * 1.04),
         radius * 0.065,
         Paint()..color = Colors.white.withValues(alpha: 0.60));
 
     for (int i = 0; i < 4; i++) {
       final angle = i * (math.pi / 2);
-      final dist = radius + 5;
+      final dist = radius + math.min(2.0, radius * 0.06);
       final jx = center.dx + math.cos(angle) * dist;
       final jy = center.dy + math.sin(angle) * dist;
-      canvas.drawCircle(Offset(jx, jy), radius * 0.165,
+      canvas.drawCircle(Offset(jx, jy), radius * 0.14,
           Paint()..color = const Color(0xFFFFD700));
       canvas.drawCircle(
           Offset(jx, jy),
@@ -614,7 +631,7 @@ class AvatarFramePainter extends CustomPainter {
     for (int i = 0; i < rayCount; i++) {
       final angle = i * (2 * math.pi / rayCount);
       final isMain = i % 2 == 0;
-      final height = isMain ? radius * 0.28 : radius * 0.14;
+      final height = isMain ? radius * 0.18 : radius * 0.10;
       const halfA = 0.09;
       final color = _haloColor(i, rayCount);
 
@@ -650,8 +667,9 @@ class AvatarFramePainter extends CustomPainter {
       [0.44, 0.00], // outer-right base (on circle)
     ];
 
+    final crownScale = math.min(0.35, 6 / (radius * 0.64));
     final crownTopY =
-        center.dy - radius - radius * 0.64; // approx top of center peak
+        center.dy - radius - radius * 0.64 * crownScale; // compact center peak
     final crownPaint = Paint()
       ..style = PaintingStyle.fill
       ..shader = LinearGradient(
@@ -660,12 +678,12 @@ class AvatarFramePainter extends CustomPainter {
         colors: const [Color(0xFFFFFFFF), Color(0xFFFFE600), Color(0xFFFFA000)],
         stops: const [0.0, 0.55, 1.0],
       ).createShader(Rect.fromLTWH(
-          center.dx - radius * 0.5, crownTopY, radius, radius * 0.68));
+          center.dx - radius * 0.5, crownTopY, radius, radius * 0.28));
 
     final crownPath = Path();
     for (int i = 0; i < crownPts.length; i++) {
       final a = -math.pi / 2 + crownPts[i][0];
-      final r = radius + radius * crownPts[i][1];
+      final r = radius + radius * crownPts[i][1] * crownScale;
       final pt =
           Offset(center.dx + math.cos(a) * r, center.dy + math.sin(a) * r);
       i == 0 ? crownPath.moveTo(pt.dx, pt.dy) : crownPath.lineTo(pt.dx, pt.dy);
@@ -701,17 +719,18 @@ class AvatarFramePainter extends CustomPainter {
     final peakSizes = [
       radius * 0.08,
       radius * 0.10,
-      radius * 0.14,
-      radius * 0.10,
+      radius * 0.08,
+      radius * 0.07,
       radius * 0.08
     ];
     for (int i = 0; i < peakOffsets.length; i++) {
       final a = -math.pi / 2 + peakOffsets[i];
-      final r = radius + radius * peakHeights[i];
+      final r = radius + radius * peakHeights[i] * crownScale;
       final gPos =
           Offset(center.dx + math.cos(a) * r, center.dy + math.sin(a) * r);
-      _drawDiamond(canvas, gPos, peakSizes[i], Paint()..color = peakColors[i]);
-      canvas.drawCircle(gPos, peakSizes[i] * 0.35,
+      final gemSize = math.min(3.0, peakSizes[i] * 0.7);
+      _drawDiamond(canvas, gPos, gemSize, Paint()..color = peakColors[i]);
+      canvas.drawCircle(gPos, gemSize * 0.35,
           Paint()..color = Colors.white.withValues(alpha: 0.90));
     }
 
@@ -723,8 +742,10 @@ class AvatarFramePainter extends CustomPainter {
       const Color(0xFF00FFFF)
     ];
     for (int i = 0; i < 3; i++) {
-      final sx = center.dx + math.cos(sideAngles[i]) * (radius + 3);
-      final sy = center.dy + math.sin(sideAngles[i]) * (radius + 3);
+      final sx = center.dx +
+          math.cos(sideAngles[i]) * (radius + math.min(2.0, radius * 0.06));
+      final sy = center.dy +
+          math.sin(sideAngles[i]) * (radius + math.min(2.0, radius * 0.06));
       _draw4PointStar(canvas, Offset(sx, sy), radius * 0.14,
           Paint()..color = sideColors[i]);
     }

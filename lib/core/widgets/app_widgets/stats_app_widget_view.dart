@@ -10,6 +10,7 @@ class StatsWidgetData {
   final List<CategoryShare> categories;
   final String currency;
   final String monthLabel;
+  final String dateLabel;
   final String noExpenseLabel;
   final bool isDark;
   final bool isEn;
@@ -22,6 +23,7 @@ class StatsWidgetData {
     required this.categories,
     this.currency = 'VND',
     required this.monthLabel,
+    this.dateLabel = '',
     this.noExpenseLabel = 'Chưa có chi tiêu',
     this.isDark = true,
     this.isEn = false,
@@ -166,87 +168,104 @@ class StatsAppWidgetView extends StatelessWidget {
                 width: 1,
               ),
             ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
+            child: Column(
               children: [
-                // 1. Left Donut Chart
                 SizedBox(
-                  width: 110,
-                  height: 110,
-                  child: CustomPaint(
-                    painter: _DonutChartPainter(
-                      categories: data.categories,
-                      totalExpense: data.totalExpense,
-                      isDark: isDark,
-                    ),
+                  height: 28,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          data.dateLabel,
+                          style: TextStyle(
+                            fontFamily: 'ProximaSoft',
+                            height: 1.2,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: textSubColor,
+                          ),
+                        ),
+                      ),
+                      _buildTodayBadge(isDark, textSubColor),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 16),
-
-                // 2. Right Info & Legend
+                const SizedBox(height: 4),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Top Row: Month Label on Left + Today Income/Expense Badge on Right
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
+                      // 1. Left Donut Chart
+                      SizedBox(
+                        width: 110,
+                        height: 110,
+                        child: CustomPaint(
+                          painter: _DonutChartPainter(
+                            categories: data.categories,
+                            totalExpense: data.totalExpense,
+                            isDark: isDark,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+
+                      // 2. Right Info & Legend
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
                               data.monthLabel,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontFamily: 'ProximaSoft',
+                                height: 1.2,
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.w700,
                                 color: textSubColor,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-                          _buildTodayBadge(isDark, textSubColor),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
+                            const SizedBox(height: 2),
 
-                      // Total Expense
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          formattedAmount,
-                          style: TextStyle(
-                            fontFamily: 'ProximaSoft',
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            color: amountColor,
-                            letterSpacing: -0.3,
-                          ),
+                            // Total Expense
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                formattedAmount,
+                                style: TextStyle(
+                                  fontFamily: 'ProximaSoft',
+                                  height: 1.2,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.w900,
+                                  color: amountColor,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ),
+
+                            // Comparison Percentage
+                            if (changeText != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                changeText,
+                                style: TextStyle(
+                                  fontFamily: 'ProximaSoft',
+                                  height: 1.2,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: changeColor,
+                                ),
+                              ),
+                            ],
+
+                            const SizedBox(height: 8),
+
+                            // Top Categories Legend (2 columns)
+                            _buildLegendGrid(data.categories, isDark),
+                          ],
                         ),
                       ),
-
-                      // Comparison Percentage
-                      if (changeText != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          changeText,
-                          style: TextStyle(
-                            fontFamily: 'ProximaSoft',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: changeColor,
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 8),
-
-                      // Top Categories Legend (2 columns)
-                      _buildLegendGrid(data.categories, isDark),
                     ],
                   ),
                 ),
@@ -307,6 +326,7 @@ class StatsAppWidgetView extends StatelessWidget {
             data.isEn ? 'Today: ' : 'Hôm nay: ',
             style: TextStyle(
               fontFamily: 'ProximaSoft',
+              height: 1.2,
               fontSize: (hasIncome && hasExpense) ? 9.0 : 9.5,
               fontWeight: FontWeight.w600,
               color: textSubColor,
@@ -321,20 +341,20 @@ class StatsAppWidgetView extends StatelessWidget {
                   incomeText!,
                   style: TextStyle(
                     fontFamily: 'ProximaSoft',
+                    height: 1.2,
                     fontSize: 9.0,
                     fontWeight: FontWeight.w900,
                     color: incomeColor,
-                    height: 1.1,
                   ),
                 ),
                 Text(
                   expenseText!,
                   style: TextStyle(
                     fontFamily: 'ProximaSoft',
+                    height: 1.2,
                     fontSize: 9.0,
                     fontWeight: FontWeight.w900,
                     color: expenseColor,
-                    height: 1.1,
                   ),
                 ),
               ],
@@ -344,6 +364,7 @@ class StatsAppWidgetView extends StatelessWidget {
               incomeText!,
               style: TextStyle(
                 fontFamily: 'ProximaSoft',
+                height: 1.2,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 color: incomeColor,
@@ -354,6 +375,7 @@ class StatsAppWidgetView extends StatelessWidget {
               expenseText!,
               style: TextStyle(
                 fontFamily: 'ProximaSoft',
+                height: 1.2,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 color: expenseColor,
@@ -368,6 +390,7 @@ class StatsAppWidgetView extends StatelessWidget {
               ),
               style: TextStyle(
                 fontFamily: 'ProximaSoft',
+                height: 1.2,
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
                 color: textSubColor,
@@ -384,6 +407,7 @@ class StatsAppWidgetView extends StatelessWidget {
         data.noExpenseLabel,
         style: TextStyle(
           fontFamily: 'ProximaSoft',
+          height: 1.2,
           fontSize: 11,
           color: isDark ? const Color(0xFF8E8E93) : const Color(0xFFA0A4B5),
         ),
@@ -447,6 +471,7 @@ class StatsAppWidgetView extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontFamily: 'ProximaSoft',
+                height: 1.2,
                 fontSize: 10.5,
                 fontWeight: FontWeight.w600,
                 color: legendTextColor,

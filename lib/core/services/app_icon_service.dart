@@ -57,8 +57,7 @@ class AppIconOption {
 }
 
 class AppIconService {
-  static const MethodChannel _channel =
-      MethodChannel('com.duyvinh09.memeapp/app_icon');
+  static const MethodChannel _channel = MethodChannel('com.duyvinh09.memeapp/app_icon');
   static const String _prefsKey = 'selected_app_icon_key';
 
   static String _cachedIconId = 'default';
@@ -131,8 +130,7 @@ class AppIconService {
 
   static Future<String> getCurrentIcon() async {
     try {
-      final String? platformIcon =
-          await _channel.invokeMethod<String>('getCurrentIcon');
+      final String? platformIcon = await _channel.invokeMethod<String>('getCurrentIcon');
       if (platformIcon != null && platformIcon.isNotEmpty) {
         _cachedIconId = platformIcon;
         final prefs = await SharedPreferences.getInstance();
@@ -156,8 +154,7 @@ class AppIconService {
 
   static Future<bool> setAppIcon(String iconId) async {
     try {
-      final bool? success =
-          await _channel.invokeMethod<bool>('setAppIcon', {'icon': iconId});
+      final bool? success = await _channel.invokeMethod<bool>('setAppIcon', {'icon': iconId});
 
       if (success == true) {
         _cachedIconId = iconId;

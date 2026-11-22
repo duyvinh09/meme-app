@@ -21,8 +21,7 @@ class ExchangeRateService {
   static Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
 
-    _cachedUsdToVndRate =
-        prefs.getDouble(_rateKey) ?? fallbackUsdToVndRate;
+    _cachedUsdToVndRate = prefs.getDouble(_rateKey) ?? fallbackUsdToVndRate;
 
     final updatedAtMillis = prefs.getInt(_updatedAtKey);
     if (updatedAtMillis != null) {
@@ -52,9 +51,7 @@ class ExchangeRateService {
         'https://open.er-api.com/v6/latest/USD',
       );
 
-      final response = await http
-          .get(uri)
-          .timeout(const Duration(seconds: 8));
+      final response = await http.get(uri).timeout(const Duration(seconds: 8));
 
       if (response.statusCode != 200) {
         return _cachedUsdToVndRate;

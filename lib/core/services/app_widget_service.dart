@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
@@ -627,6 +628,9 @@ class AppWidgetService {
         categories: categoryShares,
         currency: userCurrency,
         monthLabel: statsMonthLabel,
+        dateLabel: DateFormat(isEn ? 'EEE, dd/MM/yyyy' : 'EEEE, dd/MM/yyyy',
+                isEn ? 'en_US' : 'vi_VN')
+            .format(now),
         noExpenseLabel: isEn ? 'No spending yet' : 'Chưa có chi tiêu',
         isDark: isDark,
         isEn: isEn,
@@ -777,6 +781,45 @@ class AppWidgetService {
         isEn: isEn,
         hasTransaction: latestTx != null,
         widgetFrame: currentProfile?.widgetFrame ?? 'none',
+      );
+
+      // Version 1: native Android refreshes the daily header without Flutter.
+      // Keys are local civil dates, so a new day never reuses yesterday's totals.
+      final dailyTotals = <String, List<double>>{};
+      for (final tx in currentTxs.where((tx) => !tx.isFailed)) {
+        final key = DateFormat('yyyy-MM-dd').format(tx.createdAt.toLocal());
+        final totals = dailyTotals.putIfAbsent(key, () => [0.0, 0.0]);
+        if ((tx.type == 'expense' && !tx.isGroupExpense) ||
+            tx.isGroupContribution) {
+          totals[0] += tx.amount;
+        } else if (tx.type == 'income' && !tx.isGroupContribution) {
+          totals[1] += tx.amount;
+        }
+      }
+      await HomeWidget.saveWidgetData<String>(
+        'stats_daily_header_v1',
+        jsonEncode({
+          'version': 1,
+          'isEn': isEn,
+          'isDark': isDark,
+          'zero': StatsAppWidgetView.formatCompactAmount(
+            amountVnd: 0,
+            currency: userCurrency,
+            isEn: isEn,
+          ),
+          'days': dailyTotals.map((key, totals) => MapEntry(key, {
+                'expense': totals[0] > 0
+                    ? '-${StatsAppWidgetView.formatCompactAmount(amountVnd: totals[0], currency: userCurrency, isEn: isEn)}'
+                    : '',
+                'income': totals[1] > 0
+                    ? StatsAppWidgetView.formatCompactAmount(
+                        amountVnd: totals[1],
+                        currency: userCurrency,
+                        isEn: isEn,
+                        showPlus: true)
+                    : '',
+              })),
+        }),
       );
 
       // 6. Render Flutter Widgets to Bitmaps sequentially with micro-delays

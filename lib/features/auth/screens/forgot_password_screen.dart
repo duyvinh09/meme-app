@@ -31,6 +31,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> _submit(AuthController auth) async {
+    FocusScope.of(context).unfocus();
+
     final l10n = AppLocalizations.of(context)!;
 
     final email = emailController.text.trim();
@@ -47,7 +49,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
     final ok = await auth.sendResetPassword(email);
 
-    if (!context.mounted) return;
+    if (!mounted) return;
 
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -70,99 +72,97 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     final auth = context.read<AuthController>();
     final l10n = AppLocalizations.of(context)!;
 
-    return Scaffold(
-      backgroundColor: AppColors.background(context),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSizes.pagePadding,
-              20,
-              AppSizes.pagePadding,
-              20,
-            ),
-            child: Column(
-              children: [
-                const _AuthLogo(
-                  icon: Icons.lock_reset_rounded,
-                ),
-                const SizedBox(height: 18),
-
-                Text(
-                  l10n.forgotPasswordTitle,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.pageTitle(context),
-                ),
-                const SizedBox(height: 8),
-
-                Text(
-                  l10n.forgotPasswordInstruction,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodySecondary(context),
-                ),
-                const SizedBox(height: 24),
-
-                _AuthCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.recoveryPassword,
-                        style: AppTextStyles.pageTitle(context).copyWith(
-                          fontSize: 24,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: AppColors.background(context),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.pagePadding,
+                20,
+                AppSizes.pagePadding,
+                20,
+              ),
+              child: Column(
+                children: [
+                  const _AuthLogo(
+                    icon: Icons.lock_reset_rounded,
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    l10n.forgotPasswordTitle,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.pageTitle(context),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    l10n.forgotPasswordInstruction,
+                    textAlign: TextAlign.center,
+                    style: AppTextStyles.bodySecondary(context),
+                  ),
+                  const SizedBox(height: 24),
+                  _AuthCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.recoveryPassword,
+                          style: AppTextStyles.pageTitle(context).copyWith(
+                            fontSize: 24,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      Text(
-                        l10n.recoveryPasswordSubtitle,
-                        style: AppTextStyles.bodySecondary(context),
-                      ),
-                      const SizedBox(height: 20),
-
-                      CustomTextField(
-                        controller: emailController,
-                        hintText: l10n.enterEmail,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.done,
-                        prefixIcon: Icons.email_outlined,
-                      ),
-                      const SizedBox(height: 14),
-
-                      if (localError != null &&
-                          localError!.trim().isNotEmpty) ...[
-                        _AuthErrorBox(text: localError!),
+                        const SizedBox(height: 8),
+                        Text(
+                          l10n.recoveryPasswordSubtitle,
+                          style: AppTextStyles.bodySecondary(context),
+                        ),
+                        const SizedBox(height: 20),
+                        CustomTextField(
+                          controller: emailController,
+                          hintText: l10n.enterEmail,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.done,
+                          prefixIcon: Icons.email_outlined,
+                        ),
                         const SizedBox(height: 14),
-                      ],
-
-                      CustomButton(
-                        text: l10n.sendRecoveryEmail,
-                        onPressedAsync: () => _submit(auth),
-                        onBusyChanged: (busy) =>
-                            setState(() => _recoveryBusy = busy),
-                      ),
-                      const SizedBox(height: 14),
-
-                      Center(
-                        child: TextButton(
-                          onPressed: _recoveryBusy
-                              ? null
-                              : () {
-                            Navigator.pop(context);
-                          },
-                          child: Text(
-                            l10n.backToLogin,
-                            style: TextStyle(
-                              color: AppColors.textSecondary(context),
-                              fontWeight: FontWeight.w600,
+                        if (localError != null &&
+                            localError!.trim().isNotEmpty) ...[
+                          _AuthErrorBox(text: localError!),
+                          const SizedBox(height: 14),
+                        ],
+                        CustomButton(
+                          text: l10n.sendRecoveryEmail,
+                          onPressedAsync: () => _submit(auth),
+                          onBusyChanged: (busy) =>
+                              setState(() => _recoveryBusy = busy),
+                        ),
+                        const SizedBox(height: 14),
+                        Center(
+                          child: TextButton(
+                            onPressed: _recoveryBusy
+                                ? null
+                                : () {
+                                    FocusScope.of(context).unfocus();
+                                    Navigator.pop(context);
+                                  },
+                            child: Text(
+                              l10n.backToLogin,
+                              style: TextStyle(
+                                color: AppColors.textSecondary(context),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

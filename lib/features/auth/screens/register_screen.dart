@@ -11,6 +11,8 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../controllers/auth_controller.dart';
+import '../widgets/auth_brand_header.dart';
+import '../widgets/auth_text_link.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -61,7 +63,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final hasLower = RegExp(r'[a-zà-ỹ]').hasMatch(text);
     final hasUpper = RegExp(r'[A-ZÀ-Ỹ]').hasMatch(text);
     final hasNumber = RegExp(r'[0-9]').hasMatch(text);
-    final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~` ]').hasMatch(text);
+    final hasSpecial =
+        RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~` ]').hasMatch(text);
     final hasMinLength = text.length >= 6;
     final hasGoodLength = text.length >= 8;
 
@@ -116,7 +119,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final hasLower = RegExp(r'[a-zà-ỹ]').hasMatch(text);
     final hasUpper = RegExp(r'[A-ZÀ-Ỹ]').hasMatch(text);
     final hasNumber = RegExp(r'[0-9]').hasMatch(text);
-    final hasSpecial = RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~` ]').hasMatch(text);
+    final hasSpecial =
+        RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-+=/\\[\]~` ]').hasMatch(text);
 
     return hasLower && hasUpper && hasNumber && hasSpecial;
   }
@@ -174,7 +178,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           height: 44,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.primaryPink.withValues(alpha: 0.15),
+                            color:
+                                AppColors.primaryPink.withValues(alpha: 0.15),
                           ),
                           child: const Center(
                             child: Text('🎂', style: TextStyle(fontSize: 22)),
@@ -309,6 +314,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _register(AuthController auth) async {
+    FocusScope.of(context).unfocus();
+
     if (auth.isLoading) return;
 
     final name = nameController.text.trim();
@@ -394,7 +401,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       Navigator.pushNamedAndRemoveUntil(
         context,
         RouteNames.mainShell,
-            (_) => false,
+        (_) => false,
       );
     }
   }
@@ -412,279 +419,241 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final passwordsMatch = confirmPasswordController.text.trim().isNotEmpty &&
         passwordController.text.trim() == confirmPasswordController.text.trim();
 
-    return Scaffold(
-      backgroundColor: AppColors.background(context),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(
-              AppSizes.pagePadding,
-              20,
-              AppSizes.pagePadding,
-              20,
-            ),
-            child: Column(
-              children: [
-                const _AuthLogo(
-                  icon: Icons.person_add_alt_1_rounded,
-                ),
-                const SizedBox(height: 18),
-
-                Text(
-                  l10n.createNewAccount,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.pageTitle(context),
-                ),
-                const SizedBox(height: 8),
-
-                Text(
-                  l10n.registerSlogan,
-                  textAlign: TextAlign.center,
-                  style: AppTextStyles.bodySecondary(context),
-                ),
-                const SizedBox(height: 24),
-
-                _AuthCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.joinMeme,
-                        style: AppTextStyles.pageTitle(context).copyWith(
-                          fontSize: 24,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        backgroundColor: AppColors.background(context),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: const EdgeInsets.fromLTRB(
+                AppSizes.pagePadding,
+                20,
+                AppSizes.pagePadding,
+                20,
+              ),
+              child: Column(
+                children: [
+                  AuthBrandHeader(
+                    title: l10n.createNewAccount,
+                    subtitle: l10n.registerSlogan,
+                    compact: true,
+                  ),
+                  const SizedBox(height: AppSizes.gapXLarge),
+                  _AuthCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l10n.joinMeme,
+                          style: AppTextStyles.sectionTitle(context),
                         ),
-                      ),
-                      const SizedBox(height: 8),
+                        const SizedBox(height: 8),
 
-                      Text(
-                        l10n.registerSubtitle,
-                        style: AppTextStyles.bodySecondary(context),
-                      ),
-                      const SizedBox(height: 20),
-
-                      CustomTextField(
-                        controller: nameController,
-                        hintText: l10n.displayName,
-                        textInputAction: TextInputAction.next,
-                        prefixIcon: Icons.badge_outlined,
-                      ),
-                      const SizedBox(height: 12),
-
-                      CustomTextField(
-                        controller: usernameController,
-                        hintText: l10n.username,
-                        textInputAction: TextInputAction.next,
-                        prefixIcon: Icons.alternate_email_rounded,
-                      ),
-                      const SizedBox(height: 8),
-
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Text(
-                          l10n.usernameHint,
-                          style: AppTextStyles.caption(context),
+                        Text(
+                          l10n.registerSubtitle,
+                          style: AppTextStyles.bodySecondary(context),
                         ),
-                      ),
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 20),
 
-                      // Ngày sinh (Date of birth)
-                      InkWell(
-                        onTap: authBusy ? null : _pickDateOfBirth,
-                        borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
+                        CustomTextField(
+                          controller: nameController,
+                          hintText: l10n.displayName,
+                          textInputAction: TextInputAction.next,
+                          prefixIcon: Icons.badge_outlined,
+                        ),
+                        const SizedBox(height: 12),
+
+                        CustomTextField(
+                          controller: usernameController,
+                          hintText: l10n.username,
+                          textInputAction: TextInputAction.next,
+                          prefixIcon: Icons.alternate_email_rounded,
+                        ),
+                        const SizedBox(height: 8),
+
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            l10n.usernameHint,
+                            style: AppTextStyles.caption(context),
                           ),
-                          decoration: BoxDecoration(
-                            color: AppColors.surface(context),
-                            borderRadius: BorderRadius.circular(AppSizes.radiusMedium),
-                            border: Border.all(
-                              color: AppColors.innerBorder(context),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Ngày sinh (Date of birth)
+                        InkWell(
+                          onTap: authBusy ? null : _pickDateOfBirth,
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusMedium),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.cake_outlined,
-                                color: _dateOfBirth != null
-                                    ? AppColors.primaryPink
-                                    : AppColors.textSecondary(context),
-                                size: 22,
+                            decoration: BoxDecoration(
+                              color: AppColors.surface(context),
+                              borderRadius:
+                                  BorderRadius.circular(AppSizes.radiusMedium),
+                              border: Border.all(
+                                color: AppColors.innerBorder(context),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  _dateOfBirth != null
-                                      ? DateFormat('dd/MM/yyyy').format(_dateOfBirth!)
-                                      : context.l10n.birthdayOptional,
-                                  style: _dateOfBirth != null
-                                      ? AppTextStyles.body(context).copyWith(
-                                          fontWeight: FontWeight.w600,
-                                        )
-                                      : AppTextStyles.bodySecondary(context),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.cake_outlined,
+                                  color: _dateOfBirth != null
+                                      ? AppColors.primaryPink
+                                      : AppColors.textSecondary(context),
+                                  size: 22,
                                 ),
-                              ),
-                              if (_dateOfBirth != null)
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _dateOfBirth = null;
-                                    });
-                                  },
-                                  child: Icon(
-                                    Icons.close_rounded,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    _dateOfBirth != null
+                                        ? DateFormat('dd/MM/yyyy')
+                                            .format(_dateOfBirth!)
+                                        : context.l10n.birthdayOptional,
+                                    style: _dateOfBirth != null
+                                        ? AppTextStyles.body(context).copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          )
+                                        : AppTextStyles.bodySecondary(context),
+                                  ),
+                                ),
+                                if (_dateOfBirth != null)
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _dateOfBirth = null;
+                                      });
+                                    },
+                                    child: Icon(
+                                      Icons.close_rounded,
+                                      size: 18,
+                                      color: AppColors.textSecondary(context),
+                                    ),
+                                  )
+                                else
+                                  Icon(
+                                    Icons.calendar_today_rounded,
                                     size: 18,
                                     color: AppColors.textSecondary(context),
                                   ),
-                                )
-                              else
-                                Icon(
-                                  Icons.calendar_today_rounded,
-                                  size: 18,
-                                  color: AppColors.textSecondary(context),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      CustomTextField(
-                        controller: emailController,
-                        hintText: l10n.email,
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
-                        prefixIcon: Icons.email_outlined,
-                      ),
-                      const SizedBox(height: 12),
-
-                      _PasswordTextField(
-                        controller: passwordController,
-                        hintText: l10n.password,
-                        obscureText: _obscurePassword,
-                        textInputAction: TextInputAction.next,
-                        onChanged: (_) => setState(() {}),
-                        onToggleObscure: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 10),
-
-                      _PasswordStrengthView(
-                        strength: passwordStrength,
-                      ),
-                      const SizedBox(height: 12),
-
-                      _PasswordTextField(
-                        controller: confirmPasswordController,
-                        hintText: l10n.confirmPassword,
-                        obscureText: _obscureConfirmPassword,
-                        textInputAction: TextInputAction.done,
-                        onChanged: (_) => setState(() {}),
-                        suffixStatusIcon: confirmPasswordController.text.trim().isEmpty
-                            ? null
-                            : passwordsMatch
-                            ? Icons.check_circle_rounded
-                            : Icons.error_rounded,
-                        suffixStatusColor: passwordsMatch
-                            ? AppColors.income
-                            : AppColors.expense,
-                        onToggleObscure: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                      ),
-                      const SizedBox(height: 8),
-
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4),
-                        child: Text(
-                          l10n.passwordRequirementHint,
-                          style: AppTextStyles.caption(context),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      if (errorText != null && errorText.trim().isNotEmpty) ...[
-                        _AuthErrorBox(text: errorText),
-                        const SizedBox(height: 14),
-                      ],
-
-                      CustomButton(
-                        text: l10n.register,
-                        isLoading: auth.isLoading,
-                        onPressedAsync: () => _register(auth),
-                        onBusyChanged: (busy) =>
-                            setState(() => _primaryAuthBusy = busy),
-                      ),
-                      const SizedBox(height: 14),
-
-                      Center(
-                        child: TextButton(
-                          onPressed: authBusy
-                              ? null
-                              : () {
-                            Navigator.pop(context);
-                          },
-                          child: RichText(
-                            text: TextSpan(
-                              style: AppTextStyles.bodySecondary(context),
-                              children: [
-                                TextSpan(text: l10n.alreadyHaveAccount),
-                                TextSpan(
-                                  text: l10n.login,
-                                  style: const TextStyle(
-                                    color: AppColors.primaryBlue,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
                               ],
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+
+                        CustomTextField(
+                          controller: emailController,
+                          hintText: l10n.email,
+                          keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          prefixIcon: Icons.email_outlined,
+                        ),
+                        const SizedBox(height: 12),
+
+                        _PasswordTextField(
+                          controller: passwordController,
+                          hintText: l10n.password,
+                          obscureText: _obscurePassword,
+                          textInputAction: TextInputAction.next,
+                          onChanged: (_) => setState(() {}),
+                          onToggleObscure: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 10),
+
+                        _PasswordStrengthView(
+                          strength: passwordStrength,
+                        ),
+                        const SizedBox(height: 12),
+
+                        _PasswordTextField(
+                          controller: confirmPasswordController,
+                          hintText: l10n.confirmPassword,
+                          obscureText: _obscureConfirmPassword,
+                          textInputAction: TextInputAction.done,
+                          onChanged: (_) => setState(() {}),
+                          suffixStatusIcon:
+                              confirmPasswordController.text.trim().isEmpty
+                                  ? null
+                                  : passwordsMatch
+                                      ? Icons.check_circle_rounded
+                                      : Icons.error_rounded,
+                          suffixStatusColor: passwordsMatch
+                              ? AppColors.income
+                              : AppColors.expense,
+                          onToggleObscure: () {
+                            setState(() {
+                              _obscureConfirmPassword =
+                                  !_obscureConfirmPassword;
+                            });
+                          },
+                        ),
+                        const SizedBox(height: 8),
+
+                        Padding(
+                          padding: const EdgeInsets.only(left: 4),
+                          child: Text(
+                            l10n.passwordRequirementHint,
+                            style: AppTextStyles.caption(context),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        if (errorText != null &&
+                            errorText.trim().isNotEmpty) ...[
+                          _AuthErrorBox(text: errorText),
+                          const SizedBox(height: 14),
+                        ],
+
+                        CustomButton(
+                          text: l10n.register,
+                          isLoading: auth.isLoading,
+                          onPressedAsync: () => _register(auth),
+                          onBusyChanged: (busy) =>
+                              setState(() => _primaryAuthBusy = busy),
+                        ),
+                        const SizedBox(height: 14),
+
+                        Center(
+                          child: Wrap(
+                            alignment: WrapAlignment.center,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              Text(
+                                l10n.alreadyHaveAccount.trim(),
+                                style: AppTextStyles.bodySecondary(context),
+                              ),
+                              AuthTextLink(
+                                onPressed: authBusy
+                                    ? null
+                                    : () {
+                                        FocusScope.of(context).unfocus();
+                                        Navigator.pop(context);
+                                      },
+                                label: l10n.login,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _AuthLogo extends StatelessWidget {
-  final IconData icon;
-
-  const _AuthLogo({
-    required this.icon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 94,
-      height: 94,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.primaryBlue,
-        border: Border.all(
-          color: Colors.white.withValues(
-            alpha: AppColors.isDark(context) ? 0.14 : 0.92,
-          ),
-          width: 3,
-        ),
-      ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: 42,
       ),
     );
   }
@@ -702,7 +671,7 @@ class _AuthCard extends StatelessWidget {
     return Container(
       constraints: const BoxConstraints(maxWidth: 480),
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+      padding: const EdgeInsets.all(AppSizes.gapXLarge),
       decoration: BoxDecoration(
         color: AppColors.card(context),
         borderRadius: BorderRadius.circular(AppSizes.radiusXLarge),
