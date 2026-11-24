@@ -34,6 +34,9 @@ import '../controllers/capture_controller.dart';
 import '../widgets/amount_calculator_keypad_sheet.dart';
 import 'camera_screen.dart';
 import 'square_crop_screen.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import '../../../receipt_classifier.dart';
+import '../../../core/services/receipt_amount_reader.dart';
 
 class PreviewScreen extends StatefulWidget {
   final File? imageFile;
@@ -696,6 +699,135 @@ class _PreviewScreenState extends State<PreviewScreen> {
         ),
       );
     });
+  }
+
+  ReceiptClassifier? _receiptClassifier;
+  bool _scanningReceipt = false;
+
+  Future<void> _scanReceipt() async {
+    final file = _originalImageFile ?? _currentImageFile;
+    if (_scanningReceipt || file == null) return;
+
+    setState(() => _scanningReceipt = true);
+    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
+    try {
+      final classifier = _receiptClassifier ??= await ReceiptClassifier.load();
+      final result = await recognizer.processImage(
+        InputImage.fromFilePath(file.path),
+      );
+      if (!mounted) return;
+
+      final lines = result.blocks.expand((b) => b.lines).toList();
+      if (lines.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Chưa đọc được chữ. Hãy thử ảnh rõ hơn.')),
+        );
+        return;
+      }
+
+      // Giống ô test Colab: người dùng chỉ vị trí giữa hai phiếu cạnh nhau.
+      final layout = await showDialog<int>(
+        context: context,
+        builder: (ctx) {
+          var percent = 50.0;
+          return StatefulBuilder(
+            builder: (ctx, refresh) => AlertDialog(
+              title: const Text('Ảnh có mấy phiếu?'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Nếu có hai phiếu riêng cạnh nhau, chọn vị trí chia '
+                        'từ trái sang phải theo vùng có chữ.',
+                  ),
+                  Slider(
+                    min: 10, max: 90, divisions: 80, value: percent,
+                    label: '${percent.round()}%',
+                    onChanged: (v) => refresh(() => percent = v),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, 0),
+                  child: const Text('Một phiếu'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx, percent.round()),
+                  child: const Text('Hai phiếu'),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+      if (!mounted || layout == null) return;
+
+      var parts = <List<TextLine>>[lines];
+      if (layout > 0) {
+        final left = lines.map((l) => l.boundingBox.left)
+            .reduce((a, b) => a < b ? a : b);
+        final right = lines.map((l) => l.boundingBox.right)
+            .reduce((a, b) => a > b ? a : b);
+        final cut = left + (right - left) * layout / 100;
+        parts = [
+          lines.where((l) => l.boundingBox.center.dx < cut).toList(),
+          lines.where((l) => l.boundingBox.center.dx >= cut).toList(),
+        ];
+      }
+
+      const labels = {
+        'food': 'Ăn uống', 'shopping': 'Mua sắm', 'transport': 'Đi lại',
+        'entertainment': 'Giải trí', 'education': 'Học tập',
+        'gift': 'Quà tặng', 'other': 'Khác',
+      };
+
+      final categories = parts.map((part) {
+        final text = part.map((l) => l.text).join('\n');
+        return labels[classifier.suggest(text)];
+      }).toSet();
+      final suggestedCategory =
+      categories.length == 1 ? categories.single : null;
+
+      final amounts = parts.map(ReceiptAmountReader.fromLines).toList();
+      final total = amounts.every((v) => v != null)
+          ? amounts.whereType<int>().fold<int>(0, (a, b) => a + b)
+          : null;
+
+      final isVnd = context.read<ProfileController>().currency == 'VND';
+      final canFill = total != null &&
+          isVnd &&
+          total.toString().length <= kMaxAmountDigits;
+
+      setState(() {
+        if (suggestedCategory != null) category = suggestedCategory;
+        // Giữ số tiền người dùng đã tự nhập.
+        if (canFill && amountController.text.trim().isEmpty) {
+          amountController.text = total.toString();
+          _onAmountChanged(amountController.text);
+        }
+      });
+
+      final message = [
+        suggestedCategory ?? 'Cần chọn danh mục',
+        if (total == null) 'Chưa xác định được tổng tiền'
+        else 'Tổng đọc được: $total VND',
+        if (!isVnd) 'Ô nhập đang dùng đơn vị khác VND',
+      ].join(' · ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Quét hóa đơn thất bại: $e')),
+        );
+      }
+    } finally {
+      await recognizer.close();
+      if (mounted) setState(() => _scanningReceipt = false);
+    }
   }
 
   void _onAmountChanged(String value) {
@@ -2083,6 +2215,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     _CancelButton(
                       onTap: _closeCaptureFlow,
                     ),
+                    if (Platform.isAndroid && isImage && type == 'expense' && !isContribution)
+                      FilledButton.tonalIcon(
+                        onPressed: _scanningReceipt ? null : _scanReceipt,
+                        icon: const Icon(Icons.receipt_long),
+                        label: Text(_scanningReceipt ? 'Đang quét…' : 'Quét hóa đơn'),
+                      ),
                   ],
                 ),
               ),
