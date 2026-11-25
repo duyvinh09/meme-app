@@ -72,6 +72,10 @@ flutter:
     - assets/sounds/
     - assets/fcm_service_account.json
     - assets/data/
+    - assets/photobooth/catalog.json
+    - assets/photobooth/frames/
+    - assets/photobooth/thumbs/
+    - assets/photobooth/masks/
 
   fonts:
     - family: ProximaSoft

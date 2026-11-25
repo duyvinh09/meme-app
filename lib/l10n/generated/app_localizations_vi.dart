@@ -3485,4 +3485,123 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get streakDaysInARow => 'ngày liên tiếp 🔥';
+
+  @override
+  String get photobooth => 'Photobooth';
+
+  @override
+  String get photoboothAll => 'Tất cả';
+
+  @override
+  String get photoboothEmpty => 'Chưa có khung phù hợp.';
+
+  @override
+  String photoboothFrameCount(int count) {
+    return '$count khung';
+  }
+
+  @override
+  String get photoboothThemeFilm => 'Film & Vintage';
+
+  @override
+  String get photoboothThemeCute => 'Dễ thương & Pastel';
+
+  @override
+  String get photoboothThemeLove => 'Tình yêu & Bạn bè';
+
+  @override
+  String get photoboothThemeCelebration => 'Lễ hội & Sinh nhật';
+
+  @override
+  String get photoboothThemePersonality => 'Cá tính & Meme';
+
+  @override
+  String get photoboothThemeComments => 'Bình luận nổi bật';
+
+  @override
+  String get photoboothSubtitle =>
+      'Chọn khung, chụp từng ô và ghép thành khoảnh khắc của bạn.';
+
+  @override
+  String get photoboothOff => 'Không dùng khung';
+
+  @override
+  String photoboothGroup(int count) {
+    return '$count ảnh';
+  }
+
+  @override
+  String photoboothProgress(int captured, int total) {
+    return '$captured/$total';
+  }
+
+  @override
+  String get photoboothLoadError => 'Không tải được bộ khung. Chạm để thử lại.';
+
+  @override
+  String get photoboothCaptureError =>
+      'Chưa ghép được ảnh. Bạn thử chụp lại ô này nhé.';
+
+  @override
+  String get photoboothReset => 'Chụp lại từ đầu';
+
+  @override
+  String photoboothSlot(int index) {
+    return 'Ô ảnh $index';
+  }
+
+  @override
+  String get photoboothRetry => 'Thử lại';
+
+  @override
+  String get developmentTeam => 'Đội ngũ phát triển';
+
+  @override
+  String get developmentTeamIntro =>
+      'Những thành viên cùng nhau xây dựng Meme.';
+
+  @override
+  String get developerLeadRole => 'Người phát triển chính';
+
+  @override
+  String get developerLanguageAiRole =>
+      'Phát triển app, hỗ trợ đa ngôn ngữ và xây dựng AI';
+
+  @override
+  String get developerDesignAiTestingRole =>
+      'Thiết kế giao diện, xây dựng AI và kiểm thử';
+
+  @override
+  String get developerBillLogicRole =>
+      'Xây dựng hệ thống tự nhận diện hóa đơn và đóng góp logic cốt lõi của app';
+
+  @override
+  String get developerLinkError => 'Không mở được liên kết. Bạn thử lại nhé.';
+
+  @override
+  String get aboutMeme => 'Về Meme';
+
+  @override
+  String get memeThankYouTitle => 'Cảm ơn bạn đã chọn Meme!';
+
+  @override
+  String get memeThankYouMessage =>
+      'Những khoảnh khắc, khoản chi và phản hồi của bạn là động lực để tụi mình làm Meme tốt hơn mỗi ngày. Cảm ơn bạn đã là một phần trong hành trình này.';
+
+  @override
+  String get memeProject => 'Dự án Meme';
+
+  @override
+  String get memeReleases => 'Bản phát hành';
+
+  @override
+  String get memeReleasesDescription =>
+      'Khám phá các phiên bản của app và xem có gì mới.';
+
+  @override
+  String get memeStarRepo => 'Tặng Meme một ngôi sao';
+
+  @override
+  String get memeStarRepoDescription =>
+      'Ghé repo trên GitHub nhé. Nếu thích Meme, một ngôi sao của bạn sẽ là động lực lớn cho cả nhóm.';
 }

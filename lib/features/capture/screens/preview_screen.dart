@@ -31,12 +31,15 @@ import '../../profile/widgets/avatar_with_frame.dart';
 import '../../../core/services/failed_post_service.dart';
 import '../../../data/models/failed_post_model.dart';
 import '../controllers/capture_controller.dart';
+import '../models/photobooth_preview_capture.dart';
+import '../services/photobooth_canvas.dart';
 import '../widgets/amount_calculator_keypad_sheet.dart';
 import 'camera_screen.dart';
 import 'square_crop_screen.dart';
 
 class PreviewScreen extends StatefulWidget {
   final File? imageFile;
+  final PhotoboothPreviewCapture? photobooth;
   final File? originalImageFile;
   final SquareCropState? initialCropState;
   final bool isFromGallery;
@@ -56,6 +59,7 @@ class PreviewScreen extends StatefulWidget {
   const PreviewScreen({
     super.key,
     required this.imageFile,
+    this.photobooth,
     this.originalImageFile,
     this.initialCropState,
     this.isFromGallery = false,
@@ -170,11 +174,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
   StreamSubscription<List<Map<String, dynamic>>>? _groupsSub;
 
   File? _currentImageFile;
+  Future<void>? _photoboothResolution;
   File? _originalImageFile;
   SquareCropState? _lastCropState;
 
   bool get isVideo => widget.mediaType == 'video' && widget.videoFile != null;
-  bool get isImage => widget.mediaType == 'image' && _currentImageFile != null;
+  bool get isImage =>
+      widget.mediaType == 'image' &&
+      (_currentImageFile != null || widget.photobooth != null);
 
   bool get hasMedia => isImage || isVideo;
 
@@ -241,7 +248,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   String get privacyLabel {
-    if (privacy == 'group') return _selectedGroupName ?? context.l10n.groupBadge;
+    if (privacy == 'group') {
+      return _selectedGroupName ?? context.l10n.groupBadge;
+    }
     if (privacy == 'private') return context.l10n.private;
     if (privacy == 'close_friends') return context.l10n.closeFriends;
     return context.l10n.everyone;
@@ -362,6 +371,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
       category = 'Quỹ nhóm';
     }
     _currentImageFile = widget.imageFile;
+    if (widget.photobooth != null) {
+      _photoboothResolution = _resolvePhotoboothImage();
+    }
     _originalImageFile = widget.originalImageFile;
     _lastCropState = widget.initialCropState;
     _prepareVideoIfNeeded();
@@ -398,6 +410,30 @@ class _PreviewScreenState extends State<PreviewScreen> {
         });
       }
     });
+  }
+
+  Future<void> _resolvePhotoboothImage() async {
+    try {
+      final file = await widget.photobooth!.file;
+      if (file == null) throw StateError('Photobooth capture was cancelled');
+      if (!mounted) return;
+      setState(() => _currentImageFile = file);
+    } catch (error, stack) {
+      debugPrint('Preview photobooth export failed: $error\n$stack');
+      if (!mounted) return;
+      AppToast.show(context, context.l10n.photoboothCaptureError);
+    }
+  }
+
+  Future<bool> _ensurePhotoboothFile() async {
+    if (widget.photobooth == null) return mounted;
+    await _photoboothResolution;
+    if (!mounted) return false;
+    if (_currentImageFile == null) {
+      AppToast.show(context, context.l10n.photoboothCaptureError);
+      return false;
+    }
+    return true;
   }
 
   Future<void> _openCropEditor() async {
@@ -479,6 +515,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   @override
   void dispose() {
+    widget.photobooth?.dispose();
     _previewScrollController.dispose();
     _hasAmountNotifier.dispose();
     _friendsSub?.cancel();
@@ -499,8 +536,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
     BudgetController budgetController(BuildContext ctx) =>
         listen ? ctx.watch<BudgetController>() : ctx.read<BudgetController>();
 
-    UserCategoryController userCategoryController(BuildContext ctx) =>
-        listen ? ctx.watch<UserCategoryController>() : ctx.read<UserCategoryController>();
+    UserCategoryController userCategoryController(BuildContext ctx) => listen
+        ? ctx.watch<UserCategoryController>()
+        : ctx.read<UserCategoryController>();
 
     final seen = <String>{};
     final out = <String>[];
@@ -557,8 +595,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }) {
     final l10n = context.l10n;
 
-    UserCategoryController userCategoryController(BuildContext ctx) =>
-        listen ? ctx.watch<UserCategoryController>() : ctx.read<UserCategoryController>();
+    UserCategoryController userCategoryController(BuildContext ctx) => listen
+        ? ctx.watch<UserCategoryController>()
+        : ctx.read<UserCategoryController>();
 
     final seen = <String>{};
     final out = <String>[];
@@ -705,9 +744,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
         ? value.replaceAll(RegExp(r'[^0-9.]'), '')
         : value.replaceAll(RegExp(r'[^0-9]'), '');
 
-    final digitCount = (currency == 'USD'
-        ? raw.split('.').first
-        : raw).length;
+    final digitCount = (currency == 'USD' ? raw.split('.').first : raw).length;
 
     if (digitCount < kMaxAmountDigits) {
       _hasShownMaxDigitsWarning = false;
@@ -754,8 +791,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
     if (type != 'expense' || privacy == 'group') return true;
 
     final budgetCtrl = context.read<BudgetController>();
-    final budget = budgetCtrl.findApplicableBudgetForExpense(category: category) ??
-        budgetCtrl.findBudgetByName(category);
+    final budget =
+        budgetCtrl.findApplicableBudgetForExpense(category: category) ??
+            budgetCtrl.findBudgetByName(category);
 
     if (budget == null) return true;
     if (budget.limitAmount <= 0) return true;
@@ -794,6 +832,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Future<void> _shareMoment() async {
+    if (!await _ensurePhotoboothFile() || !mounted) return;
     if (!hasMedia) {
       return;
     }
@@ -828,11 +867,15 @@ class _PreviewScreenState extends State<PreviewScreen> {
       final shareText = StringBuffer()
         ..writeln('Meme')
         ..writeln()
-        ..writeln(context.l10n.shareType(isContribution ? context.l10n.groupFundDeposit : (type == 'expense' ? context.l10n.expense : context.l10n.income)))
-        ..writeln(context.l10n.shareCategory(_localizedCategoryLabel(category)));
+        ..writeln(context.l10n.shareType(isContribution
+            ? context.l10n.groupFundDeposit
+            : (type == 'expense' ? context.l10n.expense : context.l10n.income)))
+        ..writeln(
+            context.l10n.shareCategory(_localizedCategoryLabel(category)));
 
       if (amountController.text.trim().isNotEmpty) {
-        shareText.writeln(context.l10n.shareAmount('${(isContribution ? '+' : (type == 'expense' ? '-' : '+'))}$amountText'));
+        shareText.writeln(context.l10n.shareAmount(
+            '${(isContribution ? '+' : (type == 'expense' ? '-' : '+'))}$amountText'));
       }
 
       final captionText = captionController.text.trim();
@@ -855,14 +898,14 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
         await mediaFile.copy(shareFile.path);
 
-        await Share.shareXFiles(
-          [XFile(shareFile.path)],
+        await SharePlus.instance.share(ShareParams(
+          files: [XFile(shareFile.path)],
           text: shareText.toString(),
-        );
+        ));
         return;
       }
 
-      await Share.share(shareText.toString());
+      await SharePlus.instance.share(ShareParams(text: shareText.toString()));
     } catch (_) {
       if (!mounted) return;
       AppToast.show(context, context.l10n.cannotShareNow);
@@ -870,6 +913,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Future<void> _saveTransaction() async {
+    if (!await _ensurePhotoboothFile() || !mounted) return;
     final currentCurrency = context.read<ProfileController>().currency;
 
     final rawAmount = currentCurrency == 'USD'
@@ -979,7 +1023,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
     }
 
     final currentCaption = captionController.text.trim();
-    final canonicalCategory = isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category);
+    final canonicalCategory =
+        isContribution ? 'Quỹ nhóm' : _toCanonicalCategory(category);
     final mediaFile = _currentImageFile ?? widget.videoFile;
 
     // Create draft failed post in local persistent storage so it persists if offline/error
@@ -1008,7 +1053,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
           latitude: location?.latitude,
           longitude: location?.longitude,
           isGroupContribution: isContribution,
-          isGroupExpense: effectivePrivacy == 'group' && !isContribution && effectiveGroupId != null,
+          isGroupExpense: effectivePrivacy == 'group' &&
+              !isContribution &&
+              effectiveGroupId != null,
           isFrontCamera: widget.isFrontCamera,
         );
       } catch (e) {
@@ -1051,12 +1098,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
         if (savedTx != null) {
           if (draftFailedPost != null) {
-            await FailedPostService.instance.deleteFailedPost(draftFailedPost.id);
+            await FailedPostService.instance
+                .deleteFailedPost(draftFailedPost.id);
           }
           final unlockedMilestone = capture.consumeLastUnlockedMilestone();
           if (unlockedMilestone != null) {
             final navContext = AppRoutes.navigatorKey.currentContext;
-            if (navContext != null) {
+            if (navContext != null && navContext.mounted) {
               unawaited(StreakMilestoneDialog.show(
                 navContext,
                 milestone: unlockedMilestone,
@@ -1068,6 +1116,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       },
     );
 
+    if (!mounted) return;
     if (Navigator.canPop(context)) {
       Navigator.pop(context, true);
     } else {
@@ -1132,8 +1181,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
                 final color = item['color'] as Color;
                 final icon = item['icon'] as IconData;
                 final badgeText = item['badgeText'] as String?;
-                final isSelected = category.trim().toLowerCase() == label.trim().toLowerCase() ||
-                    _toCanonicalCategory(category).toLowerCase() == _toCanonicalCategory(label).toLowerCase();
+                final isSelected = category.trim().toLowerCase() ==
+                        label.trim().toLowerCase() ||
+                    _toCanonicalCategory(category).toLowerCase() ==
+                        _toCanonicalCategory(label).toLowerCase();
 
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1143,13 +1194,16 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         HapticFeedback.selectionClick();
                         setState(() {
                           final isBudget = item['isCustomBudget'] == true;
-                          category = isBudget ? label : _toCanonicalCategory(label);
+                          category =
+                              isBudget ? label : _toCanonicalCategory(label);
                           categoryOpen = false;
                         });
                       },
                       child: Container(
                         height: 46,
-                        color: isSelected ? Colors.white.withValues(alpha: 0.08) : Colors.transparent,
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.transparent,
                         padding: const EdgeInsets.symmetric(horizontal: 14),
                         child: Row(
                           children: [
@@ -1178,9 +1232,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: isSelected ? Colors.white : Colors.white70,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.white70,
                                         fontSize: 13.5,
-                                        fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
                                       ),
                                     ),
                                   ),
@@ -1192,10 +1250,12 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.amber.withValues(alpha: 0.22),
+                                        color: Colors.amber
+                                            .withValues(alpha: 0.22),
                                         borderRadius: BorderRadius.circular(6),
                                         border: Border.all(
-                                          color: Colors.amber.withValues(alpha: 0.5),
+                                          color: Colors.amber
+                                              .withValues(alpha: 0.5),
                                           width: 0.8,
                                         ),
                                       ),
@@ -1237,8 +1297,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
       ),
     );
   }
-
-
 
   void _notifyPrivacyTagAdjustmentIfNeeded(String newPrivacy) {
     final text = captionController.text.trim();
@@ -1535,7 +1593,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
   }
 
   Widget _buildPreviewMedia(double previewSize) {
-    final hasMedia = isVideo || _currentImageFile != null;
+    final hasMedia = isVideo || isImage;
     final borderColor = hasMedia
         ? Colors.white.withValues(alpha: 0.12)
         : currentCategoryColor.withValues(alpha: 0.45);
@@ -1574,18 +1632,22 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         durationLabel: _formatDurationLabel(),
                         isFrontCamera: widget.isFrontCamera,
                       )
-                    : _currentImageFile != null
-                        ? Image.file(
-                            _currentImageFile!,
-                            key: ValueKey(_currentImageFile!.path),
-                            fit: BoxFit.cover,
-                            cacheWidth: 800,
-                          )
-                        : _CategoryFallbackPreview(
-                            color: currentCategoryColor,
-                            icon: currentCategoryIcon,
-                            label: _localizedCategoryLabel(category),
-                          ),
+                    : widget.photobooth != null
+                        ? CustomPaint(
+                            painter: PhotoboothCanvasPainter(
+                                widget.photobooth!.scene))
+                        : _currentImageFile != null
+                            ? Image.file(
+                                _currentImageFile!,
+                                key: ValueKey(_currentImageFile!.path),
+                                fit: BoxFit.cover,
+                                cacheWidth: 800,
+                              )
+                            : _CategoryFallbackPreview(
+                                color: currentCategoryColor,
+                                icon: currentCategoryIcon,
+                                label: _localizedCategoryLabel(category),
+                              ),
               ),
 
               if (hasMedia)
@@ -1618,7 +1680,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     accentColor: accentColor,
                     amountController: amountController,
                     captionController: captionController,
-                    amountPrefix: isContribution ? '+' : (type == 'expense' ? '-' : '+'),
+                    amountPrefix:
+                        isContribution ? '+' : (type == 'expense' ? '-' : '+'),
                     currency: 'đ',
                     onTapAmount: _openCalculatorKeypad,
                     onTapCaption: _closeCalculatorKeypad,
@@ -1626,9 +1689,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
                     onMaxDigitsExceeded: _showMaxDigitsWarning,
                     myUid: context.read<AuthController>().user?.uid ?? '',
                     privacy: privacy,
-                    closeFriendUids: _selectedFriendUids.isNotEmpty ? _selectedFriendUids.toList() : _closeFriendUids,
+                    closeFriendUids: _selectedFriendUids.isNotEmpty
+                        ? _selectedFriendUids.toList()
+                        : _closeFriendUids,
                     groupMemberIds: _selectedGroupMemberIds,
-                    groupRemainingBalance: (privacy == 'group' && type == 'expense' && !isContribution)
+                    groupRemainingBalance: (privacy == 'group' &&
+                            type == 'expense' &&
+                            !isContribution)
                         ? _currentGroupRemainingBalance
                         : null,
                   ),
@@ -1653,7 +1720,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                           });
                         },
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                          borderRadius:
+                              BorderRadius.circular(AppSizes.radiusPill),
                           child: BackdropFilter(
                             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                             child: Container(
@@ -1662,10 +1730,13 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                 vertical: 8.5,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF14161F).withValues(alpha: 0.80),
-                                borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                                color: const Color(0xFF14161F)
+                                    .withValues(alpha: 0.80),
+                                borderRadius:
+                                    BorderRadius.circular(AppSizes.radiusPill),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: categoryOpen ? 0.40 : 0.20),
+                                  color: Colors.white.withValues(
+                                      alpha: categoryOpen ? 0.40 : 0.20),
                                   width: 1.0,
                                 ),
                                 boxShadow: [
@@ -1727,7 +1798,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
               ),
 
               // 3. Floating Crop Icon Button in Top-Right Corner (Only active for gallery images, top layer of Stack)
-              if (isImage && widget.isFromGallery && !categoryOpen && (_originalImageFile != null || _currentImageFile != null))
+              if (isImage &&
+                  widget.isFromGallery &&
+                  !categoryOpen &&
+                  (_originalImageFile != null || _currentImageFile != null))
                 Positioned(
                   top: 8,
                   right: 12,
@@ -1742,7 +1816,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       height: 44,
                       alignment: Alignment.center,
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                        borderRadius:
+                            BorderRadius.circular(AppSizes.radiusPill),
                         child: BackdropFilter(
                           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                           child: Container(
@@ -1750,7 +1825,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                             height: 36,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: const Color(0xFF14161F).withValues(alpha: 0.85),
+                              color: const Color(0xFF14161F)
+                                  .withValues(alpha: 0.85),
                               border: Border.all(
                                 color: Colors.white.withValues(alpha: 0.25),
                                 width: 1.0,
@@ -1905,7 +1981,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                   },
                   child: SingleChildScrollView(
                     controller: _previewScrollController,
-                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
                     physics: const BouncingScrollPhysics(),
                     padding: EdgeInsets.fromLTRB(
                       0,
@@ -1945,7 +2022,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                   _selectedGroupId = null;
                                   _selectedGroupName = null;
                                   _selectedGroupMemberIds = [];
-                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  if (category == 'Quỹ nhóm' ||
+                                      category == 'Group Fund') {
                                     category = 'Ăn uống';
                                   }
                                 });
@@ -1958,7 +2036,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                   _selectedGroupId = null;
                                   _selectedGroupName = null;
                                   _selectedGroupMemberIds = [];
-                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  if (category == 'Quỹ nhóm' ||
+                                      category == 'Group Fund') {
                                     category = 'Ăn uống';
                                   }
                                 });
@@ -1972,19 +2051,25 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                   _selectedGroupMemberIds = [];
                                   _selectedFriendUids.clear();
                                   _selectedFriendUids.addAll(_closeFriendUids);
-                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  if (category == 'Quỹ nhóm' ||
+                                      category == 'Group Fund') {
                                     category = 'Ăn uống';
                                   }
                                 });
-                                _notifyPrivacyTagAdjustmentIfNeeded('close_friends');
+                                _notifyPrivacyTagAdjustmentIfNeeded(
+                                    'close_friends');
                               },
                               onGroupSelected: (group) {
-                                final gId = (group['id'] ?? group['groupId'] ?? '').toString();
-                                final gName = (group['name'] ?? 'Nhóm').toString();
-                                final gMembers = (group['memberIds'] as List<dynamic>?)
-                                        ?.map((e) => e.toString())
-                                        .toList() ??
-                                    <String>[];
+                                final gId =
+                                    (group['id'] ?? group['groupId'] ?? '')
+                                        .toString();
+                                final gName =
+                                    (group['name'] ?? 'Nhóm').toString();
+                                final gMembers =
+                                    (group['memberIds'] as List<dynamic>?)
+                                            ?.map((e) => e.toString())
+                                            .toList() ??
+                                        <String>[];
                                 setState(() {
                                   privacy = 'group';
                                   _selectedGroupId = gId;
@@ -2011,7 +2096,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                     privacy = 'friends_custom';
                                   }
 
-                                  if (category == 'Quỹ nhóm' || category == 'Group Fund') {
+                                  if (category == 'Quỹ nhóm' ||
+                                      category == 'Group Fund') {
                                     category = 'Ăn uống';
                                   }
                                 });
@@ -2046,11 +2132,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                     }
                                   },
                                 ),
-
                                 _buildSubmitButton(
                                   controllerSaving: isSaving,
                                 ),
-
                                 if (hasMedia)
                                   _bottomAction(
                                     icon: Icons.ios_share_rounded,
@@ -2102,7 +2186,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       key: const ValueKey('calc_keypad_docked'),
                       initialAmount: amountController.text,
                       currency: currency,
-                      amountPrefix: isContribution ? '+' : (type == 'expense' ? '-' : '+'),
+                      amountPrefix: isContribution
+                          ? '+'
+                          : (type == 'expense' ? '-' : '+'),
                       accentColor: accentColor,
                       onAmountChanged: (val) {
                         amountController.text = val;
@@ -2387,9 +2473,10 @@ class _VideoPreviewLayer extends StatelessWidget {
                   ValueListenableBuilder<VideoPlayerValue>(
                     valueListenable: videoController,
                     builder: (context, val, _) {
-                      final label = val.isInitialized && val.duration > Duration.zero
-                          ? _formatDuration(val.duration)
-                          : durationLabel;
+                      final label =
+                          val.isInitialized && val.duration > Duration.zero
+                              ? _formatDuration(val.duration)
+                              : durationLabel;
                       return Text(
                         label,
                         style: const TextStyle(
@@ -2495,23 +2582,30 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
   void _checkMentionQuery() {
     final text = widget.captionController.text;
     final selection = widget.captionController.selection;
-    final cursor = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
+    final cursor =
+        selection.baseOffset >= 0 ? selection.baseOffset : text.length;
 
     if (cursor > text.length) {
-      if (_activeMentionQuery != null) setState(() => _activeMentionQuery = null);
+      if (_activeMentionQuery != null) {
+        setState(() => _activeMentionQuery = null);
+      }
       return;
     }
 
     final prefix = text.substring(0, cursor);
     final lastAt = prefix.lastIndexOf('@');
     if (lastAt == -1) {
-      if (_activeMentionQuery != null) setState(() => _activeMentionQuery = null);
+      if (_activeMentionQuery != null) {
+        setState(() => _activeMentionQuery = null);
+      }
       return;
     }
 
     final query = prefix.substring(lastAt + 1);
     if (query.contains(' ') || query.contains('\n')) {
-      if (_activeMentionQuery != null) setState(() => _activeMentionQuery = null);
+      if (_activeMentionQuery != null) {
+        setState(() => _activeMentionQuery = null);
+      }
       return;
     }
 
@@ -2527,7 +2621,8 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
     HapticFeedback.selectionClick();
     final text = widget.captionController.text;
     final selection = widget.captionController.selection;
-    final cursor = selection.baseOffset >= 0 ? selection.baseOffset : text.length;
+    final cursor =
+        selection.baseOffset >= 0 ? selection.baseOffset : text.length;
     final prefix = text.substring(0, cursor);
     final lastAt = prefix.lastIndexOf('@');
     if (lastAt == -1) return;
@@ -2540,7 +2635,8 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
 
     widget.captionController.value = TextEditingValue(
       text: newText,
-      selection: TextSelection.collapsed(offset: beforeAt.length + insertText.length),
+      selection:
+          TextSelection.collapsed(offset: beforeAt.length + insertText.length),
     );
 
     setState(() {
@@ -2553,10 +2649,10 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
     final rawDigits = widget.currency == 'USD'
         ? widget.amountController.text.replaceAll(RegExp(r'[^0-9.]'), '')
         : widget.amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
-    final integerDigits = widget.currency == 'USD'
-        ? rawDigits.split('.').first
-        : rawDigits;
-    final isAtMaxDigits = integerDigits.length >= _PreviewScreenState.kMaxAmountDigits;
+    final integerDigits =
+        widget.currency == 'USD' ? rawDigits.split('.').first : rawDigits;
+    final isAtMaxDigits =
+        integerDigits.length >= _PreviewScreenState.kMaxAmountDigits;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -2624,7 +2720,8 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                   splashColor: widget.accentColor.withValues(alpha: 0.20),
                   highlightColor: widget.accentColor.withValues(alpha: 0.10),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Row(
@@ -2636,7 +2733,9 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                           Text(
                             widget.amountPrefix,
                             style: TextStyle(
-                              color: isAtMaxDigits ? const Color(0xFFFF5252) : widget.accentColor,
+                              color: isAtMaxDigits
+                                  ? const Color(0xFFFF5252)
+                                  : widget.accentColor,
                               fontSize: 28,
                               fontWeight: FontWeight.w900,
                             ),
@@ -2644,7 +2743,8 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                           const SizedBox(width: 4),
                           Text(
                             widget.amountController.text.isEmpty
-                                ? AppCurrencyFormatter.formatInputHint(widget.currency)
+                                ? AppCurrencyFormatter.formatInputHint(
+                                    widget.currency)
                                 : widget.amountController.text,
                             style: TextStyle(
                               color: widget.amountController.text.isEmpty
@@ -2669,14 +2769,15 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                   ),
                 ),
               ),
-
               if (widget.groupRemainingBalance != null) ...[
                 const SizedBox(height: 6),
                 Builder(
                   builder: (context) {
                     final rawAmount = widget.currency == 'USD'
-                        ? widget.amountController.text.replaceAll(RegExp(r'[^0-9.]'), '')
-                        : widget.amountController.text.replaceAll(RegExp(r'[^0-9]'), '');
+                        ? widget.amountController.text
+                            .replaceAll(RegExp(r'[^0-9.]'), '')
+                        : widget.amountController.text
+                            .replaceAll(RegExp(r'[^0-9]'), '');
                     final inputAmount = double.tryParse(rawAmount) ?? 0;
                     final enteredVnd = AppCurrencyFormatter.toVnd(
                       inputAmount: inputAmount,
@@ -2690,7 +2791,8 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                     );
 
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: isExceeded
                             ? const Color(0x40FF4B4B)
@@ -2707,21 +2809,28 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            isExceeded ? Icons.warning_amber_rounded : Icons.account_balance_wallet_outlined,
+                            isExceeded
+                                ? Icons.warning_amber_rounded
+                                : Icons.account_balance_wallet_outlined,
                             size: 13,
-                            color: isExceeded ? const Color(0xFFFF6B6B) : Colors.white70,
+                            color: isExceeded
+                                ? const Color(0xFFFF6B6B)
+                                : Colors.white70,
                           ),
                           const SizedBox(width: 5),
                           Flexible(
                             child: Text(
                               isExceeded
-                                  ? context.l10n.groupExpenseExceedsBalance(formattedBalance)
+                                  ? context.l10n.groupExpenseExceedsBalance(
+                                      formattedBalance)
                                   : '${context.l10n.groupFundRemaining}: $formattedBalance',
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: isExceeded ? const Color(0xFFFF6B6B) : Colors.white.withValues(alpha: 0.85),
+                                color: isExceeded
+                                    ? const Color(0xFFFF6B6B)
+                                    : Colors.white.withValues(alpha: 0.85),
                                 fontSize: 11.5,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -2733,9 +2842,7 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                   },
                 ),
               ],
-
               const SizedBox(height: 10),
-
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -2757,7 +2864,6 @@ class _InputOverlayCardState extends State<_InputOverlayCard> {
                         size: 18,
                       ),
                     ),
-
                     TextField(
                       controller: widget.captionController,
                       onTap: widget.onTapCaption,
@@ -2954,13 +3060,16 @@ class _FriendMentionSuggestionsCard extends StatelessWidget {
                       }).toList();
 
                       if (filtered.isEmpty) {
-                        final isEn = Localizations.localeOf(context).languageCode == 'en';
+                        final isEn =
+                            Localizations.localeOf(context).languageCode ==
+                                'en';
                         final String emptyMessage;
                         if (privacy == 'private') {
                           emptyMessage = isEn
                               ? 'Private mode does not tag friends'
                               : 'Chế độ riêng tư không gắn thẻ bạn bè';
-                        } else if (privacy == 'close_friends' && query.isEmpty) {
+                        } else if (privacy == 'close_friends' &&
+                            query.isEmpty) {
                           emptyMessage = context.l10n.closeFriendsTagOnly;
                         } else if (privacy == 'group' && query.isEmpty) {
                           emptyMessage = isEn
@@ -2987,78 +3096,88 @@ class _FriendMentionSuggestionsCard extends StatelessWidget {
                         );
                       }
 
-                return ListView.separated(
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, __) => Divider(
-                    height: 1,
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
-                  itemBuilder: (context, index) {
-                    final friend = filtered[index];
-                    final name = (friend['name'] ?? '').toString().trim();
-                    final username = (friend['username'] ?? '').toString().trim();
-                    final avatarUrl = (friend['avatarUrl'] ?? '').toString();
-                    final avatarFrame = (friend['avatarFrame'] ?? 'plain').toString();
-                    final displayName = name.isNotEmpty ? name : (username.isNotEmpty ? username : 'User');
-                    final mentionHandle = username.isNotEmpty ? username : displayName.replaceAll(' ', '_');
+                      return ListView.separated(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          color: Colors.white.withValues(alpha: 0.08),
+                        ),
+                        itemBuilder: (context, index) {
+                          final friend = filtered[index];
+                          final name = (friend['name'] ?? '').toString().trim();
+                          final username =
+                              (friend['username'] ?? '').toString().trim();
+                          final avatarUrl =
+                              (friend['avatarUrl'] ?? '').toString();
+                          final avatarFrame =
+                              (friend['avatarFrame'] ?? 'plain').toString();
+                          final displayName = name.isNotEmpty
+                              ? name
+                              : (username.isNotEmpty ? username : 'User');
+                          final mentionHandle = username.isNotEmpty
+                              ? username
+                              : displayName.replaceAll(' ', '_');
 
-                    return InkWell(
-                      onTap: () => onSelect(mentionHandle),
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                        child: Row(
-                          children: [
-                            AvatarWithFrame(
-                              avatarUrl: avatarUrl,
-                              frameId: avatarFrame,
-                              size: 30,
-                            ),
-                            const SizedBox(width: 9),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
+                          return InkWell(
+                            onTap: () => onSelect(mentionHandle),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 6),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    displayName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
+                                  AvatarWithFrame(
+                                    avatarUrl: avatarUrl,
+                                    frameId: avatarFrame,
+                                    size: 30,
+                                  ),
+                                  const SizedBox(width: 9),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          displayName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        if (username.isNotEmpty)
+                                          Text(
+                                            '@$username',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: const Color(0xFF00E5FF)
+                                                  .withValues(alpha: 0.85),
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                      ],
                                     ),
                                   ),
-                                  if (username.isNotEmpty)
-                                    Text(
-                                      '@$username',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: const Color(0xFF00E5FF).withValues(alpha: 0.85),
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                                  const Icon(
+                                    Icons.north_west_rounded,
+                                    color: Color(0xFF00E5FF),
+                                    size: 14,
+                                  ),
                                 ],
                               ),
                             ),
-                            const Icon(
-                              Icons.north_west_rounded,
-                              color: Color(0xFF00E5FF),
-                              size: 14,
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -3112,7 +3231,9 @@ class _CaptureAudienceSelectorRow extends StatelessWidget {
     const primaryColor = AppColors.primaryBlue;
 
     final isPrivateSelected = selectedAudience == 'private';
-    final isAllSelected = selectedAudience == 'friends' && selectedFriendUids.isEmpty && selectedGroupId == null;
+    final isAllSelected = selectedAudience == 'friends' &&
+        selectedFriendUids.isEmpty &&
+        selectedGroupId == null;
     final isCloseFriendsSelected = selectedAudience == 'close_friends';
 
     // Always display full friends list
@@ -3192,7 +3313,8 @@ class _CaptureAudienceSelectorRow extends StatelessWidget {
             _buildGroupItem(
               group: group,
               isSelected: selectedAudience == 'group' &&
-                  (group['id'] ?? group['groupId'] ?? '').toString() == selectedGroupId,
+                  (group['id'] ?? group['groupId'] ?? '').toString() ==
+                      selectedGroupId,
               onTap: () => onGroupSelected(group),
               primaryColor: primaryColor,
             ),
@@ -3203,8 +3325,10 @@ class _CaptureAudienceSelectorRow extends StatelessWidget {
             const SizedBox(width: 10),
             _buildFriendItem(
               friend: friend,
-              isCloseFriend: closeFriendUids.contains((friend['uid'] ?? '').toString()),
-              isSelected: selectedFriendUids.contains((friend['uid'] ?? '').toString()),
+              isCloseFriend:
+                  closeFriendUids.contains((friend['uid'] ?? '').toString()),
+              isSelected:
+                  selectedFriendUids.contains((friend['uid'] ?? '').toString()),
               onTap: () => onFriendToggled(friend),
               primaryColor: primaryColor,
             ),
@@ -3284,7 +3408,8 @@ class _CaptureAudienceSelectorRow extends StatelessWidget {
     required Color primaryColor,
   }) {
     final groupName = (group['name'] ?? 'Nhóm').toString();
-    final groupColor = _parseHexColor(group['color'] as String? ?? group['colorHex'] as String?);
+    final groupColor = _parseHexColor(
+        group['color'] as String? ?? group['colorHex'] as String?);
     const textSecondary = Colors.white60;
 
     return GestureDetector(
@@ -3355,7 +3480,8 @@ class _CaptureAudienceSelectorRow extends StatelessWidget {
     final name = (friend['name'] ?? '').toString().trim();
     final username = (friend['username'] ?? '').toString().trim();
     final avatarUrl = (friend['avatarUrl'] ?? '').toString().trim();
-    final displayName = name.isNotEmpty ? name : (username.isNotEmpty ? username : 'User');
+    final displayName =
+        name.isNotEmpty ? name : (username.isNotEmpty ? username : 'User');
     const textSecondary = Colors.white60;
 
     final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
@@ -3400,7 +3526,8 @@ class _CaptureAudienceSelectorRow extends StatelessWidget {
                           width: 36,
                           height: 36,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildFallbackInitial(initial),
+                          errorBuilder: (_, __, ___) =>
+                              _buildFallbackInitial(initial),
                         )
                       : _buildFallbackInitial(initial),
                 ),

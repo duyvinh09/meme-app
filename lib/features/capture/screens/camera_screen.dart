@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:camera/camera.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
@@ -18,6 +19,11 @@ import '../../../core/theme/camera_theme.dart';
 import '../../home/controllers/home_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../controllers/capture_controller.dart';
+import '../controllers/photobooth_controller.dart';
+import '../models/photobooth_frame.dart';
+import '../models/photobooth_preview_capture.dart';
+import '../widgets/photobooth_button.dart';
+import '../widgets/photobooth_frame_picker.dart';
 import 'preview_screen.dart';
 import 'square_crop_screen.dart';
 
@@ -120,7 +126,8 @@ class RoundedRectProgressPainter extends CustomPainter {
     final pathMetrics = fullPath.computeMetrics().toList();
     if (pathMetrics.isEmpty) return;
 
-    final totalLength = pathMetrics.fold<double>(0.0, (sum, m) => sum + m.length);
+    final totalLength =
+        pathMetrics.fold<double>(0.0, (sum, m) => sum + m.length);
     final targetLength = totalLength * progress.clamp(0.0, 1.0);
 
     double currentLength = 0.0;
@@ -182,7 +189,8 @@ class CameraScreen extends StatefulWidget {
   static Future<void> warmUp() => _CameraScreenState.warmUp();
 
   /// Releases the camera hardware when the app goes into the background.
-  static Future<void> disposeSharedCamera() => _CameraScreenState.disposeSharedCamera();
+  static Future<void> disposeSharedCamera() =>
+      _CameraScreenState.disposeSharedCamera();
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -285,6 +293,7 @@ class _CameraScreenState extends State<CameraScreen>
   bool _hasNoCamera = false;
   bool _isFlashOn = false;
   bool _isCapturing = false;
+  final _photobooth = PhotoboothController();
 
   bool _isRecordingVideo = false;
   bool _isStoppingVideo = false;
@@ -374,6 +383,7 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   void dispose() {
     _isDisposed = true;
+    _photobooth.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _recordTimer?.cancel();
     _controller = null;
@@ -412,9 +422,14 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  Future<void> _setupCamera({bool isBackgroundRetry = false, bool showSpinner = false}) async {
+  Future<void> _setupCamera(
+      {bool isBackgroundRetry = false, bool showSpinner = false}) async {
     if (_isDisposed || !mounted) return;
-    if (_controller != null && _controller!.value.isInitialized && _isCameraReady) return;
+    if (_controller != null &&
+        _controller!.value.isInitialized &&
+        _isCameraReady) {
+      return;
+    }
     if (_isInitializingCamera) return;
     _lastCameraCheck = DateTime.now();
 
@@ -484,7 +499,8 @@ class _CameraScreenState extends State<CameraScreen>
       }
 
       _hasNoCamera = false;
-      await _initController(_cameras[_cameraIndex], isBackgroundRetry: isBackgroundRetry);
+      await _initController(_cameras[_cameraIndex],
+          isBackgroundRetry: isBackgroundRetry);
     } on CameraException catch (e) {
       debugPrint('Camera setup CameraException: ${e.code} - ${e.description}');
       if (mounted && !_isDisposed) {
@@ -513,7 +529,8 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  Future<void> _initController(CameraDescription camera, {bool isBackgroundRetry = false}) async {
+  Future<void> _initController(CameraDescription camera,
+      {bool isBackgroundRetry = false}) async {
     final oldController = _controller;
     _controller = null;
 
@@ -725,7 +742,8 @@ class _CameraScreenState extends State<CameraScreen>
     return _cameras[_cameraIndex].lensDirection == CameraLensDirection.front;
   }
 
-  Future<File> _cropImageToSquare(File file, {bool isFrontCamera = false}) async {
+  Future<File> _cropImageToSquare(File file,
+      {bool isFrontCamera = false}) async {
     final bytes = await file.readAsBytes();
     var original = img.decodeImage(bytes);
 
@@ -736,7 +754,8 @@ class _CameraScreenState extends State<CameraScreen>
 
     // 2. Nếu chụp bằng camera trước, lật ngang ảnh để ảnh chụp ra khớp với ảnh gương hiển thị trên màn hình
     if (isFrontCamera) {
-      original = img.copyFlip(original, direction: img.FlipDirection.horizontal);
+      original =
+          img.copyFlip(original, direction: img.FlipDirection.horizontal);
     }
 
     final cropSize =
@@ -793,8 +812,10 @@ class _CameraScreenState extends State<CameraScreen>
     required String mediaType,
     int? durationMs,
     bool isFrontCamera = false,
+    PhotoboothPreviewCapture? photobooth,
   }) {
     return PreviewScreen(
+      photobooth: photobooth,
       imageFile: imageFile,
       originalImageFile: originalImageFile,
       initialCropState: initialCropState,
@@ -843,22 +864,34 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  Future<void> _navigateToPreview(Widget previewScreen) async {
+  Future<void> _navigateToPreview(Widget previewScreen,
+      {bool immediately = false}) async {
     if (!mounted || _isDisposed) return;
-
-    try {
-      await _controller?.pausePreview();
-    } catch (_) {}
-
+    if (!immediately) {
+      try {
+        await _controller?.pausePreview();
+      } catch (error) {
+        debugPrint('Pause camera preview: $error');
+      }
+    }
     if (!mounted || _isDisposed) return;
-
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => previewScreen,
-      ),
-    );
-
+    final route = immediately
+        ? PageRouteBuilder<dynamic>(
+            transitionDuration: Duration.zero,
+            reverseTransitionDuration: Duration.zero,
+            pageBuilder: (_, animation, secondaryAnimation) => previewScreen,
+          )
+        : MaterialPageRoute<dynamic>(builder: (_) => previewScreen);
+    final navigation = Navigator.push(context, route);
+    // Push first for photobooth. Pausing camera hardware must not delay the page.
+    if (immediately) {
+      try {
+        await _controller?.pausePreview();
+      } catch (error) {
+        debugPrint('Pause camera preview: $error');
+      }
+    }
+    final result = await navigation;
     _handlePreviewResult(result);
   }
 
@@ -934,6 +967,33 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
+  Future<void> _openPhotoboothPicker() async {
+    if (_isCapturing ||
+        _isRecordingVideo ||
+        _isStoppingVideo ||
+        _photobooth.busy) {
+      return;
+    }
+    final result = await showModalBottomSheet<Object>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      constraints: BoxConstraints.tightFor(
+          height: MediaQuery.sizeOf(context).height *
+              PhotoboothFramePicker.heightFraction),
+      builder: (_) => PhotoboothFramePicker(selected: _photobooth.frame),
+    );
+    if (!mounted || _isDisposed) return;
+    if (result is PhotoboothFrame) {
+      _photobooth.select(result);
+      setState(() => _captureMode = CameraCaptureMode.photo);
+    } else if (result == false) {
+      _photobooth.select(null);
+      setState(() {});
+    }
+  }
+
   Future<void> _capturePhoto() async {
     if (_controller == null ||
         !_controller!.value.isInitialized ||
@@ -943,6 +1003,9 @@ class _CameraScreenState extends State<CameraScreen>
       return;
     }
 
+    var flashNeedsReset = false;
+    final photoboothFrame = _photobooth.frame;
+    final photoboothSession = _photobooth.sessionId;
     try {
       HapticFeedback.selectionClick();
       setState(() {
@@ -951,6 +1014,7 @@ class _CameraScreenState extends State<CameraScreen>
 
       if (_isFlashOn && _controller != null) {
         try {
+          flashNeedsReset = true;
           await _controller!.setFlashMode(FlashMode.always);
         } catch (_) {}
       }
@@ -958,22 +1022,56 @@ class _CameraScreenState extends State<CameraScreen>
       final isFront = _isFrontCamera;
       final file = await _controller!.takePicture();
 
-      if (_controller != null) {
+      if (flashNeedsReset && _controller != null) {
         try {
           await _controller!.setFlashMode(FlashMode.off);
+          flashNeedsReset = false;
         } catch (_) {}
       }
 
-      final squareFile = await _cropImageToSquare(
-        File(file.path),
-        isFrontCamera: isFront,
-      );
-
-      if (!mounted) return;
+      if (!mounted || _isDisposed) return;
+      final frame = photoboothFrame;
+      if (frame != null && photoboothSession != _photobooth.sessionId) return;
+      final File output;
+      if (frame != null) {
+        Future<void>? navigation;
+        PhotoboothPreviewCapture? capture;
+        late final Future<File?> exportedFile;
+        exportedFile = _photobooth.addPhoto(
+          File(file.path),
+          mirrored: isFront,
+          onReady: (scene) {
+            if (!mounted || _isDisposed) return;
+            capture =
+                PhotoboothPreviewCapture(scene: scene, file: exportedFile);
+            navigation = _navigateToPreview(
+              _buildPreviewScreen(mediaType: 'image', photobooth: capture),
+              immediately: true,
+            );
+          },
+        );
+        try {
+          try {
+            await exportedFile;
+          } catch (error, stack) {
+            if (navigation == null) rethrow;
+            // Preview observes the same future and reports export errors there.
+            debugPrint('Photobooth export failed: $error\n$stack');
+          }
+          if (navigation != null) await navigation;
+        } finally {
+          capture?.dispose();
+        }
+        return;
+      } else {
+        output =
+            await _cropImageToSquare(File(file.path), isFrontCamera: isFront);
+        if (!mounted || _isDisposed) return;
+      }
 
       await _navigateToPreview(
         _buildPreviewScreen(
-          imageFile: squareFile,
+          imageFile: output,
           videoFile: null,
           mediaType: 'image',
           durationMs: null,
@@ -981,8 +1079,16 @@ class _CameraScreenState extends State<CameraScreen>
       );
     } catch (e) {
       debugPrint('Capture error: $e');
+      if (mounted && !_isDisposed && _photobooth.frame != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.photoboothCaptureError)),
+        );
+      }
     } finally {
-      if (_controller != null) {
+      if (mounted && !_isDisposed && _photobooth.complete) {
+        _photobooth.select(_photobooth.frame);
+      }
+      if (flashNeedsReset && _controller != null) {
         try {
           await _controller!.setFlashMode(FlashMode.off);
         } catch (_) {}
@@ -1110,14 +1216,17 @@ class _CameraScreenState extends State<CameraScreen>
         final fileSize = await finalVideoFile.length();
         final sizeMb = fileSize / (1024 * 1024);
         if (sizeMb > 6.0) {
-          debugPrint('Video size is ${sizeMb.toStringAsFixed(2)}MB (> 6MB), compressing...');
+          debugPrint(
+              'Video size is ${sizeMb.toStringAsFixed(2)}MB (> 6MB), compressing...');
           try {
             final compressor = LightCompressor();
             final result = await compressor.compressVideo(
               path: finalVideoFile.path,
               videoQuality: VideoQuality.high,
               isMinBitrateCheckEnabled: false,
-              video: Video(videoName: 'meme_vid_${DateTime.now().millisecondsSinceEpoch}.mp4'),
+              video: Video(
+                  videoName:
+                      'meme_vid_${DateTime.now().millisecondsSinceEpoch}.mp4'),
               android: AndroidConfig(isSharedStorage: false),
               ios: IOSConfig(saveInGallery: false),
             );
@@ -1126,7 +1235,8 @@ class _CameraScreenState extends State<CameraScreen>
               final compressed = File(result.destinationPath);
               if (await compressed.exists()) {
                 finalVideoFile = compressed;
-                debugPrint('Video compressed successfully to ${(await compressed.length()) / (1024 * 1024)}MB');
+                debugPrint(
+                    'Video compressed successfully to ${(await compressed.length()) / (1024 * 1024)}MB');
               }
             }
           } catch (compErr) {
@@ -1349,7 +1459,8 @@ class _CameraScreenState extends State<CameraScreen>
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF333336),
-                        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
+                        borderRadius:
+                            BorderRadius.circular(AppSizes.radiusPill),
                         border: Border.all(
                           color: Colors.white.withValues(alpha: 0.12),
                           width: 1,
@@ -1427,7 +1538,8 @@ class _CameraScreenState extends State<CameraScreen>
         Container(
           width: previewSize,
           height: previewSize,
-          padding: hasGradientFrame ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
+          padding:
+              hasGradientFrame ? const EdgeInsets.all(2.5) : EdgeInsets.zero,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(frameBorderRadius),
             gradient: hasGradientFrame ? theme.frameGradient : null,
@@ -1512,14 +1624,32 @@ class _CameraScreenState extends State<CameraScreen>
                         ),
                       ),
 
-                      // Pill Mode Switcher INSIDE the camera preview at the bottom
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 16,
-                        child: Center(
-                          child: _buildModeSwitcher(theme),
+                      if (_captureMode == CameraCaptureMode.photo)
+                        PositionedDirectional(
+                          end: 22,
+                          bottom: 22,
+                          child: PhotoboothButton(
+                            controller: _photobooth,
+                            size: previewSize < 300 ? 64 : 72,
+                            onClear: _photobooth.clear,
+                            onPressed: _isCapturing
+                                ? null
+                                : () async {
+                                    await _openPhotoboothPicker();
+                                  },
+                          ),
                         ),
+
+                      ListenableBuilder(
+                        listenable: _photobooth,
+                        builder: (context, _) => _photobooth.frame != null
+                            ? const SizedBox.shrink()
+                            : Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 16,
+                                child: Center(child: _buildModeSwitcher(theme)),
+                              ),
                       ),
                     ],
                   ),
@@ -1566,7 +1696,7 @@ class _CameraScreenState extends State<CameraScreen>
           // Photo mode button
           GestureDetector(
             onTap: () {
-              if (_isRecordingVideo || _isStoppingVideo) return;
+              if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
               HapticFeedback.selectionClick();
               setState(() {
                 _captureMode = CameraCaptureMode.photo;
@@ -1585,7 +1715,7 @@ class _CameraScreenState extends State<CameraScreen>
               ),
               child: Center(
                 child: Icon(
-                  Icons.camera_alt_rounded,
+                  CupertinoIcons.camera_fill,
                   size: 18,
                   color: _captureMode == CameraCaptureMode.photo
                       ? Colors.white
@@ -1598,8 +1728,9 @@ class _CameraScreenState extends State<CameraScreen>
           // Video mode button
           GestureDetector(
             onTap: () {
-              if (_isRecordingVideo || _isStoppingVideo) return;
+              if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
               HapticFeedback.selectionClick();
+              _photobooth.select(null);
               setState(() {
                 _captureMode = CameraCaptureMode.video;
               });
@@ -1623,7 +1754,7 @@ class _CameraScreenState extends State<CameraScreen>
               ),
               child: Center(
                 child: Icon(
-                  Icons.videocam_rounded,
+                  CupertinoIcons.videocam_fill,
                   size: 20,
                   color: _captureMode == CameraCaptureMode.video
                       ? Colors.white
@@ -1639,7 +1770,8 @@ class _CameraScreenState extends State<CameraScreen>
 
   Widget _buildShutterButton(CameraThemeData theme) {
     final isEnabled = _isCameraReady && !_isCapturing && !_isStoppingVideo;
-    final isBusy = _isCapturing || _isStoppingVideo;
+    final isBusy =
+        (_isCapturing && _photobooth.frame == null) || _isStoppingVideo;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -1665,7 +1797,8 @@ class _CameraScreenState extends State<CameraScreen>
                   height: 94,
                   child: CircularProgressIndicator(
                     strokeWidth: 4.5,
-                    valueColor: AlwaysStoppedAnimation<Color>(theme.shutterAccent),
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(theme.shutterAccent),
                     backgroundColor: theme.shutterAccent.withValues(alpha: 0.2),
                   ),
                 )
@@ -1683,7 +1816,6 @@ class _CameraScreenState extends State<CameraScreen>
                     ),
                   ),
                 ),
-
               AnimatedContainer(
                 duration: const Duration(milliseconds: 120),
                 curve: Curves.easeOut,
@@ -1691,13 +1823,11 @@ class _CameraScreenState extends State<CameraScreen>
                 height: (_isCapturing || _isRecordingVideo) ? 66 : 74,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: _isCameraReady
-                      ? Colors.white
-                      : const Color(0xFF7A8882),
+                  color:
+                      _isCameraReady ? Colors.white : const Color(0xFF7A8882),
                   border: Border.all(
-                    color: _isCameraReady
-                        ? Colors.white
-                        : const Color(0xFF5A6661),
+                    color:
+                        _isCameraReady ? Colors.white : const Color(0xFF5A6661),
                     width: 4,
                   ),
                   boxShadow: [
@@ -1741,11 +1871,13 @@ class _CameraScreenState extends State<CameraScreen>
     final maxPreviewHeight = screenHeight - (isShort ? 230 : 270);
     final previewSize = screenWidth.clamp(220.0, maxPreviewHeight);
 
-    final currentStreak = context.watch<HomeController>().profile?.currentStreak ??
-        context.watch<ProfileController>().user?.currentStreak ??
-        0;
+    final currentStreak =
+        context.watch<HomeController>().profile?.currentStreak ??
+            context.watch<ProfileController>().user?.currentStreak ??
+            0;
     final cameraThemeId = context.watch<ProfileController>().cameraTheme;
-    final effectiveThemeId = (currentStreak >= 3) ? cameraThemeId : 'classic_dark';
+    final effectiveThemeId =
+        (currentStreak >= 3) ? cameraThemeId : 'classic_dark';
     final theme = CameraThemes.fromId(effectiveThemeId);
 
     final sideButtonSize = isSmall ? 64.0 : 72.0;
@@ -1762,7 +1894,8 @@ class _CameraScreenState extends State<CameraScreen>
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.fromLTRB(isSmall ? 12 : 16, 8, isSmall ? 12 : 16, 0),
+                padding: EdgeInsets.fromLTRB(
+                    isSmall ? 12 : 16, 8, isSmall ? 12 : 16, 0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1809,7 +1942,9 @@ class _CameraScreenState extends State<CameraScreen>
                           ),
                         ),
                         child: Icon(
-                          _showGrid ? Icons.grid_on_rounded : Icons.grid_off_rounded,
+                          _showGrid
+                              ? Icons.grid_on_rounded
+                              : Icons.grid_off_rounded,
                           color: _showGrid ? theme.shutterAccent : Colors.white,
                           size: isSmall ? 20 : 24,
                         ),
@@ -1818,18 +1953,16 @@ class _CameraScreenState extends State<CameraScreen>
                   ],
                 ),
               ),
-
               Expanded(
                 child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       _buildSquareCameraPreview(previewSize, theme),
-
                       SizedBox(height: isShort ? 16 : 24),
-
                       Padding(
-                        padding: EdgeInsets.symmetric(horizontal: isSmall ? 22 : 36),
+                        padding:
+                            EdgeInsets.symmetric(horizontal: isSmall ? 22 : 36),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1840,14 +1973,12 @@ class _CameraScreenState extends State<CameraScreen>
                               showBorder: false,
                               bgColor: Colors.transparent,
                               child: Icon(
-                                Icons.photo_library_outlined,
+                                CupertinoIcons.photo_on_rectangle,
                                 color: Colors.white,
                                 size: sideIconSize,
                               ),
                             ),
-
                             _buildShutterButton(theme),
-
                             Opacity(
                               opacity: (_isCameraReady && _cameras.length >= 2)
                                   ? 1.0
@@ -1864,7 +1995,7 @@ class _CameraScreenState extends State<CameraScreen>
                                   duration: const Duration(milliseconds: 350),
                                   curve: Curves.easeInOutCubic,
                                   child: Icon(
-                                    Icons.sync_rounded,
+                                    CupertinoIcons.arrow_2_circlepath,
                                     color: Colors.white,
                                     size: sideIconSize + 2,
                                   ),
@@ -1874,16 +2005,15 @@ class _CameraScreenState extends State<CameraScreen>
                           ],
                         ),
                       ),
-
                       const SizedBox(height: 10),
-
                       Padding(
                         padding: const EdgeInsets.only(top: 16),
                         child: TextButton(
                           onPressed: _skipToPreview,
                           child: Text(
                             context.l10n.skipPhoto,
-                            style: AppTextStyles.bodySecondary(context).copyWith(
+                            style:
+                                AppTextStyles.bodySecondary(context).copyWith(
                               color: Colors.white70,
                               fontSize: 16,
                               fontWeight: FontWeight.w700,

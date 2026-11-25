@@ -3525,4 +3525,135 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get streakDaysInARow => 'days streak 🔥';
+
+  @override
+  String get photobooth => 'Photobooth';
+
+  @override
+  String get photoboothAll => 'All';
+
+  @override
+  String get photoboothEmpty => 'No matching frames yet.';
+
+  @override
+  String photoboothFrameCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count frames',
+      one: '1 frame',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get photoboothThemeFilm => 'Film & Vintage';
+
+  @override
+  String get photoboothThemeCute => 'Cute & Pastel';
+
+  @override
+  String get photoboothThemeLove => 'Love & Friends';
+
+  @override
+  String get photoboothThemeCelebration => 'Holidays & Birthdays';
+
+  @override
+  String get photoboothThemePersonality => 'Personality & Memes';
+
+  @override
+  String get photoboothThemeComments => 'Trending Comments';
+
+  @override
+  String get photoboothSubtitle =>
+      'Choose a frame, capture each slot, and make your moment.';
+
+  @override
+  String get photoboothOff => 'No frame';
+
+  @override
+  String photoboothGroup(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count photos',
+      one: '1 photo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String photoboothProgress(int captured, int total) {
+    return '$captured/$total';
+  }
+
+  @override
+  String get photoboothLoadError => 'Could not load frames. Tap to try again.';
+
+  @override
+  String get photoboothCaptureError =>
+      'Could not compose this photo. Please retry this slot.';
+
+  @override
+  String get photoboothReset => 'Start over';
+
+  @override
+  String photoboothSlot(int index) {
+    return 'Photo slot $index';
+  }
+
+  @override
+  String get photoboothRetry => 'Try again';
+
+  @override
+  String get developmentTeam => 'Development team';
+
+  @override
+  String get developmentTeamIntro => 'Meet the people building Meme together.';
+
+  @override
+  String get developerLeadRole => 'Lead developer';
+
+  @override
+  String get developerLanguageAiRole =>
+      'App development, multilingual support and AI development';
+
+  @override
+  String get developerDesignAiTestingRole =>
+      'UI design, AI development and testing';
+
+  @override
+  String get developerBillLogicRole =>
+      'Bill recognition system and core app logic';
+
+  @override
+  String get developerLinkError =>
+      'Could not open this link. Please try again.';
+
+  @override
+  String get aboutMeme => 'About Meme';
+
+  @override
+  String get memeThankYouTitle => 'Thanks for choosing Meme!';
+
+  @override
+  String get memeThankYouMessage =>
+      'Your moments, everyday spending and feedback inspire us to make Meme better every day. Thank you for being part of our story.';
+
+  @override
+  String get memeProject => 'The Meme project';
+
+  @override
+  String get memeReleases => 'View releases';
+
+  @override
+  String get memeReleasesDescription =>
+      'Explore app releases and see what is new.';
+
+  @override
+  String get memeStarRepo => 'Give Meme a star';
+
+  @override
+  String get memeStarRepoDescription =>
+      'Visit our GitHub repository. If you enjoy Meme, a star means a lot to the team.';
 }

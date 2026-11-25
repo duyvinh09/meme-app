@@ -25,6 +25,7 @@ import '../../home/controllers/home_controller.dart';
 import '../../home/widgets/streak_detail_sheet.dart';
 import '../controllers/profile_controller.dart';
 import '../widgets/avatar_with_frame.dart';
+import 'about_app_screen.dart';
 import '../widgets/widget_frame_picker_sheet.dart';
 import 'change_email_screen.dart';
 
@@ -1381,6 +1382,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           title: context.l10n.feedback,
                           onTap: () {
                             Navigator.pushNamed(context, RouteNames.feedback);
+                          },
+                        ),
+                        _ProfileMenuTile(
+                          icon: Icons.groups_outlined,
+                          title: context.l10n.aboutMeme,
+                          onTap: () async {
+                            await Navigator.push<void>(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const AboutAppScreen()));
                           },
                         ),
                         _ProfileMenuTile(

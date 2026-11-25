@@ -95,7 +95,7 @@ class StatsWidgetProvider : AppWidgetProvider() {
         canvas.drawRoundRect(222f, 14f, 364f, 42f, 9f, 9f, paint)
         paint.color = Color.parseColor(if (dark) "#9E9EA7" else "#74788A")
         paint.textSize = 9f
-        canvas.drawText(if (en) "Today:" else "H?m nay:", 229f, 31f, paint)
+        canvas.drawText(if (en) "Today:" else "Hôm nay:", 229f, 31f, paint)
         paint.textAlign = Paint.Align.RIGHT
         paint.textSize = 10f
         if (income.isNotEmpty()) {
@@ -107,7 +107,7 @@ class StatsWidgetProvider : AppWidgetProvider() {
             canvas.drawText(expense, 357f, if (income.isNotEmpty()) 38f else 31f, paint)
         }
         if (income.isEmpty() && expense.isEmpty()) {
-            canvas.drawText(payload.optString("zero", "0?"), 357f, 31f, paint)
+            canvas.drawText(payload.optString("zero", "0đ"), 357f, 31f, paint)
         }
         return result
     }

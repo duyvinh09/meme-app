@@ -6122,6 +6122,210 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'ngày liên tiếp 🔥'**
   String get streakDaysInARow;
+
+  /// No description provided for @photobooth.
+  ///
+  /// In vi, this message translates to:
+  /// **'Photobooth'**
+  String get photobooth;
+
+  /// No description provided for @photoboothAll.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tất cả'**
+  String get photoboothAll;
+
+  /// No description provided for @photoboothEmpty.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa có khung phù hợp.'**
+  String get photoboothEmpty;
+
+  /// No description provided for @photoboothFrameCount.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} khung'**
+  String photoboothFrameCount(int count);
+
+  /// No description provided for @photoboothThemeFilm.
+  ///
+  /// In vi, this message translates to:
+  /// **'Film & Vintage'**
+  String get photoboothThemeFilm;
+
+  /// No description provided for @photoboothThemeCute.
+  ///
+  /// In vi, this message translates to:
+  /// **'Dễ thương & Pastel'**
+  String get photoboothThemeCute;
+
+  /// No description provided for @photoboothThemeLove.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tình yêu & Bạn bè'**
+  String get photoboothThemeLove;
+
+  /// No description provided for @photoboothThemeCelebration.
+  ///
+  /// In vi, this message translates to:
+  /// **'Lễ hội & Sinh nhật'**
+  String get photoboothThemeCelebration;
+
+  /// No description provided for @photoboothThemePersonality.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cá tính & Meme'**
+  String get photoboothThemePersonality;
+
+  /// No description provided for @photoboothThemeComments.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bình luận nổi bật'**
+  String get photoboothThemeComments;
+
+  /// No description provided for @photoboothSubtitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chọn khung, chụp từng ô và ghép thành khoảnh khắc của bạn.'**
+  String get photoboothSubtitle;
+
+  /// No description provided for @photoboothOff.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không dùng khung'**
+  String get photoboothOff;
+
+  /// No description provided for @photoboothGroup.
+  ///
+  /// In vi, this message translates to:
+  /// **'{count} ảnh'**
+  String photoboothGroup(int count);
+
+  /// No description provided for @photoboothProgress.
+  ///
+  /// In vi, this message translates to:
+  /// **'{captured}/{total}'**
+  String photoboothProgress(int captured, int total);
+
+  /// No description provided for @photoboothLoadError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không tải được bộ khung. Chạm để thử lại.'**
+  String get photoboothLoadError;
+
+  /// No description provided for @photoboothCaptureError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa ghép được ảnh. Bạn thử chụp lại ô này nhé.'**
+  String get photoboothCaptureError;
+
+  /// No description provided for @photoboothReset.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chụp lại từ đầu'**
+  String get photoboothReset;
+
+  /// No description provided for @photoboothSlot.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ô ảnh {index}'**
+  String photoboothSlot(int index);
+
+  /// No description provided for @photoboothRetry.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thử lại'**
+  String get photoboothRetry;
+
+  /// No description provided for @developmentTeam.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đội ngũ phát triển'**
+  String get developmentTeam;
+
+  /// No description provided for @developmentTeamIntro.
+  ///
+  /// In vi, this message translates to:
+  /// **'Những thành viên cùng nhau xây dựng Meme.'**
+  String get developmentTeamIntro;
+
+  /// No description provided for @developerLeadRole.
+  ///
+  /// In vi, this message translates to:
+  /// **'Người phát triển chính'**
+  String get developerLeadRole;
+
+  /// No description provided for @developerLanguageAiRole.
+  ///
+  /// In vi, this message translates to:
+  /// **'Phát triển app, hỗ trợ đa ngôn ngữ và xây dựng AI'**
+  String get developerLanguageAiRole;
+
+  /// No description provided for @developerDesignAiTestingRole.
+  ///
+  /// In vi, this message translates to:
+  /// **'Thiết kế giao diện, xây dựng AI và kiểm thử'**
+  String get developerDesignAiTestingRole;
+
+  /// No description provided for @developerBillLogicRole.
+  ///
+  /// In vi, this message translates to:
+  /// **'Xây dựng hệ thống tự nhận diện hóa đơn và đóng góp logic cốt lõi của app'**
+  String get developerBillLogicRole;
+
+  /// No description provided for @developerLinkError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Không mở được liên kết. Bạn thử lại nhé.'**
+  String get developerLinkError;
+
+  /// No description provided for @aboutMeme.
+  ///
+  /// In vi, this message translates to:
+  /// **'Về Meme'**
+  String get aboutMeme;
+
+  /// No description provided for @memeThankYouTitle.
+  ///
+  /// In vi, this message translates to:
+  /// **'Cảm ơn bạn đã chọn Meme!'**
+  String get memeThankYouTitle;
+
+  /// No description provided for @memeThankYouMessage.
+  ///
+  /// In vi, this message translates to:
+  /// **'Những khoảnh khắc, khoản chi và phản hồi của bạn là động lực để tụi mình làm Meme tốt hơn mỗi ngày. Cảm ơn bạn đã là một phần trong hành trình này.'**
+  String get memeThankYouMessage;
+
+  /// No description provided for @memeProject.
+  ///
+  /// In vi, this message translates to:
+  /// **'Dự án Meme'**
+  String get memeProject;
+
+  /// No description provided for @memeReleases.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bản phát hành'**
+  String get memeReleases;
+
+  /// No description provided for @memeReleasesDescription.
+  ///
+  /// In vi, this message translates to:
+  /// **'Khám phá các phiên bản của app và xem có gì mới.'**
+  String get memeReleasesDescription;
+
+  /// No description provided for @memeStarRepo.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tặng Meme một ngôi sao'**
+  String get memeStarRepo;
+
+  /// No description provided for @memeStarRepoDescription.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ghé repo trên GitHub nhé. Nếu thích Meme, một ngôi sao của bạn sẽ là động lực lớn cho cả nhóm.'**
+  String get memeStarRepoDescription;
 }
 
 class _AppLocalizationsDelegate

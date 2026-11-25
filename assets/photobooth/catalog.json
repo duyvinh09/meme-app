@@ -1,0 +1,3510 @@
+{
+  "version": 1,
+  "canvasSize": 1080,
+  "source": "locket-worker templates and slot layouts by @duyvinh09",
+  "frames": [
+    {
+      "id": "cmt_anhdim",
+      "name": "Bạn Thân Giữ Ảnh Dìm",
+      "asset": "assets/photobooth/frames/cmt_anhdim.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_anhdim.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_binh_luan_minh_tue",
+      "name": "Trend Tíc Tóc",
+      "asset": "assets/photobooth/frames/cmt_binh_luan_minh_tue.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_binh_luan_minh_tue.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_chi_can_mot_vet_xuoc",
+      "name": "Chỉ Cần Một Vết Xước",
+      "asset": "assets/photobooth/frames/cmt_chi_can_mot_vet_xuoc.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_chi_can_mot_vet_xuoc.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_chuano",
+      "name": "Đừng Khinh Thường Hoa",
+      "asset": "assets/photobooth/frames/cmt_chuano.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_chuano.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_dichup",
+      "name": "Chụp 3 Tấm Lựa 3 Tiếng",
+      "asset": "assets/photobooth/frames/cmt_dichup.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_dichup.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_duanma",
+      "name": "Dự án ma",
+      "asset": "assets/photobooth/frames/cmt_duanma.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_duanma.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_flash",
+      "name": "Flash Đổi Nhân Cách",
+      "asset": "assets/photobooth/frames/cmt_flash.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_flash.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_locket",
+      "name": "Locket Việt Nam",
+      "asset": "assets/photobooth/frames/cmt_locket.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_locket.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_phai_luon_tu_te",
+      "name": "Phải Luôn Tử Tế",
+      "asset": "assets/photobooth/frames/cmt_phai_luon_tu_te.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_phai_luon_tu_te.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_posst",
+      "name": "Tấm Cuối Đáng Đăng",
+      "asset": "assets/photobooth/frames/cmt_posst.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_posst.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_siuu",
+      "name": "Ronaldo SIUUU",
+      "asset": "assets/photobooth/frames/cmt_siuu.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_siuu.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_sontung",
+      "name": "Sơn Tùng MTP",
+      "asset": "assets/photobooth/frames/cmt_sontung.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_sontung.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "cmt_xinh",
+      "name": "Ai Cho Xinh Vậy",
+      "asset": "assets/photobooth/frames/cmt_xinh.webp",
+      "thumbnail": "assets/photobooth/thumbs/cmt_xinh.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "comments"
+    },
+    {
+      "id": "pb_khung1_99_phan_tram_co_the_la_ngai",
+      "name": "99% Cơ Thể Là Ngại",
+      "asset": "assets/photobooth/frames/pb_khung1_99_phan_tram_co_the_la_ngai.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_99_phan_tram_co_the_la_ngai.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_anh_hellokitty_v_sao",
+      "name": "Hello Kitty & Sao",
+      "asset": "assets/photobooth/frames/pb_khung1_anh_hellokitty_v_sao.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_anh_hellokitty_v_sao.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_anh_tho",
+      "name": "Ảnh Thờ 🤡",
+      "asset": "assets/photobooth/frames/pb_khung1_anh_tho.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_anh_tho.webp",
+      "slots": [
+        [
+          388,
+          67,
+          316,
+          420
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_ban_la_gi_ma_toi_phai_ban_tam",
+      "name": "Bạn Là Gì?",
+      "asset": "assets/photobooth/frames/pb_khung1_ban_la_gi_ma_toi_phai_ban_tam.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_ban_la_gi_ma_toi_phai_ban_tam.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_Camera_iPhone",
+      "name": "Camera iPhone",
+      "asset": "assets/photobooth/frames/pb_khung1_Camera_iPhone.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_Camera_iPhone.webp",
+      "slots": [
+        [
+          380,
+          233,
+          344,
+          515
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_camfuji",
+      "name": "Fuji Film",
+      "asset": "assets/photobooth/frames/pb_khung1_camfuji.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_camfuji.webp",
+      "slots": [
+        [
+          32,
+          162,
+          1016,
+          767
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_card",
+      "name": "Thẻ Thanh Xuân",
+      "asset": "assets/photobooth/frames/pb_khung1_card.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_card.webp",
+      "slots": [
+        [
+          265,
+          285,
+          545,
+          510
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_chua_som",
+      "name": "Chửa Sớm",
+      "asset": "assets/photobooth/frames/pb_khung1_chua_som.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_chua_som.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_chuong_cuoi",
+      "name": "Chương Cuối Thanh Xuân",
+      "asset": "assets/photobooth/frames/pb_khung1_chuong_cuoi.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_chuong_cuoi.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_color",
+      "name": "Cầu Vồng Kẹo Ngọt",
+      "asset": "assets/photobooth/frames/pb_khung1_color.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_color.webp",
+      "slots": [
+        [
+          96,
+          111,
+          856,
+          864
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_cute",
+      "name": "Cute Hết Cứu 🎀",
+      "asset": "assets/photobooth/frames/pb_khung1_cute.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_cute.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_cute_fruit",
+      "name": "pb_khung1_cute_fruit",
+      "asset": "assets/photobooth/frames/pb_khung1_cute_fruit.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_cute_fruit.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_dech_quan_tam",
+      "name": "Đếch Quan Tâm",
+      "asset": "assets/photobooth/frames/pb_khung1_dech_quan_tam.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_dech_quan_tam.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_denim_ripped",
+      "name": "Khung Denim Cá Tính",
+      "asset": "assets/photobooth/frames/pb_khung1_denim_ripped.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_denim_ripped.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_dia",
+      "name": "Chiếc Đĩa Kỷ Niệm",
+      "asset": "assets/photobooth/frames/pb_khung1_dia.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_dia.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_film_nostalgia",
+      "name": "Khung Film Hoài Cổ",
+      "asset": "assets/photobooth/frames/pb_khung1_film_nostalgia.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_film_nostalgia.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_frame_classic_pb",
+      "name": "Photobooth Cổ Điển",
+      "asset": "assets/photobooth/frames/pb_khung1_frame_classic_pb.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_frame_classic_pb.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_han_toan",
+      "name": "Hận Toán",
+      "asset": "assets/photobooth/frames/pb_khung1_han_toan.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_han_toan.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_hello_kitty_hong_pastel",
+      "name": "Khung Hello Kitty Hồng",
+      "asset": "assets/photobooth/frames/pb_khung1_hello_kitty_hong_pastel.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_hello_kitty_hong_pastel.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_hello_kitty_pastel_ngot_ngao",
+      "name": "Hello Kitty Ngọt Ngào",
+      "asset": "assets/photobooth/frames/pb_khung1_hello_kitty_pastel_ngot_ngao.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_hello_kitty_pastel_ngot_ngao.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_hoa_pastel_vien_xanh_xinh",
+      "name": "Hoa Xinh Pastel",
+      "asset": "assets/photobooth/frames/pb_khung1_hoa_pastel_vien_xanh_xinh.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_hoa_pastel_vien_xanh_xinh.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_hoang_tu_am_o",
+      "name": "Hoàng Tử Ẩm Ơ",
+      "asset": "assets/photobooth/frames/pb_khung1_hoang_tu_am_o.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_hoang_tu_am_o.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_hoi_chieu_troi_mua",
+      "name": "Hồi Chiều Trời Mưa",
+      "asset": "assets/photobooth/frames/pb_khung1_hoi_chieu_troi_mua.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_hoi_chieu_troi_mua.webp",
+      "slots": [
+        [
+          110,
+          111,
+          862,
+          501
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_ins",
+      "name": "Instagram Moments",
+      "asset": "assets/photobooth/frames/pb_khung1_ins.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_ins.webp",
+      "slots": [
+        [
+          36,
+          133,
+          1008,
+          692
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_iphone",
+      "name": "Now Playing",
+      "asset": "assets/photobooth/frames/pb_khung1_iphone.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_iphone.webp",
+      "slots": [
+        [
+          269,
+          118,
+          541,
+          477
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_kho_do_danh",
+      "name": "Khó Dỗ Dành",
+      "asset": "assets/photobooth/frames/pb_khung1_kho_do_danh.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_kho_do_danh.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_khong_buong",
+      "name": "Không Buông",
+      "asset": "assets/photobooth/frames/pb_khung1_khong_buong.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_khong_buong.webp",
+      "slots": [
+        [
+          332,
+          141,
+          416,
+          416
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_khong_can_ai_duyet",
+      "name": "Không Cần Ai Duyệt",
+      "asset": "assets/photobooth/frames/pb_khung1_khong_can_ai_duyet.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_khong_can_ai_duyet.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_khong_gian_xanh_pastel",
+      "name": "Không Gian Xanh",
+      "asset": "assets/photobooth/frames/pb_khung1_khong_gian_xanh_pastel.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_khong_gian_xanh_pastel.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_khong_tin_dan_ong",
+      "name": "Không Tin Đàn Ông",
+      "asset": "assets/photobooth/frames/pb_khung1_khong_tin_dan_ong.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_khong_tin_dan_ong.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_ki_niem_tuoi_dep",
+      "name": "Kỷ Niệm Tươi Đẹp",
+      "asset": "assets/photobooth/frames/pb_khung1_ki_niem_tuoi_dep.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_ki_niem_tuoi_dep.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung1_locket",
+      "name": "Practical Magic 2",
+      "asset": "assets/photobooth/frames/pb_khung1_locket.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_locket.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_locket_camera",
+      "name": "Locket Camera",
+      "asset": "assets/photobooth/frames/pb_khung1_locket_camera.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_locket_camera.webp",
+      "slots": [
+        [
+          318,
+          208,
+          423,
+          432
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_loi_cua_tao_a",
+      "name": "Lỗi Của Tao À?",
+      "asset": "assets/photobooth/frames/pb_khung1_loi_cua_tao_a.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_loi_cua_tao_a.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_love_e_nhiu",
+      "name": "Love Em Nhiều",
+      "asset": "assets/photobooth/frames/pb_khung1_love_e_nhiu.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_love_e_nhiu.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung1_luffy",
+      "name": "Truy Nã",
+      "asset": "assets/photobooth/frames/pb_khung1_luffy.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_luffy.webp",
+      "slots": [
+        [
+          218,
+          227,
+          644,
+          568
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_mat_tin_hieu",
+      "name": "No Signal",
+      "asset": "assets/photobooth/frames/pb_khung1_mat_tin_hieu.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_mat_tin_hieu.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_maytinh",
+      "name": "Màn Hình Hoài Niệm",
+      "asset": "assets/photobooth/frames/pb_khung1_maytinh.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_maytinh.webp",
+      "slots": [
+        [
+          155,
+          103,
+          748,
+          511
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_me_con_dien",
+      "name": "Mẹ Con Điên",
+      "asset": "assets/photobooth/frames/pb_khung1_me_con_dien.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_me_con_dien.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_menu_ios",
+      "name": "Menu iOS",
+      "asset": "assets/photobooth/frames/pb_khung1_menu_ios.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_menu_ios.webp",
+      "slots": [
+        [
+          160,
+          69,
+          761,
+          748
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_meow",
+      "name": "Meow",
+      "asset": "assets/photobooth/frames/pb_khung1_meow.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_meow.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_met5_ma_cai_toi5m1",
+      "name": "Mét 5 Mà Cái Tôi 5m1",
+      "asset": "assets/photobooth/frames/pb_khung1_met5_ma_cai_toi5m1.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_met5_ma_cai_toi5m1.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_mo_long_lan_nao_la_du_ma_lan_do",
+      "name": "Mở Lòng Lần Nào Là Đủ Má Lần Đó",
+      "asset": "assets/photobooth/frames/pb_khung1_mo_long_lan_nao_la_du_ma_lan_do.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_mo_long_lan_nao_la_du_ma_lan_do.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_nen_mua",
+      "name": "Nền Mưa",
+      "asset": "assets/photobooth/frames/pb_khung1_nen_mua.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_nen_mua.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_ngoi_sao_hong_pastel",
+      "name": "Ngôi Sao Hồng",
+      "asset": "assets/photobooth/frames/pb_khung1_ngoi_sao_hong_pastel.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_ngoi_sao_hong_pastel.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_noi_ko_buon_la_noi_doi",
+      "name": "Nói Không Buồn Là Nói Dối",
+      "asset": "assets/photobooth/frames/pb_khung1_noi_ko_buon_la_noi_doi.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_noi_ko_buon_la_noi_doi.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_oi_tinh_yeu",
+      "name": "Ôi, Tình Yêu!",
+      "asset": "assets/photobooth/frames/pb_khung1_oi_tinh_yeu.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_oi_tinh_yeu.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung1_ong_troi_that_bat_cong",
+      "name": "Ông Trời Thật Bất Công",
+      "asset": "assets/photobooth/frames/pb_khung1_ong_troi_that_bat_cong.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_ong_troi_that_bat_cong.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_pastel_so_hai_cau",
+      "name": "Sò Hải Cẩu Pastel",
+      "asset": "assets/photobooth/frames/pb_khung1_pastel_so_hai_cau.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_pastel_so_hai_cau.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_pastel_vien_ren",
+      "name": "Nơ Pastel Viền Ren",
+      "asset": "assets/photobooth/frames/pb_khung1_pastel_vien_ren.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_pastel_vien_ren.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_photobooth_cute",
+      "name": "Photobooth Cute",
+      "asset": "assets/photobooth/frames/pb_khung1_photobooth_cute.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_photobooth_cute.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_ptb",
+      "name": "MIXTAPE VOIL.1",
+      "asset": "assets/photobooth/frames/pb_khung1_ptb.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_ptb.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_sao_nen_trang",
+      "name": "Sao Nền Trắng",
+      "asset": "assets/photobooth/frames/pb_khung1_sao_nen_trang.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_sao_nen_trang.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_selflove",
+      "name": "Self Love Club",
+      "asset": "assets/photobooth/frames/pb_khung1_selflove.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_selflove.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung1_shin_chan",
+      "name": "Shin-Chan",
+      "asset": "assets/photobooth/frames/pb_khung1_shin_chan.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_shin_chan.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_sinh_nhat_hello_kitty",
+      "name": "Sinh Nhật Hello Kitty",
+      "asset": "assets/photobooth/frames/pb_khung1_sinh_nhat_hello_kitty.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_sinh_nhat_hello_kitty.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung1_song_basic",
+      "name": "Sống Basic Cho Đời Cơ Bản",
+      "asset": "assets/photobooth/frames/pb_khung1_song_basic.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_song_basic.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_spiderred",
+      "name": "Nhện Đỏ",
+      "asset": "assets/photobooth/frames/pb_khung1_spiderred.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_spiderred.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_spotify_hong",
+      "name": "Spotify Hồng",
+      "asset": "assets/photobooth/frames/pb_khung1_spotify_hong.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_spotify_hong.webp",
+      "slots": [
+        [
+          300,
+          538,
+          481,
+          474
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_spotifyPC",
+      "name": "Spotify PC",
+      "asset": "assets/photobooth/frames/pb_khung1_spotifyPC.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_spotifyPC.webp",
+      "slots": [
+        [
+          197,
+          206,
+          494,
+          521
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_sunshine",
+      "name": "pb_khung1_sunshine",
+      "asset": "assets/photobooth/frames/pb_khung1_sunshine.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_sunshine.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung1_tao_song_sao",
+      "name": "Tao Sống Sao Kệ Tao?",
+      "asset": "assets/photobooth/frames/pb_khung1_tao_song_sao.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_tao_song_sao.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_the_gioi_cua_2_ta",
+      "name": "Thế Giới Của Hai Ta",
+      "asset": "assets/photobooth/frames/pb_khung1_the_gioi_cua_2_ta.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_the_gioi_cua_2_ta.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung1_thieu_vang_ngot_ngao_cua_em",
+      "name": "Thiếu Vắng Ngọt Ngào Của Em",
+      "asset": "assets/photobooth/frames/pb_khung1_thieu_vang_ngot_ngao_cua_em.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_thieu_vang_ngot_ngao_cua_em.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_thu_tinh",
+      "name": "Thư Tình Gửi Cậu 💌",
+      "asset": "assets/photobooth/frames/pb_khung1_thu_tinh.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_thu_tinh.webp",
+      "slots": [
+        [
+          275,
+          251,
+          529,
+          566
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung1_tivi",
+      "name": "Ký Ức Màn Hình",
+      "asset": "assets/photobooth/frames/pb_khung1_tivi.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_tivi.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung1_tuyet_vong",
+      "name": "Tuyệt Vọng",
+      "asset": "assets/photobooth/frames/pb_khung1_tuyet_vong.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_tuyet_vong.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_uoc_gi_buon_cung_ra_tien",
+      "name": "Ước Gì Buồn Cũng Ra Tiền",
+      "asset": "assets/photobooth/frames/pb_khung1_uoc_gi_buon_cung_ra_tien.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_uoc_gi_buon_cung_ra_tien.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_xanh_tay_sao_vang",
+      "name": "Sao Vàng Xanh",
+      "asset": "assets/photobooth/frames/pb_khung1_xanh_tay_sao_vang.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_xanh_tay_sao_vang.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_xinh_gai_tinh_quai",
+      "name": "Xinh Gái Tinh Quái",
+      "asset": "assets/photobooth/frames/pb_khung1_xinh_gai_tinh_quai.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_xinh_gai_tinh_quai.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_y2k_silver_holo",
+      "name": "Khung Y2K Silver Holo",
+      "asset": "assets/photobooth/frames/pb_khung1_y2k_silver_holo.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_y2k_silver_holo.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung1_yeu_giau_chu_co_phai_yeu_dau_dau_ma_doi_ghen",
+      "name": "Yêu Giấu Chứ Có Phải Yêu Dấu",
+      "asset": "assets/photobooth/frames/pb_khung1_yeu_giau_chu_co_phai_yeu_dau_dau_ma_doi_ghen.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung1_yeu_giau_chu_co_phai_yeu_dau_dau_ma_doi_ghen.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          1080
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung2_anhco",
+      "name": "Ký Ức Polaroid",
+      "asset": "assets/photobooth/frames/pb_khung2_anhco.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_anhco.webp",
+      "slots": [
+        [
+          520,
+          0,
+          560,
+          776
+        ],
+        [
+          73,
+          495,
+          543,
+          585
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung2_anhco_0.png",
+        "assets/photobooth/masks/pb_khung2_anhco_1.png"
+      ],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung2_anhdep",
+      "name": "Hai Tấm Xinh Xinh",
+      "asset": "assets/photobooth/frames/pb_khung2_anhdep.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_anhdep.webp",
+      "slots": [
+        [
+          326,
+          189,
+          446,
+          280
+        ],
+        [
+          326,
+          602,
+          446,
+          282
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung2_camera_pic",
+      "name": "Camera Kỷ Niệm",
+      "asset": "assets/photobooth/frames/pb_khung2_camera_pic.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_camera_pic.webp",
+      "slots": [
+        [
+          484,
+          57,
+          445,
+          462
+        ],
+        [
+          430,
+          528,
+          461,
+          445
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung2_di_choi_thoi",
+      "name": "Hẹn Nhau Đi Chơi",
+      "asset": "assets/photobooth/frames/pb_khung2_di_choi_thoi.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_di_choi_thoi.webp",
+      "slots": [
+        [
+          146,
+          55,
+          785,
+          429
+        ],
+        [
+          146,
+          539,
+          785,
+          389
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung2_dieu_em_uoc_ao",
+      "name": "Điều Em Ước Ao",
+      "asset": "assets/photobooth/frames/pb_khung2_dieu_em_uoc_ao.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_dieu_em_uoc_ao.webp",
+      "slots": [
+        [
+          107,
+          157,
+          932,
+          891
+        ],
+        [
+          107,
+          677,
+          414,
+          371
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung2_khi_e_vang",
+      "name": "Khi Em Vắng Anh",
+      "asset": "assets/photobooth/frames/pb_khung2_khi_e_vang.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_khi_e_vang.webp",
+      "slots": [
+        [
+          27,
+          231,
+          500,
+          623
+        ],
+        [
+          552,
+          231,
+          501,
+          623
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung2_khi_tinh_iu_den",
+      "name": "Khi Tình Yêu Đến",
+      "asset": "assets/photobooth/frames/pb_khung2_khi_tinh_iu_den.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_khi_tinh_iu_den.webp",
+      "slots": [
+        [
+          0,
+          0,
+          1080,
+          430
+        ],
+        [
+          0,
+          653,
+          1080,
+          427
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung2_ki_niem",
+      "name": "Kỷ Niệm Chúng Mình",
+      "asset": "assets/photobooth/frames/pb_khung2_ki_niem.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_ki_niem.webp",
+      "slots": [
+        [
+          35,
+          456,
+          844,
+          580
+        ],
+        [
+          901,
+          456,
+          147,
+          273
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung2_len_do",
+      "name": "Lên Đồ Đi Chơi",
+      "asset": "assets/photobooth/frames/pb_khung2_len_do.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_len_do.webp",
+      "slots": [
+        [
+          43,
+          55,
+          527,
+          580
+        ],
+        [
+          409,
+          366,
+          617,
+          603
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung2_len_do_0.png",
+        "assets/photobooth/masks/pb_khung2_len_do_1.png"
+      ],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung2_love_postcard",
+      "name": "Love Postcard",
+      "asset": "assets/photobooth/frames/pb_khung2_love_postcard.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_love_postcard.webp",
+      "slots": [
+        [
+          251,
+          173,
+          562,
+          360
+        ],
+        [
+          251,
+          534,
+          562,
+          358
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung2_may_anh",
+      "name": "Góc Máy Thanh Xuân",
+      "asset": "assets/photobooth/frames/pb_khung2_may_anh.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_may_anh.webp",
+      "slots": [
+        [
+          122,
+          216,
+          386,
+          324
+        ],
+        [
+          289,
+          557,
+          439,
+          371
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung2_merry_christmas",
+      "name": "Giáng Sinh Len Ấm",
+      "asset": "assets/photobooth/frames/pb_khung2_merry_christmas.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_merry_christmas.webp",
+      "slots": [
+        [
+          111,
+          103,
+          369,
+          466
+        ],
+        [
+          544,
+          406,
+          360,
+          469
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung2_outfit",
+      "name": "Outfit Check",
+      "asset": "assets/photobooth/frames/pb_khung2_outfit.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_outfit.webp",
+      "slots": [
+        [
+          53,
+          65,
+          538,
+          947
+        ],
+        [
+          653,
+          385,
+          376,
+          376
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung2_Polaroid_vintage",
+      "name": "Polaroid Vintage",
+      "asset": "assets/photobooth/frames/pb_khung2_Polaroid_vintage.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_Polaroid_vintage.webp",
+      "slots": [
+        [
+          98,
+          147,
+          451,
+          602
+        ],
+        [
+          534,
+          249,
+          477,
+          609
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung2_Polaroid_vintage_0.png",
+        "assets/photobooth/masks/pb_khung2_Polaroid_vintage_1.png"
+      ],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung2_soulmate",
+      "name": "Soulmate",
+      "asset": "assets/photobooth/frames/pb_khung2_soulmate.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_soulmate.webp",
+      "slots": [
+        [
+          179,
+          317,
+          503,
+          684
+        ],
+        [
+          370,
+          767,
+          304,
+          193
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung2_soulmate_0.png",
+        "assets/photobooth/masks/pb_khung2_soulmate_1.png"
+      ],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung2_thang_ngay_ben_nhau",
+      "name": "Tháng Ngày Bên Nhau",
+      "asset": "assets/photobooth/frames/pb_khung2_thang_ngay_ben_nhau.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_thang_ngay_ben_nhau.webp",
+      "slots": [
+        [
+          39,
+          462,
+          768,
+          446
+        ],
+        [
+          829,
+          464,
+          206,
+          444
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung2_thelove",
+      "name": "The Love Times",
+      "asset": "assets/photobooth/frames/pb_khung2_thelove.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_thelove.webp",
+      "slots": [
+        [
+          59,
+          370,
+          601,
+          338
+        ],
+        [
+          717,
+          693,
+          291,
+          222
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung2_thu_tinh",
+      "name": "Thư Tình Ngọt Ngào",
+      "asset": "assets/photobooth/frames/pb_khung2_thu_tinh.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_thu_tinh.webp",
+      "slots": [
+        [
+          166,
+          281,
+          354,
+          343
+        ],
+        [
+          429,
+          563,
+          396,
+          298
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung2_thu_tinh_0.png",
+        "assets/photobooth/masks/pb_khung2_thu_tinh_1.png"
+      ],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung2_tin_nong",
+      "name": "Tin Nóng Hôm Nay",
+      "asset": "assets/photobooth/frames/pb_khung2_tin_nong.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung2_tin_nong.webp",
+      "slots": [
+        [
+          11,
+          138,
+          914,
+          751
+        ],
+        [
+          609,
+          583,
+          441,
+          404
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung3_christmas1",
+      "name": "Giáng Sinh Tuần Lộc",
+      "asset": "assets/photobooth/frames/pb_khung3_christmas1.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_christmas1.webp",
+      "slots": [
+        [
+          101,
+          254,
+          878,
+          345
+        ],
+        [
+          38,
+          632,
+          489,
+          368
+        ],
+        [
+          550,
+          632,
+          492,
+          368
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung3_christmas2",
+      "name": "Giáng Sinh Selfie",
+      "asset": "assets/photobooth/frames/pb_khung3_christmas2.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_christmas2.webp",
+      "slots": [
+        [
+          49,
+          139,
+          982,
+          382
+        ],
+        [
+          43,
+          595,
+          473,
+          359
+        ],
+        [
+          552,
+          595,
+          485,
+          359
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung3_christmas3",
+      "name": "Ho Ho Ho!",
+      "asset": "assets/photobooth/frames/pb_khung3_christmas3.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_christmas3.webp",
+      "slots": [
+        [
+          22,
+          214,
+          1033,
+          354
+        ],
+        [
+          22,
+          586,
+          508,
+          415
+        ],
+        [
+          549,
+          586,
+          506,
+          415
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung3_da_bao",
+      "name": "Da Báo",
+      "asset": "assets/photobooth/frames/pb_khung3_da_bao.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_da_bao.webp",
+      "slots": [
+        [
+          302,
+          85,
+          476,
+          273
+        ],
+        [
+          302,
+          373,
+          476,
+          270
+        ],
+        [
+          302,
+          659,
+          476,
+          275
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung3_google",
+      "name": "Google: Tình Yêu Là Gì?",
+      "asset": "assets/photobooth/frames/pb_khung3_google.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_google.webp",
+      "slots": [
+        [
+          44,
+          389,
+          317,
+          383
+        ],
+        [
+          384,
+          389,
+          312,
+          384
+        ],
+        [
+          720,
+          388,
+          315,
+          385
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung3_hen_nha",
+      "name": "Hẹn Nhau Nha",
+      "asset": "assets/photobooth/frames/pb_khung3_hen_nha.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_hen_nha.webp",
+      "slots": [
+        [
+          42,
+          247,
+          491,
+          545
+        ],
+        [
+          545,
+          82,
+          463,
+          427
+        ],
+        [
+          543,
+          566,
+          459,
+          421
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung3_hoi_ban_than",
+      "name": "Hội Bạn Thân",
+      "asset": "assets/photobooth/frames/pb_khung3_hoi_ban_than.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_hoi_ban_than.webp",
+      "slots": [
+        [
+          50,
+          193,
+          405,
+          767
+        ],
+        [
+          496,
+          191,
+          526,
+          362
+        ],
+        [
+          492,
+          591,
+          538,
+          365
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung3_love_so_much",
+      "name": "Love So Much",
+      "asset": "assets/photobooth/frames/pb_khung3_love_so_much.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_love_so_much.webp",
+      "slots": [
+        [
+          147,
+          341,
+          523,
+          397
+        ],
+        [
+          450,
+          583,
+          313,
+          313
+        ],
+        [
+          744,
+          586,
+          289,
+          307
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung3_love_so_much_0.png",
+        "assets/photobooth/masks/pb_khung3_love_so_much_1.png",
+        "assets/photobooth/masks/pb_khung3_love_so_much_2.png"
+      ],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung3_memory",
+      "name": "Memory Lane",
+      "asset": "assets/photobooth/frames/pb_khung3_memory.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_memory.webp",
+      "slots": [
+        [
+          73,
+          371,
+          268,
+          273
+        ],
+        [
+          407,
+          371,
+          268,
+          273
+        ],
+        [
+          739,
+          371,
+          270,
+          273
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung3_mothaiba",
+      "name": "Một Hai Ba",
+      "asset": "assets/photobooth/frames/pb_khung3_mothaiba.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_mothaiba.webp",
+      "slots": [
+        [
+          128,
+          137,
+          824,
+          274
+        ],
+        [
+          128,
+          420,
+          824,
+          273
+        ],
+        [
+          128,
+          700,
+          824,
+          275
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung3_ngay_mai_tuoi_sang",
+      "name": "Ngày Mai Tươi Sáng",
+      "asset": "assets/photobooth/frames/pb_khung3_ngay_mai_tuoi_sang.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_ngay_mai_tuoi_sang.webp",
+      "slots": [
+        [
+          56,
+          206,
+          310,
+          597
+        ],
+        [
+          385,
+          206,
+          310,
+          597
+        ],
+        [
+          716,
+          206,
+          310,
+          597
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung3_photo_iphone",
+      "name": "Photo iPhone",
+      "asset": "assets/photobooth/frames/pb_khung3_photo_iphone.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_photo_iphone.webp",
+      "slots": [
+        [
+          346,
+          157,
+          379,
+          265
+        ],
+        [
+          346,
+          433,
+          379,
+          261
+        ],
+        [
+          346,
+          707,
+          379,
+          240
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung3_photodump",
+      "name": "Photo Dump Hôm Nay ✨",
+      "asset": "assets/photobooth/frames/pb_khung3_photodump.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_photodump.webp",
+      "slots": [
+        [
+          58,
+          143,
+          567,
+          721
+        ],
+        [
+          687,
+          96,
+          334,
+          352
+        ],
+        [
+          685,
+          580,
+          333,
+          345
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung3_Polaroid",
+      "name": "Polaroid Nhật Ký 📸",
+      "asset": "assets/photobooth/frames/pb_khung3_Polaroid.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_Polaroid.webp",
+      "slots": [
+        [
+          468,
+          275,
+          227,
+          227
+        ],
+        [
+          481,
+          507,
+          227,
+          227
+        ],
+        [
+          496,
+          741,
+          228,
+          227
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung3_polaroid2",
+      "name": "Polaroid Kỷ Niệm",
+      "asset": "assets/photobooth/frames/pb_khung3_polaroid2.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_polaroid2.webp",
+      "slots": [
+        [
+          303,
+          342,
+          246,
+          248
+        ],
+        [
+          541,
+          389,
+          249,
+          251
+        ],
+        [
+          381,
+          594,
+          268,
+          267
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung3_polaroid2_0.png",
+        "assets/photobooth/masks/pb_khung3_polaroid2_1.png",
+        "assets/photobooth/masks/pb_khung3_polaroid2_2.png"
+      ],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung3_taste_of_love",
+      "name": "Hương Vị Tình Yêu",
+      "asset": "assets/photobooth/frames/pb_khung3_taste_of_love.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_taste_of_love.webp",
+      "slots": [
+        [
+          139,
+          30,
+          762,
+          495
+        ],
+        [
+          5,
+          510,
+          524,
+          420
+        ],
+        [
+          532,
+          511,
+          531,
+          424
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung3_taste_of_love_0.png",
+        "assets/photobooth/masks/pb_khung3_taste_of_love_1.png",
+        "assets/photobooth/masks/pb_khung3_taste_of_love_2.png"
+      ],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung3_Vinyl",
+      "name": "Vinyl Memories 🎵",
+      "asset": "assets/photobooth/frames/pb_khung3_Vinyl.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_Vinyl.webp",
+      "slots": [
+        [
+          487,
+          40,
+          377,
+          371
+        ],
+        [
+          667,
+          464,
+          373,
+          370
+        ],
+        [
+          249,
+          623,
+          374,
+          372
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung3_we_are_friend",
+      "name": "Chúng Mình Là Bạn",
+      "asset": "assets/photobooth/frames/pb_khung3_we_are_friend.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung3_we_are_friend.webp",
+      "slots": [
+        [
+          216,
+          53,
+          629,
+          439
+        ],
+        [
+          47,
+          468,
+          485,
+          385
+        ],
+        [
+          541,
+          468,
+          487,
+          386
+        ]
+      ],
+      "masks": [
+        "assets/photobooth/masks/pb_khung3_we_are_friend_0.png",
+        "assets/photobooth/masks/pb_khung3_we_are_friend_1.png",
+        "assets/photobooth/masks/pb_khung3_we_are_friend_2.png"
+      ],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung4_4cut",
+      "name": "Photobooth 4 ô",
+      "asset": "assets/photobooth/frames/pb_khung4_4cut.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_4cut.webp",
+      "slots": [
+        [
+          114,
+          190,
+          410,
+          334
+        ],
+        [
+          556,
+          190,
+          410,
+          334
+        ],
+        [
+          114,
+          556,
+          410,
+          334
+        ],
+        [
+          556,
+          556,
+          410,
+          334
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung4_berry_days",
+      "name": "Photobooth Berry Days",
+      "asset": "assets/photobooth/frames/pb_khung4_berry_days.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_berry_days.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung4_cham_bi",
+      "name": "Chấm Bi",
+      "asset": "assets/photobooth/frames/pb_khung4_cham_bi.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_cham_bi.webp",
+      "slots": [
+        [
+          57,
+          82,
+          453,
+          418
+        ],
+        [
+          570,
+          81,
+          455,
+          418
+        ],
+        [
+          57,
+          571,
+          453,
+          419
+        ],
+        [
+          570,
+          571,
+          455,
+          419
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_cham_bi_den",
+      "name": "Chấm Bi Đen",
+      "asset": "assets/photobooth/frames/pb_khung4_cham_bi_den.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_cham_bi_den.webp",
+      "slots": [
+        [
+          41,
+          50,
+          482,
+          453
+        ],
+        [
+          557,
+          50,
+          484,
+          453
+        ],
+        [
+          41,
+          519,
+          482,
+          453
+        ],
+        [
+          557,
+          519,
+          483,
+          453
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_christmas_palette",
+      "name": "Giáng Sinh Tuyết Xanh",
+      "asset": "assets/photobooth/frames/pb_khung4_christmas_palette.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_christmas_palette.webp",
+      "slots": [
+        [
+          56,
+          82,
+          469,
+          398
+        ],
+        [
+          556,
+          79,
+          476,
+          401
+        ],
+        [
+          39,
+          513,
+          484,
+          392
+        ],
+        [
+          550,
+          512,
+          483,
+          393
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung4_denim_ripped_2x2",
+      "name": "Photobooth Denim 4 ô",
+      "asset": "assets/photobooth/frames/pb_khung4_denim_ripped_2x2.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_denim_ripped_2x2.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_dream_cream",
+      "name": "Denim & Kem",
+      "asset": "assets/photobooth/frames/pb_khung4_dream_cream.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_dream_cream.webp",
+      "slots": [
+        [
+          288,
+          142,
+          295,
+          404
+        ],
+        [
+          608,
+          142,
+          298,
+          404
+        ],
+        [
+          288,
+          570,
+          295,
+          403
+        ],
+        [
+          608,
+          570,
+          298,
+          403
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_equinox",
+      "name": "Equinox Studio",
+      "asset": "assets/photobooth/frames/pb_khung4_equinox.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_equinox.webp",
+      "slots": [
+        [
+          34,
+          101,
+          491,
+          364
+        ],
+        [
+          554,
+          101,
+          491,
+          365
+        ],
+        [
+          32,
+          496,
+          493,
+          428
+        ],
+        [
+          550,
+          494,
+          501,
+          367
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_fairy_film",
+      "name": "Fairy Film",
+      "asset": "assets/photobooth/frames/pb_khung4_fairy_film.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_fairy_film.webp",
+      "slots": [
+        [
+          127,
+          116,
+          405,
+          378
+        ],
+        [
+          548,
+          116,
+          402,
+          378
+        ],
+        [
+          126,
+          508,
+          406,
+          385
+        ],
+        [
+          548,
+          508,
+          403,
+          386
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung4_film",
+      "name": "Cuộn Phim 35mm",
+      "asset": "assets/photobooth/frames/pb_khung4_film.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_film.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung4_foto_lush",
+      "name": "Foto Lush",
+      "asset": "assets/photobooth/frames/pb_khung4_foto_lush.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_foto_lush.webp",
+      "slots": [
+        [
+          42,
+          92,
+          486,
+          433
+        ],
+        [
+          552,
+          92,
+          486,
+          433
+        ],
+        [
+          42,
+          555,
+          487,
+          433
+        ],
+        [
+          552,
+          555,
+          486,
+          433
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung4_happy_birthday",
+      "name": "Sinh Nhật Y2K",
+      "asset": "assets/photobooth/frames/pb_khung4_happy_birthday.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_happy_birthday.webp",
+      "slots": [
+        [
+          54,
+          137,
+          463,
+          415
+        ],
+        [
+          565,
+          137,
+          462,
+          414
+        ],
+        [
+          54,
+          602,
+          463,
+          409
+        ],
+        [
+          565,
+          602,
+          462,
+          409
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung4_happy_snap",
+      "name": "Photobooth Happy Snap",
+      "asset": "assets/photobooth/frames/pb_khung4_happy_snap.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_happy_snap.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_holo_4cut",
+      "name": "Photobooth Y2K Holo",
+      "asset": "assets/photobooth/frames/pb_khung4_holo_4cut.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_holo_4cut.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung4_i_love_you",
+      "name": "I Love You",
+      "asset": "assets/photobooth/frames/pb_khung4_i_love_you.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_i_love_you.webp",
+      "slots": [
+        [
+          108,
+          139,
+          505,
+          321
+        ],
+        [
+          630,
+          261,
+          364,
+          250
+        ],
+        [
+          140,
+          532,
+          318,
+          321
+        ],
+        [
+          477,
+          539,
+          506,
+          320
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung4_inspire_arena",
+      "name": "Inspire Arena",
+      "asset": "assets/photobooth/frames/pb_khung4_inspire_arena.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_inspire_arena.webp",
+      "slots": [
+        [
+          42,
+          31,
+          488,
+          426
+        ],
+        [
+          547,
+          37,
+          490,
+          419
+        ],
+        [
+          46,
+          473,
+          484,
+          386
+        ],
+        [
+          545,
+          471,
+          491,
+          473
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_likeble",
+      "name": "Likeble",
+      "asset": "assets/photobooth/frames/pb_khung4_likeble.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_likeble.webp",
+      "slots": [
+        [
+          42,
+          67,
+          478,
+          396
+        ],
+        [
+          560,
+          67,
+          478,
+          396
+        ],
+        [
+          42,
+          502,
+          478,
+          396
+        ],
+        [
+          560,
+          502,
+          478,
+          396
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_merry_christmas",
+      "name": "Thư Giáng Sinh",
+      "asset": "assets/photobooth/frames/pb_khung4_merry_christmas.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_merry_christmas.webp",
+      "slots": [
+        [
+          97,
+          147,
+          387,
+          388
+        ],
+        [
+          525,
+          161,
+          347,
+          355
+        ],
+        [
+          112,
+          572,
+          353,
+          357
+        ],
+        [
+          509,
+          559,
+          380,
+          387
+        ]
+      ],
+      "masks": [],
+      "theme": "celebration"
+    },
+    {
+      "id": "pb_khung4_mimi",
+      "name": "Mimi Say Cheese",
+      "asset": "assets/photobooth/frames/pb_khung4_mimi.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_mimi.webp",
+      "slots": [
+        [
+          55,
+          136,
+          473,
+          396
+        ],
+        [
+          553,
+          137,
+          467,
+          395
+        ],
+        [
+          58,
+          557,
+          470,
+          357
+        ],
+        [
+          553,
+          556,
+          468,
+          358
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung4_my_vault",
+      "name": "My Vault",
+      "asset": "assets/photobooth/frames/pb_khung4_my_vault.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_my_vault.webp",
+      "slots": [
+        [
+          116,
+          182,
+          413,
+          356
+        ],
+        [
+          552,
+          183,
+          412,
+          354
+        ],
+        [
+          117,
+          557,
+          412,
+          380
+        ],
+        [
+          552,
+          557,
+          412,
+          380
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_photoism",
+      "name": "Photoism",
+      "asset": "assets/photobooth/frames/pb_khung4_photoism.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_photoism.webp",
+      "slots": [
+        [
+          26,
+          14,
+          493,
+          456
+        ],
+        [
+          540,
+          58,
+          494,
+          474
+        ],
+        [
+          26,
+          484,
+          494,
+          474
+        ],
+        [
+          540,
+          545,
+          494,
+          473
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung4_razzle",
+      "name": "Razzle Dazzle",
+      "asset": "assets/photobooth/frames/pb_khung4_razzle.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_razzle.webp",
+      "slots": [
+        [
+          28,
+          63,
+          503,
+          369
+        ],
+        [
+          552,
+          63,
+          501,
+          368
+        ],
+        [
+          28,
+          454,
+          503,
+          433
+        ],
+        [
+          554,
+          455,
+          496,
+          365
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_ripped_paper_4cut",
+      "name": "Photobooth Ripped Paper",
+      "asset": "assets/photobooth/frames/pb_khung4_ripped_paper_4cut.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_ripped_paper_4cut.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung4_scrapbook",
+      "name": "Scrapbook Kỷ Niệm",
+      "asset": "assets/photobooth/frames/pb_khung4_scrapbook.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_scrapbook.webp",
+      "slots": [
+        [
+          125,
+          104,
+          296,
+          281
+        ],
+        [
+          602,
+          124,
+          298,
+          261
+        ],
+        [
+          134,
+          637,
+          289,
+          273
+        ],
+        [
+          598,
+          635,
+          310,
+          268
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_scrapbook_do",
+      "name": "Scrapbook Đỏ",
+      "asset": "assets/photobooth/frames/pb_khung4_scrapbook_do.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_scrapbook_do.webp",
+      "slots": [
+        [
+          249,
+          152,
+          280,
+          355
+        ],
+        [
+          567,
+          151,
+          280,
+          356
+        ],
+        [
+          249,
+          538,
+          280,
+          351
+        ],
+        [
+          566,
+          538,
+          281,
+          352
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_scrapbook_ripped_4cut",
+      "name": "Photobooth Scrapbook",
+      "asset": "assets/photobooth/frames/pb_khung4_scrapbook_ripped_4cut.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_scrapbook_ripped_4cut.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "film"
+    },
+    {
+      "id": "pb_khung4_shin1",
+      "name": "Shin Xanh Tinh Nghịch",
+      "asset": "assets/photobooth/frames/pb_khung4_shin1.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_shin1.webp",
+      "slots": [
+        [
+          63,
+          109,
+          458,
+          430
+        ],
+        [
+          560,
+          109,
+          456,
+          429
+        ],
+        [
+          64,
+          576,
+          457,
+          426
+        ],
+        [
+          560,
+          577,
+          455,
+          425
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung4_shin2",
+      "name": "Shin Hồng Dễ Thương",
+      "asset": "assets/photobooth/frames/pb_khung4_shin2.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_shin2.webp",
+      "slots": [
+        [
+          60,
+          102,
+          459,
+          414
+        ],
+        [
+          560,
+          103,
+          460,
+          414
+        ],
+        [
+          60,
+          560,
+          459,
+          412
+        ],
+        [
+          561,
+          560,
+          459,
+          411
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung4_shin3",
+      "name": "Shin Cam Năng Động",
+      "asset": "assets/photobooth/frames/pb_khung4_shin3.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_shin3.webp",
+      "slots": [
+        [
+          65,
+          116,
+          440,
+          397
+        ],
+        [
+          550,
+          116,
+          463,
+          397
+        ],
+        [
+          65,
+          572,
+          440,
+          385
+        ],
+        [
+          549,
+          572,
+          464,
+          385
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung4_sky_diary",
+      "name": "Photobooth Sky Diary",
+      "asset": "assets/photobooth/frames/pb_khung4_sky_diary.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_sky_diary.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "cute"
+    },
+    {
+      "id": "pb_khung4_smile",
+      "name": "Smile!",
+      "asset": "assets/photobooth/frames/pb_khung4_smile.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_smile.webp",
+      "slots": [
+        [
+          50,
+          91,
+          478,
+          430
+        ],
+        [
+          551,
+          91,
+          476,
+          433
+        ],
+        [
+          46,
+          549,
+          481,
+          433
+        ],
+        [
+          550,
+          548,
+          485,
+          435
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_so_cool",
+      "name": "So Cool",
+      "asset": "assets/photobooth/frames/pb_khung4_so_cool.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_so_cool.webp",
+      "slots": [
+        [
+          0,
+          0,
+          540,
+          540
+        ],
+        [
+          540,
+          0,
+          540,
+          540
+        ],
+        [
+          0,
+          540,
+          540,
+          540
+        ],
+        [
+          540,
+          540,
+          540,
+          540
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_soulmate_film",
+      "name": "Soulmate Film",
+      "asset": "assets/photobooth/frames/pb_khung4_soulmate_film.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_soulmate_film.webp",
+      "slots": [
+        [
+          51,
+          165,
+          467,
+          370
+        ],
+        [
+          564,
+          165,
+          463,
+          370
+        ],
+        [
+          53,
+          593,
+          462,
+          371
+        ],
+        [
+          564,
+          595,
+          439,
+          367
+        ]
+      ],
+      "masks": [],
+      "theme": "love"
+    },
+    {
+      "id": "pb_khung4_twinkle_booth",
+      "name": "Twinkle Booth",
+      "asset": "assets/photobooth/frames/pb_khung4_twinkle_booth.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_twinkle_booth.webp",
+      "slots": [
+        [
+          63,
+          54,
+          454,
+          416
+        ],
+        [
+          563,
+          54,
+          454,
+          415
+        ],
+        [
+          63,
+          507,
+          454,
+          420
+        ],
+        [
+          563,
+          507,
+          454,
+          420
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    },
+    {
+      "id": "pb_khung4_your_title",
+      "name": "Your Title",
+      "asset": "assets/photobooth/frames/pb_khung4_your_title.webp",
+      "thumbnail": "assets/photobooth/thumbs/pb_khung4_your_title.webp",
+      "slots": [
+        [
+          99,
+          136,
+          431,
+          397
+        ],
+        [
+          550,
+          137,
+          432,
+          397
+        ],
+        [
+          100,
+          547,
+          431,
+          410
+        ],
+        [
+          551,
+          547,
+          431,
+          410
+        ]
+      ],
+      "masks": [],
+      "theme": "personality"
+    }
+  ]
+}
