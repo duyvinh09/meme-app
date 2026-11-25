@@ -55,6 +55,8 @@ ReceiptScanResult _analyze(_ReceiptAnalysis input) {
     recognizedText: text,
     hasText: text.trim().isNotEmpty,
     foreignCurrency: foreign,
+    usdCents: ReceiptAmountReader.readUsdCents(rows),
+    explicitUsd: ReceiptAmountReader.explicitlyUsd(rows),
     amountVnd: foreign ? null : ReceiptAmountReader.fromLines(rows),
     category: input.model.suggest(text),
   );

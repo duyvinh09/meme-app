@@ -74,7 +74,12 @@ class ReceiptScanFeedback extends StatelessWidget {
                     if (!loading) ...[
                       if (phase == ReceiptScanPhase.ready &&
                           data?.hasText == true) ...[
-                        if (amount != null)
+                        if (data != null && data.usdText != null)
+                          Text(
+                              l10n.receiptDetectedAmount(
+                                  '${data.explicitUsd || currency == "USD" ? "USD " : r"$"}${data.usdText}'),
+                              style: AppTextStyles.bodySecondary(context))
+                        else if (amount != null)
                           Text(
                               l10n.receiptDetectedAmount(
                                   AppCurrencyFormatter.formatFromVnd(

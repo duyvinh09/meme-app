@@ -69,7 +69,7 @@ class ReceiptAmountReader {
   static final _paymentMethod =
       RegExp(r'^thanh toan (?:bang|tien mat|the|chuyen khoan|qr)(?=\b|\d)');
   static final _foreign =
-      RegExp(r'\b(?:usd|eur|khr|gbp|jpy|thb)\b|[$€£¥៛฿]', caseSensitive: false);
+      RegExp(r'\b(?:usd|eur|khr|gbp|jpy|thb)\b|[€£¥៛฿]|\$\s*[0-9]|[0-9]\s*\$|^\s*\$\s*$', caseSensitive: false);
 
   static RegExp _labels(List<String> labels) {
     final longestFirst = [...labels]
@@ -238,6 +238,52 @@ class ReceiptAmountReader {
     }
     final value = int.tryParse(text.replaceAll(RegExp(r'\D'), ''));
     return value != null && value > 0 && value <= maxAmount ? value : null;
+  }
+
+  // Keep cents as integers. Match a complete total row so phone numbers,
+  // cash, change and item amounts cannot supply a partial match.
+  static final _usdRow = RegExp(
+      r'^(.+?)\s*[:：]?\s*((?:us\$|\$|\(?usd\)?)?)\s*'
+      r'(\d{1,3}(?:,\d{3})+(?:\.\d{2})?|\d+(?:[.,]\d{2})?)'
+      r'\s*(usd|us\$|\$)?$');
+  static final _explicitUsd = RegExp(r'\busd\b|\bus\$');
+  static final _otherCurrency = RegExp(
+      r'\b(?:eur|khr|gbp|jpy|thb|vnd|cad|aud|nzd|sgd|hkd)\b|[€£¥៛฿₫]|(?:ca?|au?|nz|sg?|hk)\$|\d\s*đ',
+      caseSensitive: false);
+
+  static bool explicitlyUsd(List<ReceiptLine> rows) =>
+      rows.any((row) => _explicitUsd.hasMatch(row.text.toLowerCase()));
+
+  static int? readUsdCents(List<ReceiptLine> rows) {
+    final explicit = explicitlyUsd(rows);
+    final mixed = rows.any((row) => _otherCurrency.hasMatch(row.text));
+    final values = <int>{};
+    final payable = <int>{};
+    for (final row in rows) {
+      final text = normalizeReceiptText(row.text);
+      final match = _usdRow.firstMatch(text);
+      if (match == null || _otherCurrency.hasMatch(row.text)) continue;
+      final marker = '${match[2]}${match[4] ?? ''}';
+      if (mixed && !_explicitUsd.hasMatch(marker)) continue;
+      if (!explicit && marker.isEmpty) continue;
+      final labelText = match[1]!.replaceFirst(RegExp(r'[\s:：]+$'), '');
+      if (RegExp(r'[0-9.,$-]$').hasMatch(labelText.trim())) continue;
+      final label = labelText.trim() == 'tong tt' ? 'tong thanh toan' : _canonicalLabel(labelText);
+      if (label == null || label == 'thanh tien') continue;
+      var number = match[3]!;
+      if (RegExp(r'^\d+,\d{2}$').hasMatch(number)) {
+        number = number.replaceAll(',', '.');
+      }
+      final digits = number.replaceAll(',', '').split('.');
+      final dollars = int.tryParse(digits.first);
+      if (dollars == null || dollars > maxAmount) continue;
+      final cents = dollars * 100 + (digits.length == 2 ? int.parse(digits.last) : 0);
+      if (cents > 0) {
+        (_payableLabels.contains(label) ? payable : values).add(cents);
+      }
+    }
+    final candidates = payable.isEmpty ? values : payable;
+    return candidates.length == 1 ? candidates.single : null;
   }
 
   static int? fromLines(List<ReceiptLine> lines) {

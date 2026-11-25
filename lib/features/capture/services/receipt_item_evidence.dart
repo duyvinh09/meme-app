@@ -4,6 +4,12 @@ import 'receipt_text.dart';
 class ReceiptItemEvidence {
   static const phrases = {
     'food': [
+      'mi 3 mien',
+      'mi an lien',
+      'mi goi',
+      'iced latte',
+      'grilled chicken',
+      'fried rice',
       'mo hanh',
       'pho mai',
       'sot tieu',

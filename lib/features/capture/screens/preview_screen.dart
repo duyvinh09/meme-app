@@ -803,17 +803,19 @@ class _PreviewScreenState extends State<PreviewScreen> {
     final currency = context.read<ProfileController>().currency;
     final expense = type == 'expense' && !isContribution;
     setState(() {
-      final amount = result.amountVnd;
+      final usd = currency == 'USD' && result.usdCents != null;
+      final amount = usd ? result.usdCents : result.amountVnd;
       if (amount != null &&
           amount > 0 &&
-          amount <= kMaxAmountValue &&
+          amount <= (usd ? kMaxAmountValue * 100 : kMaxAmountValue) &&
           policy.canFillAmount(
+              receiptCurrency: usd ? 'USD' : 'VND',
               currentRevision: _receiptAmountRevision,
               currentText: amountController.text,
               currentCurrency: currency,
               isExpense: expense)) {
         amountController.text =
-            NumberFormat.decimalPattern('vi_VN').format(amount);
+            usd ? result.usdText! : NumberFormat.decimalPattern('vi_VN').format(amount);
         _onAmountChanged(amountController.text);
       }
       final suggested = result.category;
