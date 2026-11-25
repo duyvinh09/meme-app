@@ -20,14 +20,19 @@ import '../../home/controllers/home_controller.dart';
 import '../../profile/controllers/profile_controller.dart';
 import '../controllers/capture_controller.dart';
 import '../controllers/photobooth_controller.dart';
+import '../models/camera_capture_mode.dart';
+import '../services/receipt_scan_service.dart';
+import '../controllers/receipt_scan_controller.dart';
+import '../models/receipt_scan_result.dart';
+import '../widgets/receipt_scanning_overlay.dart';
+import '../services/receipt_frame_crop.dart';
+import '../widgets/camera_mode_selector.dart';
 import '../models/photobooth_frame.dart';
 import '../models/photobooth_preview_capture.dart';
 import '../widgets/photobooth_button.dart';
 import '../widgets/photobooth_frame_picker.dart';
 import 'preview_screen.dart';
 import 'square_crop_screen.dart';
-
-enum CameraCaptureMode { photo, video }
 
 /// Subtle Rule-of-Thirds composition grid overlay
 class CameraGridPainter extends CustomPainter {
@@ -294,6 +299,9 @@ class _CameraScreenState extends State<CameraScreen>
   bool _isFlashOn = false;
   bool _isCapturing = false;
   final _photobooth = PhotoboothController();
+  final _billScan = ReceiptScanController();
+  File? _receiptFrame;
+  bool _billScanning = false;
 
   bool _isRecordingVideo = false;
   bool _isStoppingVideo = false;
@@ -383,6 +391,7 @@ class _CameraScreenState extends State<CameraScreen>
   @override
   void dispose() {
     _isDisposed = true;
+    _billScan.dispose();
     _photobooth.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _recordTimer?.cancel();
@@ -813,9 +822,13 @@ class _CameraScreenState extends State<CameraScreen>
     int? durationMs,
     bool isFrontCamera = false,
     PhotoboothPreviewCapture? photobooth,
+    bool scanReceipt = false,
+    ReceiptScanSnapshot? receiptSnapshot,
   }) {
     return PreviewScreen(
       photobooth: photobooth,
+      scanReceipt: scanReceipt,
+      receiptSnapshot: receiptSnapshot,
       imageFile: imageFile,
       originalImageFile: originalImageFile,
       initialCropState: initialCropState,
@@ -823,7 +836,7 @@ class _CameraScreenState extends State<CameraScreen>
       videoFile: videoFile,
       mediaType: mediaType,
       durationMs: durationMs,
-      initialType: widget.initialType,
+      initialType: scanReceipt ? 'expense' : widget.initialType,
       initialPrivacy: widget.initialPrivacy,
       initialGroupId: widget.initialGroupId,
       initialGroupName: widget.initialGroupName,
@@ -896,6 +909,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _pickFromGallery() async {
+    if (!_captureMode.allowsGallery) return;
     if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
     try {
@@ -1004,7 +1018,8 @@ class _CameraScreenState extends State<CameraScreen>
     }
 
     var flashNeedsReset = false;
-    final photoboothFrame = _photobooth.frame;
+    final isBill = _captureMode == CameraCaptureMode.bill;
+    final photoboothFrame = isBill ? null : _photobooth.frame;
     final photoboothSession = _photobooth.sessionId;
     try {
       HapticFeedback.selectionClick();
@@ -1030,6 +1045,34 @@ class _CameraScreenState extends State<CameraScreen>
       }
 
       if (!mounted || _isDisposed) return;
+      if (isBill) {
+        final minimumSweep =
+            Future<void>.delayed(const Duration(milliseconds: 600));
+        setState(() {
+          _billScanning = true;
+          _receiptFrame = File(file.path);
+        });
+        final square = await cropReceiptFrame(File(file.path));
+        if (!mounted || _isDisposed) return;
+        setState(() => _receiptFrame = square);
+        await _billScan.scan(square);
+        if (!mounted || _isDisposed) return;
+        await minimumSweep;
+        if (!mounted || _isDisposed) return;
+        final snapshot = _billScan.snapshot;
+        setState(() {
+          _billScanning = false;
+          _receiptFrame = null;
+        });
+        await _navigateToPreview(
+            _buildPreviewScreen(
+                imageFile: square,
+                mediaType: 'image',
+                scanReceipt: true,
+                receiptSnapshot: snapshot),
+            immediately: true);
+        return;
+      }
       final frame = photoboothFrame;
       if (frame != null && photoboothSession != _photobooth.sessionId) return;
       final File output;
@@ -1083,6 +1126,10 @@ class _CameraScreenState extends State<CameraScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(context.l10n.photoboothCaptureError)),
         );
+      } else if (mounted && !_isDisposed && isBill) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.receiptCameraError)),
+        );
       }
     } finally {
       if (mounted && !_isDisposed && _photobooth.complete) {
@@ -1096,6 +1143,8 @@ class _CameraScreenState extends State<CameraScreen>
       if (mounted) {
         setState(() {
           _isCapturing = false;
+          _billScanning = false;
+          _receiptFrame = null;
         });
       }
     }
@@ -1624,7 +1673,7 @@ class _CameraScreenState extends State<CameraScreen>
                         ),
                       ),
 
-                      if (_captureMode == CameraCaptureMode.photo)
+                      if (_captureMode.allowsPhotobooth)
                         PositionedDirectional(
                           end: 22,
                           bottom: 22,
@@ -1673,99 +1722,53 @@ class _CameraScreenState extends State<CameraScreen>
               ),
             ),
           ),
+        if (_billScanning && _receiptFrame != null)
+          Positioned.fill(
+              child: Padding(
+                  padding: hasGradientFrame
+                      ? const EdgeInsets.all(2.5)
+                      : EdgeInsets.zero,
+                  child: ClipRRect(
+                      borderRadius:
+                          BorderRadius.circular(frameBorderRadius - 2.5),
+                      child: ReceiptScanningOverlay(
+                          image: ResizeImage(FileImage(_receiptFrame!),
+                              width: 1000),
+                          accent: theme.shutterAccent)))),
       ],
     );
   }
 
-  Widget _buildModeSwitcher(CameraThemeData theme) {
-    final activeColor = theme.shutterAccent;
+  Widget _buildModeSwitcher(CameraThemeData theme) => CameraModeSelector(
+        mode: _captureMode,
+        accent: theme.shutterAccent,
+        border: theme.glassButtonBorder,
+        enabled: !_isCapturing && !_isRecordingVideo && !_isStoppingVideo,
+        allowBill: ReceiptScanService.isSupported &&
+            !widget.isGroupContribution &&
+            !(widget.lockType && widget.initialType == 'income'),
+        onChanged: _setCaptureMode,
+      );
 
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.38),
-        borderRadius: BorderRadius.circular(AppSizes.radiusPill),
-        border: Border.all(
-          color: theme.glassButtonBorder,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Photo mode button
-          GestureDetector(
-            onTap: () {
-              if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
-              HapticFeedback.selectionClick();
-              setState(() {
-                _captureMode = CameraCaptureMode.photo;
-              });
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _captureMode == CameraCaptureMode.photo
-                    ? activeColor
-                    : Colors.transparent,
-              ),
-              child: Center(
-                child: Icon(
-                  CupertinoIcons.camera_fill,
-                  size: 18,
-                  color: _captureMode == CameraCaptureMode.photo
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.75),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          // Video mode button
-          GestureDetector(
-            onTap: () {
-              if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
-              HapticFeedback.selectionClick();
-              _photobooth.select(null);
-              setState(() {
-                _captureMode = CameraCaptureMode.video;
-              });
-              // Proactively warm up the MediaRecorder when switching to video
-              // mode so the codec is ready before the user presses record.
-              final ctrl = _controller;
-              if (ctrl != null && ctrl.value.isInitialized) {
-                ctrl.prepareForVideoRecording().catchError((_) {});
-              }
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _captureMode == CameraCaptureMode.video
-                    ? activeColor
-                    : Colors.transparent,
-              ),
-              child: Center(
-                child: Icon(
-                  CupertinoIcons.videocam_fill,
-                  size: 20,
-                  color: _captureMode == CameraCaptureMode.video
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.75),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  void _setCaptureMode(CameraCaptureMode mode) {
+    if (_isCapturing ||
+        _isRecordingVideo ||
+        _isStoppingVideo ||
+        mode == _captureMode) {
+      return;
+    }
+    HapticFeedback.selectionClick();
+    if (!mode.allowsPhotobooth) _photobooth.clear();
+    setState(() => _captureMode = mode);
+    if (mode == CameraCaptureMode.video) {
+      final controller = _controller;
+      if (controller != null && controller.value.isInitialized) {
+        unawaited(
+            controller.prepareForVideoRecording().catchError((Object error) {
+          debugPrint('Camera video preparation failed: ${error.runtimeType}');
+        }));
+      }
+    }
   }
 
   Widget _buildShutterButton(CameraThemeData theme) {
@@ -1966,18 +1969,21 @@ class _CameraScreenState extends State<CameraScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _circleGlassButton(
-                              onTap: _pickFromGallery,
-                              square: true,
-                              size: sideButtonSize,
-                              showBorder: false,
-                              bgColor: Colors.transparent,
-                              child: Icon(
-                                CupertinoIcons.photo_on_rectangle,
-                                color: Colors.white,
-                                size: sideIconSize,
+                            if (!_captureMode.allowsGallery)
+                              SizedBox.square(dimension: sideButtonSize)
+                            else
+                              _circleGlassButton(
+                                onTap: _pickFromGallery,
+                                square: true,
+                                size: sideButtonSize,
+                                showBorder: false,
+                                bgColor: Colors.transparent,
+                                child: Icon(
+                                  CupertinoIcons.photo_on_rectangle,
+                                  color: Colors.white,
+                                  size: sideIconSize,
+                                ),
                               ),
-                            ),
                             _buildShutterButton(theme),
                             Opacity(
                               opacity: (_isCameraReady && _cameras.length >= 2)
@@ -2006,21 +2012,30 @@ class _CameraScreenState extends State<CameraScreen>
                         ),
                       ),
                       const SizedBox(height: 10),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: TextButton(
-                          onPressed: _skipToPreview,
-                          child: Text(
-                            context.l10n.skipPhoto,
-                            style:
-                                AppTextStyles.bodySecondary(context).copyWith(
-                              color: Colors.white70,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
+                      if (_captureMode == CameraCaptureMode.bill)
+                        Padding(
+                            padding: const EdgeInsetsDirectional.fromSTEB(
+                                24, 16, 24, 0),
+                            child: Text(context.l10n.receiptBillHint,
+                                textAlign: TextAlign.center,
+                                style: AppTextStyles.bodySecondary(context)
+                                    .copyWith(color: Colors.white70)))
+                      else
+                        Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: TextButton(
+                            onPressed: _skipToPreview,
+                            child: Text(
+                              context.l10n.skipPhoto,
+                              style:
+                                  AppTextStyles.bodySecondary(context).copyWith(
+                                color: Colors.white70,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                     ],
                   ),
                 ),

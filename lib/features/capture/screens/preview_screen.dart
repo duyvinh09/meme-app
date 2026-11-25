@@ -4,6 +4,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -31,6 +32,10 @@ import '../../profile/widgets/avatar_with_frame.dart';
 import '../../../core/services/failed_post_service.dart';
 import '../../../data/models/failed_post_model.dart';
 import '../controllers/capture_controller.dart';
+import '../controllers/receipt_scan_controller.dart';
+import '../models/receipt_autofill_policy.dart';
+import '../models/receipt_scan_result.dart';
+import '../widgets/receipt_scan_feedback.dart';
 import '../models/photobooth_preview_capture.dart';
 import '../services/photobooth_canvas.dart';
 import '../widgets/amount_calculator_keypad_sheet.dart';
@@ -40,6 +45,8 @@ import 'square_crop_screen.dart';
 class PreviewScreen extends StatefulWidget {
   final File? imageFile;
   final PhotoboothPreviewCapture? photobooth;
+  final bool scanReceipt;
+  final ReceiptScanSnapshot? receiptSnapshot;
   final File? originalImageFile;
   final SquareCropState? initialCropState;
   final bool isFromGallery;
@@ -60,6 +67,8 @@ class PreviewScreen extends StatefulWidget {
     super.key,
     required this.imageFile,
     this.photobooth,
+    this.scanReceipt = false,
+    this.receiptSnapshot,
     this.originalImageFile,
     this.initialCropState,
     this.isFromGallery = false,
@@ -82,6 +91,10 @@ class PreviewScreen extends StatefulWidget {
 }
 
 class _PreviewScreenState extends State<PreviewScreen> {
+  final _receiptScan = ReceiptScanController();
+  bool _receiptSnapshotApplied = false;
+  int _receiptAmountRevision = 0;
+  int _receiptCategoryRevision = 0;
   final amountController = TextEditingController();
   final captionController = TextEditingController();
   final ValueNotifier<bool> _hasAmountNotifier = ValueNotifier<bool>(false);
@@ -371,6 +384,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
       category = 'Quỹ nhóm';
     }
     _currentImageFile = widget.imageFile;
+    final receiptSnapshot = widget.receiptSnapshot;
+    if (receiptSnapshot != null) _receiptScan.restoreSnapshot(receiptSnapshot);
     if (widget.photobooth != null) {
       _photoboothResolution = _resolvePhotoboothImage();
     }
@@ -378,6 +393,10 @@ class _PreviewScreenState extends State<PreviewScreen> {
     _lastCropState = widget.initialCropState;
     _prepareVideoIfNeeded();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.scanReceipt && widget.receiptSnapshot == null) {
+        _startReceiptScan();
+      }
       final uid = context.read<AuthController>().user?.uid;
       if (uid != null && uid.isNotEmpty) {
         final userRepo = context.read<UserRepository>();
@@ -491,6 +510,19 @@ class _PreviewScreenState extends State<PreviewScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final snapshot = widget.receiptSnapshot;
+    if (!_receiptSnapshotApplied && snapshot != null) {
+      _receiptSnapshotApplied = true;
+      final result = snapshot.result;
+      if (result != null) {
+        _applyReceiptResult(
+            result,
+            ReceiptAutofillPolicy(
+                amountRevision: _receiptAmountRevision,
+                categoryRevision: _receiptCategoryRevision,
+                currency: context.read<ProfileController>().currency));
+      }
+    }
 
     if (!_loadedBudgets) {
       final uid = context.read<AuthController>().user?.uid;
@@ -515,6 +547,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   @override
   void dispose() {
+    _receiptScan.dispose();
     widget.photobooth?.dispose();
     _previewScrollController.dispose();
     _hasAmountNotifier.dispose();
@@ -737,7 +770,63 @@ class _PreviewScreenState extends State<PreviewScreen> {
     });
   }
 
+  void _startReceiptScan() {
+    // OCR must read exactly the saved image displayed in the preview.
+    final file = _currentImageFile;
+    if (!mounted ||
+        file == null ||
+        type != 'expense' ||
+        isContribution ||
+        _receiptScan.phase == ReceiptScanPhase.loading) {
+      return;
+    }
+    final policy = ReceiptAutofillPolicy(
+      amountRevision: _receiptAmountRevision,
+      categoryRevision: _receiptCategoryRevision,
+      currency: context.read<ProfileController>().currency,
+    );
+    unawaited(
+        _readReceipt(file, policy).catchError((Object error, StackTrace stack) {
+      debugPrint('Receipt autofill failed (${error.runtimeType})\n$stack');
+      if (mounted) AppToast.show(context, context.l10n.receiptFailed);
+    }));
+  }
+
+  Future<void> _readReceipt(File file, ReceiptAutofillPolicy policy) async {
+    final result = await _receiptScan.scan(file);
+    if (!mounted || result == null) return;
+    _applyReceiptResult(result, policy);
+  }
+
+  void _applyReceiptResult(
+      ReceiptScanResult result, ReceiptAutofillPolicy policy) {
+    final currency = context.read<ProfileController>().currency;
+    final expense = type == 'expense' && !isContribution;
+    setState(() {
+      final amount = result.amountVnd;
+      if (amount != null &&
+          amount > 0 &&
+          amount <= kMaxAmountValue &&
+          policy.canFillAmount(
+              currentRevision: _receiptAmountRevision,
+              currentText: amountController.text,
+              currentCurrency: currency,
+              isExpense: expense)) {
+        amountController.text =
+            NumberFormat.decimalPattern('vi_VN').format(amount);
+        _onAmountChanged(amountController.text);
+      }
+      final suggested = result.category;
+      if (suggested != null &&
+          policy.canFillCategory(
+              currentRevision: _receiptCategoryRevision, isExpense: expense)) {
+        category = suggested.category;
+      }
+    });
+  }
+
   void _onAmountChanged(String value) {
+    _receiptAmountRevision++;
     final currency = context.read<ProfileController>().currency;
 
     final raw = currency == 'USD'
@@ -1193,6 +1282,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
                       onTap: () {
                         HapticFeedback.selectionClick();
                         setState(() {
+                          _receiptCategoryRevision++;
                           final isBudget = item['isCustomBudget'] == true;
                           category =
                               isBudget ? label : _toCanonicalCategory(label);
@@ -1399,6 +1489,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       final categories = expenseCategoriesForAction();
 
       setState(() {
+        _receiptCategoryRevision++;
         type = 'expense';
         final currentCanonical = _toCanonicalCategory(category);
         category = categories.any(
@@ -1419,6 +1510,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       final categories = incomeCategoriesForAction();
 
       setState(() {
+        _receiptCategoryRevision++;
         type = 'income';
         final currentCanonical = _toCanonicalCategory(category);
         category = categories.any(
@@ -1640,7 +1732,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
                             ? Image.file(
                                 _currentImageFile!,
                                 key: ValueKey(_currentImageFile!.path),
-                                fit: BoxFit.cover,
+                                fit: widget.scanReceipt
+                                    ? BoxFit.contain
+                                    : BoxFit.cover,
                                 cacheWidth: 800,
                               )
                             : _CategoryFallbackPreview(
@@ -1995,6 +2089,36 @@ class _PreviewScreenState extends State<PreviewScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           _buildPreviewMedia(previewSize),
+                          if (widget.scanReceipt)
+                            Padding(
+                                padding: const EdgeInsetsDirectional.fromSTEB(
+                                    18, 12, 18, 0),
+                                child: ListenableBuilder(
+                                    listenable: _receiptScan,
+                                    builder: (context, _) {
+                                      final suggestion =
+                                          _receiptScan.result?.category;
+                                      return ReceiptScanFeedback(
+                                          requiresRestart:
+                                              _receiptScan.requiresRestart,
+                                          phase: _receiptScan.phase,
+                                          result: _receiptScan.result,
+                                          currency: context
+                                              .watch<ProfileController>()
+                                              .currency,
+                                          categoryLabel: suggestion == null
+                                              ? null
+                                              : _localizedCategoryLabel(
+                                                  suggestion.category),
+                                          retake:
+                                              widget.receiptSnapshot != null,
+                                          onRetry:
+                                              widget.receiptSnapshot == null
+                                                  ? _startReceiptScan
+                                                  : () {
+                                                      Navigator.pop(context);
+                                                    });
+                                    })),
 
                           SizedBox(height: isShort ? 10 : 14),
 

@@ -6279,6 +6279,120 @@ abstract class AppLocalizations {
   /// **'Không mở được liên kết. Bạn thử lại nhé.'**
   String get developerLinkError;
 
+  /// No description provided for @receiptPhotoMode.
+  ///
+  /// In vi, this message translates to:
+  /// **'Ảnh'**
+  String get receiptPhotoMode;
+
+  /// No description provided for @receiptBillMode.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bill'**
+  String get receiptBillMode;
+
+  /// No description provided for @receiptVideoMode.
+  ///
+  /// In vi, this message translates to:
+  /// **'Video'**
+  String get receiptVideoMode;
+
+  /// No description provided for @receiptBillHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đặt trọn một hóa đơn trong khung rồi chụp nhé.'**
+  String get receiptBillHint;
+
+  /// No description provided for @receiptReading.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang quét hóa đơn…'**
+  String get receiptReading;
+
+  /// No description provided for @receiptReadText.
+  ///
+  /// In vi, this message translates to:
+  /// **'Văn bản đã đọc từ hóa đơn'**
+  String get receiptReadText;
+
+  /// No description provided for @receiptRestartRequired.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tính năng quét chưa được nạp. Bạn dừng hẳn rồi chạy lại bản app mới nhé.'**
+  String get receiptRestartRequired;
+
+  /// No description provided for @receiptReviewHint.
+  ///
+  /// In vi, this message translates to:
+  /// **'Bạn kiểm tra số tiền và danh mục trước khi đăng nhé.'**
+  String get receiptReviewHint;
+
+  /// No description provided for @receiptFailed.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa đọc được hóa đơn. Bạn có thể nhập thông tin thủ công.'**
+  String get receiptFailed;
+
+  /// No description provided for @receiptNoText.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa thấy chữ rõ trên hóa đơn. Bạn thử chụp rõ hơn hoặc nhập thủ công nhé.'**
+  String get receiptNoText;
+
+  /// No description provided for @receiptAmountUnknown.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa xác định rõ tổng tiền. Bạn nhập số tiền cần trả nhé.'**
+  String get receiptAmountUnknown;
+
+  /// No description provided for @receiptCategoryUnknown.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa chắc danh mục. Bạn chọn giúp nhé.'**
+  String get receiptCategoryUnknown;
+
+  /// No description provided for @receiptForeignCurrency.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tự điền số tiền hiện hỗ trợ hóa đơn VND.'**
+  String get receiptForeignCurrency;
+
+  /// No description provided for @receiptCurrencyNotice.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tổng trên hóa đơn là VND. Bạn kiểm tra quy đổi trước khi nhập bằng đơn vị khác nhé.'**
+  String get receiptCurrencyNotice;
+
+  /// No description provided for @receiptRetry.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đọc lại'**
+  String get receiptRetry;
+
+  /// No description provided for @receiptRetake.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chụp lại hóa đơn'**
+  String get receiptRetake;
+
+  /// No description provided for @receiptDetectedAmount.
+  ///
+  /// In vi, this message translates to:
+  /// **'Tổng trên hóa đơn: {amount}'**
+  String receiptDetectedAmount(String amount);
+
+  /// No description provided for @receiptDetectedCategory.
+  ///
+  /// In vi, this message translates to:
+  /// **'Danh mục gợi ý: {category}'**
+  String receiptDetectedCategory(String category);
+
+  /// No description provided for @receiptCameraError.
+  ///
+  /// In vi, this message translates to:
+  /// **'Chưa chụp được hóa đơn. Bạn thử lại nhé.'**
+  String get receiptCameraError;
+
   /// No description provided for @aboutMeme.
   ///
   /// In vi, this message translates to:

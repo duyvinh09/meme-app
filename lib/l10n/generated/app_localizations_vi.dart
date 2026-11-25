@@ -3579,6 +3579,75 @@ class AppLocalizationsVi extends AppLocalizations {
   String get developerLinkError => 'Không mở được liên kết. Bạn thử lại nhé.';
 
   @override
+  String get receiptPhotoMode => 'Ảnh';
+
+  @override
+  String get receiptBillMode => 'Bill';
+
+  @override
+  String get receiptVideoMode => 'Video';
+
+  @override
+  String get receiptBillHint =>
+      'Đặt trọn một hóa đơn trong khung rồi chụp nhé.';
+
+  @override
+  String get receiptReading => 'Đang quét hóa đơn…';
+
+  @override
+  String get receiptReadText => 'Văn bản đã đọc từ hóa đơn';
+
+  @override
+  String get receiptRestartRequired =>
+      'Tính năng quét chưa được nạp. Bạn dừng hẳn rồi chạy lại bản app mới nhé.';
+
+  @override
+  String get receiptReviewHint =>
+      'Bạn kiểm tra số tiền và danh mục trước khi đăng nhé.';
+
+  @override
+  String get receiptFailed =>
+      'Chưa đọc được hóa đơn. Bạn có thể nhập thông tin thủ công.';
+
+  @override
+  String get receiptNoText =>
+      'Chưa thấy chữ rõ trên hóa đơn. Bạn thử chụp rõ hơn hoặc nhập thủ công nhé.';
+
+  @override
+  String get receiptAmountUnknown =>
+      'Chưa xác định rõ tổng tiền. Bạn nhập số tiền cần trả nhé.';
+
+  @override
+  String get receiptCategoryUnknown => 'Chưa chắc danh mục. Bạn chọn giúp nhé.';
+
+  @override
+  String get receiptForeignCurrency =>
+      'Tự điền số tiền hiện hỗ trợ hóa đơn VND.';
+
+  @override
+  String get receiptCurrencyNotice =>
+      'Tổng trên hóa đơn là VND. Bạn kiểm tra quy đổi trước khi nhập bằng đơn vị khác nhé.';
+
+  @override
+  String get receiptRetry => 'Đọc lại';
+
+  @override
+  String get receiptRetake => 'Chụp lại hóa đơn';
+
+  @override
+  String receiptDetectedAmount(String amount) {
+    return 'Tổng trên hóa đơn: $amount';
+  }
+
+  @override
+  String receiptDetectedCategory(String category) {
+    return 'Danh mục gợi ý: $category';
+  }
+
+  @override
+  String get receiptCameraError => 'Chưa chụp được hóa đơn. Bạn thử lại nhé.';
+
+  @override
   String get aboutMeme => 'Về Meme';
 
   @override

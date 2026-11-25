@@ -3631,6 +3631,77 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not open this link. Please try again.';
 
   @override
+  String get receiptPhotoMode => 'Photo';
+
+  @override
+  String get receiptBillMode => 'Bill';
+
+  @override
+  String get receiptVideoMode => 'Video';
+
+  @override
+  String get receiptBillHint =>
+      'Fit one complete receipt in the frame, then take a photo.';
+
+  @override
+  String get receiptReading => 'Scanning receipt…';
+
+  @override
+  String get receiptReadText => 'Text read from the receipt';
+
+  @override
+  String get receiptRestartRequired =>
+      'Receipt scanning is not loaded in this running build. Fully restart the updated app.';
+
+  @override
+  String get receiptReviewHint =>
+      'Check the amount and category before posting.';
+
+  @override
+  String get receiptFailed =>
+      'Could not read this receipt. You can enter the details manually.';
+
+  @override
+  String get receiptNoText =>
+      'No readable text found. Try a clearer photo or enter the details manually.';
+
+  @override
+  String get receiptAmountUnknown =>
+      'Final amount is unclear. Please enter the amount due.';
+
+  @override
+  String get receiptCategoryUnknown =>
+      'Category is uncertain. Please choose a category.';
+
+  @override
+  String get receiptForeignCurrency =>
+      'Automatic amount entry currently supports VND receipts only.';
+
+  @override
+  String get receiptCurrencyNotice =>
+      'The receipt total is in VND. Check the conversion before entering an amount in another currency.';
+
+  @override
+  String get receiptRetry => 'Read again';
+
+  @override
+  String get receiptRetake => 'Retake receipt';
+
+  @override
+  String receiptDetectedAmount(String amount) {
+    return 'Receipt total: $amount';
+  }
+
+  @override
+  String receiptDetectedCategory(String category) {
+    return 'Suggested category: $category';
+  }
+
+  @override
+  String get receiptCameraError =>
+      'Could not capture the receipt. Please try again.';
+
+  @override
   String get aboutMeme => 'About Meme';
 
   @override
