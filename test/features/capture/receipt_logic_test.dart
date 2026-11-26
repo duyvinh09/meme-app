@@ -10,6 +10,29 @@ ReceiptLine line(String text,
     ReceiptLine(text, left: x, top: y, width: width, height: 20);
 
 void main() {
+  test('OCR noise in the header must not hide the VND payable total', () {
+    final rows = [
+      line(r'S$_ THANH TI', y: 10),
+      line('Tong tien hang: 54,000', y: 40),
+      line('Chiet khau: 4,0', y: 70),
+      line('TONG CONG: 50,000', y: 100),
+    ];
+    expect(ReceiptAmountReader.fromLines(rows), 50000);
+    expect(ReceiptAmountReader.readUsdCents(rows), isNull);
+  });
+
+  test('Reads USD payable total instead of subtotal, cash or change', () {
+    final rows = [
+      line(r'SUBTOTAL $18.00'),
+      line(r'TAX $1.80'),
+      line(r'T0TAL $19.80'),
+      line(r'CASH $20.00'),
+      line(r'CHANGE $0.20'),
+    ];
+    expect(ReceiptAmountReader.readUsdCents(rows), 1980);
+    expect(ReceiptAmountReader.fromLines(rows), isNull);
+  });
+
   TestWidgetsFlutterBinding.ensureInitialized();
   group('Final payable amount', () {
     test(

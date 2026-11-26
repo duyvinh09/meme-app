@@ -24,12 +24,22 @@ class ReceiptCategorySuggestion {
 class ReceiptScanResult {
   const ReceiptScanResult(
       {this.amountVnd,
+      this.usdCents,
+      this.explicitUsd = false,
       this.category,
       this.hasText = true,
       this.foreignCurrency = false,
       this.recognizedText = ''});
   final String recognizedText;
   final int? amountVnd;
+  final int? usdCents;
+  final bool explicitUsd;
+
+  String? get usdText {
+    final cents = usdCents;
+    if (cents == null) return null;
+    return '${cents ~/ 100}.${(cents % 100).toString().padLeft(2, '0')}';
+  }
   final ReceiptCategorySuggestion? category;
   final bool hasText;
   final bool foreignCurrency;

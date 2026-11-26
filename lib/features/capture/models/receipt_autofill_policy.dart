@@ -9,6 +9,7 @@ class ReceiptAutofillPolicy {
 
   bool canFillAmount(
           {required int currentRevision,
+          String receiptCurrency = 'VND',
           required String currentText,
           required String currentCurrency,
           required bool isExpense}) =>
@@ -16,7 +17,7 @@ class ReceiptAutofillPolicy {
       amountRevision == 0 &&
       currentRevision == amountRevision &&
       currentText.trim().isEmpty &&
-      currency == 'VND' &&
+      currency == receiptCurrency &&
       currentCurrency == currency;
 
   bool canFillCategory(
