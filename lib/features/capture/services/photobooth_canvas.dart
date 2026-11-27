@@ -45,6 +45,54 @@ class PhotoboothScene {
   int get hashCode => Object.hash(frame, artwork, Object.hashAll(shots));
 }
 
+/// Small contact sheet for classification only. Never draws frame artwork,
+/// masks or decorative text, and does not wait for the full JPEG export.
+Future<Uint8List> createPhotoboothCategoryImage(PhotoboothScene scene) async {
+  if (scene.shots.isEmpty) throw StateError('Photobooth has no photos');
+  const size = 224.0;
+  final columns = scene.shots.length == 1 ? 1 : 2;
+  final rows = (scene.shots.length / columns).ceil();
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+  final paint = ui.Paint()..filterQuality = ui.FilterQuality.low;
+  for (var i = 0; i < scene.shots.length; i++) {
+    final shot = scene.shots[i];
+    final rowStart = (i ~/ columns) * columns;
+    final rowColumns = scene.shots.length - rowStart < columns
+        ? scene.shots.length - rowStart
+        : columns;
+    final target = ui.Rect.fromLTWH((i % columns) * size / rowColumns,
+        (i ~/ columns) * size / rows, size / rowColumns, size / rows);
+    final side = shot.image.width < shot.image.height
+        ? shot.image.width.toDouble()
+        : shot.image.height.toDouble();
+    final source = ui.Rect.fromCenter(
+        center: ui.Offset(shot.image.width / 2, shot.image.height / 2),
+        width: side,
+        height: side);
+    canvas.save();
+    if (shot.mirrored) {
+      canvas.translate(target.left + target.right, 0);
+      canvas.scale(-1, 1);
+    }
+    canvas.drawImageRect(shot.image, source, target, paint);
+    canvas.restore();
+  }
+  final picture = recorder.endRecording();
+  try {
+    final image = await picture.toImage(size.toInt(), size.toInt());
+    try {
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
+      if (bytes == null) throw StateError('Could not prepare category image');
+      return bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes);
+    } finally {
+      image.dispose();
+    }
+  } finally {
+    picture.dispose();
+  }
+}
+
 class PhotoboothCanvasPainter extends CustomPainter {
   PhotoboothCanvasPainter(this.scene);
   final PhotoboothScene scene;

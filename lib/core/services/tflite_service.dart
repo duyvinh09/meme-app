@@ -89,7 +89,17 @@ class TFLiteService {
   /// Throws when the model, labels or image cannot be loaded, or inference
   /// fails — callers must surface the error to the user.
   Future<AiCategoryResult> classifyImage(String imagePath) {
-    final result = _queue.then((_) => _classifyImage(imagePath));
+    return _enqueue(() => _classifyImage(imagePath));
+  }
+
+  /// Classify a small, undecorated in-memory image without writing a file.
+  Future<AiCategoryResult> classifyImageBytes(Uint8List bytes) {
+    return _enqueue(() => _classifyImage('', imageBytes: bytes));
+  }
+
+  Future<AiCategoryResult> _enqueue(
+      Future<AiCategoryResult> Function() action) {
+    final result = _queue.then((_) => action());
     _queue =
         result.then<void>((_) {}, onError: (Object error, StackTrace stack) {
       debugPrint('Image inference failed (${error.runtimeType})');
@@ -97,9 +107,10 @@ class TFLiteService {
     return result;
   }
 
-  Future<AiCategoryResult> _classifyImage(String imagePath) async {
+  Future<AiCategoryResult> _classifyImage(String imagePath,
+      {Uint8List? imageBytes}) async {
     final file = File(imagePath);
-    if (!await file.exists()) {
+    if (imageBytes == null && !await file.exists()) {
       throw ArgumentError('Tệp ảnh không tồn tại: $imagePath');
     }
 
@@ -120,7 +131,10 @@ class TFLiteService {
     final rgbBytes = await compute(
       _readImageAsRgbBytes,
       _ImageParams(
-          imagePath: imagePath, width: targetWidth, height: targetHeight),
+          imagePath: imagePath,
+          width: targetWidth,
+          height: targetHeight,
+          bytes: imageBytes),
     );
 
     Object input;
@@ -182,11 +196,13 @@ List<num> _runCategoryInference((int, Object, int, bool) params) {
 }
 
 class _ImageParams {
+  final Uint8List? bytes;
   final String imagePath;
   final int width;
   final int height;
 
   const _ImageParams({
+    this.bytes,
     required this.imagePath,
     required this.width,
     required this.height,
@@ -197,10 +213,10 @@ class _ImageParams {
 /// [params.width]x[params.height], returning raw RGB bytes (3 channels, 0-255, no alpha).
 Uint8List _readImageAsRgbBytes(_ImageParams params) {
   final file = File(params.imagePath);
-  if (!file.existsSync()) {
+  if (params.bytes == null && !file.existsSync()) {
     throw ArgumentError('Không tìm thấy tệp ảnh: ${params.imagePath}');
   }
-  final bytes = file.readAsBytesSync();
+  final bytes = params.bytes ?? file.readAsBytesSync();
   var decoded = img.decodeImage(bytes);
   if (decoded == null) {
     throw ArgumentError('Không đọc được định dạng ảnh: ${params.imagePath}');

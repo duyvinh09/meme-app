@@ -99,6 +99,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
   int _receiptCategoryRevision = 0;
   bool _isAiClassifying = false;
   int _imageCategoryRequest = 0;
+  bool _photoboothCategoryStarted = false;
   final amountController = TextEditingController();
   final captionController = TextEditingController();
   final ValueNotifier<bool> _hasAmountNotifier = ValueNotifier<bool>(false);
@@ -442,7 +443,6 @@ class _PreviewScreenState extends State<PreviewScreen> {
       if (file == null) throw StateError('Photobooth capture was cancelled');
       if (!mounted) return;
       setState(() => _currentImageFile = file);
-      unawaited(_autoClassifyCategory());
     } catch (error, stack) {
       debugPrint('Preview photobooth export failed: $error\n$stack');
       if (!mounted) return;
@@ -491,7 +491,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
 
   Future<void> _autoClassifyCategory() async {
     final file = _currentImageFile;
-    if (file == null ||
+    final photobooth = widget.photobooth;
+    if ((file == null && photobooth == null) ||
         isVideo ||
         widget.scanReceipt ||
         widget.receiptSnapshot != null ||
@@ -499,14 +500,30 @@ class _PreviewScreenState extends State<PreviewScreen> {
         _receiptCategoryRevision != 0) {
       return;
     }
+    if (photobooth != null) {
+      if (_photoboothCategoryStarted) return;
+      _photoboothCategoryStarted = true;
+    }
     final request = ++_imageCategoryRequest;
     final originalType = type;
     setState(() => _isAiClassifying = true);
     try {
-      final result = await TFLiteService.instance.classifyImage(file.path);
+      final AiCategoryResult result;
+      if (photobooth != null) {
+        final bytes = await photobooth.categoryImage;
+        if (!mounted ||
+            request != _imageCategoryRequest ||
+            _receiptCategoryRevision != 0 ||
+            type != originalType) {
+          return;
+        }
+        result = await TFLiteService.instance.classifyImageBytes(bytes);
+      } else {
+        result = await TFLiteService.instance.classifyImage(file!.path);
+      }
       if (!mounted ||
           request != _imageCategoryRequest ||
-          file.path != _currentImageFile?.path ||
+          (photobooth == null && file?.path != _currentImageFile?.path) ||
           type != originalType) {
         return;
       }

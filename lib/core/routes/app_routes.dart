@@ -510,11 +510,6 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       if (index == 0) {
         _showCaptureFabNow();
       }
-
-      // Pre-warm camera in the background so opening camera is instant without grey delay
-      Future.delayed(const Duration(milliseconds: 300), () {
-        CameraScreen.warmUp();
-      });
     });
   }
 
@@ -524,7 +519,6 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
       _updatePresence(true);
       _startPresenceHeartbeat();
       NotificationService.instance.checkAndShowInAppRewindNotification();
-      CameraScreen.warmUp();
       unawaited(AppWidgetService.instance.updateWidgets());
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive ||
@@ -532,7 +526,6 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
         state == AppLifecycleState.detached) {
       _stopPresenceHeartbeat();
       _updatePresence(false);
-      CameraScreen.disposeSharedCamera();
     }
   }
 
@@ -792,7 +785,6 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     isCollapsed: isNavbarCollapsed,
                     onToggle: () {
                       HapticFeedback.selectionClick();
-                      CameraScreen.warmUp();
                       setState(() {
                         isFabMenuOpen = !isFabMenuOpen;
                       });
@@ -803,7 +795,6 @@ class MainShellState extends State<MainShell> with WidgetsBindingObserver {
                     },
                     onCameraTap: () {
                       setState(() => isFabMenuOpen = false);
-                      CameraScreen.warmUp();
                       Navigator.pushNamed(context, RouteNames.addTransaction);
                     },
                     onChatTap: () {

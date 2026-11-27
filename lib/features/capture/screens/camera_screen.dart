@@ -14,6 +14,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../core/extensions/localization_extension.dart';
 import '../../../core/routes/route_names.dart';
+import '../../../core/routes/app_routes.dart';
 import '../../../core/services/location_service.dart';
 import '../../../core/theme/camera_theme.dart';
 import '../../home/controllers/home_controller.dart';
@@ -189,100 +190,39 @@ class CameraScreen extends StatefulWidget {
     this.isGroupContribution = false,
   });
 
-  /// Pre-warms the camera controller in the background so that navigating
-  /// to CameraScreen opens the camera preview immediately without any grey screen delay.
-  static Future<void> warmUp() => _CameraScreenState.warmUp();
-
-  /// Releases the camera hardware when the app goes into the background.
-  static Future<void> disposeSharedCamera() =>
-      _CameraScreenState.disposeSharedCamera();
-
   @override
   State<CameraScreen> createState() => _CameraScreenState();
 }
 
 class _CameraScreenState extends State<CameraScreen>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, RouteAware {
   static List<CameraDescription>? _cachedCameras;
-  static CameraController? _sharedController;
-  static Future<void>? _sharedInitFuture;
-  static int _sharedCameraIndex = 0;
-  static double _cachedMinZoom = 1.0;
-  static double _cachedMaxZoom = 4.0;
+  static Future<void>? _hardwareQueue;
 
-  static Future<void> warmUp() async {
-    if (_sharedController != null && _sharedController!.value.isInitialized) {
-      try {
-        await _sharedController!.resumePreview();
-      } catch (_) {}
-      return;
-    }
-    if (_sharedInitFuture != null) {
-      return _sharedInitFuture;
-    }
-
-    _sharedInitFuture = _doWarmUp();
-    try {
-      await _sharedInitFuture;
-    } finally {
-      _sharedInitFuture = null;
-    }
+  static Future<void> _serializeHardware(Future<void> Function() action) {
+    final next = (_hardwareQueue ?? Future<void>.value()).then((_) => action());
+    final handled = next.catchError((Object error, StackTrace stack) {
+      debugPrint('Camera lifecycle operation failed: $error');
+    });
+    _hardwareQueue = handled;
+    unawaited(handled.then((_) {
+      if (identical(_hardwareQueue, handled)) _hardwareQueue = null;
+    }));
+    return handled;
   }
 
-  static Future<void> _doWarmUp() async {
-    try {
-      if (_cachedCameras == null || _cachedCameras!.isEmpty) {
-        _cachedCameras = await availableCameras().timeout(
-          const Duration(seconds: 4),
-          onTimeout: () => <CameraDescription>[],
-        );
-      }
-      final cameras = _cachedCameras ?? [];
-      if (cameras.isEmpty) return;
-
-      if (_sharedCameraIndex >= cameras.length) {
-        _sharedCameraIndex = 0;
-      }
-
-      final camera = cameras[_sharedCameraIndex];
-      final controller = CameraController(
-        camera,
-        ResolutionPreset.high,
-        enableAudio: true,
-      );
-      await controller.initialize();
-      _sharedController = controller;
-
-      try {
-        _cachedMinZoom = await controller.getMinZoomLevel();
-        _cachedMaxZoom = await controller.getMaxZoomLevel();
-      } catch (_) {
-        _cachedMinZoom = 1.0;
-        _cachedMaxZoom = 4.0;
-      }
-      if (_cachedMinZoom < 1.0) _cachedMinZoom = 1.0;
-      if (_cachedMaxZoom > 4.0) _cachedMaxZoom = 4.0;
-    } catch (e) {
-      debugPrint('Camera warm-up error: $e');
-      try {
-        await _sharedController?.dispose();
-      } catch (_) {}
-      _sharedController = null;
-    }
-  }
-
-  static Future<void> disposeSharedCamera() async {
-    final controller = _sharedController;
-    _sharedController = null;
-    _sharedInitFuture = null;
-    if (controller != null) {
-      try {
-        await controller.dispose();
-      } catch (e) {
-        debugPrint('Error disposing shared camera: $e');
-      }
-    }
-  }
+  PageRoute<dynamic>? _cameraRoute;
+  bool _routeVisible = false;
+  bool _appActive = true;
+  bool _externalPicker = false;
+  int _cameraGeneration = 0;
+  bool get _cameraWanted =>
+      mounted &&
+      !_isDisposed &&
+      !_isClosing &&
+      _routeVisible &&
+      _appActive &&
+      !_externalPicker;
 
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
@@ -323,7 +263,6 @@ class _CameraScreenState extends State<CameraScreen>
   static const Duration _maxRecordDuration = Duration(milliseconds: 5000);
   static const Color _cameraPreviewFallback = Color(0xFF1C1C1F);
 
-  DateTime? _lastCameraCheck;
   bool _isDisposed = false;
   bool _isClosing = false;
 
@@ -332,27 +271,57 @@ class _CameraScreenState extends State<CameraScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Reuse pre-warmed camera controller immediately for instant preview!
-    if (_sharedController != null && _sharedController!.value.isInitialized) {
-      _controller = _sharedController;
-      _cameras = _cachedCameras ?? [];
-      _cameraIndex = _sharedCameraIndex;
-      _minZoom = _cachedMinZoom;
-      _maxZoom = _cachedMaxZoom;
-      _isCameraReady = true;
-      _isInitializingCamera = false;
-      _hasNoCamera = false;
-      _isPermissionDenied = false;
-      _sharedController!.resumePreview().catchError((e) {
-        debugPrint('Error resuming preview: $e');
-        if (mounted && !_isDisposed) {
-          _setupCamera();
-        }
-      });
-    } else {
-      _setupCamera();
-    }
     unawaited(context.read<CaptureController>().prepareLocation());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute && !identical(route, _cameraRoute)) {
+      AppRoutes.routeObserver.unsubscribe(this);
+      _cameraRoute = route;
+      AppRoutes.routeObserver.subscribe(this, route);
+      _routeVisible = route.isCurrent;
+      _appActive = WidgetsBinding.instance.lifecycleState == null ||
+          WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
+      if (_cameraWanted) unawaited(_setupCamera());
+    }
+  }
+
+  @override
+  void didPushNext() {
+    _routeVisible = false;
+    _releaseCamera();
+  }
+
+  @override
+  void didPopNext() {
+    _routeVisible = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_cameraWanted) unawaited(_setupCamera());
+    });
+  }
+
+  @override
+  void didPop() {
+    _routeVisible = false;
+    _releaseCamera();
+  }
+
+  Future<void> _releaseCamera() {
+    _cameraGeneration++;
+    _recordTimer?.cancel();
+    if (mounted && !_isDisposed) {
+      setState(() {
+        _isCameraReady = false;
+        _isRecordingVideo = false;
+        _isStoppingVideo = false;
+        _recordStartedAt = null;
+        _recordProgress = 0;
+      });
+    }
+    return _serializeHardware(_disposeCameraController);
   }
 
   @override
@@ -363,23 +332,15 @@ class _CameraScreenState extends State<CameraScreen>
         state == AppLifecycleState.paused ||
         state == AppLifecycleState.hidden ||
         state == AppLifecycleState.detached) {
-      _disposeCameraController();
-      disposeSharedCamera();
+      _appActive = false;
+      _releaseCamera();
       return;
     }
 
     if (state == AppLifecycleState.resumed) {
-      final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
-      if (!isCurrentRoute) return;
-
-      final now = DateTime.now();
-      if (_lastCameraCheck != null &&
-          now.difference(_lastCameraCheck!).inMilliseconds < 1500) {
-        return;
-      }
-      if (!_isCameraReady || _isPermissionDenied || _controller == null) {
-        _setupCamera(isBackgroundRetry: true);
-      }
+      _appActive = true;
+      if (!_cameraWanted) return;
+      unawaited(_setupCamera(isBackgroundRetry: true));
 
       final capture = context.read<CaptureController>();
       if (capture.selectedLocation == null && !capture.isLoadingLocation) {
@@ -395,10 +356,8 @@ class _CameraScreenState extends State<CameraScreen>
     _photobooth.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _recordTimer?.cancel();
-    _controller = null;
-    try {
-      _sharedController?.pausePreview();
-    } catch (_) {}
+    AppRoutes.routeObserver.unsubscribe(this);
+    _releaseCamera();
     super.dispose();
   }
 
@@ -406,10 +365,7 @@ class _CameraScreenState extends State<CameraScreen>
     if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
     _isClosing = true;
-    _controller = null;
-    try {
-      await _sharedController?.pausePreview();
-    } catch (_) {}
+    await _releaseCamera();
 
     if (!mounted) return;
 
@@ -432,6 +388,15 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   Future<void> _setupCamera(
+      {bool isBackgroundRetry = false, bool showSpinner = false}) {
+    return _serializeHardware(() async {
+      if (!_cameraWanted) return;
+      await _setupCameraNow(
+          isBackgroundRetry: isBackgroundRetry, showSpinner: showSpinner);
+    });
+  }
+
+  Future<void> _setupCameraNow(
       {bool isBackgroundRetry = false, bool showSpinner = false}) async {
     if (_isDisposed || !mounted) return;
     if (_controller != null &&
@@ -440,35 +405,6 @@ class _CameraScreenState extends State<CameraScreen>
       return;
     }
     if (_isInitializingCamera) return;
-    _lastCameraCheck = DateTime.now();
-
-    // If pre-warm is already running, wait for it so we don't start duplicate inits
-    if (_sharedInitFuture != null) {
-      _isInitializingCamera = true;
-      try {
-        await _sharedInitFuture;
-      } catch (_) {}
-      if (_isDisposed || !mounted) return;
-      if (_sharedController != null && _sharedController!.value.isInitialized) {
-        _controller = _sharedController;
-        _cameras = _cachedCameras ?? [];
-        _cameraIndex = _sharedCameraIndex;
-        _minZoom = _cachedMinZoom;
-        _maxZoom = _cachedMaxZoom;
-        _hasNoCamera = false;
-        _isPermissionDenied = false;
-        try {
-          await _sharedController!.resumePreview();
-        } catch (_) {}
-        if (mounted && !_isDisposed) {
-          setState(() {
-            _isCameraReady = true;
-            _isInitializingCamera = false;
-          });
-        }
-        return;
-      }
-    }
 
     if (!isBackgroundRetry && !_isPermissionDenied && showSpinner) {
       if (mounted && !_isDisposed) {
@@ -540,6 +476,8 @@ class _CameraScreenState extends State<CameraScreen>
 
   Future<void> _initController(CameraDescription camera,
       {bool isBackgroundRetry = false}) async {
+    final generation = _cameraGeneration;
+    bool stillWanted() => _cameraWanted && generation == _cameraGeneration;
     final oldController = _controller;
     _controller = null;
 
@@ -551,7 +489,7 @@ class _CameraScreenState extends State<CameraScreen>
       }
     }
 
-    if (_isDisposed || !mounted) return;
+    if (!stillWanted()) return;
 
     // Only update UI when coming from a "ready" state (e.g. camera switch).
     // On first open _isCameraReady is already false, so this setState would
@@ -573,6 +511,7 @@ class _CameraScreenState extends State<CameraScreen>
     } catch (e) {
       await controller?.dispose();
       controller = null;
+      if (!stillWanted()) return;
       try {
         controller = CameraController(
           camera,
@@ -588,7 +527,7 @@ class _CameraScreenState extends State<CameraScreen>
       }
     }
 
-    if (_isDisposed || !mounted) {
+    if (!stillWanted()) {
       await controller?.dispose();
       return;
     }
@@ -617,8 +556,8 @@ class _CameraScreenState extends State<CameraScreen>
     if (_minZoom < 1.0) _minZoom = 1.0;
     if (_maxZoom > 4.0) _maxZoom = 4.0;
 
-    _zoomLevel = 1.0;
-    _baseZoom = 1.0;
+    _zoomLevel = _zoomLevel.clamp(_minZoom, _maxZoom);
+    _baseZoom = _zoomLevel;
     _isFlashOn = false;
 
     try {
@@ -629,11 +568,11 @@ class _CameraScreenState extends State<CameraScreen>
       await controller.setFlashMode(FlashMode.off);
     } catch (_) {}
 
-    _sharedController = controller;
-    _sharedCameraIndex = _cameraIndex;
-    _cachedMinZoom = _minZoom;
-    _cachedMaxZoom = _maxZoom;
-
+    if (!stillWanted()) {
+      if (identical(_controller, controller)) _controller = null;
+      await controller.dispose();
+      return;
+    }
     if (mounted && !_isDisposed) {
       setState(() {
         _isCameraReady = true;
@@ -743,7 +682,9 @@ class _CameraScreenState extends State<CameraScreen>
       _isPermissionDenied = false;
     });
 
-    await _initController(_cameras[_cameraIndex]);
+    await _serializeHardware(() async {
+      if (_cameraWanted) await _initController(_cameras[_cameraIndex]);
+    });
   }
 
   bool get _isFrontCamera {
@@ -792,18 +733,24 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _disposeCameraController() async {
     final controller = _controller;
     _controller = null;
-    _sharedController = null;
-    _sharedInitFuture = null;
 
     // Don't flash loading UI when we're closing the screen
     if (mounted && !_isClosing) {
       setState(() {
         _isCameraReady = false;
+        _isInitializingCamera = false;
         _isFlashOn = false;
       });
     }
 
     if (controller != null) {
+      try {
+        if (controller.value.isRecordingVideo) {
+          await controller.stopVideoRecording();
+        }
+      } catch (error) {
+        debugPrint('Stop camera recording during release: $error');
+      }
       try {
         await controller.dispose();
       } catch (e) {
@@ -852,6 +799,8 @@ class _CameraScreenState extends State<CameraScreen>
     if (!mounted || _isDisposed) return;
 
     if (result == true || result == 'close') {
+      _isClosing = true;
+      _releaseCamera();
       if (Navigator.canPop(context)) {
         Navigator.pop(context, result);
       } else {
@@ -866,28 +815,12 @@ class _CameraScreenState extends State<CameraScreen>
     final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
     if (!isCurrentRoute) return;
 
-    if (_controller != null && _controller!.value.isInitialized) {
-      try {
-        _controller!.resumePreview();
-      } catch (_) {
-        _setupCamera(showSpinner: false);
-      }
-    } else {
-      _setupCamera(showSpinner: false);
-    }
+    if (_cameraWanted) unawaited(_setupCamera(showSpinner: false));
   }
 
   Future<void> _navigateToPreview(Widget previewScreen,
       {bool immediately = false}) async {
-    if (!mounted || _isDisposed) return;
-    if (!immediately) {
-      try {
-        await _controller?.pausePreview();
-      } catch (error) {
-        debugPrint('Pause camera preview: $error');
-      }
-    }
-    if (!mounted || _isDisposed) return;
+    if (!_cameraWanted) return;
     final route = immediately
         ? PageRouteBuilder<dynamic>(
             transitionDuration: Duration.zero,
@@ -896,14 +829,6 @@ class _CameraScreenState extends State<CameraScreen>
           )
         : MaterialPageRoute<dynamic>(builder: (_) => previewScreen);
     final navigation = Navigator.push(context, route);
-    // Push first for photobooth. Pausing camera hardware must not delay the page.
-    if (immediately) {
-      try {
-        await _controller?.pausePreview();
-      } catch (error) {
-        debugPrint('Pause camera preview: $error');
-      }
-    }
     final result = await navigation;
     _handlePreviewResult(result);
   }
@@ -912,10 +837,8 @@ class _CameraScreenState extends State<CameraScreen>
     if (!_captureMode.allowsGallery) return;
     if (_isCapturing || _isRecordingVideo || _isStoppingVideo) return;
 
-    try {
-      await _controller?.pausePreview();
-    } catch (_) {}
-
+    _externalPicker = true;
+    await _releaseCamera();
     if (!mounted || _isDisposed) return;
 
     try {
@@ -926,12 +849,7 @@ class _CameraScreenState extends State<CameraScreen>
         imageQuality: 98,
       );
 
-      if (file == null || !mounted || _isDisposed) {
-        try {
-          await _controller?.resumePreview();
-        } catch (_) {}
-        return;
-      }
+      if (file == null || !mounted || _isDisposed) return;
 
       final originalFile = File(file.path);
 
@@ -960,24 +878,11 @@ class _CameraScreenState extends State<CameraScreen>
           ),
         ),
       );
-
-      // In case user cancelled within SquareCropScreen and popped back to CameraScreen
-      if (mounted && !_isDisposed) {
-        final isCurrentRoute = ModalRoute.of(context)?.isCurrent ?? false;
-        if (isCurrentRoute) {
-          if (_controller != null && _controller!.value.isInitialized) {
-            try {
-              await _controller!.resumePreview();
-            } catch (_) {
-              _setupCamera(showSpinner: false);
-            }
-          } else {
-            _setupCamera(showSpinner: false);
-          }
-        }
-      }
     } catch (e) {
       debugPrint('Gallery pick error: $e');
+    } finally {
+      _externalPicker = false;
+      if (_cameraWanted) unawaited(_setupCamera(showSpinner: false));
     }
   }
 

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../services/photobooth_canvas.dart';
 
@@ -26,6 +27,10 @@ class PhotoboothPreviewCapture {
   final PhotoboothScene scene;
   final Future<File?> file;
   bool _disposed = false;
+  Future<Uint8List>? _categoryImage;
+
+  Future<Uint8List> get categoryImage =>
+      _categoryImage ??= createPhotoboothCategoryImage(scene);
 
   void dispose() {
     if (_disposed) return;

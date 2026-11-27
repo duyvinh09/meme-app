@@ -1,8 +1,12 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
 import 'package:meme_app/features/capture/models/photobooth_frame.dart';
 import 'package:meme_app/features/capture/services/photobooth_canvas.dart';
+import 'package:meme_app/features/capture/models/photobooth_preview_capture.dart';
 
 img.Image solid(int red, int green, int blue, {int alpha = 255}) {
   final image = img.Image(width: 32, height: 32, numChannels: 4);
@@ -21,6 +25,53 @@ void main() {
         Rect.fromLTWH(0, 0, 1080, 1080),
         Rect.fromLTWH(0, 0, 1080, 1080)
       ]);
+
+  for (final count in [1, 2, 3, 4]) {
+    test('Category input uses all $count photos without artwork or export wait',
+        () async {
+      final photos = await Future.wait([
+        solid(240, 0, 0),
+        solid(0, 240, 0),
+        solid(0, 0, 240),
+        solid(240, 240, 0),
+      ]
+          .take(count)
+          .map((image) => decodePhotoboothImage(img.encodePng(image))));
+      final overlay =
+          await decodePhotoboothImage(img.encodePng(solid(255, 0, 255)));
+      final pendingExport = Completer<File?>();
+      final capture = PhotoboothPreviewCapture(
+          scene: PhotoboothScene(
+              frame: frame,
+              shots: photos.map((image) => PhotoboothShot(image)).toList(),
+              artwork: PhotoboothArtwork(overlay, [])),
+          file: pendingExport.future);
+      addTearDown(() {
+        capture.dispose();
+        for (final photo in photos) {
+          photo.dispose();
+        }
+        overlay.dispose();
+      });
+      final inputFuture = capture.categoryImage;
+      expect(identical(inputFuture, capture.categoryImage), isTrue);
+      final input = img.decodePng(await inputFuture)!;
+      expect(pendingExport.isCompleted, isFalse);
+      expect(input.width, 224);
+      expect(input.height, 224);
+      final colors = <String>{};
+      for (final pixel in input) {
+        // The opaque purple decorative overlay must never reach the model.
+        expect(pixel.r > 250 && pixel.b > 250, isFalse);
+        expect(pixel.a, 255);
+        colors.add('${pixel.r.toInt()},${pixel.g.toInt()},${pixel.b.toInt()}');
+      }
+      for (final color
+          in ['240,0,0', '0,240,0', '0,0,240', '240,240,0'].take(count)) {
+        expect(colors, contains(color));
+      }
+    });
+  }
 
   test('NativeCanvas_OverlappingMasks_KeepBothPhotosAndOverlay', () async {
     final left = solid(0, 0, 0, alpha: 0);
