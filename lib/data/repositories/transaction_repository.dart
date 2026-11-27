@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
 import '../../core/services/locket/locket_upload_service.dart';
+import '../../core/services/cloudinary_service.dart';
 import '../../core/services/fcm_push_service.dart';
 import '../../core/services/notification_service.dart';
 import '../datasources/remote/transaction_remote_datasource.dart';
@@ -22,6 +23,20 @@ class TransactionRepository {
   final Uuid _uuid = const Uuid();
 
   final LocketUploadService _locketUploadService = LocketUploadService();
+  final CloudinaryService _cloudinaryService = CloudinaryService();
+
+  Future<String> _uploadMedia(File file, String userId,
+      {bool isVideo = false}) {
+    return _cloudinaryService.uploadMedia(
+      file: file,
+      folder: 'memeapp/$userId/transactions',
+      isVideo: isVideo,
+      primaryUpload: () async {
+        final result = await _locketUploadService.uploadFile(file);
+        return result.downloadUrl;
+      },
+    );
+  }
 
   Future<TransactionModel> addTransaction({
     required String userId,
@@ -39,7 +54,6 @@ class TransactionRepository {
     File? videoFile,
     String mediaType = 'image',
     int? durationMs,
-
     String locationName = '',
     bool sharedToFeed = false,
     String privacy = 'private',
@@ -68,11 +82,7 @@ class TransactionRepository {
     if (videoFile != null) {
       finalMediaType = 'video';
 
-      final videoUploadResult = await _locketUploadService.uploadFile(
-        videoFile,
-      );
-
-      videoUrl = videoUploadResult.downloadUrl;
+      videoUrl = await _uploadMedia(videoFile, userId, isVideo: true);
       mediaUrl = videoUrl;
 
       final thumbnailFile = await _createVideoThumbnail(
@@ -81,11 +91,7 @@ class TransactionRepository {
       );
 
       if (thumbnailFile != null) {
-        final thumbnailUploadResult = await _locketUploadService.uploadFile(
-          thumbnailFile,
-        );
-
-        thumbnailUrl = thumbnailUploadResult.downloadUrl;
+        thumbnailUrl = await _uploadMedia(thumbnailFile, userId);
 
         // Rất quan trọng:
         // imageUrl vẫn trỏ tới thumbnail để UI cũ như Home/Calendar/Recent không vỡ.
@@ -94,11 +100,7 @@ class TransactionRepository {
     } else if (imageFile != null) {
       finalMediaType = 'image';
 
-      final imageUploadResult = await _locketUploadService.uploadFile(
-        imageFile,
-      );
-
-      imageUrl = imageUploadResult.downloadUrl;
+      imageUrl = await _uploadMedia(imageFile, userId);
       mediaUrl = imageUrl;
       thumbnailUrl = imageUrl;
     } else {
@@ -173,27 +175,40 @@ class TransactionRepository {
           final userName =
               userData?['name'] ?? userData?['username'] ?? 'Thành viên';
 
-          List<String> memberIds = List<String>.from(transaction.groupMemberIds);
+          List<String> memberIds =
+              List<String>.from(transaction.groupMemberIds);
           String gName = transaction.groupName ?? 'Nhóm';
 
           if (memberIds.isEmpty) {
             // 1. Check in chats collection
-            final chatDoc = await _db.collection('chats').doc(transaction.groupId).get();
+            final chatDoc =
+                await _db.collection('chats').doc(transaction.groupId).get();
             if (chatDoc.exists && chatDoc.data() != null) {
               final cData = chatDoc.data()!;
-              gName = cData['groupName']?.toString() ?? cData['name']?.toString() ?? gName;
-              final rawMembers = cData['participants'] ?? cData['members'] ?? [];
+              gName = cData['groupName']?.toString() ??
+                  cData['name']?.toString() ??
+                  gName;
+              final rawMembers =
+                  cData['participants'] ?? cData['members'] ?? [];
               if (rawMembers is List) {
                 memberIds = rawMembers.map((e) => e.toString()).toList();
               }
             }
             // 2. Check in user's groups subcollection if still empty
             if (memberIds.isEmpty) {
-              final userGroupDoc = await _db.collection('users').doc(userId).collection('groups').doc(transaction.groupId).get();
+              final userGroupDoc = await _db
+                  .collection('users')
+                  .doc(userId)
+                  .collection('groups')
+                  .doc(transaction.groupId)
+                  .get();
               if (userGroupDoc.exists && userGroupDoc.data() != null) {
                 final ugData = userGroupDoc.data()!;
-                gName = ugData['name']?.toString() ?? ugData['groupName']?.toString() ?? gName;
-                final rawMembers = ugData['memberIds'] ?? ugData['members'] ?? [];
+                gName = ugData['name']?.toString() ??
+                    ugData['groupName']?.toString() ??
+                    gName;
+                final rawMembers =
+                    ugData['memberIds'] ?? ugData['members'] ?? [];
                 if (rawMembers is List) {
                   memberIds = rawMembers.map((e) => e.toString()).toList();
                 }
@@ -201,11 +216,15 @@ class TransactionRepository {
             }
             // 3. Check legacy group_chats
             if (memberIds.isEmpty) {
-              final groupDoc = await _db.collection('group_chats').doc(transaction.groupId).get();
+              final groupDoc = await _db
+                  .collection('group_chats')
+                  .doc(transaction.groupId)
+                  .get();
               if (groupDoc.exists && groupDoc.data() != null) {
                 final gData = groupDoc.data()!;
                 gName = gData['name'] ?? gName;
-                final rawMembers = gData['members'] ?? gData['participants'] ?? [];
+                final rawMembers =
+                    gData['members'] ?? gData['participants'] ?? [];
                 if (rawMembers is List) {
                   memberIds = rawMembers.map((e) => e.toString()).toList();
                 }
@@ -670,8 +689,8 @@ class TransactionRepository {
     return all;
   }
 
-
-  Future<List<TransactionModel>> fetchFriendsFeed(List<String> friendIds) async {
+  Future<List<TransactionModel>> fetchFriendsFeed(
+      List<String> friendIds) async {
     if (friendIds.isEmpty) return [];
 
     final Map<String, TransactionModel> uniqueMap = {};
