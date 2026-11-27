@@ -6440,6 +6440,12 @@ abstract class AppLocalizations {
   /// In vi, this message translates to:
   /// **'Ghé repo trên GitHub nhé. Nếu thích Meme, một ngôi sao của bạn sẽ là động lực lớn cho cả nhóm.'**
   String get memeStarRepoDescription;
+
+  /// No description provided for @aiAnalyzing.
+  ///
+  /// In vi, this message translates to:
+  /// **'Đang gợi ý…'**
+  String get aiAnalyzing;
 }
 
 class _AppLocalizationsDelegate

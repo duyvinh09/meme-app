@@ -3727,4 +3727,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get memeStarRepoDescription =>
       'Visit our GitHub repository. If you enjoy Meme, a star means a lot to the team.';
+
+  @override
+  String get aiAnalyzing => 'Finding a category…';
 }

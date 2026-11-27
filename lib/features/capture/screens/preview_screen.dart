@@ -18,6 +18,7 @@ import '../../../core/constants/app_sizes.dart';
 import '../../../core/routes/app_routes.dart';
 import '../../../core/routes/route_names.dart';
 import '../../../core/services/post_publishing_service.dart';
+import '../../../core/services/tflite_service.dart';
 import '../../../core/utils/app_toast.dart';
 import '../../../core/utils/budget_name_localizer.dart';
 import '../../../core/utils/currency_formatter.dart';
@@ -35,6 +36,7 @@ import '../controllers/capture_controller.dart';
 import '../controllers/receipt_scan_controller.dart';
 import '../models/receipt_autofill_policy.dart';
 import '../models/receipt_scan_result.dart';
+import '../models/image_category_policy.dart';
 import '../widgets/receipt_scan_feedback.dart';
 import '../models/photobooth_preview_capture.dart';
 import '../services/photobooth_canvas.dart';
@@ -95,6 +97,8 @@ class _PreviewScreenState extends State<PreviewScreen> {
   bool _receiptSnapshotApplied = false;
   int _receiptAmountRevision = 0;
   int _receiptCategoryRevision = 0;
+  bool _isAiClassifying = false;
+  int _imageCategoryRequest = 0;
   final amountController = TextEditingController();
   final captionController = TextEditingController();
   final ValueNotifier<bool> _hasAmountNotifier = ValueNotifier<bool>(false);
@@ -397,6 +401,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       if (widget.scanReceipt && widget.receiptSnapshot == null) {
         _startReceiptScan();
       }
+      unawaited(_autoClassifyCategory());
       final uid = context.read<AuthController>().user?.uid;
       if (uid != null && uid.isNotEmpty) {
         final userRepo = context.read<UserRepository>();
@@ -437,6 +442,7 @@ class _PreviewScreenState extends State<PreviewScreen> {
       if (file == null) throw StateError('Photobooth capture was cancelled');
       if (!mounted) return;
       setState(() => _currentImageFile = file);
+      unawaited(_autoClassifyCategory());
     } catch (error, stack) {
       debugPrint('Preview photobooth export failed: $error\n$stack');
       if (!mounted) return;
@@ -479,6 +485,44 @@ class _PreviewScreenState extends State<PreviewScreen> {
           _lastCropState = updatedCropState;
         }
       });
+      unawaited(_autoClassifyCategory());
+    }
+  }
+
+  Future<void> _autoClassifyCategory() async {
+    final file = _currentImageFile;
+    if (file == null ||
+        isVideo ||
+        widget.scanReceipt ||
+        widget.receiptSnapshot != null ||
+        isContribution ||
+        _receiptCategoryRevision != 0) {
+      return;
+    }
+    final request = ++_imageCategoryRequest;
+    final originalType = type;
+    setState(() => _isAiClassifying = true);
+    try {
+      final result = await TFLiteService.instance.classifyImage(file.path);
+      if (!mounted ||
+          request != _imageCategoryRequest ||
+          file.path != _currentImageFile?.path ||
+          type != originalType) {
+        return;
+      }
+      final suggested = ImageCategoryPolicy.categoryFor(result,
+          type: type,
+          manualEdit: _receiptCategoryRevision != 0,
+          isBill: widget.scanReceipt || widget.receiptSnapshot != null,
+          isContribution: isContribution);
+      if (suggested != null) setState(() => category = suggested);
+    } catch (error) {
+      // Optional suggestion: manual category selection remains available.
+      debugPrint('Image category unavailable (${error.runtimeType})');
+    } finally {
+      if (mounted && request == _imageCategoryRequest) {
+        setState(() => _isAiClassifying = false);
+      }
     }
   }
 
@@ -814,8 +858,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
               currentText: amountController.text,
               currentCurrency: currency,
               isExpense: expense)) {
-        amountController.text =
-            usd ? result.usdText! : NumberFormat.decimalPattern('vi_VN').format(amount);
+        amountController.text = usd
+            ? result.usdText!
+            : NumberFormat.decimalPattern('vi_VN').format(amount);
         _onAmountChanged(amountController.text);
       }
       final suggested = result.category;
@@ -1857,7 +1902,9 @@ class _PreviewScreenState extends State<PreviewScreen> {
                                       maxWidth: previewSize * 0.52,
                                     ),
                                     child: Text(
-                                      _localizedCategoryLabel(category),
+                                      _isAiClassifying
+                                          ? context.l10n.aiAnalyzing
+                                          : _localizedCategoryLabel(category),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(

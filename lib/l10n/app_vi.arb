@@ -2236,5 +2236,6 @@
   "memeReleases": "Bản phát hành",
   "memeReleasesDescription": "Khám phá các phiên bản của app và xem có gì mới.",
   "memeStarRepo": "Tặng Meme một ngôi sao",
-  "memeStarRepoDescription": "Ghé repo trên GitHub nhé. Nếu thích Meme, một ngôi sao của bạn sẽ là động lực lớn cho cả nhóm."
+  "memeStarRepoDescription": "Ghé repo trên GitHub nhé. Nếu thích Meme, một ngôi sao của bạn sẽ là động lực lớn cho cả nhóm.",
+  "aiAnalyzing": "Đang gợi ý…"
 }

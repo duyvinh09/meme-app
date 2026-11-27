@@ -2236,5 +2236,6 @@
   "memeReleases": "View releases",
   "memeReleasesDescription": "Explore app releases and see what is new.",
   "memeStarRepo": "Give Meme a star",
-  "memeStarRepoDescription": "Visit our GitHub repository. If you enjoy Meme, a star means a lot to the team."
+  "memeStarRepoDescription": "Visit our GitHub repository. If you enjoy Meme, a star means a lot to the team.",
+  "aiAnalyzing": "Finding a category…"
 }

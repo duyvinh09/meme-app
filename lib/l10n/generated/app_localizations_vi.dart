@@ -3673,4 +3673,7 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get memeStarRepoDescription =>
       'Ghé repo trên GitHub nhé. Nếu thích Meme, một ngôi sao của bạn sẽ là động lực lớn cho cả nhóm.';
+
+  @override
+  String get aiAnalyzing => 'Đang gợi ý…';
 }

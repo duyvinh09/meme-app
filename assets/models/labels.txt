@@ -1,0 +1,8 @@
+0 Ăn uống
+1 Mua sắm
+2 Di chuyển
+3 Giải trí
+4 Giáo dục
+5 Lương
+6 Quà tặng
+7 Khác

@@ -18,6 +18,11 @@ subprojects {
     if (project.name == "light_compressor_v2") {
         plugins.apply("org.jetbrains.kotlin.android")
     }
+    if (project.name == "tflite_flutter") {
+        project.configurations.configureEach {
+            exclude(group = "org.tensorflow", module = "tensorflow-lite-gpu")
+        }
+    }
 }
 subprojects {
     project.evaluationDependsOn(":app")
